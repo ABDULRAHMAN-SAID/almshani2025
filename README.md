@@ -32,6 +32,27 @@ git checkout claude/unity-6-setup-16j376
 
 بعد الفتح: من شريط القوائم **Almshani ▸ Create Starter Scene** → يُنشأ مشهد `Assets/Scenes/Main.unity` فيه أرض ولاعب وكاميرا متابعة وإضاءة. اضغط **Play**: `WASD`/الأسهم للحركة و`Space` للقفز.
 
+### أنشأت مشروعاً جديداً من Unity Hub بدل استنساخ هذا المستودع؟
+
+انقل ملفات البداية إلى مشروعك بدل إعادة إنشائها. افتح Terminal/PowerShell **داخل مجلد مشروعك** (المجلد الذي يحوي `Assets` و`Packages` و`ProjectSettings`) ونفّذ:
+
+```bash
+git init
+git remote add origin https://github.com/ABDULRAHMAN-SAID/almshani2025.git
+git fetch origin claude/unity-6-setup-16j376
+git checkout origin/claude/unity-6-setup-16j376 -- CLAUDE.md .gitignore .gitattributes Assets/Scripts Assets/Editor
+git reset
+```
+
+هذا يجلب `CLAUDE.md` والسكربتات وأداة المحرر فقط، ولا يلمس إعدادات مشروعك ولا مشاهدك. ارجع إلى Unity ودعه يصرّف، ثم استخدم القائمة **Almshani ▸ Create Starter Scene**.
+
+> إن اخترت قالب **Universal 3D (URP)** في Unity Hub — وهو الافتراضي في Unity 6 — عدّل السطر الخاص بخط الرندر في `CLAUDE.md` من Built-in RP إلى URP، وتجاهل القسم 7 أدناه.
+
+**كيف تفتح Terminal في مجلد المشروع؟**
+- **ويندوز**: افتح المجلد في File Explorer، اكتب `powershell` في شريط العنوان واضغط Enter.
+- **ماك**: من Finder، زر يمين على المجلد ← Services ← New Terminal at Folder.
+- **من داخل Unity**: زر يمين على مجلد `Assets` في نافذة Project ← `Show in Explorer` / `Reveal in Finder`، ثم اصعد مستوى واحداً للأعلى.
+
 ---
 
 ## 3) تثبيت Claude Code
