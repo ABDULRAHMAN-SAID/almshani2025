@@ -91,6 +91,20 @@
   .foot{font-size:11.5px;color:#7A6B96;text-align:center;line-height:1.9;max-width:70ch;margin:0 auto}
   .foot b{color:var(--muted)}
   .loading{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-size:14px;z-index:6}
+  .abils{position:absolute;left:12px;bottom:12px;display:flex;gap:8px;z-index:4}
+  .abil{width:64px;height:64px;border-radius:50%;border:2px solid var(--line);cursor:pointer;
+    background:rgba(34,27,51,.82);color:var(--parch);font-family:inherit;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:1px;transition:border-color .12s,transform .1s}
+  .abil b{font-size:13px}
+  .abil span{font-size:10px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .abil.ready{border-color:var(--amber)}
+  .abil.ready span{color:var(--amber)}
+  .abil:active{transform:scale(.94)}
+  .abil:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+  .joy{position:absolute;right:14px;bottom:14px;width:116px;height:116px;border-radius:50%;
+    background:rgba(34,27,51,.5);border:2px solid var(--line);touch-action:none;z-index:4}
+  .joy i{position:absolute;left:50%;top:50%;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;
+    background:rgba(245,194,91,.85);border:2px solid #241A05;display:block}
   @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 
@@ -110,9 +124,9 @@
     <div class="stat"><span class="k">المرحلة</span><span class="v" id="stageTxt">١ — مرج الجمر</span></div>
     <div class="stat"><span class="k">الطور</span><span id="phaseTag" class="tag t-dawn">الفجر</span></div>
     <div class="stat"><span class="k">الليلة</span><span class="v" id="waveTxt">0 / 6</span></div>
-    <div class="stat"><span class="k">الفضة</span><span class="v" id="silverTxt">150</span></div>
+    <div class="stat"><span class="k">الفضة</span><span class="v" id="silverTxt">220</span></div>
     <div class="stat"><span class="k">نقاط النور</span><span class="v" id="lightTxt">حرة 0 من 3</span></div>
-    <div class="stat"><span class="k">الحصن</span><span class="v" id="castleTxt">1600</span><span class="bar b-castle"><i id="castleBar"></i></span></div>
+    <div class="stat"><span class="k">الحصن</span><span class="v" id="castleTxt">2200</span><span class="bar b-castle"><i id="castleBar"></i></span></div>
     <div class="stat"><span class="k">أرين</span><span class="v" id="heroTxt">240</span><span class="bar b-hero"><i id="heroBar"></i></span></div>
     <div class="stat"><span class="k">نداء الفجر <kbd>مسافة</kbd></span><span class="v" id="abTxt">جاهز</span><span class="bar b-cool"><i id="abBar"></i></span></div>
   </div>
@@ -121,6 +135,11 @@
     <canvas id="gl"></canvas>
     <canvas id="ov"></canvas>
     <div class="loading" id="loading">…يُحمَّل المحرك ثلاثي الأبعاد</div>
+    <div class="abils">
+      <button class="abil" id="abil2" title="وثبة الفجر"><b>وثبة</b><span id="ab2s">جاهز</span></button>
+      <button class="abil" id="abil1" title="نداء الفجر"><b>نداء</b><span id="ab1s">جاهز</span></button>
+    </div>
+    <div class="joy" id="joy" hidden><i id="joyKnob"></i></div>
     <div class="overlay" id="overlay"><div class="card" id="overlayCard"></div></div>
   </div>
 
@@ -133,7 +152,7 @@
   </div>
 
   <p class="foot">
-    <b>القائد:</b> <kbd>W A S D</kbd> · النقر على الأرض ينقله · <kbd>مسافة</kbd> نداء الفجر ·
+    <b>القائد:</b> <kbd>W A S D</kbd> · النقر على الأرض ينقله · <kbd>مسافة</kbd> نداء الفجر · <kbd>Shift</kbd> وثبة الفجر ·
     <kbd>1</kbd> اتبعني · <kbd>2</kbd> ثبات · <kbd>3</kbd> عودة ·
     <b>الكاميرا:</b> اسحب بالفأرة للدوران · عجلة التكبير.
   </p>
@@ -178,7 +197,7 @@ const B = {
   beacon:{ name:"منارة",    cost:70, hp:140, d:"نور واسع + نقطة نور إضافية",
     branches:[{n:"فنار",d:"مدى نور أوسع"},{n:"شعلة",d:"النور يحرق من يقف خارجه"}] }
 };
-const WALL = { name:"سور", cost:35, hp:520, d:"يسدّ الممر — لا يمر العدو حتى يكسره" };
+const WALL = { name:"سور", cost:30, hp:520, d:"يسدّ الممر — لا يمر العدو حتى يكسره" };
 
 const E = {
   grunt  :{ n:"ظلّي",   hp:56, sp:3.4, dmg:8,  r:.95, armor:0,   col:0xB8453C, dark:0x7E2B26 },
@@ -186,9 +205,9 @@ const E = {
   brute  :{ n:"مدرّع",  hp:200,sp:2.2, dmg:20, r:1.5, armor:.4,  col:0x8E3A57, dark:0x5C2138, sieger:true },
   spitter:{ n:"رامي",   hp:64, sp:2.9, dmg:12, r:1.0, armor:0,   col:0x7A5BA8, dark:0x4C3670, ranged:14, sieger:true },
   flyer  :{ n:"خفّاش",  hp:46, sp:5.8, dmg:9,  r:.9,  armor:0,   col:0x5E6FA8, dark:0x3A4570, fly:true },
-  breaker:{ n:"حاطم الأسوار", hp:2200, sp:2.0, dmg:60, r:2.6, armor:.35, col:0x6E2A2A, dark:0x3E1414, boss:true, ability:"slam", sieger:true },
-  mother :{ n:"أمّ الظلال",   hp:2600, sp:2.2, dmg:44, r:2.5, armor:.3,  col:0x4A2A6E, dark:0x2A1440, boss:true, ability:"summon" },
-  tyrant :{ n:"طاغية الليل",  hp:3400, sp:2.1, dmg:56, r:2.9, armor:.4,  col:0x24304E, dark:0x121A2C, boss:true, ability:"volley" }
+  breaker:{ n:"حاطم الأسوار", hp:1700, sp:2.0, dmg:46, r:2.6, armor:.35, col:0x6E2A2A, dark:0x3E1414, boss:true, ability:"slam", sieger:true },
+  mother :{ n:"أمّ الظلال",   hp:2100, sp:2.2, dmg:38, r:2.5, armor:.3,  col:0x4A2A6E, dark:0x2A1440, boss:true, ability:"summon" },
+  tyrant :{ n:"طاغية الليل",  hp:2900, sp:2.1, dmg:48, r:2.9, armor:.4,  col:0x24304E, dark:0x121A2C, boss:true, ability:"volley" }
 };
 
 const BOONS = [
@@ -207,12 +226,12 @@ const BOONS = [
 /* ══════════════════ حالة اللعبة ══════════════════ */
 let G, S;
 function newGame(){
-  G = { stage:0, phase:"dawn", wave:0, silver:150, lightPool:3,
-    castleHp:1600, castleMax:1600,
-    hero:{x:0,z:10,hp:240,max:240,sp:11,atkCd:0,dead:0,ab:0,bob:0,swing:0,dir:0},
+  G = { stage:0, phase:"dawn", wave:0, silver:220, lightPool:3,
+    castleHp:2200, castleMax:2200,
+    hero:{x:0,z:10,hp:240,max:240,sp:11,atkCd:0,dead:0,ab:0,ab2:0,bob:0,swing:0,dir:0},
     buildings:[], walls:[], enemies:[], soldiers:[], shots:[], fx:[], nums:[],
     queue:[], spawnT:0, order:"guard", holdAt:null, boons:{},
-    selected:null, keys:new Set(), move:null, over:null, t:0, shake:0,
+    selected:null, keys:new Set(), move:null, over:null, t:0, shake:0, joy:null, castleCd:0,
     stat:{kills:0,built:0,bosses:0} };
 }
 newGame();
@@ -554,7 +573,7 @@ function stats(b){
       if(b.branch==="سوق") i*=1.7; if(b.branch==="مخزن") i*=.8; return {income:Math.round(i)}; }
     case "farm": { let i=40*m*(has("gold")?1.3:1);
       if(b.branch==="بيادر") i*=1.8; return {income:Math.round(i)}; }
-    case "tower": { let d=17*m*(has("arrow")?1.3:1), rate=.7, splash=0;
+    case "tower": { let d=20*m*(has("arrow")?1.3:1), rate=.68, splash=0;
       if(b.branch==="رماة سريعون") rate=.35;
       if(b.branch==="مقلاع"){ d*=1.5; rate=1.05; splash=6; }
       return {dmg:d, rate, range:15+(b.lv-1)*2, splash}; }
@@ -642,13 +661,17 @@ function syncSquad(b){
 /* ══════════════════ الموجات ══════════════════ */
 const GAPS={grunt:.75,runner:.45,flyer:.8,brute:1.4,spitter:1.0,boss:2.5};
 function compCounts(stage, n){
-  const k = 1 + stage*0.55;                       // المراحل اللاحقة أكثف
+  const k = 1 + stage*0.4;                       // المراحل اللاحقة أكثف
   const c = { grunt: Math.round((5+n*2)*k) };
   if(n>=2) c.runner  = Math.round((2+n)*k*.8);
   if(n>=2) c.flyer   = Math.round((n-1)*k*.6);
   if(n>=3) c.brute   = Math.round((n-2)*k*.7);
   if(n>=4) c.spitter = Math.round((n-3)*k*.6);
-  if(n===STAGES[stage].nights) c[STAGES[stage].boss]=1;
+  if(n===STAGES[stage].nights){
+    // ليلة الزعيم: الحشد أخف ليكون الزعيم هو التحدي لا الغرق
+    for(const t in c) c[t]=Math.round(c[t]*.55);
+    c[STAGES[stage].boss]=1;
+  }
   for(const t in c) if(!c[t]) delete c[t];
   return c;
 }
@@ -673,7 +696,7 @@ function startNight(){
 }
 function endNight(){
   G.phase="dawn";
-  let inc=40, store=G.buildings.filter(b=>b.branch==="مخزن").length;
+  let inc=55+G.wave*6, store=G.buildings.filter(b=>b.branch==="مخزن").length;
   for(const b of G.buildings) if(b.type==="cottage"||b.type==="farm")
     inc += stats(b).income * (1+store*.12) * (b.type==="farm"&&b.branch!=="مطاحن" ? b.hp/b.max : 1);
   inc=Math.round(inc);
@@ -691,7 +714,7 @@ function endNight(){
 }
 function spawn(t){
   const li=(Math.random()*LANES.length)|0, L=LANES[li], D=E[t];
-  const sc = 1 + (G.wave-1)*.12 + G.stage*.45;
+  const sc = 1 + (G.wave-1)*.12 + G.stage*.32;
   const relief = 1 - L.light*.11;
   const p0 = L.pts[0];
   const e = { t, x:p0.x+rnd(-2,2), z:p0.z+rnd(-2,2), lane:li, node:1,
@@ -736,8 +759,8 @@ function stageCleared(){
 }
 function nextStage(){
   G.stage++; G.wave=0; G.phase="dawn";
-  G.silver=Math.round(G.silver*.4)+150;
-  G.castleMax=1600+G.stage*400; G.castleHp=G.castleMax;
+  G.silver=Math.round(G.silver*.4)+230;
+  G.castleMax=2200+G.stage*600; G.castleHp=G.castleMax;
   for(const e of G.enemies) world.remove(e.obj);
   for(const s of G.soldiers) world.remove(s.obj);
   G.enemies=[]; G.soldiers=[]; G.buildings=[]; G.walls=[]; G.shots=[]; G.queue=[];
@@ -800,6 +823,11 @@ function sync(){
   const ready=G.hero.ab<=0;
   q("abTxt").textContent=ready?"جاهز":Math.ceil(G.hero.ab)+"ث";
   q("abBar").style.width=(ready?100:(1-G.hero.ab/24)*100)+"%";
+  const a1=q("abil1"), a2=q("abil2");
+  if(a1){ const r=G.hero.ab<=0; a1.classList.toggle("ready",r);
+    q("ab1s").textContent=r?"جاهز":Math.ceil(G.hero.ab)+"ث"; }
+  if(a2){ const r=G.hero.ab2<=0; a2.classList.toggle("ready",r);
+    q("ab2s").textContent=r?"جاهز":Math.ceil(G.hero.ab2)+"ث"; }
   const tg=q("phaseTag");
   tg.textContent=G.phase==="dawn"?"الفجر — ابنِ":"الليل — دافع";
   tg.className="tag "+(G.phase==="dawn"?"t-dawn":"t-night");
@@ -931,6 +959,7 @@ addEventListener("keydown",e=>{
   G.keys.add(norm(e.key));
   if(e.target instanceof HTMLButtonElement) return;
   if(e.code==="Space"){ e.preventDefault(); ability(); }
+  if(e.key==="Shift"||norm(e.key)==="e"){ e.preventDefault(); dash(); }
   if(e.key==="1") setOrder("follow");
   if(e.key==="2") setOrder("hold");
   if(e.key==="3") setOrder("guard");
@@ -978,6 +1007,26 @@ function ability(){
   log("نداء الفجر: ومضة نور تصعق كل من حولك.");
 }
 
+function dash(){
+  const h=G.hero;
+  if(G.over||G.pending||h.ab2>0||h.dead>0) return;
+  h.ab2=9; SFX.ability();
+  const dx=Math.sin(h.dir), dz=Math.cos(h.dir), R=10;
+  const ox=h.x, oz=h.z;
+  h.x=clamp(h.x+dx*R,-56,56); h.z=clamp(h.z+dz*R,-56,56);
+  for(const e of G.enemies){
+    // كل عدو قريب من خط الوثبة يتلقى ضرراً ويرتد
+    const t=clamp(((e.x-ox)*dx+(e.z-oz)*dz)/R,0,1);
+    const px=ox+dx*R*t, pz=oz+dz*R*t;
+    if(dist2(e.x,e.z,px,pz)<3.4){
+      hurt(e,70*(has("hero")?1.4:1)); e.stun=.5;
+      e.x+=dx*1.6; e.z+=dz*1.6; poof(e.x,e.z,0x8FE3C8,4);
+    }
+  }
+  for(let i=0;i<7;i++) poof(ox+dx*R*(i/7), oz+dz*R*(i/7), 0xF5C25B, 2);
+  log("وثبة الفجر: اندفاع يخترق الصف.");
+}
+
 /* ══════════════════ جسيمات ══════════════════ */
 const poolP=[];
 function poof(x,z,col,n){
@@ -1012,6 +1061,8 @@ function update(dt){
     if(k.has("s")||k.has("arrowdown")){ vx+=sa; vz+=ca; }
     if(k.has("a")||k.has("arrowleft")){ vx-=ca; vz+=sa; }
     if(k.has("d")||k.has("arrowright")){ vx+=ca; vz-=sa; }
+    if(G.joy){ vx=G.joy.x*Math.cos(camAz)+G.joy.y*Math.sin(camAz)*-1;
+      vz=-G.joy.y*Math.cos(camAz)-G.joy.x*Math.sin(camAz); }
     if(vx||vz) G.move=null;
     if(!vx&&!vz&&G.move){
       const d=dist2(h.x,h.z,G.move.x,G.move.z);
@@ -1028,7 +1079,7 @@ function update(dt){
       if(best){ hurt(best,30*(has("hero")?1.4:1)); h.atkCd=.4; h.swing=1; SFX.hit(); poof(best.x,best.z,0x8FE3C8,2); }
     }
   }
-  h.ab=Math.max(0,h.ab-dt);
+  h.ab=Math.max(0,h.ab-dt); h.ab2=Math.max(0,h.ab2-dt);
   G.heroObj.position.set(h.x, Math.abs(Math.sin(h.bob))*.22, h.z);
   G.heroObj.rotation.y=h.dir;
   G.heroObj.userData.arm.rotation.x=-h.swing*2.2;
@@ -1118,7 +1169,7 @@ function update(dt){
           G.fx.push({ring:true,x:e.x,z:e.z,age:0,life:.55,col:0xC4483B});
           for(const s of G.soldiers) if(s.dead<=0&&dist2(s.x,s.z,e.x,e.z)<14) s.hp-=55;
           if(h.dead<=0&&dist2(h.x,h.z,e.x,e.z)<14) h.hp-=55;
-          for(const w of G.walls) if(dist2(w.x,w.z,e.x,e.z)<14) w.hp-=90;
+          for(const w of G.walls) if(dist2(w.x,w.z,e.x,e.z)<14) w.hp-=55;
           G.shake=reduced?0:.6;
         }
         if(D.boss&&D.ability==="summon"&&e.sum>0&&Math.random()<.35){
@@ -1130,7 +1181,7 @@ function update(dt){
             sp:26,dark:true,off:k});
         }
         if(isC){
-          G.castleHp-=dm*.45; G.shake=reduced?0:.28;
+          G.castleHp-=dm*.32; G.shake=reduced?0:.28;
           if(G.castleHp<=0){ G.castleHp=0; finish(false); return; }
         } else if(tb){
           tb.hp-=dm*1.25; tb.alert=1.4; tb.flash=.2;
@@ -1153,6 +1204,15 @@ function update(dt){
       e.obj.userData.wings[0].rotation.z=w; e.obj.userData.wings[1].rotation.z=-w; }
     if(e.flash>0) e.obj.userData.body.material=mat(0xffffff);
     else e.obj.userData.body.material=mat(D.col,{flatShading:true});
+  }
+
+  /* حامية القلعة — تمنع الحصار اللانهائي */
+  G.castleCd-=dt;
+  if(G.castleCd<=0){
+    let best=null,bd=16;
+    for(const e of G.enemies){ const d=dist2(0,0,e.x,e.z); if(d<bd){bd=d;best=e;} }
+    if(best){ G.castleCd=.8; SFX.shoot();
+      G.shots.push({x:0,y:9,z:0,tx:best.x,tz:best.z,e:best,dmg:26+G.stage*10,sp:36}); }
   }
 
   /* الأبراج */
@@ -1343,6 +1403,28 @@ G.heroObj.scale.setScalar(1.5);
   G.heroObj.add(ring);
 })();
 world.add(G.heroObj);
+document.getElementById("abil1").onclick=ability;
+document.getElementById("abil2").onclick=dash;
+(() => {
+  const joy=document.getElementById("joy"), knob=document.getElementById("joyKnob");
+  if(matchMedia("(pointer: coarse)").matches) joy.hidden=false;
+  let id=null, cx=0, cy=0;
+  const setKnob=(dx,dy)=>{ knob.style.transform=`translate(${dx}px,${dy}px)`; };
+  joy.addEventListener("pointerdown",e=>{ id=e.pointerId; joy.setPointerCapture(id);
+    const r=joy.getBoundingClientRect(); cx=r.left+r.width/2; cy=r.top+r.height/2;
+    G.joy={x:0,y:0}; });
+  joy.addEventListener("pointermove",e=>{
+    if(e.pointerId!==id) return;
+    let dx=e.clientX-cx, dy=e.clientY-cy;
+    const m=Math.hypot(dx,dy), R=34;
+    if(m>R){ dx=dx/m*R; dy=dy/m*R; }
+    setKnob(dx,dy);
+    G.joy={x:dx/R, y:-dy/R};
+  });
+  const end=e=>{ if(e.pointerId!==id) return; id=null; G.joy=null; setKnob(0,0); };
+  joy.addEventListener("pointerup",end); joy.addEventListener("pointercancel",end);
+  addEventListener("touchstart",()=>{ joy.hidden=false; },{once:true});
+})();
 document.getElementById("helpBtn").onclick=()=>showOverlay(INTRO);
 document.getElementById("sndBtn").onclick=e=>{ sndOn=!sndOn;
   e.target.textContent="الصوت: "+(sndOn?"يعمل":"صامت"); e.target.setAttribute("aria-pressed",sndOn); };
