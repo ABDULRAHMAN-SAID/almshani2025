@@ -1,150 +1,70 @@
-# المشني 2025 — مشروع Unity 6
+# Dawnkeep — حصن الفجر
 
-هيكل مشروع **Unity 6** جاهز للفتح، مُعدّ للعمل مع **Claude Code** في صناعة لعبة.
+لعبة جوال أصلية: **بناء نهاراً، دفاع ليلاً** — Action Strategy + Tower Defense + Roguelite خفيف، بمنظور Isometric ولغة عربية أساسية، لـ Android و iOS.
 
----
-
-## 1) المتطلبات
-
-| الأداة | الملاحظات |
+| الملف | الدور |
 |---|---|
-| **Unity Hub** | من `unity.com/download` |
-| **Unity 6.3 LTS** (`6000.3.x`) | الإصدار المستقر طويل الدعم. يعمل المشروع مع أي `6000.x` — إن كان لديك 6.5 افتحه به وسيرقّي الملفات تلقائياً |
-| **وحدات المنصة** | عند التثبيت اختر: Android Build Support (+ SDK/NDK/JDK) و/أو Windows/Mac Build Support |
-| **Git** | لسحب المستودع ودفع التعديلات |
-| **Claude Code** | خطوة 3 أدناه |
-
-> **مهم**: Unity لا يعمل داخل جلسة Claude السحابية (لا واجهة رسومية ولا رخصة). المحرر يعمل على جهازك، وClaude Code يعمل بجانبه في نفس المجلد.
+| [`docs/DAWNKEEP_SPEC.md`](docs/DAWNKEEP_SPEC.md) | **المواصفات الكاملة** — 45 قسماً: الحلقة، الاقتصاد، الأعداء، الزعماء، نور الفجر، الواجهات، الأداء، مراحل التنفيذ |
+| [`CLAUDE.md`](CLAUDE.md) | قواعد العمل داخل المشروع لـ Claude Code |
 
 ---
 
-## 2) فتح المشروع
+## البدء (مرة واحدة)
 
-```bash
-git clone https://github.com/ABDULRAHMAN-SAID/almshani2025.git
-cd almshani2025
-git checkout claude/unity-6-setup-16j376
-```
+### 1. أنشئ المشروع
+Unity Hub ← **New project** ← إصدار **Unity 6** ← قالب **Universal 2D** ← الاسم `Dawnkeep` ← المكان `D:\` ← **Create**.
 
-ثم: **Unity Hub ▸ Add ▸ Add project from disk** واختر مجلد `almshani2025`.
+> القالب 2D وليس 3D: المواصفات (§1، §6) تفرض عالماً على مستوى XY بكاميرا Orthographic ورسوم 3/4 Isometric. الاحترافية تأتي من الفن والإضاءة لا من ثلاثية الأبعاد.
 
-الفتح الأول يستغرق دقائق (Unity يولّد `Library/` وبقية `ProjectSettings/` — كلها مُستثناة من Git).
+### 2. ضع المواصفات داخل المشروع
+انسخ `DAWNKEEP_SPEC.md` و`CLAUDE.md` إلى جذر `D:\Dawnkeep` (المجلد الذي يحوي `Assets` و`Packages` و`ProjectSettings`).
 
-بعد الفتح: من شريط القوائم **Almshani ▸ Create Starter Scene** → يُنشأ مشهد `Assets/Scenes/Main.unity` فيه أرض ولاعب وكاميرا متابعة وإضاءة. اضغط **Play**: `WASD`/الأسهم للحركة و`Space` للقفز.
-
-### أنشأت مشروعاً جديداً من Unity Hub بدل استنساخ هذا المستودع؟
-
-انقل ملفات البداية إلى مشروعك بدل إعادة إنشائها. افتح Terminal/PowerShell **داخل مجلد مشروعك** (المجلد الذي يحوي `Assets` و`Packages` و`ProjectSettings`) ونفّذ:
-
-```bash
-git init
-git remote add origin https://github.com/ABDULRAHMAN-SAID/almshani2025.git
-git fetch origin claude/unity-6-setup-16j376
-git checkout origin/claude/unity-6-setup-16j376 -- CLAUDE.md .gitignore .gitattributes Assets/Scripts Assets/Editor
-git reset
-```
-
-هذا يجلب `CLAUDE.md` والسكربتات وأداة المحرر فقط، ولا يلمس إعدادات مشروعك ولا مشاهدك. ارجع إلى Unity ودعه يصرّف، ثم استخدم القائمة **Almshani ▸ Create Starter Scene**.
-
-> إن اخترت قالب **Universal 3D (URP)** في Unity Hub — وهو الافتراضي في Unity 6 — عدّل السطر الخاص بخط الرندر في `CLAUDE.md` من Built-in RP إلى URP، وتجاهل القسم 7 أدناه.
-
-**كيف تفتح Terminal في مجلد المشروع؟**
-- **ويندوز**: افتح المجلد في File Explorer، اكتب `powershell` في شريط العنوان واضغط Enter.
-- **ماك**: من Finder، زر يمين على المجلد ← Services ← New Terminal at Folder.
-- **من داخل Unity**: زر يمين على مجلد `Assets` في نافذة Project ← `Show in Explorer` / `Reveal in Finder`، ثم اصعد مستوى واحداً للأعلى.
-
----
-
-## 3) تثبيت Claude Code
-
-**Windows (PowerShell):**
+### 3. افتح Claude Code داخل المجلد
 ```powershell
-irm https://claude.ai/install.ps1 | iex
-# أو: winget install Anthropic.ClaudeCode
+cd "D:\Dawnkeep"; claude
 ```
 
-**macOS / Linux:**
-```bash
-curl -fsSL https://claude.ai/install.sh | bash
+### 4. أول أمر
 ```
-
-تحقق ثم شغّله **من داخل مجلد المشروع**:
-```bash
-claude --version
-cd path/to/almshani2025
-claude
-```
-
-سيقرأ Claude Code ملف `CLAUDE.md` في جذر المشروع تلقائياً (فيه قواعد العمل داخل مشروع Unity).
-
----
-
-## 4) ربط Claude Code بمحرر Unity (MCP)
-
-بدون ربط: Claude Code يكتب ويقرأ سكربتات C# فقط. **مع الربط**: يقرأ الهرمية والمشاهد وسجل Console، ويحرّك كائنات، ويشغّل Play داخل المحرر.
-
-### الطريق الرسمي (Unity 6 فأحدث)
-
-1. في Unity: **Window ▸ Package Manager ▸ Unity Registry** ← ثبّت حزمة **AI Assistant** (`com.unity.ai.assistant`).
-2. **Edit ▸ Project Settings ▸ AI ▸ Unity MCP** — تأكد أن **Unity Bridge** مؤشره أخضر (Running).
-3. في القسم **Integrations**: افتحه، اختر **Claude Code**، واضغط **Configure** — يكتب الإعداد نيابةً عنك.
-4. أعد تشغيل `claude` في مجلد المشروع، ثم اكتب `/mcp` — يجب أن يظهر خادم Unity متصلاً.
-
-### البديل المجتمعي (يدعم إصدارات أقدم أيضاً)
-
-يتطلب Python 3.10+ و`uv`. في Unity: **Package Manager ▸ + ▸ Add package from git URL**:
-
-```
-https://github.com/CoplayDev/unity-mcp.git?path=/MCPForUnity#main
-```
-
-يفتح معالج إعداد يكتشف عملاء MCP على جهازك — اختر **Claude Code** واضغط **Configure Selected**.
-
----
-
-## 5) سير العمل المقترح
-
-1. اطلب من Claude Code ما تريده بالعربية: «أضف نظام صحة للاعب وشريط صحة فوق رأسه».
-2. يكتب/يعدّل السكربتات في `Assets/Scripts/`.
-3. ارجع لنافذة Unity (يعيد التصريف تلقائياً عند استعادة التركيز) وراقب **Console**.
-4. أي خطأ تصريف: انسخه لـ Claude Code أو دعه يقرأه بنفسه عبر MCP.
-5. المشاهد والـPrefabs تُبنى من المحرر أو بسكربت تحت `Assets/Editor/` — لا تُكتب باليد.
-
----
-
-## 6) بنية المشروع
-
-```
-Assets/
-  Scenes/        مشاهد اللعبة (Main.unity يُولَّد من القائمة)
-  Scripts/
-    Game/        الإقلاع وأنظمة اللعبة العامة
-    Player/      تحكم اللاعب والكاميرا
-  Editor/        أدوات المحرر (لا تُصرَّف في البناء النهائي)
-Packages/        حزم المشروع (manifest.json)
-ProjectSettings/ إعدادات المشروع
-CLAUDE.md        قواعد العمل لـ Claude Code
+اقرأ DAWNKEEP_SPEC.md كاملاً ثم نفّذ المرحلة 0 والمرحلة 1 حتى تصير اللعبة قابلة للعب من البداية للنهاية. لا تتوقف عند الخطة.
 ```
 
 ---
 
-## 7) الترقية إلى URP (اختياري)
+## أوامر الجلسات اللاحقة
 
-المشروع يبدأ بـ **Built-in Render Pipeline** ليفتح بلا أي خطأ. للانتقال إلى URP (موصى به للموبايل):
+**للمتابعة:**
+```
+واصل من IMPLEMENTATION_PLAN.md. افحص ما نُفذ فعلياً وما بقي، ثم نفذ المرحلة التالية كاملة. لا تعِد كتابة الأنظمة السليمة، ولا تتوقف عند الشرح. شغّل Unity compilation والاختبارات، أصلح الأخطاء، ثم حدّث GAME_DESIGN.md وTESTING.md وCHANGELOG.md.
+```
 
-1. **Package Manager ▸ Unity Registry ▸ Universal RP** ← Install.
-2. أنشئ أصل الإعداد: **Assets ▸ Create ▸ Rendering ▸ URP Asset (with Universal Renderer)**.
-3. **Project Settings ▸ Graphics** ← ضع الأصل في **Default Render Pipeline**.
-4. حوّل الخامات القديمة: **Window ▸ Rendering ▸ Render Pipeline Converter**.
+**للمراجعة الصارمة:**
+```
+افتح اللعبة من البداية والعب المرحلة الأولى حتى الفوز والخسارة. راجع الحركة، الاستهداف، البناء، دخل الفجر، مسارات الأعداء، Follow، Hold، Defend، النور، الواجهات العربية، والحفظ. اكتب قائمة بكل خلل قابل لإعادة الإنتاج، أصلحه، ثم أعد الاختبار.
+```
 
 ---
 
-## 8) الأصول الثقيلة (Git LFS)
+## المراحل (§40 من المواصفات)
 
-عند إضافة نماذج وأصوات وصور كبيرة:
+| المرحلة | المحتوى |
+|---|---|
+| **0 — Preflight** | فحص المشروع، الوثائق، الحزم، Validator وBootstrap |
+| **1 — Vertical Slice** | قائمة، مرحلة Emberwood 01، القائد Aryn، 6 مبانٍ، 3 أعداء، 10 موجات، فوز/خسارة، حفظ، عربي/إنجليزي |
+| **2 — اكتمال النواة** | كل المباني والفروع، 15 عدواً، 4 زعماء، النور الكامل، Boons، الصعوبات، أداء الحشود |
+| **3 — Meta Progression** | الأبطال، المعدات، Forge، Research، Doctrines، خريطة الحملة |
 
-```bash
-git lfs install
-git lfs track "*.fbx" "*.png" "*.wav" "*.mp4"
-git add .gitattributes
-```
+**لا انتقال لمرحلة قبل أن تكون سابقتها قابلة للعب فعلياً.**
+
+---
+
+## يحتاج إعداداً منك مرة واحدة
+
+- Unity 6 LTS + **Android Build Support**.
+- Claude Code داخل مجلد المشروع.
+- **Unity MCP** (اختياري لكنه مفيد جداً — يمكّن Claude من فتح المشاهد وقراءة Console).
+- حسابات Google Play / Apple Developer: غير مطلوبة حتى مرحلة النشر.
+
+---
+
+> **ملاحظة**: مجلدات `Assets/` و`Packages/` و`ProjectSettings/` في هذا المستودع بقايا من هيكل تجريبي ثلاثي الأبعاد سابق (Built-in RP) — لا علاقة لها بـ Dawnkeep وتُتجاهل. مشروع اللعبة يُنشأ محلياً من قالب Universal 2D كما في الخطوة 1 أعلاه.
