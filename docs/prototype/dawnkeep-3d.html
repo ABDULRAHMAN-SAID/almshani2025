@@ -1,0 +1,1360 @@
+<title>حصن الفجر ثلاثي الأبعاد</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Tajawal:wght@400;500;700&display=swap">
+<style>
+  :root{
+    --ink:#120E1C; --panel:#1F1930; --panel-2:#2B2340; --line:#453861;
+    --amber:#F5C25B; --parch:#F1E7D3; --muted:#A294BC; --blood:#C4483B; --ok:#7FBF5A;
+  }
+  *{box-sizing:border-box}
+  .app{direction:rtl;font-family:"Tajawal","Segoe UI",system-ui,sans-serif;
+    background:radial-gradient(1200px 700px at 50% -15%,#2C2244 0%,transparent 62%),var(--ink);
+    color:var(--parch);min-height:100vh;padding:11px;display:flex;flex-direction:column;align-items:center;gap:9px}
+  .frame{width:100%;max-width:1180px;display:flex;flex-direction:column;gap:8px}
+  .masthead{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .masthead h1{font-family:"Amiri",Georgia,serif;font-weight:700;font-size:clamp(22px,3.4vw,30px);
+    margin:0;color:var(--amber);letter-spacing:.4px}
+  .masthead p{margin:0;color:var(--muted);font-size:12px;max-width:50ch}
+  .tools{display:flex;gap:6px}
+
+  .hud{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:8px;
+    background:linear-gradient(180deg,var(--panel-2),var(--panel));border:1px solid var(--line);
+    border-radius:12px;padding:9px 11px}
+  .stat{display:flex;flex-direction:column;gap:4px;min-width:0}
+  .stat .k{font-size:10.5px;letter-spacing:.06em;color:var(--muted)}
+  .stat .v{font-size:15.5px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .bar{height:6px;background:#100C1A;border-radius:99px;overflow:hidden;border:1px solid #0A0712}
+  .bar>i{display:block;height:100%;width:100%;transition:width .15s linear}
+  .b-castle>i{background:linear-gradient(90deg,#E0563F,#F5C25B)}
+  .b-hero>i{background:linear-gradient(90deg,#4D8FD6,#7FD6C0)}
+  .b-cool>i{background:linear-gradient(90deg,#8A6BD6,#F5C25B)}
+  .tag{display:inline-flex;align-items:center;gap:5px;font-weight:700;font-size:12px;padding:3px 10px;
+    border-radius:99px;width:fit-content}
+  .t-dawn{background:rgba(245,194,91,.15);color:var(--amber);border:1px solid rgba(245,194,91,.35)}
+  .t-night{background:rgba(138,107,214,.18);color:#C3AEF5;border:1px solid rgba(138,107,214,.42)}
+
+  .stage{position:relative;border:1px solid var(--line);border-radius:14px;overflow:hidden;
+    background:#0D1418;aspect-ratio:16/10}
+  #gl,#ov{position:absolute;inset:0;width:100%;height:100%;display:block}
+  #ov{pointer-events:none}
+  .overlay{position:absolute;inset:0;display:none;place-items:center;background:rgba(12,8,20,.9);
+    backdrop-filter:blur(4px);padding:18px;overflow:auto;z-index:5}
+  .overlay.show{display:grid}
+  .card{max-width:580px;background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    padding:20px 22px;text-align:right}
+  .card h2{font-family:"Amiri",Georgia,serif;margin:0 0 8px;font-size:25px;color:var(--amber)}
+  .card p{margin:0 0 11px;line-height:1.8;color:#DFD6EC;font-size:14px}
+  .card ul{margin:0 0 14px;padding-inline-start:19px;line-height:1.95;color:#DFD6EC;font-size:13.5px}
+  .card b{color:var(--parch)}
+  kbd{background:#161022;border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;
+    padding:1px 6px;font-family:inherit;font-size:11.5px;color:var(--amber)}
+
+  .dock{background:linear-gradient(180deg,var(--panel),var(--panel-2));border:1px solid var(--line);
+    border-radius:12px;padding:10px 11px;display:flex;flex-direction:column;gap:8px;min-height:108px}
+  .dock-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .dock-head h3{margin:0;font-size:13.5px;font-weight:700}
+  .dock-head span{font-size:12px;color:var(--muted)}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(142px,1fr));gap:7px}
+  .bcard{text-align:right;background:var(--panel-2);border:1px solid var(--line);border-radius:10px;
+    padding:8px 10px;cursor:pointer;color:var(--parch);font-family:inherit;display:flex;flex-direction:column;
+    gap:2px;transition:border-color .12s,transform .12s}
+  .bcard:hover:not(:disabled){border-color:var(--amber);transform:translateY(-1px)}
+  .bcard:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+  .bcard:disabled{opacity:.4;cursor:not-allowed}
+  .bcard .t{display:flex;align-items:center;justify-content:space-between;gap:8px;font-weight:700;font-size:13.5px}
+  .bcard .price{font-variant-numeric:tabular-nums;color:var(--amber);font-size:12.5px}
+  .bcard .d{font-size:11px;color:var(--muted);line-height:1.5}
+  .row{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+  .gate{display:flex;align-items:center;gap:6px;background:var(--panel-2);border:1px solid var(--line);
+    border-radius:9px;padding:5px 9px;font-size:12px}
+  .gate b{color:var(--amber);font-variant-numeric:tabular-nums;min-width:1.1em;text-align:center}
+  .mini{font-family:inherit;cursor:pointer;background:#161022;color:var(--parch);border:1px solid var(--line);
+    border-radius:6px;width:23px;height:23px;font-size:14px;line-height:1}
+  .mini:hover:not(:disabled){border-color:var(--amber)}
+  .mini:disabled{opacity:.35;cursor:not-allowed}
+  button.primary{font-family:inherit;font-weight:700;font-size:14px;cursor:pointer;
+    background:linear-gradient(180deg,#F5C25B,#D9A23C);color:#241A05;border:none;border-radius:10px;
+    padding:10px 20px;transition:filter .12s}
+  button.primary:hover{filter:brightness(1.08)}
+  button.primary:focus-visible{outline:2px solid var(--parch);outline-offset:3px}
+  button.ghost{font-family:inherit;font-size:12.5px;cursor:pointer;color:var(--muted);background:transparent;
+    border:1px solid var(--line);border-radius:8px;padding:7px 12px}
+  button.ghost:hover{color:var(--parch);border-color:var(--amber)}
+  button.ghost:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+  button.ghost[aria-pressed="true"]{color:var(--amber);border-color:var(--amber)}
+  .preview{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12px;color:var(--muted)}
+  .preview b{color:var(--parch);font-size:12.5px}
+  .chip{display:inline-flex;align-items:center;gap:5px;background:var(--panel-2);border:1px solid var(--line);
+    border-radius:99px;padding:3px 9px;font-size:11.5px;color:var(--parch);font-variant-numeric:tabular-nums}
+  .chip i{width:9px;height:9px;border-radius:50%;display:inline-block;border:1px solid rgba(0,0,0,.45)}
+  .log{font-size:12px;color:var(--muted);min-height:1.35em}
+  .foot{font-size:11.5px;color:#7A6B96;text-align:center;line-height:1.9;max-width:70ch;margin:0 auto}
+  .foot b{color:var(--muted)}
+  .loading{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-size:14px;z-index:6}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="app">
+<div class="frame">
+
+  <div class="masthead">
+    <h1>حصن الفجر</h1>
+    <p>ثلاث مراحل · ثلاثة زعماء · أسوار تُبنى وتُكسر · والنور مورد تكتيكي.</p>
+    <div class="tools">
+      <button class="ghost" id="sndBtn" aria-pressed="true">الصوت: يعمل</button>
+      <button class="ghost" id="helpBtn">الشرح</button>
+    </div>
+  </div>
+
+  <div class="hud">
+    <div class="stat"><span class="k">المرحلة</span><span class="v" id="stageTxt">١ — مرج الجمر</span></div>
+    <div class="stat"><span class="k">الطور</span><span id="phaseTag" class="tag t-dawn">الفجر</span></div>
+    <div class="stat"><span class="k">الليلة</span><span class="v" id="waveTxt">0 / 6</span></div>
+    <div class="stat"><span class="k">الفضة</span><span class="v" id="silverTxt">150</span></div>
+    <div class="stat"><span class="k">نقاط النور</span><span class="v" id="lightTxt">حرة 0 من 3</span></div>
+    <div class="stat"><span class="k">الحصن</span><span class="v" id="castleTxt">1600</span><span class="bar b-castle"><i id="castleBar"></i></span></div>
+    <div class="stat"><span class="k">أرين</span><span class="v" id="heroTxt">240</span><span class="bar b-hero"><i id="heroBar"></i></span></div>
+    <div class="stat"><span class="k">نداء الفجر <kbd>مسافة</kbd></span><span class="v" id="abTxt">جاهز</span><span class="bar b-cool"><i id="abBar"></i></span></div>
+  </div>
+
+  <div class="stage" id="stageBox">
+    <canvas id="gl"></canvas>
+    <canvas id="ov"></canvas>
+    <div class="loading" id="loading">…يُحمَّل المحرك ثلاثي الأبعاد</div>
+    <div class="overlay" id="overlay"><div class="card" id="overlayCard"></div></div>
+  </div>
+
+  <div class="dock">
+    <div class="dock-head"><h3 id="dockTitle">طور الفجر</h3><span id="dockHint">اختر عقدة بناء</span></div>
+    <div class="cards" id="dockCards"></div>
+    <div class="row" id="dockRow"></div>
+    <div class="preview" id="waveInfo"></div>
+    <div class="log" id="log"></div>
+  </div>
+
+  <p class="foot">
+    <b>القائد:</b> <kbd>W A S D</kbd> · النقر على الأرض ينقله · <kbd>مسافة</kbd> نداء الفجر ·
+    <kbd>1</kbd> اتبعني · <kbd>2</kbd> ثبات · <kbd>3</kbd> عودة ·
+    <b>الكاميرا:</b> اسحب بالفأرة للدوران · عجلة التكبير.
+  </p>
+</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+"use strict";
+if (typeof THREE === "undefined"){
+  document.getElementById("loading").textContent = "تعذّر تحميل محرك ثلاثي الأبعاد.";
+  return;
+}
+document.getElementById("loading").remove();
+const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/* ══════════════════ تعريفات المحتوى ══════════════════ */
+const STAGES = [
+  { name:"مرج الجمر", nights:6, lanes:3, ringA:9, slotsA:6, ringB:17, slotsB:7, boss:"breaker",
+    grass:"#6E9E42", grass2:"#78A94A", grass3:"#659439", road:"#A2814F", roadEdge:"#8B6A42",
+    tree:[0x4F8A33,0xB98C1E,0xB96A25], sky:0x9CC3DE, fog:0xBFD8E8 },
+  { name:"ممر الرماد", nights:6, lanes:4, ringA:9, slotsA:7, ringB:17, slotsB:8, boss:"mother",
+    grass:"#8A7A52", grass2:"#95855C", grass3:"#7C6C48", road:"#9B7B52", roadEdge:"#7E6440",
+    tree:[0x7E6B33,0xA8762A,0x8C5A22], sky:0xD2B48C, fog:0xD8C4A0 },
+  { name:"مرتفعات الليل", nights:6, lanes:5, ringA:10, slotsA:8, ringB:18, slotsB:8, boss:"tyrant",
+    grass:"#4A5A66", grass2:"#556672", grass3:"#42525E", road:"#6B7480", roadEdge:"#565F6A",
+    tree:[0x3E5A50,0x5A6E66,0x6E5A46], sky:0x54607A, fog:0x6B7590 }
+];
+
+const B = {
+  cottage:{ name:"كوخ",    cost:40, hp:120, d:"دخل 22 فضة عند كل فجر",
+    branches:[{n:"سوق",d:"+70% دخل"},{n:"مخزن",d:"+12% دخل لكل كوخ آخر"}] },
+  farm:{ name:"مزرعة",     cost:65, hp:150, d:"دخل 40 فضة، لكنها هشّة",
+    branches:[{n:"بيادر",d:"+80% دخل"},{n:"مطاحن",d:"دخل ثابت حتى لو تضررت"}] },
+  tower:{ name:"برج رماة",  cost:60, hp:180, d:"يرمي أقرب عدو · مدى 15",
+    branches:[{n:"رماة سريعون",d:"ضِعف سرعة الرمي"},{n:"مقلاع",d:"ضرر انفجاري حول الهدف"}] },
+  fire:{ name:"برج نار",    cost:95, hp:170, d:"لهب يحرق كل من يقترب",
+    branches:[{n:"أتون",d:"مدى ولهب أوسع"},{n:"قذف زيت",d:"يشعل الأرض لحظات"}] },
+  barracks:{ name:"ثكنة",   cost:75, hp:220, d:"ثلاثة جنود يقاتلون معك",
+    branches:[{n:"حرس",d:"جنود أقوى وأبطأ"},{n:"كشّافة",d:"جنود أكثر وأسرع"}] },
+  beacon:{ name:"منارة",    cost:70, hp:140, d:"نور واسع + نقطة نور إضافية",
+    branches:[{n:"فنار",d:"مدى نور أوسع"},{n:"شعلة",d:"النور يحرق من يقف خارجه"}] }
+};
+const WALL = { name:"سور", cost:35, hp:520, d:"يسدّ الممر — لا يمر العدو حتى يكسره" };
+
+const E = {
+  grunt  :{ n:"ظلّي",   hp:56, sp:3.4, dmg:8,  r:.95, armor:0,   col:0xB8453C, dark:0x7E2B26 },
+  runner :{ n:"عدّاء",  hp:36, sp:6.6, dmg:6,  r:.8,  armor:0,   col:0xD8705E, dark:0x96412F },
+  brute  :{ n:"مدرّع",  hp:200,sp:2.2, dmg:20, r:1.5, armor:.4,  col:0x8E3A57, dark:0x5C2138, sieger:true },
+  spitter:{ n:"رامي",   hp:64, sp:2.9, dmg:12, r:1.0, armor:0,   col:0x7A5BA8, dark:0x4C3670, ranged:14, sieger:true },
+  flyer  :{ n:"خفّاش",  hp:46, sp:5.8, dmg:9,  r:.9,  armor:0,   col:0x5E6FA8, dark:0x3A4570, fly:true },
+  breaker:{ n:"حاطم الأسوار", hp:2200, sp:2.0, dmg:60, r:2.6, armor:.35, col:0x6E2A2A, dark:0x3E1414, boss:true, ability:"slam", sieger:true },
+  mother :{ n:"أمّ الظلال",   hp:2600, sp:2.2, dmg:44, r:2.5, armor:.3,  col:0x4A2A6E, dark:0x2A1440, boss:true, ability:"summon" },
+  tyrant :{ n:"طاغية الليل",  hp:3400, sp:2.1, dmg:56, r:2.9, armor:.4,  col:0x24304E, dark:0x121A2C, boss:true, ability:"volley" }
+};
+
+const BOONS = [
+  { id:"arrow", n:"سهام مسمومة", d:"+30% ضرر الأبراج" },
+  { id:"gold",  n:"عهد التجار",  d:"+30% دخل الفجر" },
+  { id:"heal",  n:"بركة الفجر",  d:"الحصن يستعيد 140 عند كل فجر" },
+  { id:"troop", n:"نفير الثكنات",d:"جندي إضافي لكل ثكنة" },
+  { id:"light", n:"مدى المنارة", d:"+35% مدى النور ونقطة نور" },
+  { id:"hero",  n:"صقل النصل",   d:"+40% ضرر القائد و+60 حياة" },
+  { id:"wall",  n:"حجر الجبل",   d:"+80% صلابة الأسوار" },
+  { id:"cheap", n:"محاجر قريبة", d:"-20% كلفة كل بناء" },
+  { id:"fire",  n:"زيت مشتعل",   d:"+45% ضرر أبراج النار" },
+  { id:"rally", n:"صيحة الحشد",  d:"الجنود +30% ضرراً قرب القائد" }
+];
+
+/* ══════════════════ حالة اللعبة ══════════════════ */
+let G, S;
+function newGame(){
+  G = { stage:0, phase:"dawn", wave:0, silver:150, lightPool:3,
+    castleHp:1600, castleMax:1600,
+    hero:{x:0,z:10,hp:240,max:240,sp:11,atkCd:0,dead:0,ab:0,bob:0,swing:0,dir:0},
+    buildings:[], walls:[], enemies:[], soldiers:[], shots:[], fx:[], nums:[],
+    queue:[], spawnT:0, order:"guard", holdAt:null, boons:{},
+    selected:null, keys:new Set(), move:null, over:null, t:0, shake:0,
+    stat:{kills:0,built:0,bosses:0} };
+}
+newGame();
+
+const dist2 = (a,b,c,d)=>Math.hypot(a-c,b-d);
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+const rnd=(a,b)=>a+Math.random()*(b-a);
+const log=m=>document.getElementById("log").textContent=m;
+const has=b=>!!G.boons[b];
+const cost=t=>Math.round((t==="wall"?WALL.cost:B[t].cost)*(has("cheap")?.8:1));
+
+/* ══════════════════ محرك العرض ══════════════════ */
+const glc = document.getElementById("gl");
+const ovc = document.getElementById("ov");
+const octx = ovc.getContext("2d");
+const renderer = new THREE.WebGLRenderer({canvas:glc, antialias:true});
+renderer.setPixelRatio(Math.min(2, devicePixelRatio||1));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(46, 16/10, 1, 400);
+let camAz = 0, camDist = 58, camHigh = 38;
+
+const hemi = new THREE.HemisphereLight(0xffffff, 0x6a6a55, .95);
+scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xfff0d0, 1.15);
+sun.position.set(30, 55, 22);
+sun.castShadow = true;
+sun.shadow.mapSize.set(1024,1024);
+const sc = sun.shadow.camera;
+sc.left=-58; sc.right=58; sc.top=58; sc.bottom=-58; sc.near=1; sc.far=160;
+scene.add(sun);
+const amb = new THREE.AmbientLight(0x404060, .3);
+scene.add(amb);
+
+function resize(){
+  const box = document.getElementById("stageBox").getBoundingClientRect();
+  const w = Math.max(320, box.width), h = Math.max(200, box.height);
+  renderer.setSize(w,h,false);
+  ovc.width = w*Math.min(2,devicePixelRatio||1); ovc.height = h*Math.min(2,devicePixelRatio||1);
+  octx.setTransform(ovc.width/w,0,0,ovc.width/w,0,0);
+  camera.aspect = w/h; camera.updateProjectionMatrix();
+}
+addEventListener("resize", resize);
+
+/* أدوات هندسية مشتركة */
+const geo = {
+  box: new THREE.BoxGeometry(1,1,1),
+  cyl: new THREE.CylinderGeometry(1,1,1,16),
+  cone: new THREE.ConeGeometry(1,1,4),
+  cone8: new THREE.ConeGeometry(1,1,8),
+  sph: new THREE.SphereGeometry(1,14,12),
+  ico: new THREE.IcosahedronGeometry(1,0),
+  ring: new THREE.RingGeometry(1.5,1.85,28)
+};
+const matCache = new Map();
+function mat(hex, opts){
+  const k = hex+"|"+JSON.stringify(opts||{});
+  if (matCache.has(k)) return matCache.get(k);
+  const m = new THREE.MeshLambertMaterial(Object.assign({color:hex}, opts||{}));
+  matCache.set(k,m); return m;
+}
+function part(g, m, x,y,z, sx,sy,sz, rx,ry,rz){
+  const o = new THREE.Mesh(g, m);
+  o.position.set(x,y,z); o.scale.set(sx,sy,sz===undefined?sx:sz);
+  if(rx||ry||rz) o.rotation.set(rx||0, ry||0, rz||0);
+  o.castShadow = true; o.receiveShadow = true;
+  return o;
+}
+
+/* ══════════════════ الأرض والمرحلة ══════════════════ */
+let world = new THREE.Group(); scene.add(world);
+let LANES=[], SLOTS=[], WALLS=[], groundMesh=null, treeGroup=null;
+
+function groundTexture(cfg){
+  const c = document.createElement("canvas"); c.width = c.height = 1024;
+  const g = c.getContext("2d");
+  g.fillStyle = cfg.grass; g.fillRect(0,0,1024,1024);
+  const TW=64, TH=32;
+  const h=i=>{const s=Math.sin(i*127.1)*43758.5453; return s-Math.floor(s);};
+  for(let ry=-2; ry<1024/TH+2; ry++) for(let rx=-2; rx<1024/TW+2; rx++){
+    const ox=(Math.abs(ry%2)?TW/2:0), cx=rx*TW+ox, cy=ry*TH, v=h(rx*31+ry*17);
+    g.fillStyle = v<.2?cfg.grass2 : v<.4?cfg.grass3 : cfg.grass;
+    g.beginPath(); g.moveTo(cx,cy-TH/2); g.lineTo(cx+TW/2,cy); g.lineTo(cx,cy+TH/2);
+    g.lineTo(cx-TW/2,cy); g.closePath(); g.fill();
+  }
+  // الطرق من كل ممر إلى المركز
+  const W2=1024/2, sc=1024/120;                     // العالم 120 وحدة
+  g.lineCap=g.lineJoin="round";
+  for(const L of LANES){
+    g.strokeStyle=cfg.roadEdge; g.lineWidth=7.4*sc;
+    g.beginPath(); g.moveTo(W2+L.pts[0].x*sc, W2+L.pts[0].z*sc);
+    for(let i=1;i<L.pts.length;i++) g.lineTo(W2+L.pts[i].x*sc, W2+L.pts[i].z*sc);
+    g.lineTo(W2,W2); g.stroke();
+    g.strokeStyle=cfg.road; g.lineWidth=6*sc; g.stroke();
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.anisotropy = 4;
+  return t;
+}
+
+function buildStage(idx){
+  // تنظيف
+  while(world.children.length) world.remove(world.children[0]);
+  const cfg = STAGES[idx];
+
+  // ممرات: زوايا موزعة
+  LANES = [];
+  for(let i=0;i<cfg.lanes;i++){
+    const a = (i/cfg.lanes)*Math.PI*2 + 0.6;
+    const pts=[];
+    for(let k=4;k>=1;k--){
+      const r = 12 + k*11;
+      const wob = Math.sin(i*3.1+k)*4.5;
+      pts.push({ x: Math.cos(a)*r + Math.cos(a+1.57)*wob, z: Math.sin(a)*r + Math.sin(a+1.57)*wob });
+    }
+    LANES.push({ name:`ممر ${["الغرب","الشمال","الشرق","الجنوب","الوادي"][i]||i+1}`, a, pts, light:1 });
+  }
+  G.lightPool = 3 + G.buildings.filter(b=>b.type==="beacon").length + (has("light")?1:0);
+  for(const L of LANES) L.light = 1;
+
+  // عقد بناء على حلقتين
+  SLOTS = [];
+  for(let i=0;i<cfg.slotsA;i++){
+    const a=(i/cfg.slotsA)*Math.PI*2+.35;
+    SLOTS.push({x:Math.cos(a)*cfg.ringA, z:Math.sin(a)*cfg.ringA, b:null});
+  }
+  for(let i=0;i<cfg.slotsB;i++){
+    const a=(i/cfg.slotsB)*Math.PI*2+.15;
+    SLOTS.push({x:Math.cos(a)*cfg.ringB, z:Math.sin(a)*cfg.ringB, b:null});
+  }
+  // عقد أسوار: على كل ممر عند نصف قطر 21
+  WALLS = LANES.map((L,i)=>({ lane:i, x:Math.cos(L.a)*21, z:Math.sin(L.a)*21, a:L.a, b:null }));
+
+  // أرضية
+  const tex = groundTexture(cfg);
+  groundMesh = new THREE.Mesh(new THREE.PlaneGeometry(120,120,1,1),
+    new THREE.MeshLambertMaterial({map:tex}));
+  groundMesh.rotation.x = -Math.PI/2;
+  groundMesh.receiveShadow = true;
+  world.add(groundMesh);
+  const far = new THREE.Mesh(new THREE.PlaneGeometry(420,420,1,1), mat(new THREE.Color(cfg.grass3).getHex()));
+  far.rotation.x = -Math.PI/2; far.position.y = -.06; far.receiveShadow = false;
+  world.add(far);
+
+  scene.background = new THREE.Color(cfg.sky);
+  scene.fog = new THREE.Fog(cfg.fog, 70, 148);
+
+  // أشجار وصخور
+  treeGroup = new THREE.Group(); world.add(treeGroup);
+  for(let i=0;i<105;i++){
+    const a=rnd(0,7), r=rnd(14,56);
+    const x=Math.cos(a)*r, z=Math.sin(a)*r;
+    let ok = Math.hypot(x,z) > 13;
+    for(const L of LANES) for(const p of L.pts) if(dist2(x,z,p.x,p.z)<7) ok=false;
+    for(const s of SLOTS) if(dist2(x,z,s.x,s.z)<5) ok=false;
+    for(const w of WALLS) if(dist2(x,z,w.x,w.z)<6) ok=false;
+    if(!ok) continue;
+    const s = rnd(.8,1.5);
+    if(Math.random()<.16){
+      treeGroup.add(part(geo.ico, mat(0x8D8B86,{flatShading:true}), x, .6*s, z, s*1.1, s*.9, s*1.1, rnd(0,3),rnd(0,3),rnd(0,3)));
+    } else {
+      const g2 = new THREE.Group();
+      g2.add(part(geo.cyl, mat(0x6B4A2A), 0, 1.1*s, 0, .28*s, 2.2*s, .28*s));
+      const col = cfg.tree[Math.random()<.62?0:1+((Math.random()*(cfg.tree.length-1))|0)];
+      if(Math.random()<.45){
+        g2.add(part(geo.sph, mat(col,{flatShading:true}), 0, 3.4*s, 0, 2*s, 1.8*s, 2*s));
+        g2.add(part(geo.sph, mat(col,{flatShading:true}), .5*s, 4.4*s, .3*s, 1.2*s, 1.1*s, 1.2*s));
+      } else {
+        g2.add(part(geo.cone8, mat(col,{flatShading:true}), 0, 3.1*s, 0, 1.7*s, 3.2*s, 1.7*s));
+        g2.add(part(geo.cone8, mat(col,{flatShading:true}), 0, 4.5*s, 0, 1.2*s, 2.2*s, 1.2*s));
+      }
+      g2.position.set(x,0,z); g2.rotation.y = rnd(0,7);
+      treeGroup.add(g2);
+    }
+  }
+
+  // القلعة
+  const cst = new THREE.Group();
+  cst.add(part(geo.box, mat(0x8E8676), 0, 2.4, 0, 9, 4.8, 9));
+  cst.add(part(geo.box, mat(0x9A9280), 0, 5.6, 0, 6.4, 3.4, 6.4));
+  cst.add(part(geo.box, mat(0xA49B89), 0, 8.4, 0, 4.2, 3.2, 4.2));
+  for(let i=0;i<4;i++){
+    const a=i*Math.PI/2+Math.PI/4;
+    cst.add(part(geo.cyl, mat(0x7D7565), Math.cos(a)*5.2, 3.2, Math.sin(a)*5.2, 1.5, 6.4, 1.5));
+    cst.add(part(geo.cone8, mat(0xC4483B), Math.cos(a)*5.2, 7.4, Math.sin(a)*5.2, 1.9, 2.6, 1.9));
+  }
+  for(let i=0;i<12;i++){
+    const a=i/12*Math.PI*2;
+    cst.add(part(geo.box, mat(0x8E8676), Math.cos(a)*4.6, 5.1, Math.sin(a)*4.6, .8, 1, .8));
+  }
+  cst.add(part(geo.cyl, mat(0x5B4630), 0, 11.6, 0, .12, 4, .12));
+  const banner = part(geo.box, mat(0xF5C25B), 1.5, 12.6, 0, 3, 1.6, .12);
+  cst.add(banner); cst.userData.banner = banner;
+  cst.add(part(geo.box, mat(0x4A4238), 0, 1.6, 4.5, 2.6, 3.4, .5));
+  const gate = part(geo.cyl, mat(0xFFC864,{emissive:0x8A5E14}), 0, 1.35, 4.72, 1.05, .18, 1.05, Math.PI/2, 0, 0);
+  gate.castShadow=false; cst.add(gate); cst.userData.gate = gate;
+  const clight = new THREE.PointLight(0xFFD9A0, 0, 34, 2);
+  clight.position.set(0, 9, 0); cst.add(clight); cst.userData.light = clight;
+  cst.scale.setScalar(1.28);
+  world.add(cst);
+  G.castleObj = cst;
+
+  const safe = new THREE.Mesh(new THREE.CircleGeometry(14,44),
+    new THREE.MeshBasicMaterial({color:0xFFC864, transparent:true, opacity:.0, side:THREE.DoubleSide}));
+  safe.rotation.x=-Math.PI/2; safe.position.y=.05; world.add(safe); G.safeDisc=safe;
+
+  // حلقات العقد
+  const mkRing=(x,z,col,sc)=>{
+    const g2=new THREE.Group();
+    const r=new THREE.Mesh(geo.ring,new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:.9,side:THREE.DoubleSide}));
+    r.rotation.x=-Math.PI/2; r.scale.setScalar(sc);
+    const disc=new THREE.Mesh(new THREE.CircleGeometry(1.5*sc,26),
+      new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:.16,side:THREE.DoubleSide}));
+    disc.rotation.x=-Math.PI/2; disc.position.y=-.01;
+    g2.add(r); g2.add(disc); g2.position.set(x,.09,z);
+    g2.userData.ring=r; g2.userData.disc=disc;
+    world.add(g2); return g2;
+  };
+  for(const s of SLOTS) s.ring = mkRing(s.x,s.z,0xFFFFFF,1.5);
+  for(const w of WALLS) w.ring = mkRing(w.x,w.z,0xF5C25B,2.1);
+  resize();
+}
+
+/* ══════════════════ نماذج الكيانات ══════════════════ */
+function mkBuilding(type, lv, branch){
+  const g = new THREE.Group();
+  const H = lv===1?1:lv===2?1.18:1.34;
+  if(type==="cottage"){
+    g.add(part(geo.box, mat(0xD9C6A3), 0, 1.3*H, 0, 3.2, 2.6*H, 3.2));
+    g.add(part(geo.cone, mat(0xC4772B,{flatShading:true}), 0, 3.4*H, 0, 2.9, 1.9, 2.9, 0, Math.PI/4, 0));
+    g.add(part(geo.box, mat(0x7C4B2A), 0, .8*H, 1.65, .9, 1.6*H, .12));
+    g.add(part(geo.box, mat(0xF5C25B,{emissive:0x5A3E10}), 1, 1.6*H, 1.65, .7, .7, .12));
+  } else if(type==="farm"){
+    g.add(part(geo.box, mat(0x6E5636), 0, .18, 0, 5.4, .36, 5.4));
+    for(let i=-2;i<=2;i++) g.add(part(geo.box, mat(branch==="بيادر"?0xD8B24A:0x7FA43C), i*1.05, .5, 0, .72, .5, 4.8));
+    g.add(part(geo.box, mat(0xA9601F), 2.2, 1.3, 2.2, 1.8, 2, 1.8));
+    g.add(part(geo.cone, mat(0x8B4A22,{flatShading:true}), 2.2, 2.9, 2.2, 1.7, 1.2, 1.7, 0, Math.PI/4, 0));
+  } else if(type==="tower"){
+    g.add(part(geo.cyl, mat(0x9AA3B0), 0, 2.6*H, 0, 1.35, 5.2*H, 1.35));
+    g.add(part(geo.cyl, mat(0x828C9A), 0, 5.4*H, 0, 1.85, .7, 1.85));
+    for(let i=0;i<8;i++){ const a=i/8*Math.PI*2;
+      g.add(part(geo.box, mat(0x9AA3B0), Math.cos(a)*1.6, 6.05*H, Math.sin(a)*1.6, .5, .8, .5)); }
+    g.add(part(geo.box, mat(branch==="مقلاع"?0x8A5A2B:0x5B4630), 0, 6.2*H, 0, 1.5, .45, .5));
+    if(lv>1) g.add(part(geo.sph, mat(0xF5C25B,{emissive:0x6A4E12}), 0, 6.9*H, 0, .38));
+  } else if(type==="fire"){
+    g.add(part(geo.cyl, mat(0x5D4A48), 0, 2.4*H, 0, 1.5, 4.8*H, 1.5));
+    g.add(part(geo.cyl, mat(0x3E3130), 0, 5.1*H, 0, 1.9, .8, 1.9));
+    const flame = part(geo.cone8, mat(0xF07020,{emissive:0x8A2E06}), 0, 6.2*H, 0, 1.1, 2, 1.1);
+    g.add(flame); g.userData.flame = flame;
+  } else if(type==="barracks"){
+    g.add(part(geo.box, mat(0x6B7C55), 0, 1.4, 0, 5.4, 2.8, 3.8));
+    g.add(part(geo.box, mat(0x54633F), 0, 3, 0, 5.8, .6, 4.2));
+    g.add(part(geo.box, mat(0x4E5C3E), 0, .9, 1.95, 1.4, 1.8, .12));
+    g.add(part(geo.cyl, mat(0x5B4630), 2.4, 3.6, 1.6, .1, 3.2, .1));
+    g.add(part(geo.box, mat(0xC4483B), 3.2, 4.7, 1.6, 1.6, .9, .1));
+  } else if(type==="beacon"){
+    g.add(part(geo.cyl, mat(0x8E8676), 0, .35, 0, 2.2, .7, 2.2));
+    g.add(part(geo.cyl, mat(0xB9B2A4), 0, 3.2*H, 0, 1.15, 6*H, 1.5));
+    g.add(part(geo.cyl, mat(0x6E675C), 0, 6.4*H, 0, 1.5, .6, 1.5));
+    const fl = part(geo.sph, mat(0xFFD36B,{emissive:0xC48A18}), 0, 7.1*H, 0, .95);
+    fl.castShadow = false; g.add(fl); g.userData.flame = fl;
+    const pl = new THREE.PointLight(0xFFC864, 0, 46, 2);
+    pl.position.set(0, 7.4*H, 0);
+    g.add(pl); g.userData.light = pl;
+    const disc = new THREE.Mesh(new THREE.CircleGeometry(1,48),
+      new THREE.MeshBasicMaterial({color:0xFFC864, transparent:true, opacity:0, side:THREE.DoubleSide}));
+    disc.rotation.x=-Math.PI/2; disc.position.y=.06; disc.renderOrder=1;
+    g.add(disc); g.userData.disc = disc;
+  }
+  g.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.receiveShadow=true; } });
+  return g;
+}
+
+function mkWall(lv){
+  const g = new THREE.Group();
+  const h = lv>1?3.4:2.6;
+  g.add(part(geo.box, mat(0x8A7A62), 0, h/2, 0, 11, h, 1.5));
+  for(let i=-4;i<=4;i++) g.add(part(geo.box, mat(0x9A8A72), i*1.2, h+.45, 0, .8, .9, 1.7));
+  g.add(part(geo.box, mat(0x6E6252), 0, .3, 0, 11.6, .6, 2.2));
+  g.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.receiveShadow=true; } });
+  return g;
+}
+
+function mkHumanoid(bodyCol, headCol, helmCol, sword){
+  const g = new THREE.Group();
+  const body = part(geo.cyl, mat(bodyCol), 0, .9, 0, .48, 1.5, .38);
+  g.add(body);
+  g.add(part(geo.sph, mat(headCol), 0, 1.95, 0, .45, .42, .45));
+  g.add(part(geo.sph, mat(helmCol), 0, 2.1, 0, .48, .3, .48));
+  const arm = new THREE.Group();
+  arm.position.set(.62, 1.35, 0);
+  arm.add(part(geo.box, mat(sword?0xEDE6D4:bodyCol), 0, sword?.7:0, 0, .16, sword?1.7:.9, .16));
+  g.add(arm); g.userData.arm = arm;
+  g.add(part(geo.cyl, mat(0x3A2E22), -.24, .2, 0, .17, .5, .17));
+  g.add(part(geo.cyl, mat(0x3A2E22),  .24, .2, 0, .17, .5, .17));
+  g.traverse(o=>{ if(o.isMesh){ o.castShadow=true; } });
+  return g;
+}
+
+function mkEnemy(t){
+  const D=E[t], g=new THREE.Group(), r=D.r;
+  const body = part(geo.sph, mat(D.col,{flatShading:true}), 0, r, 0, r, r*.96, r);
+  g.add(body); g.userData.body = body;
+  g.add(part(geo.sph, mat(D.dark), 0, r*.62, 0, r*.98, r*.5, r*.98));
+  const eyeM = mat(0xFFF3D0,{emissive:0xBFA34A});
+  g.add(part(geo.sph, eyeM, -r*.34, r*1.12, r*.78, r*.17));
+  g.add(part(geo.sph, eyeM,  r*.34, r*1.12, r*.78, r*.17));
+  if(t==="grunt"||t==="brute"||D.boss){
+    g.add(part(geo.cone8, mat(0xEFE6D4), -r*.6, r*1.7, 0, r*.24, r*.9, r*.24, 0,0,-.35));
+    g.add(part(geo.cone8, mat(0xEFE6D4),  r*.6, r*1.7, 0, r*.24, r*.9, r*.24, 0,0, .35));
+  }
+  if(t==="brute") g.add(part(geo.box, mat(0x6E675C), -r*1.15, r, 0, .35, r*1.7, r*1.5));
+  if(t==="runner"){
+    g.add(part(geo.cone8, mat(D.dark), -r*.5, r*1.75, -r*.2, r*.2, r*1.2, r*.2, .3,0,-.3));
+    g.add(part(geo.cone8, mat(D.dark),  r*.5, r*1.75, -r*.2, r*.2, r*1.2, r*.2, .3,0, .3));
+  }
+  if(t==="spitter") g.add(part(geo.cone8, mat(D.dark), 0, r*1.6, 0, r*1.1, r*1.3, r*1.1));
+  if(t==="flyer"){
+    const wl = part(geo.box, mat(D.dark), -r*1.5, r*1.1, 0, r*1.7, .12, r*.9);
+    const wr = part(geo.box, mat(D.dark),  r*1.5, r*1.1, 0, r*1.7, .12, r*.9);
+    g.add(wl); g.add(wr); g.userData.wings=[wl,wr];
+  }
+  if(D.boss){
+    for(let i=-2;i<=2;i++)
+      g.add(part(geo.cone8, mat(0xF5C25B,{emissive:0x6A4E12}), i*r*.34, r*2.05+Math.abs(i)*-r*.12, 0, r*.14, r*.55, r*.14));
+    g.add(part(geo.box, mat(D.dark), 0, r*.9, -r*1.05, r*1.9, r*1.7, .2));
+  }
+  g.traverse(o=>{ if(o.isMesh) o.castShadow=true; });
+  return g;
+}
+
+/* ══════════════════ منطق البناء ══════════════════ */
+function stats(b){
+  const m = b.lv===1?1 : b.lv===2?1.55 : 2.15;
+  switch(b.type){
+    case "cottage": { let i=22*m*(has("gold")?1.3:1);
+      if(b.branch==="سوق") i*=1.7; if(b.branch==="مخزن") i*=.8; return {income:Math.round(i)}; }
+    case "farm": { let i=40*m*(has("gold")?1.3:1);
+      if(b.branch==="بيادر") i*=1.8; return {income:Math.round(i)}; }
+    case "tower": { let d=17*m*(has("arrow")?1.3:1), rate=.7, splash=0;
+      if(b.branch==="رماة سريعون") rate=.35;
+      if(b.branch==="مقلاع"){ d*=1.5; rate=1.05; splash=6; }
+      return {dmg:d, rate, range:15+(b.lv-1)*2, splash}; }
+    case "fire": { let d=26*m*(has("fire")?1.45:1), rg=b.branch==="أتون"?11:8.5;
+      return {dps:d, range:rg}; }
+    case "barracks": { let n=3+(b.lv-1)+(has("troop")?1:0), hp=100*m, dmg=18*m, sp=5.4;
+      if(b.branch==="حرس"){ hp*=1.5; dmg*=1.25; sp=4.4; }
+      if(b.branch==="كشّافة"){ n+=2; sp=7.4; hp*=.8; }
+      return {n,hp,dmg,sp}; }
+    default: return {};
+  }
+}
+function lightRadius(b){
+  const base = b.branch==="فنار" ? 30 : 22;
+  return (b.lv>=2?base*1.18:base) * (has("light")?1.35:1);
+}
+function maxHp(b){
+  if(b.type==="wall") return Math.round(WALL.hp*(b.lv===1?1:1.7)*(has("wall")?1.8:1));
+  return Math.round(B[b.type].hp*(b.lv===1?1:b.lv===2?1.6:2.3));
+}
+function upCost(b){ return Math.round(cost(b.type)*(b.lv===1?1.6:2.4)); }
+function isLit(x,z){
+  if(dist2(x,z,0,0) < 14) return true;
+  for(const b of G.buildings) if(b.type==="beacon" && dist2(x,z,b.x,b.z) < lightRadius(b)) return true;
+  return false;
+}
+
+function place(type){
+  const sel = G.selected; if(!sel) return;
+  const c = cost(type); if(G.silver < c) return;
+  G.silver -= c;
+  if(type==="wall"){
+    const w = { type:"wall", x:sel.x, z:sel.z, lv:1, hp:0, max:0, node:sel, alert:0 };
+    w.max = maxHp(w); w.hp = w.max;
+    w.obj = mkWall(1); w.obj.position.set(sel.x, 0, sel.z);
+    w.obj.rotation.y = -sel.a - Math.PI/2;
+    world.add(w.obj); sel.b = w; G.walls.push(w);
+  } else {
+    const b = { type, x:sel.x, z:sel.z, lv:1, branch:null, cd:0, hp:0, max:0, slot:sel, alert:0, flash:0 };
+    b.max = maxHp(b); b.hp = b.max;
+    b.obj = mkBuilding(type,1,null); b.obj.position.set(sel.x,0,sel.z);
+    b.obj.rotation.y = Math.atan2(-sel.x,-sel.z);
+    world.add(b.obj); sel.b = b; G.buildings.push(b);
+    if(type==="beacon") G.lightPool++;
+    if(type==="barracks") spawnSquad(b);
+  }
+  G.stat.built++; G.selected=null; SFX.build();
+  log(`بُني ${type==="wall"?WALL.name:B[type].name}. بقي ${Math.floor(G.silver)} فضة.`);
+  refresh();
+}
+function upgrade(b, branch){
+  const c = upCost(b); if(G.silver<c || b.lv>=3 || (b.type==="wall"&&b.lv>=2)) return;
+  G.silver -= c; b.lv++; if(b.lv===3) b.branch=branch;
+  const ratio = b.hp/b.max; b.max = maxHp(b); b.hp = b.max*Math.max(ratio,.6);
+  world.remove(b.obj);
+  b.obj = b.type==="wall" ? mkWall(b.lv) : mkBuilding(b.type,b.lv,b.branch);
+  b.obj.position.set(b.x,0,b.z);
+  b.obj.rotation.y = b.type==="wall" ? (-b.node.a-Math.PI/2) : Math.atan2(-b.x,-b.z);
+  world.add(b.obj);
+  if(b.type==="barracks") syncSquad(b);
+  SFX.build(); log(`${B[b.type]?B[b.type].name:WALL.name} صار المستوى ${b.lv}${branch?" — "+branch:""}.`);
+  refresh();
+}
+function removeBuilding(b){
+  world.remove(b.obj);
+  if(b.type==="wall"){ G.walls.splice(G.walls.indexOf(b),1); b.node.b=null; }
+  else { G.buildings.splice(G.buildings.indexOf(b),1); b.slot.b=null;
+    if(b.type==="beacon") G.lightPool=Math.max(0,G.lightPool-1); }
+}
+function spawnSquad(b){ const st=stats(b); for(let i=0;i<st.n;i++) G.soldiers.push(mkSoldier(b,i)); }
+function mkSoldier(b,i){
+  const st=stats(b);
+  const o = mkHumanoid(0x4E76B8, 0xE8C39C, 0xAEB6C2, true);
+  o.scale.setScalar(1.15); world.add(o);
+  return { home:b, x:b.x+rnd(-2,2), z:b.z+rnd(1.5,3.5), hp:st.hp, max:st.hp, dmg:st.dmg,
+           sp:st.sp, atk:0, dead:0, bob:rnd(0,6), i, obj:o };
+}
+function syncSquad(b){
+  const st=stats(b);
+  const mine=G.soldiers.filter(s=>s.home===b);
+  for(const s of mine){ s.max=st.hp; s.hp=st.hp; s.dmg=st.dmg; s.sp=st.sp; }
+  let n=mine.length; while(n<st.n){ G.soldiers.push(mkSoldier(b,n)); n++; }
+}
+
+/* ══════════════════ الموجات ══════════════════ */
+const GAPS={grunt:.75,runner:.45,flyer:.8,brute:1.4,spitter:1.0,boss:2.5};
+function compCounts(stage, n){
+  const k = 1 + stage*0.55;                       // المراحل اللاحقة أكثف
+  const c = { grunt: Math.round((5+n*2)*k) };
+  if(n>=2) c.runner  = Math.round((2+n)*k*.8);
+  if(n>=2) c.flyer   = Math.round((n-1)*k*.6);
+  if(n>=3) c.brute   = Math.round((n-2)*k*.7);
+  if(n>=4) c.spitter = Math.round((n-3)*k*.6);
+  if(n===STAGES[stage].nights) c[STAGES[stage].boss]=1;
+  for(const t in c) if(!c[t]) delete c[t];
+  return c;
+}
+function comp(stage,n){
+  const cc=compCounts(stage,n), q=[];
+  for(const t in cc){ if(E[t].boss) continue; for(let i=0;i<cc[t];i++) q.push({t,gap:GAPS[t]}); }
+  for(let i=q.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; [q[i],q[j]]=[q[j],q[i]]; }
+  for(const t in cc) if(E[t].boss) q.unshift({t,gap:GAPS.boss});
+  return q;
+}
+function chips(m){
+  return Object.keys(m).filter(k=>m[k]>0)
+    .map(k=>`<span class="chip"><i style="background:#${E[k].col.toString(16).padStart(6,"0")}"></i>${E[k].n} ×${m[k]}</span>`).join("");
+}
+
+function startNight(){
+  G.wave++; G.phase="night"; G.queue=comp(G.stage,G.wave); G.spawnT=.9; G.selected=null;
+  SFX.night();
+  const cc=compCounts(G.stage,G.wave);
+  for(const t in cc) if(E[t].boss){ setTimeout(SFX.boss,600); log(`${E[t].n} قادم الليلة!`); }
+  refresh(); sync();
+}
+function endNight(){
+  G.phase="dawn";
+  let inc=40, store=G.buildings.filter(b=>b.branch==="مخزن").length;
+  for(const b of G.buildings) if(b.type==="cottage"||b.type==="farm")
+    inc += stats(b).income * (1+store*.12) * (b.type==="farm"&&b.branch!=="مطاحن" ? b.hp/b.max : 1);
+  inc=Math.round(inc);
+  G.silver+=inc;
+  G.hero.hp=Math.min(G.hero.max,G.hero.hp+80);
+  if(has("heal")) G.castleHp=Math.min(G.castleMax,G.castleHp+140);
+  for(const b of G.buildings.concat(G.walls)) b.hp=Math.min(b.max,b.hp+b.max*.4);
+  G.soldiers=G.soldiers.filter(s=>{ if(G.buildings.includes(s.home)) return true; world.remove(s.obj); return false; });
+  for(const s of G.soldiers){ s.hp=s.max; s.dead=0; s.obj.visible=true; }
+  SFX.dawn();
+  if(G.wave>=STAGES[G.stage].nights){ stageCleared(); return; }
+  if(G.wave===2||G.wave===4) offerBoons();
+  else { log(`نجوت الليلة ${G.wave}. دخل الفجر: ${inc} فضة.`); refresh(); }
+  sync();
+}
+function spawn(t){
+  const li=(Math.random()*LANES.length)|0, L=LANES[li], D=E[t];
+  const sc = 1 + (G.wave-1)*.12 + G.stage*.45;
+  const relief = 1 - L.light*.11;
+  const p0 = L.pts[0];
+  const e = { t, x:p0.x+rnd(-2,2), z:p0.z+rnd(-2,2), lane:li, node:1,
+    hp:D.hp*sc*relief, max:D.hp*sc*relief, sp:D.sp*relief, dmg:D.dmg*sc*relief,
+    r:D.r, armor:D.armor, atk:0, stun:0, bob:rnd(0,6), flash:0, burn:0, sum:3,
+    obj: mkEnemy(t) };
+  e.obj.scale.setScalar(D.boss?1.15:1.4);
+  e.obj.position.set(e.x, D.fly?4.5:0, e.z);
+  world.add(e.obj);
+  G.enemies.push(e);
+}
+
+/* ══════════════════ البركات والمراحل ══════════════════ */
+function offerBoons(){
+  const pool=BOONS.filter(b=>!G.boons[b.id]), pick=[];
+  while(pick.length<3&&pool.length) pick.push(pool.splice((Math.random()*pool.length)|0,1)[0]);
+  if(!pick.length){ refresh(); return; }
+  G.pending=pick;
+  showOverlay({ title:"بركة الفجر",
+    body:`نجوت الليلة ${G.wave} من ${STAGES[G.stage].name}. اختر بركة تبقى معك حتى نهاية الحملة.`,
+    choices:pick });
+}
+function takeBoon(id){
+  G.boons[id]=true; const b=BOONS.find(x=>x.id===id);
+  if(id==="light") G.lightPool++;
+  if(id==="hero"){ G.hero.max+=60; G.hero.hp+=60; }
+  if(id==="troop") for(const bd of G.buildings) if(bd.type==="barracks") syncSquad(bd);
+  if(id==="wall") for(const w of G.walls){ const r=w.hp/w.max; w.max=maxHp(w); w.hp=w.max*r; }
+  G.pending=null;
+  document.getElementById("overlay").classList.remove("show");
+  SFX.build(); log(`بركة: ${b.n} — ${b.d}`); refresh(); sync();
+}
+function stageCleared(){
+  G.stat.bosses++;
+  if(G.stage>=STAGES.length-1){ finish(true); return; }
+  G.pending="stage";
+  showOverlay({ title:`سقطت ${STAGES[G.stage].name}`,
+    body:`قتلت ${E[STAGES[G.stage].boss].n} وصمدت ${STAGES[G.stage].nights} ليالٍ.<br>
+      المرحلة القادمة: <b>${STAGES[G.stage+1].name}</b> — ممرات أكثر وأعداء أقسى.<br>
+      تحتفظ ببركاتك و<b>40%</b> من فضتك، وتبني حصنك من جديد.`,
+    btn:"إلى المرحلة التالية ▶", next:true });
+}
+function nextStage(){
+  G.stage++; G.wave=0; G.phase="dawn";
+  G.silver=Math.round(G.silver*.4)+150;
+  G.castleMax=1600+G.stage*400; G.castleHp=G.castleMax;
+  for(const e of G.enemies) world.remove(e.obj);
+  for(const s of G.soldiers) world.remove(s.obj);
+  G.enemies=[]; G.soldiers=[]; G.buildings=[]; G.walls=[]; G.shots=[]; G.queue=[];
+  G.hero.hp=G.hero.max; G.hero.x=0; G.hero.z=10; G.hero.dead=0;
+  G.pending=null;
+  document.getElementById("overlay").classList.remove("show");
+  buildStage(G.stage);
+  world.add(G.heroObj);
+  log(`${STAGES[G.stage].name}: ${LANES.length} ممرات تصل إلى حصنك.`);
+  refresh(); sync();
+}
+function finish(won){
+  G.over = won?"win":"lose";
+  won?SFX.dawn():SFX.lose();
+  let best=0; try{ best=Math.max(+(localStorage.getItem("dk3_best")||0), G.stage*10+G.wave);
+    localStorage.setItem("dk3_best",best);}catch(e){}
+  showOverlay(won
+    ? { title:"طلع الفجر الأخير",
+        body:`أنهيت المراحل الثلاث وقتلت الزعماء الثلاثة.<br>مبانٍ: <b>${G.stat.built}</b> · قتلى: <b>${G.stat.kills}</b>`,
+        btn:"حملة جديدة" }
+    : { title:"سقط الحصن",
+        body:`سقطت في <b>${STAGES[G.stage].name}</b> عند الليلة <b>${G.wave}</b>.<br>
+          جرّب: سوراً على الممر الذي يحمل المدرّعين، منارة تغطي الحلقة الداخلية، ومزرعة مبكرة للدخل.`,
+        btn:"أعد الحملة" });
+}
+
+/* ══════════════════ الصوت ══════════════════ */
+let AC=null, sndOn=true;
+function tone(f,dur,type,vol,slide){
+  if(!sndOn) return;
+  try{
+    AC=AC||new (window.AudioContext||window.webkitAudioContext)();
+    const o=AC.createOscillator(), g=AC.createGain();
+    o.type=type||"square"; o.frequency.setValueAtTime(f,AC.currentTime);
+    if(slide) o.frequency.exponentialRampToValueAtTime(Math.max(40,slide),AC.currentTime+dur);
+    g.gain.setValueAtTime(vol||.05,AC.currentTime);
+    g.gain.exponentialRampToValueAtTime(.0001,AC.currentTime+dur);
+    o.connect(g); g.connect(AC.destination); o.start(); o.stop(AC.currentTime+dur);
+  }catch(e){}
+}
+const SFX={ shoot:()=>tone(700,.06,"square",.02,430), hit:()=>tone(180,.07,"sawtooth",.028,90),
+  build:()=>{tone(520,.09,"triangle",.055);setTimeout(()=>tone(790,.12,"triangle",.045),90);},
+  night:()=>tone(120,.7,"sawtooth",.05,70), dawn:()=>{tone(440,.18,"triangle",.05);setTimeout(()=>tone(680,.26,"triangle",.04),150);},
+  ability:()=>tone(300,.35,"triangle",.075,900), die:()=>tone(140,.15,"square",.03,60),
+  boss:()=>tone(64,1.3,"sawtooth",.09,42), lose:()=>tone(200,1,"sawtooth",.085,50) };
+
+/* ══════════════════ الواجهة ══════════════════ */
+const AR=["١","٢","٣"];
+function sync(){
+  const q=id=>document.getElementById(id);
+  q("stageTxt").textContent=`${AR[G.stage]} — ${STAGES[G.stage].name}`;
+  q("waveTxt").textContent=`${G.wave} / ${STAGES[G.stage].nights}`;
+  q("silverTxt").textContent=Math.floor(G.silver);
+  const used=LANES.reduce((a,l)=>a+l.light,0);
+  q("lightTxt").textContent=`حرة ${G.lightPool-used} من ${G.lightPool}`;
+  q("castleTxt").textContent=Math.max(0,Math.round(G.castleHp));
+  q("castleBar").style.width=clamp(G.castleHp/G.castleMax*100,0,100)+"%";
+  q("heroTxt").textContent=G.hero.dead>0?"يستعيد وعيه":Math.max(0,Math.round(G.hero.hp));
+  q("heroBar").style.width=clamp(G.hero.hp/G.hero.max*100,0,100)+"%";
+  const ready=G.hero.ab<=0;
+  q("abTxt").textContent=ready?"جاهز":Math.ceil(G.hero.ab)+"ث";
+  q("abBar").style.width=(ready?100:(1-G.hero.ab/24)*100)+"%";
+  const tg=q("phaseTag");
+  tg.textContent=G.phase==="dawn"?"الفجر — ابنِ":"الليل — دافع";
+  tg.className="tag "+(G.phase==="dawn"?"t-dawn":"t-night");
+  const wi=q("waveInfo");
+  let html;
+  if(G.phase==="night"){
+    q("dockHint").textContent=`متبقٍ ${G.enemies.length+G.queue.length} خصماً`;
+    const m={}; for(const e of G.enemies) m[e.t]=(m[e.t]||0)+1;
+    for(const s of G.queue) m[s.t]=(m[s.t]||0)+1;
+    html=`<b>الباقي في الميدان:</b> `+(chips(m)||`<span class="chip">تطهّر الميدان</span>`);
+  } else {
+    html=`<b>الليلة ${G.wave+1} ستحمل:</b> `+chips(compCounts(G.stage,G.wave+1));
+  }
+  if(wi.dataset.k!==html){ wi.dataset.k=html; wi.innerHTML=html; }
+}
+function mkCard(title,price,desc,dis,fn){
+  const c=document.createElement("button");
+  c.className="bcard"; c.disabled=!!dis;
+  c.innerHTML=`<span class="t">${title}${price!=null?`<span class="price">${price}</span>`:""}</span><span class="d">${desc}</span>`;
+  if(fn) c.onclick=fn;
+  return c;
+}
+function refresh(){
+  const title=document.getElementById("dockTitle"), hint=document.getElementById("dockHint");
+  const box=document.getElementById("dockCards"), row=document.getElementById("dockRow");
+  box.innerHTML=""; row.innerHTML="";
+
+  if(G.soldiers.length){
+    const mk=(lbl,val,key)=>{ const b=document.createElement("button");
+      b.className="ghost"; b.textContent=`${lbl} (${key})`;
+      b.setAttribute("aria-pressed",G.order===val); b.onclick=()=>setOrder(val); return b; };
+    const lab=document.createElement("span");
+    lab.style.cssText="font-size:12px;color:var(--muted)";
+    lab.textContent=`الجنود (${G.soldiers.filter(s=>s.dead<=0).length}):`;
+    row.append(lab, mk("اتبعني","follow","1"), mk("ثبات هنا","hold","2"), mk("عودة","guard","3"));
+  }
+
+  if(G.phase==="night"){ title.textContent=`الليلة ${G.wave} — ${STAGES[G.stage].name}`; return; }
+
+  const used=LANES.reduce((a,l)=>a+l.light,0), free=G.lightPool-used;
+  for(const L of LANES){
+    const el=document.createElement("div"); el.className="gate";
+    el.innerHTML=`<span>${L.name}</span>`;
+    const m=document.createElement("button"); m.className="mini"; m.textContent="−";
+    m.disabled=L.light<=0; m.onclick=()=>{L.light--;refresh();sync();};
+    const v=document.createElement("b"); v.textContent=L.light;
+    const p=document.createElement("button"); p.className="mini"; p.textContent="+";
+    p.disabled=free<=0; p.onclick=()=>{L.light++;refresh();sync();};
+    el.append(m,v,p); row.appendChild(el);
+  }
+  const sb=document.createElement("button");
+  sb.className="primary"; sb.textContent=`ابدأ الليلة ${G.wave+1} ▶`;
+  sb.onclick=startNight; row.appendChild(sb);
+
+  const sel=G.selected;
+  if(!sel){ title.textContent=`طور الفجر — ${STAGES[G.stage].name}`;
+    hint.textContent=`نقاط نور حرة: ${free} · اضغط حلقة على الأرض لتبني عليها`; return; }
+
+  if(sel.b){
+    const b=sel.b, nm=b.type==="wall"?WALL.name:B[b.type].name;
+    title.textContent=`${nm} — المستوى ${b.lv}${b.branch?" ("+b.branch+")":""}`;
+    hint.textContent=b.type==="wall"?WALL.d:B[b.type].d;
+    const maxLv=b.type==="wall"?2:3;
+    if(b.lv<2||(b.lv===2&&maxLv===3)){
+      const c=upCost(b);
+      if(b.lv===2&&maxLv===3){
+        for(const br of B[b.type].branches)
+          box.appendChild(mkCard(`المستوى 3 — ${br.n}`,`${c} فضة`,br.d,G.silver<c,()=>upgrade(b,br.n)));
+      } else {
+        box.appendChild(mkCard("ترقية",`${c} فضة`,"+55% تأثير وحياة",G.silver<c,()=>upgrade(b)));
+      }
+    } else box.appendChild(mkCard("أقصى مستوى",null,b.branch?`تخصص: ${b.branch}`:"سور محصّن",true));
+    box.appendChild(mkCard("رجوع",null,"اختر عقدة أخرى",false,()=>{G.selected=null;refresh();}));
+    return;
+  }
+
+  if(sel.lane!==undefined){
+    title.textContent=`عقدة سور — ${LANES[sel.lane].name}`;
+    hint.textContent="السور يسدّ الممر تماماً حتى يُكسر";
+    const c=cost("wall");
+    box.appendChild(mkCard(WALL.name,c,WALL.d,G.silver<c,()=>place("wall")));
+    return;
+  }
+  title.textContent="عقدة فارغة";
+  hint.textContent=`عندك ${Math.floor(G.silver)} فضة`;
+  for(const k in B) box.appendChild(mkCard(B[k].name,cost(k),B[k].d,G.silver<cost(k),()=>place(k)));
+}
+function setOrder(v){
+  G.order=v;
+  if(v==="hold") G.holdAt={x:G.hero.x,z:G.hero.z};
+  log(v==="follow"?"الجنود يتبعونك.":v==="hold"?"الجنود ثبتوا عند موقعك.":"الجنود عادوا لثكناتهم.");
+  refresh();
+}
+function showOverlay(o){
+  const el=document.getElementById("overlay");
+  let html=`<h2>${o.title}</h2><p>${o.body}</p>${o.list||""}`;
+  if(o.choices) html+=`<div class="cards" style="margin-bottom:6px">`+
+    o.choices.map(c=>`<button class="bcard" data-boon="${c.id}"><span class="t">${c.n}</span><span class="d">${c.d}</span></button>`).join("")+`</div>`;
+  else html+=`<button class="primary" id="ovBtn">${o.btn}</button>`;
+  document.getElementById("overlayCard").innerHTML=html;
+  el.classList.add("show");
+  if(o.choices) el.querySelectorAll("[data-boon]").forEach(b=>b.onclick=()=>takeBoon(b.dataset.boon));
+  else document.getElementById("ovBtn").onclick=()=>{
+    if(o.next){ nextStage(); return; }
+    el.classList.remove("show");
+    if(G.over){ resetAll(); }
+  };
+}
+const INTRO={ title:"حصن الفجر", body:"ثلاث مراحل، ثلاثة زعماء، وحصن واحد بينك وبين الليل.",
+  list:`<ul>
+    <li><b>الفجر:</b> ابنِ على الحلقات البيضاء (أكواخ ومزارع للدخل، أبراج رماة ونار، ثكنات، منارات) وعلى الحلقات الذهبية <b>أسواراً</b> تسدّ الممرات.</li>
+    <li><b>الليل:</b> موجات من الممرات نحو الحصن. لا يمرّ العدو من سور قائم حتى يكسره.</li>
+    <li><b>النور:</b> من يقاتل خارجه أسرع وأقسى بـ30%. ووزّع نقاط النور على الممرات لتُضعف قادمها.</li>
+    <li><b>الزعماء:</b> حاطم الأسوار يهدم بناءك · أمّ الظلال تستدعي جنداً · طاغية الليل يقذف من بعيد.</li>
+  </ul>`, btn:"ابدأ الحملة" };
+
+function resetAll(){
+  for(const e of G.enemies) world.remove(e.obj);
+  for(const s of G.soldiers) world.remove(s.obj);
+  newGame(); buildStage(0); world.add(G.heroObj);
+  for(const L of LANES) L.light=1;
+  refresh(); sync(); showOverlay(INTRO);
+}
+
+/* ══════════════════ إدخال ══════════════════ */
+const KEYMAP={"ص":"w","ش":"a","س":"s","ي":"d"};
+const norm=k=>{const l=k.toLowerCase();return KEYMAP[l]||l;};
+addEventListener("keydown",e=>{
+  G.keys.add(norm(e.key));
+  if(e.target instanceof HTMLButtonElement) return;
+  if(e.code==="Space"){ e.preventDefault(); ability(); }
+  if(e.key==="1") setOrder("follow");
+  if(e.key==="2") setOrder("hold");
+  if(e.key==="3") setOrder("guard");
+});
+addEventListener("keyup",e=>G.keys.delete(norm(e.key)));
+
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+let dragging=false, dragged=false, lastX=0;
+glc.addEventListener("pointerdown",e=>{ dragging=true; dragged=false; lastX=e.clientX; glc.setPointerCapture(e.pointerId); });
+glc.addEventListener("pointermove",e=>{
+  if(!dragging) return;
+  const dx=e.clientX-lastX; lastX=e.clientX;
+  if(Math.abs(dx)>1){ dragged=true; camAz -= dx*0.006; }
+});
+glc.addEventListener("pointerup",e=>{
+  dragging=false;
+  if(dragged||G.over||G.pending) return;
+  const r=glc.getBoundingClientRect();
+  ndc.x=((e.clientX-r.left)/r.width)*2-1;
+  ndc.y=-((e.clientY-r.top)/r.height)*2+1;
+  ray.setFromCamera(ndc,camera);
+  const hit=ray.intersectObject(groundMesh);
+  if(!hit.length) return;
+  const p=hit[0].point;
+  if(G.phase==="dawn"){
+    let best=null,bd=4.2;
+    for(const s of SLOTS.concat(WALLS)){ const d=dist2(p.x,p.z,s.x,s.z); if(d<bd){bd=d;best=s;} }
+    if(best){ G.selected=best; refresh(); return; }
+  }
+  G.move={x:p.x,z:p.z};
+});
+glc.addEventListener("wheel",e=>{ e.preventDefault();
+  camDist=clamp(camDist+e.deltaY*.05,28,96); camHigh=camDist*.655; },{passive:false});
+
+function ability(){
+  const h=G.hero;
+  if(G.over||G.pending||h.ab>0||h.dead>0) return;
+  h.ab=24; SFX.ability();
+  for(const e of G.enemies) if(dist2(h.x,h.z,e.x,e.z)<17){
+    const dm=110*(has("hero")?1.4:1);
+    e.hp-=dm; e.stun=1.5; e.flash=.3; poof(e.x,e.z,0xF5C25B,6);
+  }
+  G.fx.push({ring:true,x:h.x,z:h.z,age:0,life:.75});
+  G.shake=reduced?0:.5;
+  log("نداء الفجر: ومضة نور تصعق كل من حولك.");
+}
+
+/* ══════════════════ جسيمات ══════════════════ */
+const poolP=[];
+function poof(x,z,col,n){
+  if(reduced) return;
+  for(let i=0;i<n;i++){
+    let m=poolP.pop();
+    if(!m){ m=new THREE.Mesh(geo.box,new THREE.MeshBasicMaterial({color:col})); world.add(m); }
+    else { m.material.color.setHex(col); m.visible=true; world.add(m); }
+    const a=rnd(0,7), sp=rnd(3,9);
+    m.position.set(x,1.2,z); m.scale.setScalar(rnd(.16,.34));
+    G.fx.push({m,vx:Math.cos(a)*sp,vy:rnd(3,8),vz:Math.sin(a)*sp,age:0,life:rnd(.35,.8)});
+  }
+}
+
+/* ══════════════════ التحديث ══════════════════ */
+const ovEl=document.getElementById("overlay");
+function hurt(e,dm){ e.hp-=dm*(1-(e.armor||0)); e.flash=.16; }
+
+function update(dt){
+  G.t+=dt;
+  if(G.over||G.pending||ovEl.classList.contains("show")) return;
+  const h=G.hero;
+
+  /* القائد */
+  if(h.dead>0){
+    h.dead-=dt; G.heroObj.visible=false;
+    if(h.dead<=0){ h.hp=h.max*.6; h.x=0; h.z=9; G.heroObj.visible=true; log("عاد أرين إلى الميدان."); }
+  } else {
+    let vx=0,vz=0,k=G.keys;
+    const ca=Math.cos(camAz), sa=Math.sin(camAz);
+    if(k.has("w")||k.has("arrowup")){ vx-=sa; vz-=ca; }
+    if(k.has("s")||k.has("arrowdown")){ vx+=sa; vz+=ca; }
+    if(k.has("a")||k.has("arrowleft")){ vx-=ca; vz+=sa; }
+    if(k.has("d")||k.has("arrowright")){ vx+=ca; vz-=sa; }
+    if(vx||vz) G.move=null;
+    if(!vx&&!vz&&G.move){
+      const d=dist2(h.x,h.z,G.move.x,G.move.z);
+      if(d>.6){ vx=(G.move.x-h.x)/d; vz=(G.move.z-h.z)/d; } else G.move=null;
+    }
+    const m=Math.hypot(vx,vz);
+    if(m){ h.x=clamp(h.x+vx/m*h.sp*dt,-56,56); h.z=clamp(h.z+vz/m*h.sp*dt,-56,56);
+      h.bob+=dt*11; h.dir=Math.atan2(vx,vz); }
+    else h.bob+=dt*2.2;
+    h.atkCd-=dt; h.swing=Math.max(0,h.swing-dt*4);
+    if(h.atkCd<=0){
+      let best=null,bd=5.2;
+      for(const e of G.enemies){ const d=dist2(h.x,h.z,e.x,e.z); if(d<bd){bd=d;best=e;} }
+      if(best){ hurt(best,30*(has("hero")?1.4:1)); h.atkCd=.4; h.swing=1; SFX.hit(); poof(best.x,best.z,0x8FE3C8,2); }
+    }
+  }
+  h.ab=Math.max(0,h.ab-dt);
+  G.heroObj.position.set(h.x, Math.abs(Math.sin(h.bob))*.22, h.z);
+  G.heroObj.rotation.y=h.dir;
+  G.heroObj.userData.arm.rotation.x=-h.swing*2.2;
+
+  /* الليل */
+  if(G.phase==="night"){
+    G.spawnT-=dt;
+    if(G.spawnT<=0&&G.queue.length){ const s=G.queue.shift(); spawn(s.t); G.spawnT=s.gap; }
+    if(!G.queue.length&&!G.enemies.length) endNight();
+  }
+
+  /* الجنود */
+  for(const s of G.soldiers){
+    if(s.dead>0){ s.dead-=dt; s.obj.visible=false;
+      if(s.dead<=0&&G.buildings.includes(s.home)){ s.hp=s.max; s.x=s.home.x+rnd(-2,2); s.z=s.home.z+2.5; s.obj.visible=true; }
+      continue; }
+    let tx,tz,leash;
+    if(G.order==="follow"){ tx=h.x+Math.cos(s.i*2.1)*3.6; tz=h.z+Math.sin(s.i*2.1)*3.2; leash=999; }
+    else if(G.order==="hold"&&G.holdAt){ tx=G.holdAt.x+Math.cos(s.i*2.1)*3.4; tz=G.holdAt.z+Math.sin(s.i*2.1)*3; leash=13; }
+    else { tx=s.home.x+Math.cos(s.i*2.1)*3.2; tz=s.home.z+2.6+Math.sin(s.i*2.1)*2; leash=15; }
+    let tgt=null,bd=leash;
+    for(const e of G.enemies){ if(E[e.t].fly) continue;
+      const d=dist2(tx,tz,e.x,e.z); if(d<bd){bd=d;tgt=e;} }
+    const gx=tgt?tgt.x:tx, gz=tgt?tgt.z:tz, d=dist2(s.x,s.z,gx,gz);
+    if(d>(tgt?2:.7)){ s.x+=(gx-s.x)/d*s.sp*dt; s.z+=(gz-s.z)/d*s.sp*dt; s.bob+=dt*12;
+      s.obj.rotation.y=Math.atan2(gx-s.x,gz-s.z); }
+    else s.bob+=dt*3;
+    s.atk-=dt;
+    if(tgt&&d<2.8&&s.atk<=0){ s.atk=.7;
+      const near=dist2(s.x,s.z,h.x,h.z)<9&&has("rally")?1.3:1;
+      hurt(tgt,s.dmg*near); poof(tgt.x,tgt.z,0xBFD8FF,1); }
+    s.obj.position.set(s.x, Math.abs(Math.sin(s.bob))*.16, s.z);
+  }
+
+  /* الأعداء */
+  for(let i=G.enemies.length-1;i>=0;i--){
+    const e=G.enemies[i], D=E[e.t];
+    e.flash=Math.max(0,e.flash-dt);
+    if(e.burn>0){ e.hp-=e.burn*dt; e.burn=Math.max(0,e.burn-dt*4); }
+    if(e.hp<=0){
+      poof(e.x,e.z,D.col,D.boss?24:7);
+      world.remove(e.obj); G.enemies.splice(i,1);
+      G.silver+=D.boss?120:1; G.stat.kills++; SFX.die();
+      if(D.boss) log(`سقط ${D.n}!`);
+      continue;
+    }
+    if(e.stun>0){ e.stun-=dt; continue; }
+
+    const inL=isLit(e.x,e.z);
+    const spd=e.sp*(inL?.8:1.25);
+    const dmul=inL?.78:1.3;
+    for(const b of G.buildings) if(b.branch==="شعلة"&&!inL&&dist2(b.x,b.z,e.x,e.z)<lightRadius(b)*1.4) e.hp-=10*dt;
+
+    // سور يسدّ الممر
+    let blocker=null;
+    if(!D.fly){
+      const w=WALLS[e.lane]&&WALLS[e.lane].b;
+      if(w&&w.hp>0&&dist2(e.x,e.z,0,0)>dist2(w.x,w.z,0,0)-1.6) blocker=w;
+    }
+
+    // الهدف
+    let tx=0,tz=0,tr=6.4,tb=null,isC=true;
+    if(blocker){ tx=blocker.x; tz=blocker.z; tr=3.4; tb=blocker; isC=false; }
+    else if(D.sieger&&G.buildings.length){
+      let bd=26;
+      for(const b of G.buildings){ const d=dist2(e.x,e.z,b.x,b.z); if(d<bd){bd=d;tb=b;} }
+      if(tb){ tx=tb.x; tz=tb.z; tr=2.6; isC=false; }
+    }
+
+    let gx=tx,gz=tz;
+    if(!D.fly&&!blocker&&e.node<LANES[e.lane].pts.length){
+      const n=LANES[e.lane].pts[e.node];
+      if(dist2(e.x,e.z,n.x,n.z)<3) e.node++;
+      else { gx=n.x; gz=n.z; }
+    }
+    const reach=dist2(e.x,e.z,tx,tz) < tr+e.r+(D.ranged||1.2);
+    if(!reach){
+      const d=dist2(e.x,e.z,gx,gz)||1;
+      e.x+=(gx-e.x)/d*spd*dt; e.z+=(gz-e.z)/d*spd*dt; e.bob+=dt*(D.fly?14:8);
+      e.obj.rotation.y=Math.atan2(gx-e.x,gz-e.z);
+    } else {
+      e.atk-=dt;
+      if(e.atk<=0){
+        e.atk = D.boss?1.7:1.15;
+        const dm=e.dmg*dmul;
+        if(D.boss&&D.ability==="slam"&&Math.random()<.45){
+          G.fx.push({ring:true,x:e.x,z:e.z,age:0,life:.55,col:0xC4483B});
+          for(const s of G.soldiers) if(s.dead<=0&&dist2(s.x,s.z,e.x,e.z)<14) s.hp-=55;
+          if(h.dead<=0&&dist2(h.x,h.z,e.x,e.z)<14) h.hp-=55;
+          for(const w of G.walls) if(dist2(w.x,w.z,e.x,e.z)<14) w.hp-=90;
+          G.shake=reduced?0:.6;
+        }
+        if(D.boss&&D.ability==="summon"&&e.sum>0&&Math.random()<.35){
+          e.sum--; for(let k=0;k<3;k++){ G.queue.unshift({t:"grunt",gap:.1}); }
+          G.spawnT=Math.min(G.spawnT,.2); log(`${D.n} تستدعي المزيد!`);
+        }
+        if(D.boss&&D.ability==="volley"&&Math.random()<.5){
+          for(let k=0;k<3;k++) G.shots.push({x:e.x,y:3,z:e.z,tx:0,tz:0,e:null,dmg:e.dmg*.5,
+            sp:26,dark:true,off:k});
+        }
+        if(isC){
+          G.castleHp-=dm*.45; G.shake=reduced?0:.28;
+          if(G.castleHp<=0){ G.castleHp=0; finish(false); return; }
+        } else if(tb){
+          tb.hp-=dm*1.25; tb.alert=1.4; tb.flash=.2;
+          if(tb.hp<=0){ poof(tb.x,tb.z,0x8E3A57,14); removeBuilding(tb);
+            log(`سقط ${tb.type==="wall"?WALL.name:B[tb.type].name}!`);
+            if(G.selected) refresh(); }
+        }
+      }
+    }
+    if(h.dead<=0&&dist2(e.x,e.z,h.x,h.z)<e.r+1.4){
+      h.hp-=e.dmg*dt*.8;
+      if(h.hp<=0){ h.hp=0; h.dead=7; poof(h.x,h.z,0x4D8FD6,12); log("سقط أرين — يعود بعد سبع ثوانٍ."); }
+    }
+    for(const s of G.soldiers){ if(s.dead>0) continue;
+      if(dist2(e.x,e.z,s.x,s.z)<e.r+1.2){ s.hp-=e.dmg*dt*.75; if(s.hp<=0){ s.dead=9; poof(s.x,s.z,0xBFD8FF,6); } } }
+
+    const fly=D.fly?4.2+Math.sin(e.bob)*.5:Math.abs(Math.sin(e.bob))*.18;
+    e.obj.position.set(e.x, fly, e.z);
+    if(e.obj.userData.wings){ const w=Math.sin(e.bob*3)*.6;
+      e.obj.userData.wings[0].rotation.z=w; e.obj.userData.wings[1].rotation.z=-w; }
+    if(e.flash>0) e.obj.userData.body.material=mat(0xffffff);
+    else e.obj.userData.body.material=mat(D.col,{flatShading:true});
+  }
+
+  /* الأبراج */
+  for(const b of G.buildings){
+    b.alert=Math.max(0,(b.alert||0)-dt);
+    if(b.type==="tower"){
+      const st=stats(b); b.cd-=dt;
+      if(b.cd<=0){
+        let best=null,bd=st.range;
+        for(const e of G.enemies){ const d=dist2(b.x,b.z,e.x,e.z); if(d<bd){bd=d;best=e;} }
+        if(best){ b.cd=st.rate; SFX.shoot();
+          G.shots.push({x:b.x,y:5.5,z:b.z,tx:best.x,tz:best.z,e:best,dmg:st.dmg,splash:st.splash,sp:34}); }
+      }
+    } else if(b.type==="fire"){
+      const st=stats(b);
+      let lit=false;
+      for(const e of G.enemies) if(dist2(b.x,b.z,e.x,e.z)<st.range){
+        hurt(e,st.dps*dt); e.burn=Math.max(e.burn, b.branch==="قذف زيت"?10:0); lit=true;
+      }
+      if(b.obj.userData.flame){
+        const f=b.obj.userData.flame;
+        f.scale.set(1.1+Math.sin(G.t*9)*.15, (lit?2.6:2)+Math.sin(G.t*12)*.2, 1.1);
+      }
+    } else if(b.type==="beacon"){
+      const f=b.obj.userData.flame;
+      if(f) f.scale.setScalar(.95+Math.sin(G.t*7)*.09);
+    }
+  }
+  for(const w of G.walls) w.alert=Math.max(0,(w.alert||0)-dt);
+
+  /* المقذوفات */
+  for(let i=G.shots.length-1;i>=0;i--){
+    const s=G.shots[i];
+    if(s.e&&s.e.hp>0){ s.tx=s.e.x; s.tz=s.e.z; }
+    const d=dist2(s.x,s.z,s.tx,s.tz);
+    if(d<1.2){
+      if(s.dark){ if(dist2(0,0,s.tx,s.tz)<8){ G.castleHp-=s.dmg*.45;
+          if(G.castleHp<=0){ G.castleHp=0; finish(false); return; } } }
+      else if(s.e&&s.e.hp>0) hurt(s.e,s.dmg);
+      if(s.splash) for(const e of G.enemies) if(e!==s.e&&dist2(e.x,e.z,s.tx,s.tz)<s.splash) hurt(e,s.dmg*.6);
+      poof(s.tx,s.tz,s.dark?0x8A6BD6:0xF3E7C9,s.splash?8:2);
+      G.shots.splice(i,1); continue;
+    }
+    s.x+=(s.tx-s.x)/d*s.sp*dt; s.z+=(s.tz-s.z)/d*s.sp*dt;
+  }
+
+  /* جسيمات */
+  for(let i=G.fx.length-1;i>=0;i--){
+    const f=G.fx[i]; f.age+=dt;
+    if(f.age>f.life){ if(f.m){ world.remove(f.m); poolP.push(f.m); } G.fx.splice(i,1); continue; }
+    if(f.m){ f.vy-=22*dt; f.m.position.x+=f.vx*dt; f.m.position.y=Math.max(.1,f.m.position.y+f.vy*dt);
+      f.m.position.z+=f.vz*dt; f.m.rotation.x+=dt*6; f.m.rotation.y+=dt*5; }
+  }
+  G.shake=Math.max(0,G.shake-dt*2.2);
+  sync();
+}
+
+/* ══════════════════ الرسم ══════════════════ */
+function updateLighting(){
+  const night = G.phase==="night";
+  const tgt = night
+    ? { hemi:.34, sun:.22, sunCol:0x93A6E0, amb:.4, ambCol:0x35356A, bg:0x171734, fog:0x1E1E3C }
+    : { hemi:.95, sun:1.15, sunCol:0xFFF0D0, amb:.3,  ambCol:0x404060,
+        bg:STAGES[G.stage].sky, fog:STAGES[G.stage].fog };
+  hemi.intensity += (tgt.hemi-hemi.intensity)*.05;
+  sun.intensity  += (tgt.sun-sun.intensity)*.05;
+  amb.intensity  += (tgt.amb-amb.intensity)*.05;
+  sun.color.lerp(new THREE.Color(tgt.sunCol),.05);
+  amb.color.lerp(new THREE.Color(tgt.ambCol),.05);
+  scene.background.lerp(new THREE.Color(tgt.bg),.05);
+  scene.fog.color.lerp(new THREE.Color(tgt.fog),.05);
+  for(const b of G.buildings) if(b.type==="beacon"){
+    const u=b.obj.userData;
+    if(u.light) u.light.intensity += ((night?2.6:0)-u.light.intensity)*.06;
+    if(u.disc){ const R=lightRadius(b);
+      u.disc.scale.setScalar(R);
+      u.disc.material.opacity += ((night?.13:0)-u.disc.material.opacity)*.06; }
+  }
+  if(G.castleObj&&G.castleObj.userData.light)
+    G.castleObj.userData.light.intensity += ((night?2.2:0)-G.castleObj.userData.light.intensity)*.06;
+  if(G.safeDisc) G.safeDisc.material.opacity += ((night?.1:0)-G.safeDisc.material.opacity)*.06;
+}
+
+function project(x,y,z){
+  const v=new THREE.Vector3(x,y,z).project(camera);
+  const r=glc.getBoundingClientRect();
+  return { x:(v.x*.5+.5)*r.width, y:(-v.y*.5+.5)*r.height, vis:v.z<1 };
+}
+function drawOverlay(){
+  const r=glc.getBoundingClientRect();
+  octx.clearRect(0,0,r.width,r.height);
+  octx.textAlign="center"; octx.textBaseline="middle";
+  // شرائط صحة الأعداء
+  for(const e of G.enemies){
+    if(e.hp>=e.max) continue;
+    const D=E[e.t], p=project(e.x, (D.fly?5.6:0)+e.r*2.4, e.z);
+    if(!p.vis) continue;
+    const w=D.boss?110:26;
+    octx.fillStyle="rgba(0,0,0,.55)"; octx.fillRect(p.x-w/2,p.y,w,D.boss?7:4);
+    octx.fillStyle=D.boss?"#E0563F":"#E8624F"; octx.fillRect(p.x-w/2,p.y,w*(e.hp/e.max),D.boss?7:4);
+    if(D.boss){ octx.fillStyle="#F1E7D3"; octx.font="700 13px Tajawal,sans-serif";
+      octx.fillText(D.n,p.x,p.y-12); }
+  }
+  // مبانٍ وأسوار
+  for(const b of G.buildings.concat(G.walls)){
+    const p=project(b.x,3.2,b.z); if(!p.vis) continue;
+    if(b.hp<b.max){
+      octx.fillStyle="rgba(0,0,0,.55)"; octx.fillRect(p.x-20,p.y,40,5);
+      octx.fillStyle="#7FBF5A"; octx.fillRect(p.x-20,p.y,40*(b.hp/b.max),5);
+    }
+    if(b.alert>0){
+      const a=.5+Math.sin(G.t*9)*.45;
+      octx.fillStyle=`rgba(224,86,63,${a})`;
+      octx.font="700 22px Tajawal,sans-serif"; octx.fillText("!",p.x,p.y-26);
+    }
+  }
+  // صحة الجنود
+  for(const s of G.soldiers){
+    if(s.dead>0||s.hp>=s.max) continue;
+    const p=project(s.x,3,s.z); if(!p.vis) continue;
+    octx.fillStyle="rgba(0,0,0,.5)"; octx.fillRect(p.x-11,p.y,22,3);
+    octx.fillStyle="#7FD6C0"; octx.fillRect(p.x-11,p.y,22*(s.hp/s.max),3);
+  }
+  // مقذوفات
+  for(const s of G.shots){
+    const p=project(s.x,2.2,s.z);
+    if(!p.vis) continue;
+    const d=dist2(s.x,s.z,s.tx,s.tz)||1;
+    const b=project(s.x-(s.tx-s.x)/d*1.6, 2.2, s.z-(s.tz-s.z)/d*1.6);
+    octx.strokeStyle=s.dark?"#B79BF0":"#F7EBCE"; octx.lineWidth=s.dark?4:2.6; octx.lineCap="round";
+    octx.beginPath(); octx.moveTo(p.x,p.y); octx.lineTo(b.x,b.y); octx.stroke();
+  }
+  // حلقات نداء الفجر
+  for(const f of G.fx){
+    if(!f.ring) continue;
+    const k=1-f.age/f.life, R=(f.col?14:17)*(1-k);
+    octx.strokeStyle=f.col?`rgba(196,72,59,${k})`:`rgba(245,194,91,${k})`;
+    octx.lineWidth=4; octx.beginPath();
+    let first=true;
+    for(let i=0;i<=28;i++){
+      const a=i/28*Math.PI*2, p=project(f.x+Math.cos(a)*R,.3,f.z+Math.sin(a)*R);
+      if(first){ octx.moveTo(p.x,p.y); first=false; } else octx.lineTo(p.x,p.y);
+    }
+    octx.stroke();
+  }
+}
+
+function render(){
+  const t=G.t;
+  const shake=G.shake>0?G.shake:0;
+  camera.position.set(Math.sin(camAz)*camDist + rnd(-shake,shake),
+                      camHigh + rnd(-shake,shake),
+                      Math.cos(camAz)*camDist + rnd(-shake,shake));
+  camera.lookAt(0,3,0);
+  // حلقات العقد
+  const dawn=G.phase==="dawn";
+  const pulse=.72+Math.sin(t*3)*.16;
+  for(const s of SLOTS){ if(!s.ring) continue;
+    s.ring.visible = dawn && !s.b;
+    const on=G.selected===s;
+    s.ring.userData.ring.material.opacity = on?1:pulse;
+    s.ring.userData.ring.material.color.setHex(on?0xF5C25B:0xFFFFFF);
+    s.ring.userData.disc.material.color.setHex(on?0xF5C25B:0xFFFFFF);
+    s.ring.userData.disc.material.opacity = on?.3:.14; }
+  for(const w of WALLS){ if(!w.ring) continue;
+    w.ring.visible = dawn && !w.b;
+    const on=G.selected===w;
+    w.ring.userData.ring.material.opacity = on?1:pulse;
+    w.ring.userData.disc.material.opacity = on?.32:.18; }
+  if(G.castleObj){
+    G.castleObj.userData.banner.rotation.y=Math.sin(t*2)*.25;
+    const gl=G.castleObj.userData.gate;
+    gl.material=mat(0xFFC864,{emissive:G.phase==="night"?0xC48A18:0x8A5E14});
+  }
+  updateLighting();
+  renderer.render(scene,camera);
+  drawOverlay();
+}
+
+/* ══════════════════ الإقلاع ══════════════════ */
+buildStage(0);
+G.heroObj = mkHumanoid(0x2F6FB8, 0xF0C9A0, 0xC9CDD4, true);
+G.heroObj.scale.setScalar(1.5);
+(() => {
+  const ring = new THREE.Mesh(new THREE.RingGeometry(.95,1.2,26),
+    new THREE.MeshBasicMaterial({color:0xF5C25B, transparent:true, opacity:.75, side:THREE.DoubleSide}));
+  ring.rotation.x=-Math.PI/2; ring.position.y=.04;
+  G.heroObj.add(ring);
+})();
+world.add(G.heroObj);
+document.getElementById("helpBtn").onclick=()=>showOverlay(INTRO);
+document.getElementById("sndBtn").onclick=e=>{ sndOn=!sndOn;
+  e.target.textContent="الصوت: "+(sndOn?"يعمل":"صامت"); e.target.setAttribute("aria-pressed",sndOn); };
+refresh(); sync(); showOverlay(INTRO); resize();
+
+let last=performance.now();
+function frame(now){
+  const dt=Math.min(.05,(now-last)/1000); last=now;
+  update(dt); render();
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+})();
+</script>
