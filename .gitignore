@@ -1,0 +1,49 @@
+# ── Unity ─────────────────────────────────────────────
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/[Mm]emoryCaptures/
+/[Rr]ecordings/
+
+# نتائج التصدير والحزم
+*.apk
+*.aab
+*.unitypackage
+*.unitypackage.meta
+*.app
+ExportedObj/
+.consulo/
+crashlytics-build.properties
+
+# ملفات مشاريع IDE المولّدة
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+.vs/
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# نظام التشغيل
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# أدوات
+sysinfo.txt
+/.gradle/

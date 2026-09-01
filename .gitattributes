@@ -1,0 +1,32 @@
+* text=auto
+
+# ملفات Unity النصية (YAML) — دمج بأداة Unity عند ضبطها محلياً
+*.unity      merge=unityyamlmerge eol=lf
+*.prefab     merge=unityyamlmerge eol=lf
+*.asset      merge=unityyamlmerge eol=lf
+*.mat        merge=unityyamlmerge eol=lf
+*.controller merge=unityyamlmerge eol=lf
+*.anim       merge=unityyamlmerge eol=lf
+*.meta       eol=lf
+*.cs         text diff=csharp eol=lf
+
+# أصول ثنائية — لا تُعالَج كنص (فعّل Git LFS لها إن كبر حجمها)
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.psd  binary
+*.tga  binary
+*.exr  binary
+*.hdr  binary
+*.fbx  binary
+*.blend binary
+*.obj  binary
+*.wav  binary
+*.mp3  binary
+*.ogg  binary
+*.mp4  binary
+*.ttf  binary
+*.otf  binary
+*.dll  binary
+*.so   binary
+*.a    binary
