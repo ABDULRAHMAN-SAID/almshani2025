@@ -142,6 +142,33 @@
   .sheet-head{display:flex;align-items:center;gap:10px;margin-bottom:8px}
   .sheet-head h3{margin:0;font-size:14px}
   .sheet-head span{font-size:11.5px;color:var(--muted);flex:1}
+  /* ── وضع الهاتف: الساحة تملأ الشاشة ── */
+  @media (max-width:900px), (pointer:coarse){
+    .app{padding:0;gap:0;min-height:100dvh}
+    .frame{max-width:none;gap:0;height:100dvh}
+    .masthead,.foot,.log{display:none}
+    .stage{border:none;border-radius:0;aspect-ratio:auto;flex:1;height:100dvh}
+    .icon{width:38px;height:38px;font-size:16px}
+    .abil{width:74px;height:74px}
+    .mini{width:30px;height:30px;font-size:17px}
+    button.primary{padding:13px 24px;font-size:16px}
+    .bcard{padding:10px 12px}
+    .sheet{width:100%;border-radius:14px 14px 0 0;padding:8px 10px}
+    .cards{grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:6px}
+    .bcard img{height:44px}
+    .gate{padding:4px 7px;font-size:11.5px}
+    .preview{display:none}
+    .gold b{font-size:24px}
+    .hud-tl,.hud-tr{top:calc(8px + env(safe-area-inset-top,0px))}
+    .hud-tl{right:calc(10px + env(safe-area-inset-right,0px))}
+    .hud-tr{left:calc(10px + env(safe-area-inset-left,0px))}
+    .bottomwrap{bottom:calc(8px + env(safe-area-inset-bottom,0px))}
+    .joy{width:132px;height:132px;right:calc(16px + env(safe-area-inset-right,0px))}
+  }
+  .stage{touch-action:none}
+  .rotate{position:absolute;inset:0;display:none;place-items:center;background:#120E1C;z-index:9;
+    text-align:center;padding:24px;font-size:15px;color:var(--parch)}
+  @media (orientation:portrait) and (pointer:coarse){ .rotate{display:grid} }
   .loading{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-size:14px;z-index:6}
   .abils{position:absolute;left:12px;bottom:12px;display:flex;gap:8px;z-index:4}
   .abil{width:64px;height:64px;border-radius:50%;border:2px solid var(--line);cursor:pointer;
@@ -190,6 +217,7 @@
     <div class="hud-tr">
       <div class="enemies" id="enemyTxt"></div>
       <div class="icons">
+        <button class="icon" id="fsBtn" title="ملء الشاشة">⛶</button>
         <button class="icon" id="homeBtn" title="إرجاع الكاميرا">⌂</button>
         <button class="icon" id="sndBtn" title="الصوت" aria-pressed="true">♪</button>
         <button class="icon" id="helpBtn" title="الشرح">؟</button>
@@ -216,6 +244,8 @@
       </div>
     </div>
 
+    <div class="rotate"><div><div style="font-size:38px;margin-bottom:10px">📱↻</div>
+      أدر جهازك أفقياً<br><span style="color:var(--muted);font-size:13px">اللعبة مصممة للوضع الأفقي</span></div></div>
     <div class="overlay" id="overlay"><div class="card" id="overlayCard"></div></div>
   </div>
 
@@ -318,10 +348,12 @@ const cost=t=>Math.round((t==="wall"?WALL.cost:B[t].cost)*(has("cheap")?.8:1));
 const glc = document.getElementById("gl");
 const ovc = document.getElementById("ov");
 const octx = ovc.getContext("2d");
-const renderer = new THREE.WebGLRenderer({canvas:glc, antialias:true});
-renderer.setPixelRatio(Math.min(2, devicePixelRatio||1));
+const MOBILE = matchMedia("(pointer:coarse)").matches || innerWidth<900;
+const QUAL = { low:MOBILE };
+const renderer = new THREE.WebGLRenderer({canvas:glc, antialias:!MOBILE, powerPreference:"high-performance"});
+renderer.setPixelRatio(Math.min(MOBILE?1.6:2, devicePixelRatio||1));
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = MOBILE ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
 renderer.outputEncoding = THREE.sRGBEncoding;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = .96;
@@ -350,13 +382,13 @@ const sun = new THREE.DirectionalLight(0xFFF1D6, 1.55);
 sun.color.convertSRGBToLinear();
 sun.position.set(58, 96, 44);
 sun.castShadow = true;
-sun.shadow.mapSize.set(2048,2048);
+sun.shadow.mapSize.set(MOBILE?1024:2048, MOBILE?1024:2048);
 sun.shadow.bias = -0.0006;
 sun.shadow.normalBias = 0.6;
 const sc = sun.shadow.camera;
 sc.left=-115; sc.right=115; sc.top=115; sc.bottom=-115; sc.near=1; sc.far=340;
 scene.add(sun);
-const rim = new THREE.DirectionalLight(0x9FC4FF, .38);
+const rim = new THREE.DirectionalLight(0x9FC4FF, MOBILE?.28:.38);
 rim.color.convertSRGBToLinear();
 rim.position.set(-52, 34, -60);
 scene.add(rim);
@@ -465,7 +497,7 @@ function flatFactor(x,z){
 function terrainY(x,z){ return HEIGHT_FN ? HEIGHT_FN(x,z)*flatFactor(x,z) : 0; }
 
 function buildTerrain(cfg){
-  const SEG=176;
+  const SEG=MOBILE?112:176;
   const g=new THREE.PlaneGeometry(WORLD,WORLD,SEG,SEG);
   g.rotateX(-Math.PI/2);
   const pos=g.attributes.position, n=pos.count;
@@ -500,7 +532,7 @@ function buildTerrain(cfg){
 
 /* خصلات عشب مبعثرة تعطي إحساس الكثافة */
 function buildGrass(cfg){
-  const N=2600;
+  const N=MOBILE?1200:2600;
   const blade=new THREE.ConeGeometry(.5,2.1,3);
   blade.translate(0,1.05,0);
   const m=new THREE.MeshStandardMaterial({roughness:1, metalness:0, flatShading:true});
@@ -572,7 +604,7 @@ function buildStage(idx){
   // أشجار وصخور — على ارتفاع التضاريس
   treeGroup = new THREE.Group(); world.add(treeGroup);
   const spots=[];
-  for(let i=0;i<300;i++){
+  for(let i=0;i<(MOBILE?190:300);i++){
     const a=rnd(0,7), r=rnd(34,WORLD*.46);
     const x=Math.cos(a)*r, z=Math.sin(a)*r;
     if(Math.hypot(x,z)<34) continue;
@@ -759,6 +791,23 @@ function buildStage(idx){
 }
 
 /* ══════════════════ نماذج الكيانات ══════════════════ */
+function decoFigure(cloth, skin, metal, weapon){
+  const g=new THREE.Group();
+  g.add(part(CAP, mat(cloth,CLOTH()), 0,1.05,0, .3,.9,.24));
+  g.add(part(geo.box, mat(0x3A2E22,{roughness:.9}), -.18,.3,0, .2,.6,.2));
+  g.add(part(geo.box, mat(0x3A2E22,{roughness:.9}),  .18,.3,0, .2,.6,.2));
+  g.add(part(geo.sph, mat(skin,SKIN()), 0,1.7,0, .21,.23,.21));
+  g.add(part(geo.sph, mat(metal,METAL()), 0,1.78,0, .23,.16,.23));
+  if(weapon==="bow"){
+    g.add(part(geo.torus, mat(0x5C4228,WOOD()), .3,1.15,.1, .38,.38,.38, 0,Math.PI/2,.25));
+  } else {
+    g.add(part(geo.cyl, mat(0x5C4228,WOOD()), .3,1.2,0, .05,1.9,.05, .12,0,.1));
+    g.add(part(geo.cone8, mat(0xDCE4EE,METAL({roughness:.24})), .3,2.2,0, .09,.34,.09));
+  }
+  g.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.receiveShadow=true; } });
+  return g;
+}
+
 function mkBuilding(type, lv, branch){
   const g = new THREE.Group();
   const H = lv===1?1:lv===2?1.16:1.32;
@@ -782,6 +831,14 @@ function mkBuilding(type, lv, branch){
     g.add(part(geo.box, glow,  1.6,2.6*H,2.4, 1,1,.2));
     g.add(part(geo.box, stone3, 1.9,5.6*H,-1.4, .9,3,.9));   // مدخنة
     if(lv>1) g.add(part(geo.box, wood2, -3.4,.9,0, 1.4,1.8,2.6));
+    // دخان المدخنة
+    const puffs=[];
+    for(let i=0;i<4;i++){
+      const pf=part(geo.sphLow, new THREE.MeshStandardMaterial({color:0xD8D2C6,transparent:true,
+        opacity:.5,roughness:1}), 1.9, 7.2*H+i*1.4, -1.4, .5+i*.16);
+      pf.castShadow=false; g.add(pf); puffs.push(pf);
+    }
+    g.userData.puffs=puffs;
   }
   else if(type==="farm"){
     g.add(part(geo.box, mat(0x6A5237,{roughness:1}), 0,.2,0, 9.4,.4,9.4));
@@ -814,6 +871,11 @@ function mkBuilding(type, lv, branch){
     g.add(part(geo.cyl, stone3, 0,ht+1,0, 3.1,.5,3.1));
     for(let i=0;i<10;i++){ const a=i/10*Math.PI*2;
       g.add(part(geo.box, stone3, Math.cos(a)*2.75,ht+1.8,Math.sin(a)*2.75, .7,1.3,.7, 0,-a,0)); }
+    // رماة يقفون على المنصة
+    const a1=decoFigure(0x3E5C86,0xE8B98C,0xA8B0BC,"bow"); a1.position.set(-1.1, ht+1.4, .5); a1.rotation.y=.5;
+    const a2=decoFigure(0x35507A,0xDFAC7E,0x9AA3B0,"bow"); a2.position.set(1.2, ht+1.4, -.4); a2.rotation.y=2.4;
+    a1.scale.setScalar(.95); a2.scale.setScalar(.95);
+    g.add(a1); g.add(a2);
     if(branch==="مقلاع"){
       g.add(part(geo.box, wood2, 0,ht+2.3,0, 2.6,.4,1.2));
       g.add(part(geo.cyl, wood, 0,ht+3.1,-.4, .18,2,.18, .5,0,0));
@@ -851,6 +913,12 @@ function mkBuilding(type, lv, branch){
     g.add(part(geo.plane, new THREE.MeshStandardMaterial({color:0xC4483B,side:THREE.DoubleSide,roughness:.9}),
       6.8,5.4,2.4, 2.8,1.8,1, 0,Math.PI/2,0));
     if(lv>1) g.add(part(geo.box, mat(0x6E7C58,{roughness:.92}), -6.6,1.8,0, 3.2,2.8,4.4));
+    // حرس أمام الباب
+    const g1=decoFigure(0x40639C,0xDFAC7E,0xA6AEBA,"spear"); g1.position.set(-1.9,0,3.6); g1.rotation.y=.15;
+    const g2=decoFigure(0x40639C,0xE8B98C,0xA6AEBA,"spear"); g2.position.set(1.9,0,3.6); g2.rotation.y=-.15;
+    g.add(g1); g.add(g2);
+    // ساحة تدريب
+    g.add(part(geo.cyl, mat(0x6B5537,{roughness:1}), 0,.06,5.4, 4.4,.12,4.4));
   }
   else if(type==="beacon"){
     const ht=9.5*H;
@@ -870,6 +938,9 @@ function mkBuilding(type, lv, branch){
     disc.rotation.x=-Math.PI/2; disc.position.y=.14; disc.renderOrder=1;
     g.add(disc); g.userData.disc = disc;
   }
+  // أرضية مدكوكة تحت المبنى
+  const pad=part(geo.cyl, mat(0x6E5B42,{roughness:1}), 0,.05,0, type==="farm"?6.4:4.2,.1,type==="farm"?6.4:4.2);
+  pad.castShadow=false; g.add(pad);
   // شارة المستوى
   if(lv>1) for(let i=0;i<lv-1;i++)
     g.add(part(geo.sph, mat(0xF5C25B,METAL({roughness:.3})), -2+i*1.1, .3, 3.2, .3));
@@ -889,6 +960,12 @@ function mkWall(lv){
   // شرفات
   for(let i=-4;i<=4;i++)
     g.add(part(geo.box, stone3, i*2.15, h+1.1, 0, 1.3,1.5,2.7));
+  // مشاعل
+  for(const sx of [-1,1]){
+    g.add(part(geo.cyl, mat(0x4A3B2C,WOOD()), sx*5.5, h+1.4, 1.3, .12,1.4,.12, .3,0,0));
+    const fl=part(geo.sph, mat(0xFFB04A,{emissive:0xC05010,roughness:.3}), sx*5.5, h+2.2, 1.6, .42);
+    fl.castShadow=false; g.add(fl);
+  }
   // برجان طرفيان
   for(const sx of [-1,1]){
     g.add(part(geo.cyl, stone, sx*(L/2), h/2+.8, 0, 2,h+1.6,2));
@@ -1376,6 +1453,10 @@ function sync(){
   sb.hidden = G.phase!=="dawn";
   sb.textContent=`ابدأ الليلة ${G.wave+1} ▶`;
   q("dockRow").hidden = G.phase!=="dawn";
+  const night = G.phase==="night";
+  document.querySelector(".abils").style.display = night?"flex":"none";
+  const jy=document.getElementById("joy");
+  if(!jy.dataset.touch) jy.hidden = true; else jy.hidden = !night;
   q("sheet").hidden = !G.selected;
 }
 
@@ -1546,12 +1627,34 @@ addEventListener("keyup",e=>G.keys.delete(norm(e.key)));
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
 let dragging=false, dragged=false, lastX=0, lastY=0, rotMode=false;
 glc.addEventListener("contextmenu", e=>e.preventDefault());
+const touches=new Map();
+let pinchD=0, pinchMid=null;
 glc.addEventListener("pointerdown",e=>{
+  touches.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(touches.size===2){
+    const [a,b]=[...touches.values()];
+    pinchD=Math.hypot(a.x-b.x,a.y-b.y);
+    pinchMid={x:(a.x+b.x)/2,y:(a.y+b.y)/2};
+    dragging=false; dragged=true; return;
+  }
   dragging=true; dragged=false; lastX=e.clientX; lastY=e.clientY;
   rotMode = (e.button===2 || e.altKey);
-  glc.setPointerCapture(e.pointerId);
+  try{ glc.setPointerCapture(e.pointerId); }catch(_){}
 });
 glc.addEventListener("pointermove",e=>{
+  if(touches.has(e.pointerId)) touches.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(touches.size===2){
+    const [a,b]=[...touches.values()];
+    const d=Math.hypot(a.x-b.x,a.y-b.y), mid={x:(a.x+b.x)/2,y:(a.y+b.y)/2};
+    if(pinchD){
+      camDist=clamp(camDist*(pinchD/Math.max(1,d)),52,190); camHigh=camDist*.66;
+      const k=camDist*.0022, dx=mid.x-pinchMid.x, dy=mid.y-pinchMid.y;
+      const rx=Math.cos(camAz), rz=-Math.sin(camAz), fx=-Math.sin(camAz), fz=-Math.cos(camAz);
+      G.cam.tx=clamp(G.cam.tx-(dx*rx+dy*fx)*k,-85,85);
+      G.cam.tz=clamp(G.cam.tz-(dx*rz+dy*fz)*k,-85,85);
+    }
+    pinchD=d; pinchMid=mid; return;
+  }
   if(!dragging){
     // تحويم: أبرز أقرب عقدة بناء
     if(G.phase==="dawn" && !G.ghost){
@@ -1583,6 +1686,8 @@ function pickGround(e){
   return hit.length?hit[0].point:null;
 }
 glc.addEventListener("pointerup",e=>{
+  touches.delete(e.pointerId);
+  if(touches.size<2) pinchD=0;
   dragging=false;
   if(dragged||G.over||G.pending) return;
   const p=pickGround(e); if(!p) return;
@@ -1594,6 +1699,7 @@ glc.addEventListener("pointerup",e=>{
   }
   G.move={x:p.x,z:p.z};
 });
+glc.addEventListener("pointercancel",e=>{ touches.delete(e.pointerId); pinchD=0; dragging=false; });
 glc.addEventListener("wheel",e=>{ e.preventDefault();
   camDist=clamp(camDist+e.deltaY*.09,52,190); camHigh=camDist*.66; },{passive:false});
 
@@ -1889,6 +1995,15 @@ function update(dt){
         const f=b.obj.userData.flame;
         f.scale.set(1.1+Math.sin(G.t*9)*.15, (lit?2.6:2)+Math.sin(G.t*12)*.2, 1.1);
       }
+    } else if(b.type==="cottage"){
+      const pf=b.obj.userData.puffs;
+      if(pf) for(let i=0;i<pf.length;i++){
+        const t2=(G.t*.5+i*.25)%1;
+        pf[i].position.y = 7.2+t2*7;
+        pf[i].position.x = 1.9+Math.sin(G.t*.7+i)*.7;
+        pf[i].scale.setScalar((.5+i*.16)*(1+t2*1.5));
+        pf[i].material.opacity = .45*(1-t2);
+      }
     } else if(b.type==="farm"){
       if(b.obj.userData.spin) b.obj.userData.spin.rotation.z += dt*1.1;
     } else if(b.type==="beacon"){
@@ -2074,13 +2189,18 @@ G.heroObj = mkHumanoid("hero");
 })();
 world.add(G.heroObj);
 document.getElementById("startBtn").onclick=startNight;
-document.getElementById("homeBtn").onclick=()=>{ G.cam.tx=0; G.cam.tz=0; camDist=96; camHigh=63; };
+document.getElementById("fsBtn").onclick=()=>{
+  const el=document.getElementById("stageBox");
+  if(document.fullscreenElement) document.exitFullscreen();
+  else if(el.requestFullscreen) el.requestFullscreen().catch(()=>{});
+};
+document.getElementById("homeBtn").onclick=()=>{ G.cam.tx=0; G.cam.tz=0; camDist=MOBILE?74:96; camHigh=camDist*.66; };
 document.getElementById("sheetClose").onclick=()=>{ G.selected=null; cancelGhost(); refresh(); };
 document.getElementById("abil1").onclick=ability;
 document.getElementById("abil2").onclick=dash;
 (() => {
   const joy=document.getElementById("joy"), knob=document.getElementById("joyKnob");
-  if(matchMedia("(pointer: coarse)").matches) joy.hidden=false;
+  if(matchMedia("(pointer: coarse)").matches) joy.dataset.touch="1";
   let id=null, cx=0, cy=0;
   const setKnob=(dx,dy)=>{ knob.style.transform=`translate(${dx}px,${dy}px)`; };
   joy.addEventListener("pointerdown",e=>{ id=e.pointerId; joy.setPointerCapture(id);
@@ -2096,12 +2216,13 @@ document.getElementById("abil2").onclick=dash;
   });
   const end=e=>{ if(e.pointerId!==id) return; id=null; G.joy=null; setKnob(0,0); };
   joy.addEventListener("pointerup",end); joy.addEventListener("pointercancel",end);
-  addEventListener("touchstart",()=>{ joy.hidden=false; },{once:true});
+  addEventListener("touchstart",()=>{ joy.dataset.touch="1"; },{once:true});
 })();
 document.getElementById("helpBtn").onclick=()=>showOverlay(INTRO);
 document.getElementById("sndBtn").onclick=e=>{ sndOn=!sndOn;
   e.target.textContent=sndOn?"♪":"✕"; e.target.setAttribute("aria-pressed",sndOn); };
 buildThumbs();
+if(MOBILE){ camDist=74; camHigh=camDist*.66; }
 refresh(); sync(); showOverlay(INTRO); resize();
 
 let last=performance.now();
