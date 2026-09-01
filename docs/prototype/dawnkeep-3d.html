@@ -405,6 +405,12 @@ function resize(){
   camera.aspect = w/h; camera.updateProjectionMatrix();
 }
 addEventListener("resize", resize);
+glc.addEventListener("webglcontextlost", e=>{
+  e.preventDefault();
+  const el=document.getElementById("overlayCard");
+  if(el){ el.innerHTML="<h2>انقطع العرض</h2><p>فقد المتصفح سياق الرسم. أعد تحميل الصفحة.</p>";
+    document.getElementById("overlay").classList.add("show"); }
+},false);
 
 /* أدوات هندسية مشتركة */
 const geo = {
@@ -450,7 +456,9 @@ const STONE = o => Object.assign({roughness:.92, metalness:.02, flatShading:true
 const WOOD  = o => Object.assign({roughness:.86, metalness:.02}, o||{});
 function part(g, m, x,y,z, sx,sy,sz, rx,ry,rz){
   const o = new THREE.Mesh(g, m);
-  o.position.set(x,y,z); o.scale.set(sx,sy,sz===undefined?sx:sz);
+  if(sy===undefined) sy=sx;          // بُعد واحد = مقياس متساوٍ
+  if(sz===undefined) sz=sx;
+  o.position.set(x,y,z); o.scale.set(sx,sy,sz);
   if(rx||ry||rz) o.rotation.set(rx||0, ry||0, rz||0);
   o.castShadow = true; o.receiveShadow = true;
   return o;
@@ -1469,19 +1477,22 @@ function mkCard(title,price,desc,dis,fn,img){
   return c;
 }
 
-/* صور مصغّرة حقيقية للمباني تُرسم مرة واحدة من نماذجها ثلاثية الأبعاد */
+/* صور مصغّرة للمباني — تُرسم بنفس سياق WebGL (لا سياق ثانٍ: يفقد الجوال السياق الأول) */
 const THUMBS={};
 function buildThumbs(){
   try{
-    const W2=220,H2=170;
-    const r2=new THREE.WebGLRenderer({antialias:true,alpha:true,preserveDrawingBuffer:true});
-    r2.setSize(W2,H2); r2.setPixelRatio(1);
-    r2.outputEncoding=THREE.sRGBEncoding; r2.toneMapping=THREE.ACESFilmicToneMapping;
+    const W2=200,H2=150;
+    const rt=new THREE.WebGLRenderTarget(W2,H2,{minFilter:THREE.LinearFilter,magFilter:THREE.LinearFilter});
     const sc2=new THREE.Scene();
+    sc2.environment=scene.environment;
     const hl=new THREE.HemisphereLight(0xFFFFFF,0x555544,1.0); hl.color.convertSRGBToLinear(); sc2.add(hl);
-    const dl=new THREE.DirectionalLight(0xFFF2DC,2.0); dl.color.convertSRGBToLinear();
+    const dl=new THREE.DirectionalLight(0xFFF2DC,2.2); dl.color.convertSRGBToLinear();
     dl.position.set(8,14,10); sc2.add(dl);
     const cam2=new THREE.PerspectiveCamera(32,W2/H2,.1,400);
+    const buf=new Uint8Array(W2*H2*4);
+    const cv2=document.createElement("canvas"); cv2.width=W2; cv2.height=H2;
+    const cx2=cv2.getContext("2d");
+    const img=cx2.createImageData(W2,H2);
     const shot=(obj)=>{
       sc2.add(obj);
       const box=new THREE.Box3().setFromObject(obj);
@@ -1489,15 +1500,27 @@ function buildThumbs(){
       const d=Math.max(size.x,size.y,size.z)*2.05;
       cam2.position.set(ctr.x+d*.72, ctr.y+d*.6, ctr.z+d*.86);
       cam2.lookAt(ctr.x, ctr.y-size.y*.05, ctr.z);
-      r2.render(sc2,cam2);
-      const url=r2.domElement.toDataURL("image/png");
+      renderer.setRenderTarget(rt);
+      renderer.setClearColor(0x000000,0);
+      renderer.clear();
+      renderer.render(sc2,cam2);
+      renderer.render(sc2,cam2);          // إطار ثانٍ: بعض التعريفات تُرجع الإطار السابق
+      renderer.readRenderTargetPixels(rt,0,0,W2,H2,buf);
+      renderer.setRenderTarget(null);
+      // WebGL يقرأ من الأسفل: اقلب الصفوف
+      for(let y=0;y<H2;y++){
+        const src=(H2-1-y)*W2*4, dst=y*W2*4;
+        img.data.set(buf.subarray(src,src+W2*4), dst);
+      }
+      cx2.clearRect(0,0,W2,H2);
+      cx2.putImageData(img,0,0);
       sc2.remove(obj);
-      return url;
+      return cv2.toDataURL("image/png");
     };
     for(const k in B) THUMBS[k]=shot(mkBuilding(k,1,null));
     THUMBS.wall=shot(mkWall(1));
-    r2.dispose();
-  }catch(e){ /* بلا صور إن تعذّر سياق ثانٍ */ }
+    rt.dispose();
+  }catch(e){ /* بلا صور إن تعذّر */ }
 }
 
 function refresh(){
