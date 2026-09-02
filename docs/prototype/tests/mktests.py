@@ -14,6 +14,7 @@ hook='''window.__d={
   rebuild:()=>{ const t0=performance.now(); buildStage(G.stage); world.add(G.heroObj); return Math.round(performance.now()-t0); },
   night:(on)=>{ G.phase=on?"night":"dawn"; for(let i=0;i<220;i++) updateLighting(); },
   hero:(x,z)=>{ G.hero.x=x; G.hero.z=z; },
+  heroInfo:()=>({x:Math.round(G.hero.x),z:Math.round(G.hero.z),hp:G.hero.hp,dead:G.hero.dead,cd:G.hero.atkCd,over:G.over,paused:!!G.paused,pending:!!G.pending,ov:document.getElementById('overlay').classList.contains('show'),lo:LOADOUT.weapon,auto:SET.autoTarget}),
   pickAt:(x,y)=>{ const r=glc.getBoundingClientRect(); const n=pickNode({clientX:r.left+x, clientY:r.top+y}); return n?(n.kind||'wall'):null; },
   sel:()=>G.selected?(G.selected.kind||'wall'):null,
   set:(w,s)=>{ G.wave=w; G.silver=s; refresh(); sync(); },

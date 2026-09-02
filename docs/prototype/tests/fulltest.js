@@ -79,9 +79,10 @@ const out=[]; const say=(...a)=>{ const s=a.join(' '); out.push(s); console.log(
   say('after retry:', JSON.stringify(after), '| builds kept:', after.builds===before.builds, '| wave rewound:', after.wave, '(before', before.wave+')');
   // ── تغيير السلاح وإطلاق القدرة ──
   await page.evaluate(()=>window.__d.spawnAll(0,50,9)); await page.evaluate(()=>window.__d.hero(-4.5,55)); await page.waitForTimeout(4000);
-  const hurtN=await page.evaluate(()=>window.__d.units?window.__d.units.enemies().filter(e=>e.hp<e.max).length:-1);
+  // القائد بسلاح +35% يقتل الغازي بضربة واحدة، فنعدّ المقتولين مع المصابين
+  const hurtN=await page.evaluate(()=>{ const es=window.__d.units.enemies(); return es.filter(e=>e.hp<e.max).length + (9-es.length); });
   await page.click('#abil1'); await page.waitForTimeout(200);
-  say('enemies hurt by hero:', hurtN, '| ability name:', await page.locator('#abil1 b').innerText());
+  say('enemies hurt/killed by hero:', hurtN, '| ability name:', await page.locator('#abil1 b').innerText());
   say('ERRORS:', errors.length?errors.join('\n'):'none');
   await browser.close();
 })().catch(e=>{ console.log('FATAL', e.message.split('\n')[0]); process.exit(1); });
