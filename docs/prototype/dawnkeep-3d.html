@@ -2144,9 +2144,9 @@ function sync(){
   if(wi.dataset.k!==html){ wi.dataset.k=html; wi.innerHTML=html; }
 
   const sb=q("startBtn");
-  sb.hidden = G.phase!=="dawn" || !!G.selected;
+  sb.hidden = G.phase!=="dawn" || (MOBILE && !!G.selected);
   sb.textContent=`ابدأ الليلة ${G.wave+1} ▶`;
-  q("dockRow").hidden = G.phase!=="dawn" || !!G.selected;
+  q("dockRow").hidden = G.phase!=="dawn" || (MOBILE && !!G.selected);
   q("orderRow").hidden = !G.soldiers.length;
   const night = G.phase==="night";
   document.querySelector(".abils").style.display = night?"flex":"none";
