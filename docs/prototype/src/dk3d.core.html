@@ -312,11 +312,11 @@ const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const STAGES = [
   { id:"ash", name:"ممر الرماد", nights:6, lanes:3, laneAngles:[-Math.PI/2, Math.PI, 0], boss:"warden", accent:"#E7B344",
     nodes:{ econ:{r:70,n:8,off:.55}, def:{r:100,n:10,off:.15}, mil:{r:82,n:3,off:2.35}, special:{r:180,n:4,off:.5} },
-    grass:"#6C7C3C", grass2:"#7E8E48", grass3:"#55642E", dirt:"#7A6644", road:"#9C8258", roadEdge:"#7E6A46",
-    rock:"#7E766A", sand:"#CDBA8E", snow:"#E8E4DA", snowLine:70, water:0x224E5E,
-    tree:[0x4A6A2E,0x6A7E34,0x9A6A2A], pine:0x2E5230, trunk:0x4A3524, mix:[.45,.5,.05],
-    flowers:[0xE0B860,0xEAD8B0,0xC46A3A,0xB79BE6], mountRock:0x6A6058, cloud:0xF4EEE4,
-    skyTop:0x4A7FB8, skyHor:0xE2C79C, skyBot:0x4A4238, fog:0xD8BE94, sun:0xFFD9A0 },
+    grass:"#7BB24C", grass2:"#94C45C", grass3:"#5C9840", dirt:"#B08052", road:"#DEB877", roadEdge:"#B9925C",
+    rock:"#8E735C", sand:"#E6CF8C", snow:"#EEF3FA", snowLine:70, water:0x2B86B0,
+    tree:[0x3E9A4A,0x62B04A,0xD08A2E], pine:0x24705A, trunk:0x6A4A30, mix:[.5,.42,.08],
+    flowers:[0xF2C94C,0xF7EEDC,0xE0563F,0xB79BE6], mountRock:0x8A6E5A, cloud:0xFAF6EE,
+    skyTop:0x3F86D6, skyHor:0xCFE4F4, skyBot:0x6E7A5A, fog:0xBFD6EC, sun:0xFFE6B8 },
   { id:"iron", name:"السهل الحديدي", nights:7, lanes:4, boss:"mother", accent:"#7FBF5A",
     nodes:{ econ:{r:70,n:9,off:.35}, def:{r:100,n:11,off:.15}, mil:{r:82,n:3,off:1.2}, special:{r:180,n:5,off:.5} },
     grass:"#5E8A3E", grass2:"#6E9A48", grass3:"#4A6E32", dirt:"#6E5A40", road:"#A0845A", roadEdge:"#846A46",
@@ -368,12 +368,12 @@ const NAME_OF = t => DEF_OF(t).name;
 
 /* EnemyDefinition: prio = ترتيب الأهداف (CASTLE/ECONOMY/WALL/TOWER/UNIT)، gold = مكافأة القتل، wv = قيمة الموجة للمعاينة */
 const E = {
-  grunt  :{ n:"غازي",  hh:5.2, hp:56, sp:3.4, dmg:8,  r:.95, armor:0,   col:0xB8453C, dark:0x7E2B26, prio:["CASTLE"], gold:2, wv:1 },
-  runner :{ n:"ناهب",  hh:4.8, hp:36, sp:6.6, dmg:6,  r:.8,  armor:0,   col:0xD8705E, dark:0x96412F, prio:["ECONOMY","CASTLE"], gold:2, wv:1, scan:260 },
-  brute  :{ n:"مدرّع", hh:7.2, hp:200,sp:2.2, dmg:20, r:1.5, armor:.4,  col:0x8E3A57, dark:0x5C2138, prio:["WALL","TOWER","CASTLE"], gold:5, wv:3, sieger:true },
-  spitter:{ n:"رامي",  hh:5.4, hp:64, sp:2.9, dmg:12, r:1.0, armor:0,   col:0x7A5BA8, dark:0x4C3670, prio:["TOWER","CASTLE"], gold:4, wv:2, ranged:20, sieger:true },
-  flyer  :{ n:"خفّاش", hh:3.4, hp:46, sp:5.8, dmg:9,  r:.9,  armor:0,   col:0x5E6FA8, dark:0x3A4570, prio:["ECONOMY","CASTLE"], gold:3, wv:2, fly:true, scan:220 },
-  warden :{ n:"حارس الرماد", hh:12, hp:1500, sp:2.3, dmg:40, r:2.6, armor:.35, col:0x6E2A2A, dark:0x3E1414, prio:["WALL","TOWER","CASTLE"], gold:120, wv:14, boss:true, ability:"slam", phases:true, sieger:true },
+  grunt  :{ n:"غازي",  hh:5.2, hp:56, sp:3.4, dmg:8,  r:.95, armor:0,   col:0xE8E0D2, dark:0xC0402E, prio:["CASTLE"], gold:2, wv:1 },
+  runner :{ n:"ناهب",  hh:4.8, hp:36, sp:6.6, dmg:6,  r:.8,  armor:0,   col:0xF2DCC6, dark:0xD8562A, prio:["ECONOMY","CASTLE"], gold:2, wv:1, scan:260 },
+  brute  :{ n:"مدرّع", hh:7.2, hp:200,sp:2.2, dmg:20, r:1.5, armor:.4,  col:0xD6CFC2, dark:0x2A2430, prio:["WALL","TOWER","CASTLE"], gold:5, wv:3, sieger:true },
+  spitter:{ n:"رامي",  hh:5.4, hp:64, sp:2.9, dmg:12, r:1.0, armor:0,   col:0x8A48D6, dark:0x3E1E70, prio:["TOWER","CASTLE"], gold:4, wv:2, ranged:20, sieger:true },
+  flyer  :{ n:"خفّاش", hh:3.4, hp:46, sp:5.8, dmg:9,  r:.9,  armor:0,   col:0xB8C0E8, dark:0x3A3E70, prio:["ECONOMY","CASTLE"], gold:3, wv:2, fly:true, scan:220 },
+  warden :{ n:"حارس الرماد", hh:12, hp:1500, sp:2.3, dmg:40, r:2.6, armor:.35, col:0xC83A32, dark:0x1E1418, prio:["WALL","TOWER","CASTLE"], gold:120, wv:14, boss:true, ability:"slam", phases:true, sieger:true },
   breaker:{ n:"حاطم الأسوار", hh:12, hp:1500, sp:2.3, dmg:40, r:2.6, armor:.35, col:0x6E2A2A, dark:0x3E1414, prio:["WALL","TOWER","CASTLE"], gold:120, wv:14, boss:true, ability:"slam", sieger:true },
   mother :{ n:"أمّ الظلال", hh:11.2, hp:2400, sp:2.4, dmg:38, r:2.5, armor:.3,  col:0x4A2A6E, dark:0x2A1440, prio:["CASTLE"], gold:140, wv:14, boss:true, ability:"summon" },
   tyrant :{ n:"طاغية الليل", hh:12.8, hp:3300, sp:2.4, dmg:48, r:2.9, armor:.4,  col:0x24304E, dark:0x121A2C, prio:["CASTLE"], gold:160, wv:16, boss:true, ability:"volley" }
@@ -686,11 +686,11 @@ function mat(hex, opts){
   if(tex && TEX[tex]) m.map = TEX[tex];
   matCache.set(k,m); return m;
 }
-const METAL = o => Object.assign({roughness:.46, metalness:.72, envMapIntensity:.8}, o||{});
-const CLOTH = o => Object.assign({roughness:.95, metalness:0, tex:"cloth"}, o||{});
-const SKIN  = o => Object.assign({roughness:.68, metalness:0}, o||{});
+const METAL = o => Object.assign({roughness:.42, metalness:.7, envMapIntensity:.9, flatShading:true}, o||{});
+const CLOTH = o => Object.assign({roughness:.9, metalness:0, flatShading:true}, o||{});
+const SKIN  = o => Object.assign({roughness:.62, metalness:0, flatShading:true}, o||{});
 const STONE = o => Object.assign({roughness:.92, metalness:.02, flatShading:true, tex:"stone"}, o||{});
-const WOOD  = o => Object.assign({roughness:.86, metalness:.02, tex:"wood"}, o||{});
+const WOOD  = o => Object.assign({roughness:.84, metalness:.02, flatShading:true}, o||{});
 function part(g, m, x,y,z, sx,sy,sz, rx,ry,rz){
   const o = new THREE.Mesh(g, m);
   if(sy===undefined) sy=sx;          // بُعد واحد = مقياس متساوٍ
@@ -834,13 +834,13 @@ function makeHeightFn(seed){
           if(along>195 && along<585 && perp>25 && perp<118){
             const k=Math.min(1,(along-195)/60)*Math.min(1,(585-along)/60)
                    *Math.min(1,(perp-25)/11)*Math.min(1,(118-perp)/30);
-            h += k*(58+fbm(x*.05,z*.05,2)*26);
+            const hw=k*(58+fbm(x*.05,z*.05,2)*26); h += Math.round(hw/9)*9*.7 + hw*.3;
           }
         } else if(L.feat==="pass"){                                            // ممر جبلي: حاجز يقطع الطريق والطريق يشقّه
           const d0=Math.abs(along-400);
           if(d0<130 && along>0 && perp<430){
             const k=(1-d0/130)*(1-clamp((perp-300)/130,0,1));
-            h += k*k*(128+fbm(x*.04,z*.04,2)*48);
+            const hp=k*k*(128+fbm(x*.04,z*.04,2)*48); h += Math.round(hp/11)*11*.6 + hp*.4;
           }
         }
       }
@@ -945,7 +945,7 @@ function slopeAt(x,z){
 }
 
 function buildTerrain(cfg){
-  const SEG=MOBILE?240:400;
+  const SEG=MOBILE?170:260;
   const g=new THREE.PlaneGeometry(WORLD,WORLD,SEG,SEG);
   g.rotateX(-Math.PI/2);
   const pos=g.attributes.position, n=pos.count;
@@ -973,8 +973,8 @@ function buildTerrain(cfg){
     const sl=Math.min(1,(Math.abs(H[i2]-y)+Math.abs(H[i3]-y))*KS);
     // بقع عشب ناعمة بدل الترقيط
     const p1=fbm(x*.02+3, z*.02-1, 3), p2=fbm(x*.055-7, z*.055+2, 2);
-    tmp.copy(cA).lerp(cB, clamp((p1-.33)*2.2,0,1)).lerp(cC, clamp((p2-.5)*2.6,0,1));
-    if(p2>.66) tmp.lerp(cDirt, clamp((p2-.66)*5,0,1)*.5);             // بقع تراب
+    tmp.copy(cA).lerp(cB, p1>.52?1:0).lerp(cC, p2>.62?1:0);                      // ثلاث درجات عشب بحدود حادة (low-poly)
+    if(p2>.74) tmp.lerp(cDirt, .6);                                                  // بقع تراب
     if(LAKE){ const d=Math.hypot(x-LAKE.x,z-LAKE.z)/LAKE.r;
       if(d<1.9) tmp.lerp(cLush, clamp((1.9-d)/.9,0,1)*.7);              // خضرة أكثف حول البحيرة
       if(d<1.45 && y<WATER_Y+1.6) tmp.lerp(cSand, clamp((WATER_Y+1.6-y)/1.4,0,1));
@@ -986,7 +986,7 @@ function buildTerrain(cfg){
     const snowL = r>EDGE_R*.85 ? cfg.snowLine : Math.max(cfg.snowLine, 104);
     if(y>snowL) tmp.lerp(cSnow, clamp((y-snowL)/14,0,1)*(1-sl*.4));
     if(r>EDGE_R) tmp.lerp(cRock, clamp((r-EDGE_R)/60,0,1)*.6);
-    tmp.multiplyScalar(.9+clamp(y*.012,-.08,.12));                      // القمم أفتح والوديان أغمق
+    tmp.multiplyScalar(.92+clamp(y*.010,-.06,.14));                      // القمم أفتح والوديان أغمق
     if(RIVER){ const rv=riverDist(x,z);
       if(rv<RIVER.w*1.7){ tmp.lerp(cSand, clamp(1-(rv-RIVER.w*.8)/(RIVER.w*.9),0,1)*.85);
         if(rv<RIVER.w*.85) tmp.lerp(new THREE.Color(cfg.water).convertLinearToSRGB(), clamp(1-rv/(RIVER.w*.85),0,1)*.5); } }
@@ -998,7 +998,7 @@ function buildTerrain(cfg){
   }
   g.setAttribute("color", new THREE.BufferAttribute(col,3));
   g.computeVertexNormals();
-  const m=new THREE.MeshStandardMaterial({vertexColors:true, roughness:.96, metalness:0, map:TEX.ground});
+  const m=new THREE.MeshStandardMaterial({vertexColors:true, roughness:.94, metalness:0, flatShading:true});
   const mesh=new THREE.Mesh(g,m);
   mesh.receiveShadow=true;
   return mesh;
@@ -1506,7 +1506,7 @@ function buildStage(idx){
     else { const a=rnd(0,7), r=rnd(170,EDGE_R+30); x=Math.cos(a)*r; z=Math.sin(a)*r; }
     if(okSpot(x,z)) spots.push({x,z,s:rnd(.75,1.35)});
   }
-  const pineM=new THREE.MeshStandardMaterial({roughness:.92, flatShading:true});
+  const pineM=new THREE.MeshStandardMaterial({roughness:.9, flatShading:true});
   const oakM=new THREE.MeshStandardMaterial({roughness:.9, flatShading:true});
   const trunkM=new THREE.MeshStandardMaterial({roughness:.95, flatShading:true, map:TEX.wood}); trunkM.color=lin(cfg.trunk);
   const deadM=new THREE.MeshStandardMaterial({roughness:.95, flatShading:true}); deadM.color=lin(cfg.trunk).multiplyScalar(.8);
@@ -1578,7 +1578,7 @@ function buildStage(idx){
   // القلعة — حجر مفصّل بأبراج وشرفات وبوابة
   const cst = new THREE.Group();
   const stone=mat(0x9A9384,STONE()), stone2=mat(0x857E70,STONE()), stone3=mat(0xADA695,STONE());
-  const roofM=mat(0x8A5A34,{roughness:.62,metalness:.45,flatShading:true});   // نحاس مطفأ
+  const roofM=mat(0x3E8C8A,{roughness:.55,metalness:.5,flatShading:true});   // نحاس بزنجار فيروزي
   // قاعدة مدرّجة
   cst.add(part(geo.cyl, stone2, 0,.5,0, 14.5,1,14.5));
   cst.add(part(geo.cyl, stone, 0,1.25,0, 13.2,.5,13.2));
@@ -1922,7 +1922,8 @@ const RG = {
   oct: new THREE.OctahedronGeometry(1,0),
   dome: new THREE.SphereGeometry(1,16,8,0,Math.PI*2,0,Math.PI/2),
   bow: new THREE.TorusGeometry(1,.045,6,18,Math.PI*1.15),
-  tabard: new THREE.CylinderGeometry(.3,.4,.5,10,1,true,-.62,1.24)
+  tabard: new THREE.CylinderGeometry(.3,.4,.5,10,1,true,-.62,1.24),
+  strap: new THREE.TorusGeometry(1,.055,6,22)
 };
 /* جناح خفاش: شكل مسطّح مسنّن الحافة الخلفية */
 const WING_G = (()=>{
@@ -2135,7 +2136,7 @@ function poseRig(obj, t, moving, atk){
     r.legL.rotation.x=a*.7-cr*.55; r.legR.rotation.x=b*.7-cr*.55;
     r.kneeL.rotation.x=Math.max(0,-a)*.9+cr*.95; r.kneeR.rotation.x=Math.max(0,-b)*.9+cr*.95;
   }
-  if(r.mounted && !r.bowPose){ r.armL.rotation.x=-.85+b*.05; r.elbowL.rotation.x=-.55; }
+  if(r.mounted && !r.bowPose){ r.armL.rotation.x=-.25+b*.04; r.elbowL.rotation.x=-1.05; }
   else if(!r.bowPose){ r.armL.rotation.x=b*.5; r.elbowL.rotation.x=-.32; }
   r.armR.rotation.x=a*.5-atk*2.1;
   r.armL.rotation.z=.14; r.armR.rotation.z=-.14;
@@ -2160,40 +2161,52 @@ function poseRig(obj, t, moving, atk){
 /* ── حصان بمفاصل: جذع، رقبة ورأس وأذنان، عُرف وذيل، أربع أرجل بركبة وحافر، سرج وبطانية ── */
 function makeHorse(o){
   const root=new THREE.Group(), H={};
-  const coat=mat(o.coat||0x6B4A2E,{roughness:.8}), coat2=mat(o.coat2||0x55391F,{roughness:.85}), dark=mat(o.mane||0x2A1A10,{roughness:.9});
+  const coat=mat(o.coat||0x9A5230,{roughness:.7,flatShading:true}), coat2=mat(o.coat2||0x7A3E22,{roughness:.75,flatShading:true}), dark=mat(o.mane||0x151012,{roughness:.9,flatShading:true});
   const hoof=mat(0x2A2420,{roughness:.6}), cloth=mat(o.cloth||0x1E3A6E,CLOTH()), leather=mat(0x4A3628,{roughness:.8}), gold=mat(0xE8C060,METAL({roughness:.3}));
   const N=(x,y,z)=>{const g=new THREE.Group(); g.position.set(x,y,z); return g;};
   const body=N(0,1.12,0); root.add(body); H.body=body;
-  body.add(part(CAP, coat, 0,0,0, .52,1.35,.52, Math.PI/2,0,0));
-  body.add(part(geo.sph, coat2, 0,.05,-.6, .29,.31,.3));
-  body.add(part(geo.sph, coat, 0,.03,.6, .26,.28,.28));
+  body.add(part(CAP, coat, 0,0,0, .5,1.3,.64, Math.PI/2,0,0));
+  body.add(part(geo.sph, coat2, 0,.02,-.58, .3,.36,.32));
+  body.add(part(geo.sph, coat, 0,.06,.58, .28,.34,.3));
+  body.add(part(geo.sph, coat, 0,.3,.34, .2,.16,.24));   // الكاهل
   const neck=N(0,.2,.66); body.add(neck); H.neck=neck; neck.rotation.x=-.8;
   neck.add(part(CAP, coat, 0,.3,0, .18,.62,.22));
   neck.add(part(geo.box, dark, 0,.34,-.12, .07,.6,.16));
   const head=N(0,.64,.03); neck.add(head); H.head=head; head.rotation.x=1.2;
-  head.add(part(geo.box, coat, 0,0,.15, .21,.21,.44));
-  head.add(part(geo.box, coat2, 0,-.04,.36, .17,.15,.1));
-  head.add(part(geo.box, mat(0xE8E0D4,{roughness:.8}), 0,.04,.37, .1,.12,.03));
+  head.add(part(geo.rbox, coat, 0,0,.13, .22,.24,.46));
+  head.add(part(geo.rbox, coat2, 0,-.05,.37, .18,.17,.12));
+  head.add(part(geo.box, mat(0xF2EEE6,{roughness:.8,flatShading:true}), 0,.04,.37, .1,.16,.03));
+  head.add(part(geo.cone8, cloth, 0,.24,-.04, .045,.24,.045));   // ريشة الرأس
   for(const s of [-1,1]){
-    head.add(part(geo.cone8, coat, s*.085,.15,-.03, .04,.15,.04, -.3,0,s*-.35));
+    head.add(part(geo.cone8, coat, s*.09,.17,-.04, .05,.19,.05, -.3,0,s*-.35));
     const e=part(geo.sph, mat(0x1A1512,{roughness:.25}), s*.1,.06,.12, .032); e.castShadow=false; head.add(e);
   }
   head.add(part(geo.torus, leather, 0,.0,.22, .13,.13,.1, 0,0,0));
   head.add(part(geo.torus, leather, 0,.02,.0, .17,.17,.1, .3,0,0));
   const tail=N(0,.16,-.72); body.add(tail); H.tail=tail; tail.rotation.x=.55;
   tail.add(part(CAP, dark, 0,-.32,0, .09,.64,.09));
-  body.add(part(geo.box, cloth, 0,.24,-.03, .62,.06,.74));
-  body.add(part(geo.box, leather, 0,.31,-.04, .36,.1,.5));
-  body.add(part(geo.sph, leather, 0,.38,.2, .07,.07,.07));
-  body.add(part(geo.sph, gold, 0,.4,.2, .035));
+  // غطاء الحصان الملكي: يغطي الظهر والردف، بحاشية ذهبية
+  body.add(part(geo.box, cloth, 0,.3,-.08, .72,.05,.96));                       // بطانية الظهر
+  for(const s of [-1,1]){
+    body.add(part(geo.box, cloth, s*.36,-.02,-.12, .05,.62,.88, 0,0,s*.06));      // جناح جانبي
+    body.add(part(geo.box, gold,  s*.37,-.32,-.12, .06,.06,.9, 0,0,s*.06));       // حاشية ذهبية
+  }
+  body.add(part(geo.box, leather, 0,.36,-.04, .36,.1,.5));                        // السرج
+  body.add(part(RG.strap, leather, 0,.02,.42, .5,.55,.5));                        // حزام الصدر رفيع
+  body.add(part(RG.strap, leather, 0,.0,-.02, .52,.58,.52));                      // حزام البطن
+  body.add(part(geo.box, leather, 0,.34,-.04, .3,.06,.6));                        // مقعد السرج
+  if(o.shield){ body.add(part(RG.shield, mat(0xC8D2DE,METAL({roughness:.3})), -.5,.02,-.14, .62,.62,.62, 0,0,Math.PI/2));
+    body.add(part(geo.torus, mat(0xE0463A,CLOTH()), -.56,.02,-.14, .14,.14,.4, 0,Math.PI/2,0)); }   // ترس معلّق على الجنب الأيسر
+  body.add(part(geo.sph, leather, 0,.43,.2, .07,.07,.07));
+  body.add(part(geo.sph, gold, 0,.46,.2, .035));
   for(const s of [-1,1]) body.add(part(geo.box, leather, s*.3,.06,-.02, .04,.5,.06));
   H.legs=[];
   for(const [sx,sz] of [[-1,.46],[1,.46],[-1,-.46],[1,-.46]]){
     const hip=N(sx*.21,-.3,sz); body.add(hip);
-    hip.add(part(CAP, coat, 0,-.22,0, .105,.46,.105));
+    hip.add(part(CAP, coat, 0,-.22,0, .15,.48,.15));
     const knee=N(0,-.45,0); hip.add(knee);
-    knee.add(part(CAP, coat2, 0,-.2,0, .085,.42,.085));
-    knee.add(part(geo.cyl, hoof, 0,-.44,0, .09,.08,.09));
+    knee.add(part(CAP, coat2, 0,-.2,0, .11,.42,.11));
+    knee.add(part(geo.cyl, hoof, 0,-.44,0, .12,.1,.12));
     H.legs.push({hip,knee,front:sz>0,side:sx});
   }
   root.traverse(m=>{ if(m.isMesh) m.receiveShadow=true; });
@@ -2216,11 +2229,11 @@ function poseHorse(obj,t,moving){
 /* القائد المتوَّج راكباً — يُعاد بناؤه لكل سلاح */
 function mkHero(wid){
   const hgt=6.0, k=hgt/1.95;
-  const o={h:hgt, cloth:0x2A4E86, cloth2:0x22406E, skin:0xE8B98C, beard:0x4A2E1A, hair:0x3A2415, metal:0xA3ADBB, metal2:0x5C6672,
-    accent:0xC4483B, armored:true, crown:true, cape:0x2E63A8, emblem:true, tabard:0x1E3A6E};
-  if(wid==="bow") o.bow=true; else { o.weapon = wid==="spear"?"spear":"sword"; if(wid!=="spear") o.shield="round"; }
+  const o={h:hgt, cloth:0x2E5CC8, cloth2:0x2448A6, skin:0xE8B98C, beard:0x4A2E1A, hair:0x3A2415, metal:0xC8D2DE, metal2:0x6E7A8A,
+    accent:0xE0463A, armored:true, crown:true, cape:0x3A7AE0, emblem:true, tabard:0x1E3F9E};
+  if(wid==="bow") o.bow=true; else { o.weapon = wid==="spear"?"spear":"sword"; }
   const rider=makeRig(o); rider.userData.rig.mounted=true; if(wid==="bow") rider.userData.rig.bowPose=true;
-  const horse=makeHorse({h:hgt*1.02, coat:0x6B4A2E, coat2:0x55391F, cloth:0x1E3A6E});
+  const horse=makeHorse({h:hgt*1.02, coat:0x9A5230, coat2:0x7A3E22, cloth:0x2450B8, shield:true});
   rider.position.set(0,.66*k,-.03*k);
   const root=new THREE.Group(); root.add(horse); root.add(rider);
   root.userData.rig=rider.userData.rig; root.userData.horse=horse.userData.horse; root.userData.rider=rider;
@@ -2234,8 +2247,8 @@ function mkHumanoid(kind){
   if(kind==="__legacyHero") return makeRig({h:5.6, cloth:0x2A4E86, cloth2:0x22406E, skin:0xE8B98C, beard:0x4A2E1A,
     metal:0xA3ADBB, metal2:0x5C6672, accent:0xC4483B, armored:true, helm:true, plume:true, cape:0x2E63A8,
     weapon:"sword", shield:"round", emblem:true, tabard:0x1E3A6E});
-  return makeRig({h:4.6, cloth:0x40639C, cloth2:0x33507E, skin:0xDFAC7E,
-    metal:0xA6AEBA, accent:0x9AA8C4, armored:true, helm:true, weapon:"spear", shield:"round"});
+  return makeRig({h:4.9, cloth:0x3E6FD0, cloth2:0x2E56A8, skin:0xDFAC7E,
+    metal:0xC4CEDA, accent:0xE0463A, armored:true, helm:true, weapon:"spear", shield:"round"});
 }
 
 /* شخصية زخرفية ثابتة (رماة الأبراج وحرس الثكنات والقلعة) */
@@ -2277,13 +2290,13 @@ function mkEnemy(t){
     return g;
   }
   const C = {
-    grunt  :{h:4.6, bulk:1.05, bare:true, beast:true, skin:D.col, cloth:D.col, cloth2:D.dark, glow:0xFFD37A, horns:true, hunch:.26, weapon:"club", skirt:true},
-    runner :{h:4.2, bulk:.72, bare:true, beast:true, skin:D.col, cloth:D.col, cloth2:D.dark, glow:0xFFC07A, hunch:.72, longHead:true, ears:true, tail:true, claws:true, crouch:true},
-    brute  :{h:6.6, bulk:1.6, beast:true, cloth:D.col, cloth2:D.dark, skin:0x7A4038, glow:0xFF9A6A, horns:true, armored:true,
-             metal:0x6E675C, metal2:0x4E4840, accent:0x4A2030, hunch:.34, weapon:"axe", shield:"tower", headScale:.85},
-    spitter:{h:4.9, bulk:.9, robe:true, cloth:D.col, cloth2:D.dark, skin:0x6B5480, glow:0xC9A0FF, hood:true, hunch:.22, weapon:"staff", claws:true},
-    breaker:{h:10.5, bulk:2.05, beast:true, cloth:D.col, cloth2:D.dark, skin:0x5E2B22, glow:0xFF7A4A, armored:true,
-             metal:0x5A4038, metal2:0x3E2A24, accent:0x2E1010, cape:0x3A1414, crown:true, hunch:.4, weapon:"hammer", headScale:.72},
+    grunt  :{h:5.3, bulk:1.05, bare:true, beast:true, skin:D.col, cloth:D.col, cloth2:D.dark, glow:0xFF5A3A, horns:true, hunch:.26, weapon:"club", skirt:true},
+    runner :{h:4.8, bulk:.72, bare:true, beast:true, skin:D.col, cloth:D.col, cloth2:D.dark, glow:0xFF7A3A, hunch:.72, longHead:true, ears:true, tail:true, claws:true, crouch:true},
+    brute  :{h:7.6, bulk:1.6, beast:true, cloth:D.col, cloth2:D.dark, skin:D.col, glow:0xFF6A4A, horns:true, armored:true,
+             metal:0x3A3040, metal2:0x26202E, accent:0xC0402E, hunch:.34, weapon:"axe", shield:"tower", headScale:.85},
+    spitter:{h:5.6, bulk:.9, robe:true, cloth:D.col, cloth2:D.dark, skin:0xE6D8F0, glow:0xE0B0FF, hood:true, hunch:.22, weapon:"staff", claws:true},
+    breaker:{h:11.5, bulk:2.05, beast:true, cloth:D.col, cloth2:D.dark, skin:0xE0D6C8, glow:0xFF5A3A, armored:true,
+             metal:0x2E2430, metal2:0x1E1822, accent:0xC83A32, cape:0x3A1414, crown:true, hunch:.4, weapon:"hammer", headScale:.72},
     mother :{h:9.8, bulk:1.3, robe:true, cloth:D.col, cloth2:D.dark, skin:0x6A4A86, glow:0xD0A0FF, hood:true, arms4:true, claws:true,
              cape:0x2A1440, crown:true, hunch:.12, weapon:"staff", float:true},
     tyrant :{h:12.4, bulk:1.1, cloth:D.col, cloth2:D.dark, skin:0x2E3A52, glow:0x8AC8FF, armored:true, spikes:true,
@@ -2601,6 +2614,7 @@ function nextStage(){
   G.castleMax=CASTLE_LV[0].hp+G.stage*400; G.castleHp=G.castleMax;
   for(const e of G.enemies) freeEnemyRig(e.t,e.obj);
   for(const s of G.soldiers) freeSoldierRig(s.obj);
+  for(const s of G.shots) if(s.obj) freeShotRig(s.obj);
   G.enemies=[]; G.soldiers=[]; G.buildings=[]; G.walls=[]; G.shots=[]; G.queue=[];
   G.hero.hp=G.hero.max; G.hero.x=0; G.hero.z=30; G.hero.dead=0;
   G.heroObj.visible=true; G.move=null; G.holdAt=null; G.hover=null; G.selected=null;
@@ -2940,7 +2954,7 @@ glc.addEventListener("pointermove",e=>{
       const k=camDist*.0022, dx=mid.x-pinchMid.x, dy=mid.y-pinchMid.y;
       const rx=Math.cos(camAz), rz=-Math.sin(camAz), fx=-Math.sin(camAz), fz=-Math.cos(camAz);
       G.cam.tx-=(dx*rx+dy*fx)*k; G.cam.tz-=(dx*rz+dy*fz)*k; clampPan();
-      manualPanUntil=G.t+3;
+      manualPanUntil=G.t+2.5;
     }
     pinchD=d; pinchMid=mid; return;
   }
@@ -2960,7 +2974,7 @@ glc.addEventListener("pointermove",e=>{
     const rx=Math.cos(camAz), rz=-Math.sin(camAz);
     const fx=-Math.sin(camAz), fz=-Math.cos(camAz);
     G.cam.tx-=(dx*rx+dy*fx)*k; G.cam.tz-=(dx*rz+dy*fz)*k; clampPan();
-    manualPanUntil=G.t+3;
+    manualPanUntil=G.t+2.5;
   }
 });
 function pickNode(e){
@@ -3084,6 +3098,44 @@ function updateGold(dt){
   }
 }
 
+/* ══════════════════ المقذوفات كمجسمات: رأس متوهّج وذيل قصير، وقوس طيران ══════════════════ */
+const SHOT_POOL=[];
+const SHOT_COL={ arrow:0xFFE9A6, bow:0xBFF3FF, dark:0xC9A6FF, fire:0xFFB25A };
+function getShotRig(kind){
+  let o=SHOT_POOL.pop();
+  if(!o){
+    o=new THREE.Group();
+    const head=new THREE.Mesh(geo.sph, new THREE.MeshBasicMaterial({color:0xffffff}));
+    head.scale.setScalar(.6); head.castShadow=false; o.add(head); o.userData.head=head;
+    const trail=new THREE.Mesh(geo.box, new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:.55, depthWrite:false}));
+    trail.castShadow=false; trail.position.z=-2.6; trail.scale.set(.32,.32,5.2); o.add(trail); o.userData.trail=trail;
+    const halo=new THREE.Mesh(geo.sph, new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:.28, depthWrite:false}));
+    halo.scale.setScalar(1.25); halo.castShadow=false; o.add(halo); o.userData.halo=halo;
+  }
+  const c=SHOT_COL[kind]||SHOT_COL.arrow;
+  o.userData.head.material.color.setHex(c); o.userData.trail.material.color.setHex(c); o.userData.halo.material.color.setHex(c);
+  const big = kind==="dark"||kind==="fire";
+  o.userData.head.scale.setScalar(big?1.0:.6); o.userData.halo.scale.setScalar(big?2.0:1.25);
+  o.userData.trail.scale.set(big?.5:.32,big?.5:.32,big?4:5.2);
+  o.visible=true; world.add(o); return o;
+}
+function freeShotRig(o){ world.remove(o); SHOT_POOL.push(o); }
+/* ضربة القائد: قوس ضوئي أمامه يتلاشى في ربع ثانية */
+let SLASH=null, slashT=0, prevSwing=0;
+function spawnSlash(x,z,dir,col){
+  if(!SLASH){ SLASH=new THREE.Mesh(new THREE.RingGeometry(3.2,5.6,24,1,0,1.9),
+    new THREE.MeshBasicMaterial({color:col||0xFFF1C8, transparent:true, opacity:.8, side:THREE.DoubleSide, depthWrite:false}));
+    SLASH.rotation.x=-Math.PI/2; SLASH.castShadow=false; world.add(SLASH); }
+  SLASH.material.color.setHex(col||0xFFF1C8);
+  SLASH.position.set(x, terrainY(x,z)+2.2, z); SLASH.rotation.z=-dir+Math.PI/2-.95; SLASH.visible=true; slashT=.26;
+}
+function updateSlash(dt){
+  if(!SLASH||!SLASH.visible) return;
+  slashT-=dt; const k=Math.max(0,slashT/.26);
+  SLASH.material.opacity=.8*k; SLASH.scale.setScalar(1+(1-k)*.5);
+  if(slashT<=0) SLASH.visible=false;
+}
+
 /* ══════════════════ جسيمات ══════════════════ */
 const poolP=[];
 function poof(x,z,col,n){
@@ -3092,8 +3144,8 @@ function poof(x,z,col,n){
     let m=poolP.pop();
     if(!m){ m=new THREE.Mesh(geo.box,new THREE.MeshBasicMaterial({color:col})); world.add(m); }
     else { m.material.color.setHex(col); m.visible=true; world.add(m); }
-    const a=rnd(0,7), sp=rnd(3,9);
-    m.position.set(x,1.2,z); m.scale.setScalar(rnd(.16,.34));
+    const a=rnd(0,7), sp=rnd(4,11);
+    m.position.set(x,terrainY(x,z)+1.6,z); m.scale.setScalar(rnd(.22,.44));
     G.fx.push({m,vx:Math.cos(a)*sp,vy:rnd(3,8),vz:Math.sin(a)*sp,age:0,life:rnd(.35,.8)});
   }
 }
@@ -3129,9 +3181,12 @@ function update(dt){
     const m=Math.hypot(vx,vz);
     if(m){ const spd=h.sp*Math.min(1,m); h.x+=vx/m*spd*dt; h.z+=vz/m*spd*dt; keepIn(h);
       h.bob+=dt*11; h.dir=Math.atan2(vx,vz); h.moving=true;
-      if(G.t>manualPanUntil){ const ddx=h.x-G.cam.tx, ddz=h.z-G.cam.tz, dd=Math.hypot(ddx,ddz), dead=camDist*.16;
-        if(dd>dead){ const kk=Math.min(1,dt*5)*(1-dead/dd); G.cam.tx+=ddx*kk; G.cam.tz+=ddz*kk; clampPan(); } } }
-    else { h.bob+=dt*2.2; h.moving=false; }
+      G.camLeadX=vx/m*camDist*.07; G.camLeadZ=vz/m*camDist*.07; }
+    else { h.bob+=dt*2.2; h.moving=false; G.camLeadX=(G.camLeadX||0)*.9; G.camLeadZ=(G.camLeadZ||0)*.9; }
+    if(G.t>manualPanUntil && !G.selected){
+      const k=1-Math.exp(-dt*3.2), gx=h.x+(G.camLeadX||0), gz=h.z+(G.camLeadZ||0);
+      G.cam.tx+=(gx-G.cam.tx)*k; G.cam.tz+=(gz-G.cam.tz)*k; clampPan();
+    }
     h.atkCd-=dt; h.swing=Math.max(0,h.swing-dt*4);
     if(typeof heroCombat==="function") heroCombat(h,dt);
     else if(h.atkCd<=0){
@@ -3345,25 +3400,36 @@ function update(dt){
   /* المقذوفات */
   for(let i=G.shots.length-1;i>=0;i--){
     const s=G.shots[i];
+    if(!s.obj){ s.obj=getShotRig(s.kind||(s.dark?"dark":"arrow")); s.D=Math.max(1,dist2(s.x,s.z,s.tx,s.tz)); s.y0=s.y||2.2; s.arc=s.arc!==undefined?s.arc:Math.min(16,s.D*.13); s.px=s.x; s.pz=s.z; s.py=s.y0; }
     if(s.e&&s.e.hp>0){ s.tx=s.e.x; s.tz=s.e.z; }
     const d=dist2(s.x,s.z,s.tx,s.tz);
-    if(d<2){
+    if(d<2.4){
+      poof(s.tx,s.tz,s.dark?0xC9A6FF:0xFFE9A6,s.splash?10:4);
+      freeShotRig(s.obj);
       if(s.dark){ if(dist2(0,0,s.tx,s.tz)<24){ G.castleHp-=s.dmg*.45;
           if(G.castleHp<=0){ G.castleHp=0; finish(false); return; } } }
       else if(s.e&&s.e.hp>0) hurt(s.e,s.dmg);
       if(s.splash) for(const e of G.enemies) if(e!==s.e&&dist2(e.x,e.z,s.tx,s.tz)<s.splash) hurt(e,s.dmg*.6);
-      poof(s.tx,s.tz,s.dark?0x8A6BD6:0xF3E7C9,s.splash?8:2);
       G.shots.splice(i,1); continue;
     }
+    s.px=s.x; s.py=s.y; s.pz=s.z;
     s.x+=(s.tx-s.x)/d*s.sp*dt; s.z+=(s.tz-s.z)/d*s.sp*dt;
+    const frac=clamp(1-dist2(s.x,s.z,s.tx,s.tz)/s.D,0,1), gy=terrainY(s.tx,s.tz)+2.4;
+    s.y = s.y0+(gy-s.y0)*frac + s.arc*4*frac*(1-frac);
+    const o=s.obj; o.position.set(s.x,s.y,s.z);
+    const vx=s.x-s.px, vy=s.y-s.py, vz=s.z-s.pz;
+    if(vx*vx+vy*vy+vz*vz>1e-6) o.lookAt(s.x+vx, s.y+vy, s.z+vz);
   }
+  updateSlash(dt);
+  if(h.swing>prevSwing+.5 && h.dead<=0) spawnSlash(h.x+Math.sin(h.dir)*3.2, h.z+Math.cos(h.dir)*3.2, h.dir);
+  prevSwing=h.swing;
 
   /* جسيمات */
   for(let i=G.fx.length-1;i>=0;i--){
     const f=G.fx[i]; f.age+=dt;
     if(f.age>f.life){ if(f.m){ world.remove(f.m); poolP.push(f.m); } G.fx.splice(i,1); continue; }
     if(f.m){ f.vy-=22*dt; f.m.position.x+=f.vx*dt; f.m.position.y=Math.max(.1,f.m.position.y+f.vy*dt);
-      f.m.position.z+=f.vz*dt; f.m.rotation.x+=dt*6; f.m.rotation.y+=dt*5; }
+      f.m.position.z+=f.vz*dt; f.m.rotation.x+=dt*6; f.m.rotation.y+=dt*5; const kk=1-f.age/f.life; f.m.scale.setScalar(Math.max(.05,f.m.scale.x*(kk>.5?1:.94))); }
   }
   updateGold(dt);
   for(const f of HOOKS.tick) f(dt);
@@ -3373,8 +3439,8 @@ function update(dt){
 }
 
 /* ══════════════════ الرسم ══════════════════ */
-const NIGHT_SKY = { top:0x070B1E, hor:0x1A2444, bot:0x080A14, fog:0x141A34, sunCol:0x8FA3D8 };
-const LT_NIGHT = { hemi:.3, sun:.34, sunCol:0x7A8CC8, amb:.22, ambCol:0x35356A, fog:NIGHT_SKY.fog, top:NIGHT_SKY.top, hor:NIGHT_SKY.hor, bot:NIGHT_SKY.bot, sky:1 };
+const NIGHT_SKY = { top:0x081240, hor:0x202E74, bot:0x0A102E, fog:0x141E52, sunCol:0x9FB4EE };
+const LT_NIGHT = { hemi:.3, sun:.3, sunCol:0x7A90E0, amb:.2, ambCol:0x2E3280, fog:NIGHT_SKY.fog, top:NIGHT_SKY.top, hor:NIGHT_SKY.hor, bot:NIGHT_SKY.bot, sky:1 };
 const _c1=new THREE.Color();
 const lerpCol=(c,hex,k)=>{ _c1.set(hex).convertSRGBToLinear(); c.lerp(_c1,k); };
 function updateLighting(){
@@ -3386,8 +3452,8 @@ function updateLighting(){
   amb.intensity  += (tgt.amb-amb.intensity)*.05;
   lerpCol(sun.color, tgt.sunCol, .05);
   lerpCol(amb.color, tgt.ambCol, .05);
-  lerpCol(hemi.color, night?0x5A6CA8:0xC9DCF2, .05); lerpCol(hemi.groundColor, night?0x121624:0x3C3828, .05);
-  renderer.toneMappingExposure += ((night?.86:1.02)-renderer.toneMappingExposure)*.05;
+  lerpCol(hemi.color, night?0x6E86D8:0xC9DCF2, .05); lerpCol(hemi.groundColor, night?0x18204A:0x3C3828, .05);
+  renderer.toneMappingExposure += ((night?.8:1.02)-renderer.toneMappingExposure)*.05;
   lerpCol(scene.fog.color, tgt.fog, .05);
   const u=skyMat.uniforms;
   lerpCol(u.top.value, tgt.top, .05); lerpCol(u.hor.value, tgt.hor, .05); lerpCol(u.bot.value, tgt.bot, .05);
@@ -3400,13 +3466,13 @@ function updateLighting(){
   scene.fog.far  = camDist*5.5+5600;
   for(const b of G.buildings) if(b.type==="beacon"){
     const u=b.obj.userData;
-    if(u.light) u.light.intensity += ((night?5.2:0)-u.light.intensity)*.06;
+    if(u.light) u.light.intensity += ((night?7.5:0)-u.light.intensity)*.06;
     if(u.disc){ const R=lightRadius(b);
       u.disc.scale.setScalar(R);
       u.disc.material.opacity += ((night?.13:0)-u.disc.material.opacity)*.06; }
   }
   if(G.castleObj&&G.castleObj.userData.light)
-    G.castleObj.userData.light.intensity += ((night?6:0)-G.castleObj.userData.light.intensity)*.06;
+    G.castleObj.userData.light.intensity += ((night?9:0)-G.castleObj.userData.light.intensity)*.06;
   if(G.safeDisc) G.safeDisc.material.opacity += ((night?.1:0)-G.safeDisc.material.opacity)*.06;
   for(const c of CAMPFIRES){
     c.pl.intensity += ((night?3.2:.6)-c.pl.intensity)*.06;
@@ -3466,16 +3532,7 @@ function drawOverlay(){
     octx.fillStyle="rgba(0,0,0,.5)"; octx.fillRect(p.x-11,p.y,22,3);
     octx.fillStyle="#7FD6C0"; octx.fillRect(p.x-11,p.y,22*(s.hp/s.max),3);
   }
-  // مقذوفات
-  for(const s of G.shots){
-    const p=project(s.x,s.y||2.2,s.z);
-    if(!p.vis) continue;
-    const px=p.x, py=p.y;
-    const d=dist2(s.x,s.z,s.tx,s.tz)||1;
-    const b=project(s.x-(s.tx-s.x)/d*1.6, 2.2, s.z-(s.tz-s.z)/d*1.6);
-    octx.strokeStyle=s.dark?"#B79BF0":"#F7EBCE"; octx.lineWidth=s.dark?4:2.6; octx.lineCap="round";
-    octx.beginPath(); octx.moveTo(px,py); octx.lineTo(b.x,b.y); octx.stroke();
-  }
+  // المقذوفات صارت مجسمات (انظر getShotRig)
   // أرقام الذهب
   for(const q of G.goldPops){
     const k=1-q.age/1.2;

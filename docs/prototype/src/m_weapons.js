@@ -66,7 +66,7 @@ function heroCombat(h, dt){
   h.atkCd=P.cd; h.swing=1;
   const mul=wpHeroMul();
   if(W.id==="bow"){
-    G.shots.push({ x:h.x, y:terrainY(h.x,h.z)+4, z:h.z, tx:tgt.x, tz:tgt.z, e:tgt, dmg:P.dmg*mul, sp:P.shotSp });
+    G.shots.push({ x:h.x, y:terrainY(h.x,h.z)+7, z:h.z, tx:tgt.x, tz:tgt.z, e:tgt, dmg:P.dmg*mul, sp:P.shotSp, kind:"bow", arc:5 });
     SFX.shoot(); return;
   }
   let dm=P.dmg*mul;

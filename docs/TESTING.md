@@ -32,7 +32,7 @@ python3 mktests.py            # يولّد t3d.html / t3dfast.html / game3d.js �
 node --check game3d.js && node fulltest.js
 ```
 
-المصادر في `docs/prototype/src/` (النواة + أربع وحدات + `assemble.py` الذي يولّد `dawnkeep-3d.html`).
+المصادر في `docs/prototype/src/` (النواة `dk3d.core.html` + أربع وحدات + `assemble.py` الذي يولّد `dawnkeep-3d.html`). النواة هي مصدر الحقيقة (لم تعد تُولَّد من رقع)؛ أي تعديل يُكتب عليها مباشرة أو كرقعة فوقها.
 
 ## قواعد
 
