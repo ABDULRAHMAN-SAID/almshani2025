@@ -148,14 +148,19 @@
     .frame{max-width:none;gap:0;height:100dvh}
     .masthead,.foot,.log{display:none}
     .stage{border:none;border-radius:0;aspect-ratio:auto;flex:1;height:100dvh}
-    .icon{width:38px;height:38px;font-size:16px}
+    .icon{width:44px;height:44px;font-size:18px}
     .abil{width:74px;height:74px}
-    .mini{width:30px;height:30px;font-size:17px}
+    .mini{width:40px;height:40px;font-size:19px}
+    .gate{gap:8px}
+    .abils{left:calc(12px + env(safe-area-inset-left,0px));bottom:calc(12px + env(safe-area-inset-bottom,0px))}
+    button.ghost{padding:11px 14px;font-size:13.5px}
     button.primary{padding:13px 24px;font-size:16px}
     .bcard{padding:10px 12px}
-    .sheet{width:100%;border-radius:14px 14px 0 0;padding:8px 10px}
-    .cards{grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:6px}
-    .bcard img{height:44px}
+    .sheet{width:100%;border-radius:14px 14px 0 0;padding:8px 10px;max-height:168px}
+    .sheet .cards{display:flex;overflow-x:auto;gap:6px;scroll-snap-type:x mandatory;padding-bottom:2px}
+    .sheet .bcard{flex:0 0 124px;scroll-snap-align:start}
+    .sheet .bcard .d{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+    .bcard img{height:40px}
     .gate{padding:4px 7px;font-size:11.5px}
     .preview{display:none}
     .gold b{font-size:24px}
@@ -163,7 +168,7 @@
     .hud-tl{right:calc(10px + env(safe-area-inset-right,0px))}
     .hud-tr{left:calc(10px + env(safe-area-inset-left,0px))}
     .bottomwrap{bottom:calc(8px + env(safe-area-inset-bottom,0px))}
-    .joy{width:132px;height:132px;right:calc(16px + env(safe-area-inset-right,0px))}
+    .joy{width:132px;height:132px;right:calc(16px + env(safe-area-inset-right,0px));bottom:calc(14px + env(safe-area-inset-bottom,0px))}
   }
   .stage{touch-action:none}
   .rotate{position:absolute;inset:0;display:none;place-items:center;background:#120E1C;z-index:9;
@@ -233,6 +238,7 @@
 
     <div class="bottomwrap">
       <div class="lanes" id="dockRow"></div>
+      <div class="lanes" id="orderRow" hidden></div>
       <div class="sheet" id="sheet" hidden>
         <div class="sheet-head"><h3 id="dockTitle">عقدة بناء</h3><span id="dockHint"></span>
           <button class="icon" id="sheetClose" title="إغلاق">✕</button></div>
@@ -272,24 +278,24 @@ const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /* ══════════════════ تعريفات المحتوى ══════════════════ */
 const STAGES = [
-  { name:"مرج الجمر", nights:6, lanes:3, ringA:26, slotsA:7, ringB:40, slotsB:9, ringC:74, slotsC:6, boss:"breaker",
-    grass:"#5E9A3C", grass2:"#6FAE48", grass3:"#4F8A34", dirt:"#8A7046", road:"#A8865A", roadEdge:"#8C6E46",
-    rock:"#8A8478", sand:"#D6C79A", snow:"#F3F5F7", snowLine:62, water:0x2F7FA0,
-    tree:[0x3E7A2A,0x5C9A2E,0xA8811A], pine:0x2E6A34, trunk:0x5C4228, mix:[.42,.55,.03],
-    flowers:[0xFFE066,0xFFFFFF,0xE0563F,0xC79BFF], mountRock:0x6A655E, cloud:0xFFFFFF,
-    skyTop:0x4E8FD6, skyHor:0xC9DEEC, skyBot:0x6F7E6A, fog:0xBFD6E8, sun:0xFFE8C0 },
-  { name:"ممر الرماد", nights:6, lanes:4, ringA:26, slotsA:8, ringB:40, slotsB:10, ringC:74, slotsC:7, boss:"mother",
+  { name:"مرج الجمر", nights:6, lanes:3, ringA:29, slotsA:7, ringB:41, slotsB:9, ringC:74, slotsC:6, boss:"breaker",
+    grass:"#6A9440", grass2:"#7EA64A", grass3:"#4C7A34", dirt:"#7A6440", road:"#A8865A", roadEdge:"#8C6E46",
+    rock:"#8A8478", sand:"#D6C79A", snow:"#F3F5F7", snowLine:62, water:0x1B4E6C,
+    tree:[0x3E7A2A,0x5C9A2E,0x8E5F2A], pine:0x2A5E34, trunk:0x5C4228, mix:[.42,.55,.03],
+    flowers:[0xE8CC6A,0xF4F0E4,0xC85A48,0xB79BE6], mountRock:0x6A655E, cloud:0xFFFFFF,
+    skyTop:0x3A7CCA, skyHor:0xA8C6E6, skyBot:0x4E4A44, fog:0xAFC6DC, sun:0xFFE8C0 },
+  { name:"ممر الرماد", nights:6, lanes:4, ringA:29, slotsA:8, ringB:41, slotsB:10, ringC:74, slotsC:7, boss:"mother",
     grass:"#7A6E52", grass2:"#8B7C5C", grass3:"#6A5E44", dirt:"#5A4A3C", road:"#8B7050", roadEdge:"#6E5840",
-    rock:"#5E5652", sand:"#8A7A62", snow:"#9A8A80", snowLine:999, water:0x4A5A50,
+    rock:"#5E5652", sand:"#8A7A62", snow:"#9A8A80", snowLine:999, water:0x2E4A44,
     tree:[0x5A4A2A,0x6E5A2C,0x8A5A1E], pine:0x3E4A2E, trunk:0x3A2E24, mix:[.3,.2,.5],
     flowers:[0xD8A040,0xB8B0A0,0xC04A30], mountRock:0x3E3634, cloud:0xD8C0A8,
     skyTop:0xB07A5A, skyHor:0xE0B48A, skyBot:0x5A4A40, fog:0xD8B08A, sun:0xFFC890 },
-  { name:"مرتفعات الليل", nights:6, lanes:5, ringA:27, slotsA:9, ringB:41, slotsB:11, ringC:76, slotsC:8, boss:"tyrant",
+  { name:"مرتفعات الليل", nights:6, lanes:5, ringA:29, slotsA:9, ringB:42, slotsB:11, ringC:76, slotsC:8, boss:"tyrant",
     grass:"#4E6A5C", grass2:"#5A7A66", grass3:"#425A50", dirt:"#5A5E60", road:"#6E7480", roadEdge:"#5A606A",
-    rock:"#6A7484", sand:"#9AA4A8", snow:"#EAF0F6", snowLine:10, water:0x3A6A8A,
+    rock:"#6A7484", sand:"#9AA4A8", snow:"#EAF0F6", snowLine:10, water:0x24506E,
     tree:[0x2E5040,0x3A6050,0x4A5A48], pine:0x2A4A40, trunk:0x3A3430, mix:[.75,.1,.15],
     flowers:[0xFFFFFF,0xC8D8FF,0x9AB0FF], mountRock:0x4A5462, cloud:0xC8D4E4,
-    skyTop:0x2E4670, skyHor:0x9AB0C8, skyBot:0x3E4A5A, fog:0x8FA4BC, sun:0xE8EEFF }
+    skyTop:0x2E4670, skyHor:0x9AB0C8, skyBot:0x3A4250, fog:0x8FA4BC, sun:0xE8EEFF }
 ];
 
 const B = {
@@ -314,9 +320,9 @@ const E = {
   brute  :{ n:"مدرّع", hh:7.2, hp:200,sp:2.2, dmg:20, r:1.5, armor:.4,  col:0x8E3A57, dark:0x5C2138, sieger:true },
   spitter:{ n:"رامي", hh:5.4, hp:64, sp:2.9, dmg:12, r:1.0, armor:0,   col:0x7A5BA8, dark:0x4C3670, ranged:14, sieger:true },
   flyer  :{ n:"خفّاش", hh:3.4, hp:46, sp:5.8, dmg:9,  r:.9,  armor:0,   col:0x5E6FA8, dark:0x3A4570, fly:true },
-  breaker:{ n:"حاطم الأسوار", hh:12, hp:1250, sp:2.0, dmg:40, r:2.6, armor:.35, col:0x6E2A2A, dark:0x3E1414, boss:true, ability:"slam", sieger:true },
-  mother :{ n:"أمّ الظلال", hh:11.2, hp:2100, sp:2.2, dmg:38, r:2.5, armor:.3,  col:0x4A2A6E, dark:0x2A1440, boss:true, ability:"summon" },
-  tyrant :{ n:"طاغية الليل", hh:12.8, hp:2900, sp:2.1, dmg:48, r:2.9, armor:.4,  col:0x24304E, dark:0x121A2C, boss:true, ability:"volley" }
+  breaker:{ n:"حاطم الأسوار", hh:12, hp:1500, sp:2.3, dmg:40, r:2.6, armor:.35, col:0x6E2A2A, dark:0x3E1414, boss:true, ability:"slam", sieger:true },
+  mother :{ n:"أمّ الظلال", hh:11.2, hp:2400, sp:2.4, dmg:38, r:2.5, armor:.3,  col:0x4A2A6E, dark:0x2A1440, boss:true, ability:"summon" },
+  tyrant :{ n:"طاغية الليل", hh:12.8, hp:3300, sp:2.4, dmg:48, r:2.9, armor:.4,  col:0x24304E, dark:0x121A2C, boss:true, ability:"volley" }
 };
 
 const BOONS = [
@@ -347,7 +353,8 @@ function newGame(){
 newGame();
 
 const dist2 = (a,b,c,d)=>Math.hypot(a-c,b-d);
-const keepIn=o=>{ const r=Math.hypot(o.x,o.z); if(r>PLAY_R){ o.x*=PLAY_R/r; o.z*=PLAY_R/r; } };
+const keepIn=o=>{ const r=Math.hypot(o.x,o.z); if(r>PLAY_R){ o.x*=PLAY_R/r; o.z*=PLAY_R/r; }
+  if(LAKE){ const dx=o.x-LAKE.x, dz=o.z-LAKE.z, d=Math.hypot(dx,dz), R=LAKE.r*1.04; if(d<R){ const k=R/(d||1); o.x=LAKE.x+dx*k; o.z=LAKE.z+dz*k; } } };
 const clamp=(v,a,b)=>v<a?a:v>b?b:v;
 const rnd=(a,b)=>a+Math.random()*(b-a);
 const log=m=>document.getElementById("log").textContent=m;
@@ -364,11 +371,13 @@ const renderer = new THREE.WebGLRenderer({canvas:glc, antialias:!MOBILE, powerPr
 renderer.setPixelRatio(Math.min(MOBILE?1.6:2, devicePixelRatio||1));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = MOBILE ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
+if(MOBILE) renderer.shadowMap.autoUpdate=false;
 renderer.outputEncoding = THREE.sRGBEncoding;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.0;
+renderer.toneMappingExposure = .95;
 
 const scene = new THREE.Scene();
+scene.matrixAutoUpdate=false;
 const camera = new THREE.PerspectiveCamera(42, 16/10, 1.5, 7000);
 /* حدود الكاميرا: أبعاد العالم خمسة أضعاف — والضباب لا يقترب أبداً من ساحة اللعب */
 const CAM_MIN=64, CAM_MAX=620, PAN=235;
@@ -421,7 +430,7 @@ function envTexture(top, hor, bot){
   g.fillStyle=grd; g.fillRect(0,0,64,32);
   const t=new THREE.CanvasTexture(c);
   t.mapping=THREE.EquirectangularReflectionMapping;
-  const rt=new THREE.WebGLCubeRenderTarget(96).fromEquirectangularTexture(renderer,t);
+  const rt=new THREE.WebGLCubeRenderTarget(MOBILE?128:256).fromEquirectangularTexture(renderer,t);
   return rt.texture;
 }
 
@@ -429,12 +438,12 @@ function envTexture(top, hor, bot){
 const lin = hex => new THREE.Color(hex).convertSRGBToLinear();
 const skyMat = new THREE.ShaderMaterial({
   uniforms:{ top:{value:lin(0x4E8FD6)}, hor:{value:lin(0xC9DEEC)}, bot:{value:lin(0x6F7E6A)},
-    sunDir:{value:new THREE.Vector3(.45,.55,.32).normalize()}, sunCol:{value:lin(0xFFE8C0)}, night:{value:0} },
+    sunDir:{value:new THREE.Vector3(.55,.45,.4).normalize()}, sunCol:{value:lin(0xFFE8C0)}, night:{value:0} },
   vertexShader:`varying vec3 vW; void main(){ vW=normalize(position); gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }`,
   fragmentShader:`uniform vec3 top,hor,bot,sunDir,sunCol; uniform float night; varying vec3 vW;
     void main(){
       vec3 d=normalize(vW); float y=d.y;
-      vec3 c = y>0. ? mix(hor, top, pow(clamp(y,0.,1.), .58)) : mix(hor, bot, pow(clamp(-y,0.,1.), .5));
+      vec3 c = y>0. ? mix(hor, top, pow(clamp(y,0.,1.), .42)) : mix(hor, bot, pow(clamp(-y,0.,1.), .5));
       float s=max(0., dot(d, sunDir));
       c += sunCol*(pow(s,320.)*2.4 + pow(s,7.)*.26)*(1.-night*.9);
       gl_FragColor=vec4(c,1.);
@@ -457,12 +466,12 @@ const moonMat=new THREE.MeshBasicMaterial({color:0xF2F5FF,transparent:true,opaci
 const moon=new THREE.Mesh(new THREE.SphereGeometry(80,20,14), moonMat);
 moon.position.set(-1500,1250,-2300); skyDome.add(moon);
 
-const hemi = new THREE.HemisphereLight(0xEAF2FF, 0x5A5340, .5);
+const hemi = new THREE.HemisphereLight(0xC9DCF2, 0x3C3828, .5);
 hemi.color.convertSRGBToLinear(); hemi.groundColor.convertSRGBToLinear();
 scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xFFF1D6, 1.5);
 sun.color.convertSRGBToLinear();
-sun.position.set(150, 230, 110);
+sun.position.set(150, 170, 110);
 sun.castShadow = true;
 sun.shadow.mapSize.set(MOBILE?1024:2048, MOBILE?1024:2048);
 sun.shadow.bias = -0.0005;
@@ -533,7 +542,7 @@ function mat(hex, opts){
   if(tex && TEX[tex]) m.map = TEX[tex];
   matCache.set(k,m); return m;
 }
-const METAL = o => Object.assign({roughness:.34, metalness:.85}, o||{});
+const METAL = o => Object.assign({roughness:.46, metalness:.72, envMapIntensity:.8}, o||{});
 const CLOTH = o => Object.assign({roughness:.95, metalness:0, tex:"cloth"}, o||{});
 const SKIN  = o => Object.assign({roughness:.68, metalness:0}, o||{});
 const STONE = o => Object.assign({roughness:.92, metalness:.02, flatShading:true, tex:"stone"}, o||{});
@@ -544,28 +553,30 @@ function part(g, m, x,y,z, sx,sy,sz, rx,ry,rz){
   if(sz===undefined) sz=sx;
   o.position.set(x,y,z); o.scale.set(sx,sy,sz);
   if(rx||ry||rz) o.rotation.set(rx||0, ry||0, rz||0);
-  o.castShadow = true; o.receiveShadow = true;
+  o.castShadow = Math.max(sx,sy,sz)>=.12; o.receiveShadow = true;
   return o;
 }
 /* دمج عدة أشكال في هندسة واحدة (للأشجار والجبال المكرّرة) */
 const M4=(x,y,z,sx,sy,sz,rx,ry,rz)=>new THREE.Matrix4().compose(new THREE.Vector3(x,y,z),
   new THREE.Quaternion().setFromEuler(new THREE.Euler(rx||0,ry||0,rz||0)), new THREE.Vector3(sx,sy===undefined?sx:sy,sz===undefined?sx:sz));
 function mergeGeos(items){
-  const pos=[], nor=[], col=[];
+  const pos=[], nor=[], col=[], uv=[];
   const v=new THREE.Vector3(), nm=new THREE.Matrix3();
   for(const it of items){
     const g=it.g.index?it.g.toNonIndexed():it.g;
-    const p=g.attributes.position, n=g.attributes.normal;
+    const p=g.attributes.position, n=g.attributes.normal, u=g.attributes.uv;
     nm.getNormalMatrix(it.m);
     for(let i=0;i<p.count;i++){
       v.fromBufferAttribute(p,i).applyMatrix4(it.m); pos.push(v.x,v.y,v.z);
       v.fromBufferAttribute(n,i).applyMatrix3(nm).normalize(); nor.push(v.x,v.y,v.z);
       if(it.c) col.push(it.c.r,it.c.g,it.c.b);
+      if(u) uv.push(u.getX(i),u.getY(i)); else uv.push(0,0);
     }
   }
   const out=new THREE.BufferGeometry();
   out.setAttribute("position", new THREE.Float32BufferAttribute(pos,3));
   out.setAttribute("normal", new THREE.Float32BufferAttribute(nor,3));
+  out.setAttribute("uv", new THREE.Float32BufferAttribute(uv,2));
   if(col.length) out.setAttribute("color", new THREE.Float32BufferAttribute(col,3));
   return out;
 }
@@ -574,7 +585,7 @@ const TREEG = {
   pineCanopy: mergeGeos([ {g:geo.cone8, m:M4(0,3.3,0, 2.3,3.6,2.3)}, {g:geo.cone8, m:M4(0,5.4,0, 1.8,3.2,1.8)},
                           {g:geo.cone8, m:M4(0,7.2,0, 1.25,2.8,1.25)} ]),
   pineTrunk: (()=>{ const g=new THREE.CylinderGeometry(.2,.42,3.4,7); g.translate(0,1.7,0); return g; })(),
-  oakCanopy: mergeGeos([ {g:geo.ico, m:M4(0,5.4,0, 2.5,2.2,2.5)}, {g:geo.ico, m:M4(1.4,4.5,.6, 1.7,1.5,1.7)},
+  oakCanopy: mergeGeos([ {g:geo.ico1, m:M4(0,5.4,0, 2.5,2.2,2.5)}, {g:geo.ico, m:M4(1.4,4.5,.6, 1.7,1.5,1.7)},
                          {g:geo.ico, m:M4(-1.3,4.7,-.5, 1.8,1.6,1.8)}, {g:geo.ico, m:M4(.2,6.7,-.3, 1.6,1.4,1.6)},
                          {g:geo.ico, m:M4(-.3,4.3,1.4, 1.5,1.3,1.5)} ]),
   oakTrunk: mergeGeos([ {g:new THREE.CylinderGeometry(.3,.6,4.4,7), m:M4(0,2.2,0, 1,1,1)},
@@ -587,10 +598,65 @@ const TREEG = {
   bush: mergeGeos([ {g:geo.ico, m:M4(0,.7,0, 1,.8,1)}, {g:geo.ico, m:M4(.7,.5,.3, .7,.6,.7)}, {g:geo.ico, m:M4(-.6,.55,-.3, .65,.55,.65)} ])
 };
 
+/* دمج كل الشبكات الثابتة في مجموعة حسب الخامة — نداء رسم واحد لكل خامة بدل عشرات */
+const _inv=new THREE.Matrix4(), _loc=new THREE.Matrix4();
+function bakeStatic(g){
+  g.updateMatrixWorld(true);
+  _inv.copy(g.matrixWorld).invert();
+  const groups=new Map(), remove=[];
+  g.traverse(o=>{
+    if(!o.isMesh || o===g || o.userData.anim || o.material.transparent) return;
+    let up=o.parent; while(up && up!==g){ if(up.userData.anim) return; up=up.parent; }
+    _loc.multiplyMatrices(_inv, o.matrixWorld);
+    const key=o.material.uuid;
+    if(!groups.has(key)) groups.set(key,{m:o.material, items:[], cast:o.castShadow});
+    const gr=groups.get(key); gr.items.push({g:o.geometry, m:_loc.clone()}); gr.cast=gr.cast||o.castShadow;
+    remove.push(o);
+  });
+  for(const o of remove) o.parent.remove(o);
+  for(let k=0;k<3;k++){ const empty=[]; g.traverse(o=>{ if(o!==g && o.isGroup && o.children.length===0 && !o.userData.keep) empty.push(o); }); for(const o of empty) o.parent.remove(o); }
+  for(const gr of groups.values()){
+    const mesh=new THREE.Mesh(mergeGeos(gr.items), gr.m);
+    mesh.castShadow=gr.cast; mesh.receiveShadow=true; g.add(mesh);
+  }
+  return g;
+}
+/* تجميد مصفوفات ما لا يتحرك: لا إعادة حساب كل إطار */
+function freeze(o){
+  o.updateMatrixWorld(true);
+  o.traverse(c=>{ if(!c.userData.anim) c.matrixAutoUpdate=false; });
+  return o;
+}
+/* تجمّع أضواء نقطية ثابت العدد: لا إعادة ترجمة للمُظلِّلات عند بناء منارة، وكلفة محدودة للبكسل */
+const LREQ=[], LPOOL=[];
+(()=>{ const N=MOBILE?5:8; for(let i=0;i<N;i++){ const l=new THREE.PointLight(0xffffff,0,50,2); scene.add(l); LPOOL.push(l); } })();
+function lightReq(parent,x,y,z,color,dist){
+  const a=new THREE.Object3D(); a.position.set(x,y,z); parent.add(a);
+  const r={a, color:new THREE.Color(color).convertSRGBToLinear(), dist, intensity:0};
+  LREQ.push(r); return r;
+}
+function dropLights(owner){
+  for(let i=LREQ.length-1;i>=0;i--){ let p=LREQ[i].a; while(p&&p!==owner) p=p.parent; if(p===owner) LREQ.splice(i,1); }
+}
+const _lp=new THREE.Vector3();
+function assignLights(){
+  for(const r of LREQ){ if(r.intensity<=0.01){ r.k=Infinity; continue; } r.a.getWorldPosition(_lp); r.wx=_lp.x; r.wy=_lp.y; r.wz=_lp.z;
+    r.k=dist2(_lp.x,_lp.z,G.cam.tx,G.cam.tz); }
+  LREQ.sort((p,q)=>p.k-q.k);
+  for(let i=0;i<LPOOL.length;i++){
+    const l=LPOOL[i], r=LREQ[i];
+    if(!r || r.k===Infinity){ l.intensity=0; continue; }
+    l.position.set(r.wx,r.wy,r.wz); l.color.copy(r.color); l.distance=r.dist; l.intensity=r.intensity;
+  }
+}
+
+const MAT_MARK=mat(0xF5C25B,{emissive:0x7A5A10,roughness:.4}), MAT_MARK_ON=mat(0xFFE9A8,{emissive:0xB08A20,roughness:.4});
+const MAT_GATE_DAY=mat(0xFFC864,{emissive:0x8A5E14}), MAT_GATE_NIGHT=mat(0xFFC864,{emissive:0xC48A18}), MAT_FLASH=mat(0xffffff);
+
 /* ══════════════════ الأرض والمرحلة ══════════════════ */
-let world = new THREE.Group(); scene.add(world);
+let world = new THREE.Group(); world.matrixAutoUpdate=false; scene.add(world);
 let LANES=[], SLOTS=[], WALLS=[], groundMesh=null, treeGroup=null, WALL_R=52, WALL_N=18;
-let LAKE=null, WATER=null, FIREFLIES=null, CLOUDS=null, CAMPFIRES=[];
+let LAKE=null, WATER=null, FIREFLIES=null, CLOUDS=null, CAMPFIRES=[], PADS=null;
 const WATER_Y=-6;
 
 /* ═══════════ التضاريس — خمسة أضعاف المساحة القديمة ═══════════ */
@@ -640,13 +706,22 @@ function laneDist(x,z){
   return best;
 }
 /* 0 = مستوٍ تماماً (هضبة القلعة) ، 1 = تضاريس كاملة */
-function terrainY(x,z){
+function terrainYExact(x,z){
   if(!HEIGHT_FN) return 0;
   const keep = clamp((Math.hypot(x,z)-64)/44, 0, 1);
   if(keep<=0) return 0;
   const lane = clamp((laneDist(x,z)-11)/22, 0, 1);
   const h = lane>=1 ? HEIGHT_FN.full(x,z) : HEIGHT_FN.low(x,z)*(1-lane)+HEIGHT_FN.full(x,z)*lane;
   return h*keep;
+}
+/* شبكة الارتفاعات المبنية مع الأرض — كل استعلام وقت التشغيل أربع قراءات فقط */
+let HG=null;
+function terrainY(x,z){
+  if(!HG) return 0;
+  const s=HG.seg, n=s+1, d=HG.data;
+  const fx=clamp((x+WORLD*.5)/WORLD*s, 0, s-1e-4), fz=clamp((z+WORLD*.5)/WORLD*s, 0, s-1e-4);
+  const ix=fx|0, iz=fz|0, tx=fx-ix, tz=fz-iz, i=iz*n+ix;
+  return (d[i]*(1-tx)+d[i+1]*tx)*(1-tz)+(d[i+n]*(1-tx)+d[i+n+1]*tx)*tz;
 }
 function slopeAt(x,z){
   const y=terrainY(x,z);
@@ -664,23 +739,35 @@ function buildTerrain(cfg){
   const cRock=new THREE.Color(cfg.rock), cSnow=new THREE.Color(cfg.snow), cSand=new THREE.Color(cfg.sand);
   const cLush=new THREE.Color(cfg.grass).offsetHSL(.02,.05,-.06);
   const tmp=new THREE.Color();
+  // المرور الأول: ارتفاع ومسافة الطريق لكل رأس (مرة واحدة) ثم بناء الشبكة
+  const H=new Float32Array(n), LD=new Float32Array(n), grid=new Float32Array((SEG+1)*(SEG+1));
   for(let i=0;i<n;i++){
     const x=pos.getX(i), z=pos.getZ(i);
-    const y=terrainY(x,z); pos.setY(i,y);
+    H[i]=terrainYExact(x,z); LD[i]=laneDist(x,z); pos.setY(i,H[i]);
+    const ix=Math.round((x+WORLD*.5)/WORLD*SEG), iz=Math.round((z+WORLD*.5)/WORLD*SEG);
+    grid[iz*(SEG+1)+ix]=H[i];
+  }
+  HG={seg:SEG, data:grid};
+  const N1=SEG+1, KS=SEG/WORLD*2.5*.32;
+  for(let i=0;i<n;i++){
+    const x=pos.getX(i), z=pos.getZ(i);
+    const y=H[i];
     const r=Math.hypot(x,z);
-    const sl=slopeAt(x,z);
+    const i2=(i%N1<SEG)?i+1:i-1, i3=(i+N1<n)?i+N1:i-N1;
+    const sl=Math.min(1,(Math.abs(H[i2]-y)+Math.abs(H[i3]-y))*KS);
     // بقع عشب ناعمة بدل الترقيط
     const p1=fbm(x*.02+3, z*.02-1, 3), p2=fbm(x*.055-7, z*.055+2, 2);
-    tmp.copy(cA).lerp(cB, clamp((p1-.38)*3,0,1)).lerp(cC, clamp((p2-.55)*3.2,0,1));
-    if(p2>.66) tmp.lerp(cDirt, clamp((p2-.66)*5,0,1)*.65);            // بقع تراب
+    tmp.copy(cA).lerp(cB, clamp((p1-.33)*2.2,0,1)).lerp(cC, clamp((p2-.5)*2.6,0,1));
+    if(p2>.66) tmp.lerp(cDirt, clamp((p2-.66)*5,0,1)*.5);             // بقع تراب
     if(LAKE){ const d=Math.hypot(x-LAKE.x,z-LAKE.z)/LAKE.r;
       if(d<1.9) tmp.lerp(cLush, clamp((1.9-d)/.9,0,1)*.7);              // خضرة أكثف حول البحيرة
-      if(d<1.45 && y<WATER_Y+1.6) tmp.lerp(cSand, clamp((WATER_Y+1.6-y)/1.4,0,1)); }
+      if(d<1.45 && y<WATER_Y+1.6) tmp.lerp(cSand, clamp((WATER_Y+1.6-y)/1.4,0,1));
+      if(d<1.15 && y<WATER_Y+.5) tmp.multiplyScalar(.74); }
     tmp.lerp(cRock, clamp((sl-.14)*1.5,0,1)*.85);                        // صخر على المنحدرات الحادة فقط
     if(y>cfg.snowLine) tmp.lerp(cSnow, clamp((y-cfg.snowLine)/10,0,1)*(1-sl*.5));
     if(r>EDGE_R) tmp.lerp(cRock, clamp((r-EDGE_R)/60,0,1)*.6);
     tmp.multiplyScalar(.9+clamp(y*.012,-.08,.12));                      // القمم أفتح والوديان أغمق
-    const d=laneDist(x,z);
+    const d=LD[i];
     if(d<10.5){ const t=1-clamp((d-6)/4.5,0,1); tmp.lerp(d<6.2?cRoad:cRoadE, t*.85); }
     if(r<62){ tmp.lerp(cDirt, clamp((62-r)/18,0,1)*.25); }                // هضبة القلعة مدكوكة
     tmp.convertSRGBToLinear();
@@ -701,7 +788,7 @@ function buildRoad(L, cfg){
   const len=curve.getLength(), N=Math.max(24,Math.round(len/3.2));
   const W=[-1,-.62,-.28,0,.28,.62,1], AL=[0,.55,.95,1,.95,.55,0], SH=[.9,.94,.86,1,.86,.94,.9];
   const cRoad=lin(cfg.road), cEdge=lin(cfg.roadEdge);
-  const pos=[], col=[], idx=[];
+  const pos=[], col=[], idx=[], uvs=[];
   const p=new THREE.Vector3(), t=new THREE.Vector3(), side=new THREE.Vector3(), up=new THREE.Vector3(0,1,0);
   for(let i=0;i<=N;i++){
     const u=i/N; curve.getPointAt(u,p); curve.getTangentAt(u,t); side.crossVectors(up,t).normalize();
@@ -709,6 +796,7 @@ function buildRoad(L, cfg){
     for(let k=0;k<W.length;k++){
       const x=p.x+side.x*W[k]*w, z=p.z+side.z*W[k]*w;
       pos.push(x, terrainY(x,z)+.14, z);
+      uvs.push(u*len/9, (W[k]+1)*.5);
       const c=k===3?cRoad:cEdge; col.push(c.r*SH[k], c.g*SH[k], c.b*SH[k], AL[k]);
     }
     if(i<N) for(let k=0;k<W.length-1;k++){
@@ -719,7 +807,9 @@ function buildRoad(L, cfg){
   const g=new THREE.BufferGeometry();
   g.setAttribute("position",new THREE.Float32BufferAttribute(pos,3));
   g.setAttribute("color",new THREE.Float32BufferAttribute(col,4));
+  g.setAttribute("uv",new THREE.Float32BufferAttribute(uvs,2));
   g.setIndex(idx); g.computeVertexNormals();
+  L.curve=curve;
   const m=new THREE.MeshStandardMaterial({vertexColors:true, transparent:true, roughness:1, metalness:0,
     depthWrite:false, polygonOffset:true, polygonOffsetFactor:-2, polygonOffsetUnits:-2, map:TEX.ground});
   const mesh=new THREE.Mesh(g,m); mesh.receiveShadow=true; mesh.renderOrder=0;
@@ -729,9 +819,9 @@ function buildRoad(L, cfg){
 /* خصلات عشب وزهور — كثافة تُحسّس بالحياة */
 function buildGrass(cfg){
   const N=MOBILE?1700:4200;
-  const blade=mergeGeos([ {g:new THREE.ConeGeometry(.5,1.5,3), m:M4(0,.75,0, 1,1,1)}, {g:new THREE.ConeGeometry(.5,1.2,3), m:M4(.45,.6,.2, 1,1,1, .1,0,-.35)}, {g:new THREE.ConeGeometry(.5,1.1,3), m:M4(-.4,.55,-.25, 1,1,1, -.15,0,.4)} ]);
+  const blade=mergeGeos([ {g:new THREE.ConeGeometry(.24,1.9,3), m:M4(0,.95,0, 1,1,1)}, {g:new THREE.ConeGeometry(.22,1.5,3), m:M4(.45,.7,.2, 1,1,1, .1,0,-.35)}, {g:new THREE.ConeGeometry(.22,1.4,3), m:M4(-.4,.65,-.25, 1,1,1, -.15,0,.4)}, {g:new THREE.ConeGeometry(.2,1.3,3), m:M4(.15,.6,-.45, 1,1,1, .35,0,.1)}, {g:new THREE.ConeGeometry(.2,1.2,3), m:M4(-.2,.55,.42, 1,1,1, -.35,0,-.15)} ]);
   const m=new THREE.MeshStandardMaterial({roughness:1, metalness:0, flatShading:true});
-  m.color=lin(cfg.grass2).multiplyScalar(1.12);
+  m.color=lin(cfg.grass2).multiplyScalar(.84);
   const inst=new THREE.InstancedMesh(blade,m,N);
   const d=new THREE.Object3D(); let k=0;
   for(let i=0;i<N*3 && k<N;i++){
@@ -750,7 +840,7 @@ function buildGrass(cfg){
   return inst;
 }
 function buildFlowers(cfg){
-  const N=MOBILE?360:800;
+  const N=MOBILE?300:600;
   const m=new THREE.MeshStandardMaterial({roughness:.8, metalness:0});
   const inst=new THREE.InstancedMesh(geo.ico,m,N);
   const d=new THREE.Object3D(), cc=new THREE.Color(); let k=0;
@@ -761,7 +851,7 @@ function buildFlowers(cfg){
     if(laneDist(x,z)<9) continue;
     if(LAKE && Math.hypot(x-LAKE.x,z-LAKE.z)<LAKE.r*1.2) continue;
     const y=terrainY(x,z); if(slopeAt(x,z)>.4 || y>cfg.snowLine-3) continue;
-    d.position.set(x, y+.3, z); d.scale.set(rnd(.2,.34), rnd(.16,.26), rnd(.2,.34));
+    d.position.set(x, y+.25, z); d.scale.set(rnd(.13,.22), rnd(.12,.2), rnd(.13,.22));
     d.updateMatrix(); inst.setMatrixAt(k, d.matrix);
     cc.setHex(pal[(Math.random()*pal.length)|0]).convertSRGBToLinear(); inst.setColorAt(k,cc); k++;
   }
@@ -772,14 +862,14 @@ function buildFlowers(cfg){
 
 /* جبال الأفق: مخروط مشوّه بألوان رأسية (صخر ← ثلج) */
 function mountainGeo(rockHex, snowHex){
-  const g=new THREE.ConeGeometry(1,1,9,6); g.translate(0,.5,0);
+  const g=new THREE.ConeGeometry(1,1,16,10); g.translate(0,.5,0);
   const p=g.attributes.position, col=new Float32Array(p.count*3);
   const rock=lin(rockHex), snow=lin(snowHex), tmp=new THREE.Color();
   for(let i=0;i<p.count;i++){
     const x=p.getX(i), y=p.getY(i), z=p.getZ(i);
-    const j=(vnoise(x*4+y*7+9, z*4-y*3+4)-.5)*.42*(1-y) + (vnoise(x*9,z*9+y*5)-.5)*.12;
+    const j=(fbm(x*4+y*7+9, z*4-y*3+4, 3)-.5)*.62*(1-y) + (vnoise(x*9,z*9+y*5)-.5)*.14;
     p.setX(i, x*(1+j)); p.setZ(i, z*(1+j)); p.setY(i, y+(vnoise(x*6+1,z*6+2)-.5)*.07*(1-y));
-    const k=clamp((y-.8+(vnoise(x*5,z*5)-.5)*.14)/.12,0,1);
+    const k=clamp((y-.86+(vnoise(x*5,z*5)-.5)*.2)/.1,0,1);
     tmp.copy(rock).lerp(snow,k); col[i*3]=tmp.r; col[i*3+1]=tmp.g; col[i*3+2]=tmp.b;
   }
   g.setAttribute("color",new THREE.BufferAttribute(col,3)); g.computeVertexNormals();
@@ -788,20 +878,22 @@ function mountainGeo(rockHex, snowHex){
 function buildMountains(cfg){
   const gm=mountainGeo(cfg.mountRock, cfg.snow);
   const m=new THREE.MeshStandardMaterial({vertexColors:true, roughness:.97, metalness:0, flatShading:true});
-  const N=MOBILE?52:78;
+  const N=MOBILE?70:110;
   const inst=new THREE.InstancedMesh(gm,m,N);
   const d=new THREE.Object3D(), cc=new THREE.Color();
+  const nFar=Math.round(N*.25), nBig=Math.round(N*.45), nSmall=N-nFar-nBig;
   for(let i=0;i<N;i++){
-    const big=i<N*.6;
-    const a=(i/N)*Math.PI*2+rnd(-.08,.08);
-    const r=big?rnd(305,375):rnd(268,305);
+    const far=i<nFar, big=!far&&i<nFar+nBig;
+    const cnt=far?nFar:big?nBig:nSmall, j=far?i:big?i-nFar:i-nFar-nBig;
+    const a=(j/cnt)*Math.PI*2+rnd(-.09,.09)+(far?.3:big?0:.15);
+    const r=far?rnd(385,470):big?rnd(305,375):rnd(268,305);
     const x=Math.cos(a)*r, z=Math.sin(a)*r;
-    const s=big?rnd(60,110):rnd(30,52), h=big?rnd(55,112):rnd(22,44);
-    d.position.set(x, terrainY(x,z)-8, z);
+    const s=far?rnd(120,190):big?rnd(60,110):rnd(30,52), h=far?rnd(120,185):big?rnd(55,112):rnd(22,44);
+    d.position.set(x, far?-40:terrainY(x,z)-8, z);
     d.rotation.set(0,rnd(0,7),0);
     d.scale.set(s, h, s*rnd(.7,1.2));
     d.updateMatrix(); inst.setMatrixAt(i,d.matrix);
-    cc.setHSL(.08,.04,rnd(.72,.95)); inst.setColorAt(i,cc);
+    cc.setHSL(rnd(.05,.1), rnd(.08,.18), far?rnd(.5,.7):rnd(.56,.86)); inst.setColorAt(i,cc);
   }
   inst.castShadow=false; inst.receiveShadow=true;
   if(inst.instanceColor) inst.instanceColor.needsUpdate=true;
@@ -811,19 +903,19 @@ function buildMountains(cfg){
 /* سحب تطفو وتُلقي ظلالاً */
 function buildClouds(cfg){
   const N=MOBILE?48:84;
-  const m=new THREE.MeshStandardMaterial({roughness:1, metalness:0, transparent:true, opacity:.82});
+  const m=new THREE.MeshStandardMaterial({roughness:1, metalness:0, transparent:true, opacity:.74});
   m.color=lin(cfg.cloud);
-  const inst=new THREE.InstancedMesh(geo.sphLow,m,N);
+  const inst=new THREE.InstancedMesh(geo.sph,m,N);
   const d=new THREE.Object3D(); let k=0;
-  const nC=Math.round(N/4.5);
+  const nC=Math.round(N/6.5);
   for(let c=0;c<nC && k<N;c++){
-    const a=rnd(0,7), r=rnd(60,520), y=rnd(250,330);
-    const cx=Math.cos(a)*r, cz=Math.sin(a)*r, S=rnd(16,34);
-    const puffs=3+((Math.random()*3)|0);
+    const a=rnd(0,7), r=rnd(170,520), y=rnd(250,330);
+    const cx=Math.cos(a)*r, cz=Math.sin(a)*r, S=rnd(18,36);
+    const puffs=5+((Math.random()*4)|0);
     for(let p=0;p<puffs && k<N;p++){
-      d.position.set(cx+rnd(-1.1,1.1)*S, y+rnd(-.15,.25)*S, cz+rnd(-.5,.5)*S);
+      d.position.set(cx+rnd(-1.1,1.1)*S, y+Math.abs(rnd(-.1,.35))*S, cz+rnd(-.5,.5)*S);
       const ps=S*rnd(.45,.85);
-      d.scale.set(ps, ps*.34, ps*.8); d.rotation.set(0,rnd(0,7),0);
+      d.scale.set(ps, ps*.5, ps*.8); d.rotation.set(0,rnd(0,7),0);
       d.updateMatrix(); inst.setMatrixAt(k++, d.matrix);
     }
   }
@@ -841,7 +933,7 @@ function buildWater(cfg){
     if(Math.hypot(x,z)>LAKE.r*1.28) p.setY(i,-40);      // الأطراف تُدفن تحت الأرض
   }
   g.userData.base=p.array.slice();
-  const m=new THREE.MeshStandardMaterial({roughness:.12, metalness:.3, transparent:true, opacity:.86, envMapIntensity:1.3});
+  const m=new THREE.MeshStandardMaterial({roughness:.06, metalness:0, transparent:true, opacity:.74, envMapIntensity:.7});
   m.color=lin(cfg.water);
   const mesh=new THREE.Mesh(g,m);
   mesh.position.set(LAKE.x, WATER_Y, LAKE.z); mesh.receiveShadow=true; mesh.renderOrder=1;
@@ -862,13 +954,15 @@ function buildWater(cfg){
 }
 function updateWater(t){
   if(!WATER) return;
+  if(MOBILE && (FRAME&1)) return;
+  if(dist2(LAKE.x,LAKE.z,G.cam.tx,G.cam.tz) > camDist*1.6+LAKE.r) return;
   const g=WATER.geometry, p=g.attributes.position, b=g.userData.base;
   for(let i=0;i<p.count;i++){
     const y0=b[i*3+1]; if(y0<-20) continue;
     const x=b[i*3], z=b[i*3+2];
-    p.setY(i, Math.sin(x*.32+t*1.5)*.13 + Math.cos(z*.27-t*1.2+x*.1)*.11);
+    p.setY(i, Math.sin(x*.55+t*1.6)*.07 + Math.cos(z*.5-t*1.3+x*.12)*.06);
   }
-  p.needsUpdate=true; g.computeVertexNormals();
+  p.needsUpdate=true; if(camDist<340) g.computeVertexNormals();
 }
 
 /* يراعات الليل */
@@ -928,7 +1022,8 @@ function buildCamp(L){
   for(let i=0;i<5;i++){ const a=i/5*Math.PI*2; g.add(part(geo.cyl, wood, Math.cos(a)*1.2,.35,12+Math.sin(a)*1.2, .22,2.4,.22, Math.PI/2,a,0)); }
   const fl=part(geo.cone8, mat(0xFF7A2A,{emissive:0xC03A08,roughness:.4}), 0,1.6,12, 1.2,2.6,1.2); fl.castShadow=false; g.add(fl);
   const fl2=part(geo.cone8, mat(0xFFD070,{emissive:0xD08A18,roughness:.3}), 0,1.4,12, .7,1.7,.7); fl2.castShadow=false; g.add(fl2);
-  const pl=new THREE.PointLight(0xFF6A2A, 0, 40, 2); pl.position.set(0,3,12); g.add(pl);
+  fl.userData.anim=true; fl2.userData.anim=true;
+  const pl=lightReq(g,0,3,12,0xFF6A2A,40);
   CAMPFIRES.push({fl,fl2,pl});
   // أوتاد وأعمدة جماجم
   for(let i=0;i<14;i++){ const a=i/14*Math.PI*2; if(Math.abs(Math.sin(a))<.25&&Math.cos(a)<0) continue;
@@ -939,9 +1034,9 @@ function buildCamp(L){
     g.add(part(geo.plane, new THREE.MeshStandardMaterial({color:0x6E1E1E,side:THREE.DoubleSide,roughness:.95}),
       sx*8+sx*.9,3.6,4, 1.7,1.6,1, 0,Math.PI/2,0));
   }
+  bakeStatic(g);
   g.position.set(p0.x,yy,p0.z);
   g.rotation.y = Math.atan2(-p0.x,-p0.z);
-  g.traverse(o=>{ if(o.isMesh&&o.castShadow!==false){ o.castShadow=true; o.receiveShadow=true; } });
   return g;
 }
 
@@ -956,15 +1051,15 @@ function buildRuins(x,z){
   g.add(part(geo.cyl, stone, 2,1.1,-1, .7,7,.7, Math.PI/2,.6,0));
   g.add(part(geo.box, stone, -2.4,1.6,2.6, 4.2,2.2,.9, 0,.5,0));
   g.add(part(geo.sph, moss, 2.2,.7,3.2, 1.2,.5,1.2));
+  bakeStatic(g);
   g.position.set(x,y,z); g.rotation.y=rnd(0,7);
-  g.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.receiveShadow=true; } });
   return g;
 }
 
 function buildStage(idx){
   // تنظيف
   while(world.children.length) world.remove(world.children[0]);
-  CAMPFIRES=[]; LAKE=null; WATER=null; FIREFLIES=null; CLOUDS=null;
+  CAMPFIRES=[]; LAKE=null; WATER=null; FIREFLIES=null; CLOUDS=null; HG=null; LREQ.length=0; PADS=null;
   const cfg = STAGES[idx];
 
   // ممرات: بوابات الظهور عند نصف قطر 205 والطريق يمتد زخرفياً حتى ممر الجبال
@@ -972,7 +1067,7 @@ function buildStage(idx){
   for(let i=0;i<cfg.lanes;i++){
     const a = (i/cfg.lanes)*Math.PI*2 + 0.6;
     const pts=[], road=[];
-    const at=(r,k)=>{ const wob=Math.sin(i*3.1+k*1.3)*17; return { x:Math.cos(a)*r+Math.cos(a+1.57)*wob, z:Math.sin(a)*r+Math.sin(a+1.57)*wob }; };
+    const at=(r,k)=>{ const wob=Math.sin(i*3.1+k*1.3)*17*Math.min(1,(k-1)/4); return { x:Math.cos(a)*r+Math.cos(a+1.57)*wob, z:Math.sin(a)*r+Math.sin(a+1.57)*wob }; };
     for(let k=9;k>=7;k--) road.push(at(66+k*24.5, k));           // 286 ← 237 (زخرفي)
     for(let k=6;k>=1;k--) pts.push(at(66+k*23, k));               // 204 ← 89
     LANES.push({ name:`ممر ${["الغرب","الشمال","الشرق","الجنوب","الوادي"][i]||i+1}`, a, pts, road:road.concat(pts), light:1 });
@@ -1102,7 +1197,7 @@ function buildStage(idx){
     } else if(v<mix[0]+mix[1]){
       d.scale.set(S*1.1, S*rnd(.95,1.3), S*1.1); d.updateMatrix();
       oakC.setMatrixAt(oi,d.matrix); oakT.setMatrixAt(oi,d.matrix);
-      const base=cfg.tree[Math.random()<.6?0:1+((Math.random()*(cfg.tree.length-1))|0)];
+      const base=cfg.tree[Math.random()<.75?0:1+((Math.random()*(cfg.tree.length-1))|0)];
       cc.setHex(base).offsetHSL(rnd(-.03,.03),rnd(-.08,.06),rnd(-.07,.07)).convertSRGBToLinear(); oakC.setColorAt(oi,cc); oi++;
     } else {
       d.scale.set(S, S*rnd(.9,1.4), S); d.updateMatrix(); dead.setMatrixAt(di++,d.matrix);
@@ -1134,9 +1229,10 @@ function buildStage(idx){
   // القلعة — حجر مفصّل بأبراج وشرفات وبوابة
   const cst = new THREE.Group();
   const stone=mat(0x9A9384,STONE()), stone2=mat(0x857E70,STONE()), stone3=mat(0xADA695,STONE());
-  const roofM=mat(0xA33F32,{roughness:.7,flatShading:true,tex:"stone"});
+  const roofM=mat(0x7A3A30,{roughness:.85,flatShading:true});
   // قاعدة مدرّجة
-  cst.add(part(geo.cyl, stone2, 0,.5,0, 12.5,1,12.5));
+  cst.add(part(geo.cyl, stone2, 0,.5,0, 14.5,1,14.5));
+  cst.add(part(geo.cyl, stone, 0,1.25,0, 13.2,.5,13.2));
   cst.add(part(geo.box, stone, 0,3.2,0, 15,5.4,15));
   cst.add(part(geo.box, stone3, 0,6.1,0, 15.6,.7,15.6));
   // شرفات السور
@@ -1178,54 +1274,53 @@ function buildStage(idx){
   const banner = part(geo.plane, new THREE.MeshStandardMaterial({color:0xF0B93C, side:THREE.DoubleSide, roughness:.85}),
     2.1, 26.6, 0, 4.2, 2.6, 1, 0, Math.PI/2, 0);
   banner.castShadow=false; cst.add(banner); cst.userData.banner = banner;
-  const clight = new THREE.PointLight(0xFFD9A0, 0, 70, 2);
-  clight.position.set(0, 18, 0); cst.add(clight); cst.userData.light = clight;
-  cst.scale.setScalar(1.05);
-  world.add(cst);
-  G.castleObj = cst;
+  cst.userData.light = lightReq(cst,0,18,0,0xFFD9A0,95);
+  gate.userData.anim=true; banner.userData.anim=true;
   // حرس على أسوار القلعة
   for(let i=0;i<6;i++){ const a=i/6*Math.PI*2+.3;
     const f=decoFigure(0x2A4E86,0xE8B98C,0xC4CCD8,i%2?"spear":"bow");
-    f.position.set(Math.cos(a)*7.4*1.05, 7.6*1.05, Math.sin(a)*7.4*1.05); f.rotation.y=-a+Math.PI/2; f.scale.setScalar(1.05);
-    world.add(f); }
+    f.position.set(Math.cos(a)*7.4, 7.6, Math.sin(a)*7.4); f.rotation.y=-a+Math.PI/2;
+    cst.add(f); }
+  bakeStatic(cst);
+  cst.scale.setScalar(1.22);
+  world.add(cst);
+  G.castleObj = cst;
 
   const safe = new THREE.Mesh(new THREE.CircleGeometry(30,56),
     new THREE.MeshBasicMaterial({color:0xFFC864, transparent:true, opacity:.0, side:THREE.DoubleSide}));
   safe.rotation.x=-Math.PI/2; safe.position.y=.05; world.add(safe); G.safeDisc=safe;
 
-  // حلقات العقد
-  const mkPad=(x,z,kind)=>{
-    const g=new THREE.Group();
-    const y=terrainY(x,z);
-    const stone=mat(0x8E8778,STONE()), stone2=mat(0xA69E8C,STONE()), dirt=mat(0x6B5537,{roughness:1});
-    if(kind==="wall"){
-      g.add(part(geo.cyl, dirt, 0,.12,0, 5.6,.24,5.6));
-      for(let i=0;i<6;i++){ const a=i/6*Math.PI*2;
-        g.add(part(geo.cyl, mat(0x5C4228,WOOD()), Math.cos(a)*4.2,.7,Math.sin(a)*4.2, .22,1.4,.22, rnd(-.1,.1),0,rnd(-.1,.1))); }
-      g.add(part(geo.cyl, mat(0x4A3B2C,WOOD()), 0,1.4,0, .16,2.8,.16));
-      g.add(part(geo.plane, new THREE.MeshStandardMaterial({color:0xC4483B,side:THREE.DoubleSide,roughness:.9}),
-        .9,2.4,0, 1.8,1.1,1, 0,Math.PI/2,0));
-    } else {
-      g.add(part(geo.cyl, stone2, 0,.14,0, 4.7,.28,4.7));
-      g.add(part(geo.cyl, mat(0xBDB6A4,STONE()), 0,.3,0, 4.1,.12,4.1));
-      g.add(part(geo.cyl, mat(0x9E968A,STONE()), 0,.3,0, 1,.1,1));
-      for(let i=0;i<10;i++){ const a=i/10*Math.PI*2+.2;
-        g.add(part(geo.box, stone, Math.cos(a)*4.35,.3,Math.sin(a)*4.35, .95,.5,.6, 0,-a,0)); }
-      for(let i=0;i<4;i++){ const a=i/4*Math.PI*2+.4;
-        g.add(part(geo.box, mat(0x8A8172,STONE()), Math.cos(a)*2.3,.38,Math.sin(a)*2.3, 1.5,.16,.5, 0,-a,0)); }
-    }
-    // حلقة إبراز تظهر عند التحويم/التحديد فقط
+  // منصات العقد: هندسة مدمجة بألوان رأسية، نسخة واحدة لكل عقدة — نداءا رسم للكل
+  const cStone=lin(0x8E8778), cStone2=lin(0xA69E8C), cStone3=lin(0xBDB6A4), cStone4=lin(0x9E968A), cStone5=lin(0x8A8172),
+        cDirt=lin(0x7E6A4C), cWood=lin(0x5C4228), cWood2=lin(0x4A3B2C), cFlag=lin(0xC4483B);
+  const padItems=[ {g:geo.cyl, m:M4(0,.14,0, 4.7,.28,4.7), c:cStone2}, {g:geo.cyl, m:M4(0,.3,0, 4.1,.12,4.1), c:cStone3},
+    {g:geo.cyl, m:M4(0,.3,0, 1,.1,1), c:cStone4} ];
+  for(let i=0;i<10;i++){ const a=i/10*Math.PI*2+.2; padItems.push({g:geo.box, m:M4(Math.cos(a)*4.35,.3,Math.sin(a)*4.35, .95,.5,.6, 0,-a,0), c:cStone}); }
+  for(let i=0;i<4;i++){ const a=i/4*Math.PI*2+.4; padItems.push({g:geo.box, m:M4(Math.cos(a)*2.3,.38,Math.sin(a)*2.3, 1.5,.16,.5, 0,-a,0), c:cStone5}); }
+  // منصة السور: أساس حجري بطول القطعة مع وتدين وراية
+  const wallItems=[ {g:geo.box, m:M4(0,.18,0, 17.5,.36,3.4), c:cDirt}, {g:geo.box, m:M4(0,.42,0, 16.5,.16,2.6), c:cStone},
+    {g:geo.cyl, m:M4(-7.6,1.2,1.4, .2,2.4,.2), c:cWood}, {g:geo.cyl, m:M4(7.6,1.2,1.4, .2,2.4,.2), c:cWood},
+    {g:geo.cyl, m:M4(0,1.5,0, .16,3,.16), c:cWood2}, {g:geo.box, m:M4(.95,2.55,0, 1.9,1.1,.06), c:cFlag} ];
+  const padMat=new THREE.MeshStandardMaterial({vertexColors:true, map:TEX.stone, roughness:.92, metalness:.02, flatShading:true});
+  const mkInst=(items, nodes, rot)=>{
+    const inst=new THREE.InstancedMesh(mergeGeos(items), padMat, nodes.length);
+    const d=new THREE.Object3D();
+    nodes.forEach((nd,i)=>{ d.position.set(nd.x, terrainY(nd.x,nd.z), nd.z); d.rotation.set(0, rot?(-nd.a-Math.PI/2):0, 0); d.updateMatrix(); inst.setMatrixAt(i,d.matrix); });
+    inst.castShadow=true; inst.receiveShadow=true; world.add(inst); return inst;
+  };
+  PADS={ build:mkInst(padItems, SLOTS, false), wall:mkInst(wallItems, WALLS, true) };
+  const mkRing=(x,z)=>{
+    const g=new THREE.Group(); g.userData.keep=true;
     const hl=new THREE.Mesh(new THREE.RingGeometry(4.5,5.2,40),
       new THREE.MeshBasicMaterial({color:0xF5C25B,transparent:true,opacity:0,side:THREE.DoubleSide}));
     hl.rotation.x=-Math.PI/2; hl.position.y=.42; g.add(hl); g.userData.hl=hl;
-    // علامة صغيرة تدل أنه موقع بناء (تظهر في الفجر فقط)
-    const mk=part(geo.cone8, mat(0xF5C25B,{emissive:0x7A5A10,roughness:.4}), 0,2.6,0, .5,1.1,.5, Math.PI,0,0);
-    mk.castShadow=false; g.add(mk); g.userData.mark=mk;
-    g.position.set(x,y,z);
+    const mk=part(geo.cone8, MAT_MARK, 0,1.6,0, .3,.6,.3, Math.PI,0,0);
+    mk.castShadow=false; mk.userData.anim=true; g.add(mk); g.userData.mark=mk;
+    g.position.set(x,terrainY(x,z),z);
     world.add(g); return g;
   };
-  for(const sl of SLOTS) sl.ring = mkPad(sl.x, sl.z, "build");
-  for(const w of WALLS) w.ring = mkPad(w.x, w.z, "wall");
+  for(const sl of SLOTS) sl.ring = mkRing(sl.x, sl.z);
+  for(const w of WALLS) w.ring = mkRing(w.x, w.z);
 
   // ── معسكرات الأعداء عند مبدأ كل ممر + أسهم اتجاه في الفجر ──
   for(const L of LANES){
@@ -1233,16 +1328,19 @@ function buildStage(idx){
     const p0=L.pts[0];
     L.arrows=[];
     for(let k=0;k<6;k++){
-      const t=(k+1)/7;
-      const px=p0.x*(1-t), pz=p0.z*(1-t);
+      const u=.36+k*.1, cp=L.curve.getPointAt(u), cn=L.curve.getPointAt(Math.min(1,u+.02));
+      const px=cp.x, pz=cp.z;
       const holder=new THREE.Group();
       holder.position.set(px, terrainY(px,pz)+1.2, pz);
-      const ar=part(geo.cone8, mat(0xE0563F,{emissive:0x701810,roughness:.5}), 0,0,0, 1.7,3.2,1.7, -Math.PI/2,0,0);
+      const ar=part(geo.cone8, mat(0xE0563F,{emissive:0x701810,roughness:.5}), 0,0,0, 1.4,2.8,1.4, -Math.PI/2,0,0);
       ar.castShadow=false; holder.add(ar);
-      holder.lookAt(0, terrainY(px,pz)+1.2, 0);
+      holder.lookAt(cn.x, terrainY(px,pz)+1.2, cn.z);
+      holder.userData.anim=true;
       world.add(holder); L.arrows.push(holder);
     }
   }
+  if(CLOUDS) CLOUDS.userData.anim=true;
+  freeze(world);
   resize();
 }
 
@@ -1297,7 +1395,7 @@ function mkBuilding(type, lv, branch){
       g.add(part(geo.cyl, stone, -3.6,2.4,-3.2, 1.2,4.8,1.2));
       const bl=new THREE.Group(); bl.position.set(-3.6,4.9,-2.2);
       for(let i=0;i<4;i++) bl.add(part(geo.box, wood2, 0,0,0, .5,4.6,.14, 0,0,i*Math.PI/2));
-      g.add(bl); g.userData.spin=bl;
+      bl.userData.anim=true; g.add(bl); g.userData.spin=bl;
     }
   }
   else if(type==="tower"){
@@ -1336,8 +1434,8 @@ function mkBuilding(type, lv, branch){
     flame.castShadow=false; g.add(flame); g.userData.flame=flame;
     const fl2 = part(geo.cone8, mat(0xFFD070,{emissive:0xD08A18,roughness:.3}), 0,ht+2.6,0, 1.2,2.4,1.2);
     fl2.castShadow=false; g.add(fl2); g.userData.flame2=fl2;
-    const pl=new THREE.PointLight(0xFF8A30, 1.6, 34, 2); pl.position.set(0,ht+2.6,0);
-    g.add(pl); g.userData.firelight=pl;
+    flame.userData.anim=true; fl2.userData.anim=true;
+    const pl=lightReq(g,0,ht+2.6,0,0xFF8A30,36); pl.intensity=1.6; g.userData.firelight=pl;
   }
   else if(type==="barracks"){
     g.add(part(geo.box, stone2, 0,.5,0, 10.4,1,6.4));
@@ -1370,8 +1468,8 @@ function mkBuilding(type, lv, branch){
     g.add(part(geo.cyl, mat(0x4E4840,METAL({roughness:.6})), 0,ht+3.3,0, 2.7,.25,2.7));
     const fl = part(geo.sph, mat(0xFFE08A,{emissive:0xE0A020,roughness:.25}), 0,ht+2.3,0, 1.5,1.35,1.5);
     fl.castShadow=false; g.add(fl); g.userData.flame = fl;
-    const pl = new THREE.PointLight(0xFFC864, 0, 90, 2);
-    pl.position.set(0, ht+2.4, 0); g.add(pl); g.userData.light = pl;
+    fl.userData.anim=true;
+    g.userData.light = lightReq(g,0,ht+2.4,0,0xFFC864,95);
     const disc = new THREE.Mesh(new THREE.CircleGeometry(1,56),
       new THREE.MeshBasicMaterial({color:0xFFC864, transparent:true, opacity:0, side:THREE.DoubleSide}));
     disc.rotation.x=-Math.PI/2; disc.position.y=.14; disc.renderOrder=1;
@@ -1383,7 +1481,7 @@ function mkBuilding(type, lv, branch){
   // شارة المستوى
   if(lv>1) for(let i=0;i<lv-1;i++)
     g.add(part(geo.sph, mat(0xF5C25B,METAL({roughness:.3})), -2+i*1.1, .3, 3.2, .3));
-  g.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.receiveShadow=true; } });
+  bakeStatic(g);
   return g;
 }
 
@@ -1413,7 +1511,7 @@ function mkWall(lv){
     for(let k=0;k<8;k++){ const a=k/8*Math.PI*2;
       g.add(part(geo.box, stone3, sx*(L/2)+Math.cos(a)*1.9, h+2.4, Math.sin(a)*1.9, .6,1.1,.6, 0,-a,0)); }
   }
-  g.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.receiveShadow=true; } });
+  bakeStatic(g);
   return g;
 }
 
@@ -1562,9 +1660,9 @@ function makeRig(o){
 
   /* ترس */
   if(o.shield){
-    const s=new THREE.Group(); s.position.set(-.03,-.16,.07); s.rotation.set(Math.PI/2,0,0); aL.el.add(s);
+    const s=new THREE.Group(); s.position.set(-.12,-.2,.12); s.rotation.set(Math.PI/2,0,0); aL.el.add(s);
     const sm=o.shield==="tower"?metal2:(arm?metal:mat(0x6B4A2A,WOOD()));
-    if(o.shield==="tower") s.add(part(geo.cyl, sm, 0,0,0, .28*bulk,.62,.06, Math.PI/2,0,0));
+    if(o.shield==="tower"){ s.add(part(RG.half, sm, 0,0,0, .3*bulk,.7,.2*bulk, 0,Math.PI/2,0)); s.add(part(geo.torus, metal2, 0,.02,0, .3*bulk,.3*bulk,.25, Math.PI/2,0,0)); }
     else s.add(part(RG.shield, sm, 0,0,0, .52,.52,.52));
     s.add(part(geo.sph, gold, 0,.1,0, .06));
     if(o.emblem) s.add(part(geo.torus, accent, 0,.1,0, .12,.12,.35, Math.PI/2,0,0));
@@ -1572,7 +1670,7 @@ function makeRig(o){
 
   /* السلاح في اليد اليمنى */
   if(o.weapon){
-    const w=new THREE.Group(); w.rotation.x=-.45; aR.hand.add(w);
+    const w=new THREE.Group(); w.rotation.x=-1.0; aR.hand.add(w);
     const wood=mat(0x4A3B2C,WOOD()), blade=mat(0xDCE4EE,METAL({roughness:.2}));
     const W=o.weapon;
     if(W==="sword"){
@@ -1594,7 +1692,7 @@ function makeRig(o){
       w.add(part(geo.cone8, blade, 0,1.0,0, .05,.2,.05));
     } else if(W==="hammer"){
       w.add(part(geo.cyl, wood, 0,.5,0, .09,1.3,.09));
-      w.add(part(geo.cyl, metal2, 0,1.1,0, .26,.55,.26, 0,0,Math.PI/2));
+      w.add(part(geo.cyl, metal2, 0,1.15,0, .38,.85,.38, 0,0,Math.PI/2));
       for(const s of [-1,1]) w.add(part(geo.cone8, blade, s*.3,1.1,0, .1,.2,.1, 0,0,s*-Math.PI/2));
       w.add(part(geo.torus, gold, 0,.3,0, .1,.1,.5, Math.PI/2,0,0));
     } else if(W==="staff"){
@@ -1613,7 +1711,7 @@ function makeRig(o){
     rig.armL.rotation.x=-1.2; rig.elbowL.rotation.x=-.2;
   }
 
-  root.traverse(m=>{ if(m.isMesh){ m.castShadow=true; m.receiveShadow=true; } });
+  root.traverse(m=>{ if(m.isMesh) m.receiveShadow=true; });
   Object.assign(rig,{body,hips,torso});
   root.userData.rig=rig;
   root.scale.setScalar((o.h||3)/1.95);
@@ -1653,7 +1751,7 @@ function poseRig(obj, t, moving, atk){
 
 function mkHumanoid(kind){
   if(kind==="hero") return makeRig({h:5.6, cloth:0x2A4E86, cloth2:0x22406E, skin:0xE8B98C, beard:0x4A2E1A,
-    metal:0xC4CCD8, metal2:0x8E98A8, accent:0xC4483B, armored:true, helm:true, plume:true, cape:0x2E63A8,
+    metal:0xA3ADBB, metal2:0x5C6672, accent:0xC4483B, armored:true, helm:true, plume:true, cape:0x2E63A8,
     weapon:"sword", shield:"round", emblem:true, tabard:0x1E3A6E});
   return makeRig({h:4.6, cloth:0x40639C, cloth2:0x33507E, skin:0xDFAC7E,
     metal:0xA6AEBA, accent:0x9AA8C4, armored:true, helm:true, weapon:"spear", shield:"round"});
@@ -1695,22 +1793,21 @@ function mkEnemy(t){
       g.add(pivot); return pivot;
     };
     g.userData.wings=[wing(-1),wing(1)];
-    g.traverse(m=>{ if(m.isMesh) m.castShadow=true; });
     return g;
   }
   const C = {
     grunt  :{h:4.6, bulk:1.05, bare:true, beast:true, skin:D.col, cloth:D.col, cloth2:D.dark, glow:0xFFD37A, horns:true, hunch:.26, weapon:"club", skirt:true},
     runner :{h:4.2, bulk:.72, bare:true, beast:true, skin:D.col, cloth:D.col, cloth2:D.dark, glow:0xFFC07A, hunch:.72, longHead:true, ears:true, tail:true, claws:true, crouch:true},
     brute  :{h:6.6, bulk:1.6, beast:true, cloth:D.col, cloth2:D.dark, skin:0x7A4038, glow:0xFF9A6A, horns:true, armored:true,
-             metal:0x6E675C, metal2:0x4E4840, accent:0x4A2030, hunch:.18, weapon:"axe", shield:"tower", headScale:.85},
+             metal:0x6E675C, metal2:0x4E4840, accent:0x4A2030, hunch:.34, weapon:"axe", shield:"tower", headScale:.85},
     spitter:{h:4.9, bulk:.9, robe:true, cloth:D.col, cloth2:D.dark, skin:0x6B5480, glow:0xC9A0FF, hood:true, hunch:.22, weapon:"staff", claws:true},
-    breaker:{h:10.5, bulk:1.75, beast:true, cloth:D.col, cloth2:D.dark, skin:0x5E2B22, glow:0xFF7A4A, horns:true, armored:true,
-             metal:0x5A4038, metal2:0x3E2A24, accent:0x2E1010, cape:0x3A1414, crown:true, hunch:.14, weapon:"hammer", headScale:.9},
+    breaker:{h:10.5, bulk:2.05, beast:true, cloth:D.col, cloth2:D.dark, skin:0x5E2B22, glow:0xFF7A4A, armored:true,
+             metal:0x5A4038, metal2:0x3E2A24, accent:0x2E1010, cape:0x3A1414, crown:true, hunch:.4, weapon:"hammer", headScale:.72},
     mother :{h:9.8, bulk:1.3, robe:true, cloth:D.col, cloth2:D.dark, skin:0x6A4A86, glow:0xD0A0FF, hood:true, arms4:true, claws:true,
              cape:0x2A1440, crown:true, hunch:.12, weapon:"staff", float:true},
-    tyrant :{h:11.2, bulk:1.45, cloth:D.col, cloth2:D.dark, skin:0x2E3A52, glow:0x8AC8FF, armored:true, spikes:true,
-             metal:0x3E4A66, metal2:0x26304A, accent:0x101828, cape:0x0E1626, crown:true, helm:true, horns:true, hunch:.08,
-             weapon:"spear", shield:"tower"}
+    tyrant :{h:12.4, bulk:1.1, cloth:D.col, cloth2:D.dark, skin:0x2E3A52, glow:0x8AC8FF, armored:true, spikes:true,
+             metal:0x3E4A66, metal2:0x26304A, accent:0x101828, cape:0x1E2A48, crown:true, helm:true, horns:true, hunch:0,
+             weapon:"spear"}
   }[t] || {h:4.4, cloth:D.col, cloth2:D.dark, skin:0x8E5A48, glow:0xFFD37A};
   return makeRig(C);
 }
@@ -1726,7 +1823,7 @@ function stats(b){
     case "tower": { let d=20*m*(has("arrow")?1.3:1), rate=.68, splash=0;
       if(b.branch==="رماة سريعون") rate=.35;
       if(b.branch==="مقلاع"){ d*=1.5; rate=1.05; splash=10; }
-      return {dmg:d, rate, range:30+(b.lv-1)*4, splash}; }
+      return {dmg:d, rate, range:33+(b.lv-1)*4, splash}; }
     case "fire": { let d=26*m*(has("fire")?1.45:1), rg=b.branch==="أتون"?21:17;
       return {dps:d, range:rg}; }
     case "barracks": { let n=3+(b.lv-1)+(has("troop")?1:0), hp=100*m, dmg=18*m, sp=11;
@@ -1788,7 +1885,7 @@ function showGhost(type){
 }
 function cancelGhost(){
   if(!G.ghost) return;
-  world.remove(G.ghost.obj);
+  world.remove(G.ghost.obj); dropLights(G.ghost.obj);
   if(G.ghost.ring) world.remove(G.ghost.ring);
   G.ghost=null;
 }
@@ -1801,13 +1898,13 @@ function place(type){
     w.max = maxHp(w); w.hp = w.max;
     w.obj = mkWall(1); w.obj.position.set(sel.x, terrainY(sel.x,sel.z), sel.z);
     w.obj.rotation.y = -sel.a - Math.PI/2;
-    world.add(w.obj); sel.b = w; G.walls.push(w);
+    world.add(w.obj); freeze(w.obj); sel.b = w; G.walls.push(w);
   } else {
     const b = { type, x:sel.x, z:sel.z, lv:1, branch:null, cd:0, hp:0, max:0, slot:sel, alert:0, flash:0 };
     b.max = maxHp(b); b.hp = b.max;
     b.obj = mkBuilding(type,1,null); b.obj.position.set(sel.x,terrainY(sel.x,sel.z),sel.z);
     b.obj.rotation.y = Math.atan2(-sel.x,-sel.z);
-    world.add(b.obj); sel.b = b; G.buildings.push(b);
+    world.add(b.obj); freeze(b.obj); sel.b = b; G.buildings.push(b);
     if(type==="beacon") G.lightPool++;
     if(type==="barracks") spawnSquad(b);
   }
@@ -1819,25 +1916,26 @@ function upgrade(b, branch){
   const c = upCost(b); if(G.silver<c || b.lv>=3 || (b.type==="wall"&&b.lv>=2)) return;
   G.silver -= c; b.lv++; if(b.lv===3) b.branch=branch;
   const ratio = b.hp/b.max; b.max = maxHp(b); b.hp = b.max*Math.max(ratio,.6);
-  world.remove(b.obj);
+  world.remove(b.obj); dropLights(b.obj);
   b.obj = b.type==="wall" ? mkWall(b.lv) : mkBuilding(b.type,b.lv,b.branch);
   b.obj.position.set(b.x,terrainY(b.x,b.z),b.z);
   b.obj.rotation.y = b.type==="wall" ? (-b.node.a-Math.PI/2) : Math.atan2(-b.x,-b.z);
-  world.add(b.obj);
+  world.add(b.obj); freeze(b.obj);
   if(b.type==="barracks") syncSquad(b);
   SFX.build(); log(`${B[b.type]?B[b.type].name:WALL.name} صار المستوى ${b.lv}${branch?" — "+branch:""}.`);
   refresh();
 }
 function removeBuilding(b){
-  world.remove(b.obj);
+  world.remove(b.obj); dropLights(b.obj);
   if(b.type==="wall"){ G.walls.splice(G.walls.indexOf(b),1); b.node.b=null; }
   else { G.buildings.splice(G.buildings.indexOf(b),1); b.slot.b=null;
-    if(b.type==="beacon") G.lightPool=Math.max(0,G.lightPool-1); }
+    if(b.type==="beacon") G.lightPool=Math.max(0,G.lightPool-1);
+    if(b.type==="barracks") G.soldiers=G.soldiers.filter(s=>{ if(s.home!==b) return true; freeSoldierRig(s.obj); return false; }); }
 }
 function spawnSquad(b){ const st=stats(b); for(let i=0;i<st.n;i++) G.soldiers.push(mkSoldier(b,i)); }
 function mkSoldier(b,i){
   const st=stats(b);
-  const o = mkHumanoid(); world.add(o);
+  const o = getSoldierRig(); world.add(o);
   return { home:b, x:b.x+rnd(-3.4,3.4), z:b.z+rnd(2.6,6), hp:st.hp, max:st.hp, dmg:st.dmg,
            sp:st.sp, atk:0, dead:0, bob:rnd(0,6), i, obj:o };
 }
@@ -1849,7 +1947,7 @@ function syncSquad(b){
 }
 
 /* ══════════════════ الموجات ══════════════════ */
-const GAPS={grunt:.75,runner:.45,flyer:.8,brute:1.4,spitter:1.0,boss:2.5};
+const GAPS={grunt:.5,runner:.3,flyer:.55,brute:.95,spitter:.7,boss:1.8};
 function compCounts(stage, n){
   const k = 1 + stage*0.4;                       // المراحل اللاحقة أكثف
   const c = { grunt: Math.round((5+n*2)*k) };
@@ -1900,7 +1998,7 @@ function endNight(){
   G.hero.hp=Math.min(G.hero.max,G.hero.hp+80);
   if(has("heal")) G.castleHp=Math.min(G.castleMax,G.castleHp+140);
   for(const b of G.buildings.concat(G.walls)) b.hp=Math.min(b.max,b.hp+b.max*.4);
-  G.soldiers=G.soldiers.filter(s=>{ if(G.buildings.includes(s.home)) return true; world.remove(s.obj); return false; });
+  G.soldiers=G.soldiers.filter(s=>{ if(G.buildings.includes(s.home)) return true; freeSoldierRig(s.obj); return false; });
   for(const s of G.soldiers){ s.hp=s.max; s.dead=0; s.obj.visible=true; }
   SFX.dawn();
   if(G.wave>=STAGES[G.stage].nights){ stageCleared(); return; }
@@ -1908,15 +2006,20 @@ function endNight(){
   else { log(`نجوت الليلة ${G.wave}. دخل الفجر: ${inc} فضة.`); refresh(); }
   sync();
 }
-function spawn(t){
-  const li=(Math.random()*LANES.length)|0, L=LANES[li], D=E[t];
-  const sc = 1 + (G.wave-1)*.12 + G.stage*.32;
+const RIG_POOL={}, SOLD_POOL=[];
+function getEnemyRig(t){ const p=RIG_POOL[t]; if(p&&p.length){ const o=p.pop(); o.visible=true; if(o.userData.body) o.userData.body.material=o.userData.bodyMat; return o; } return mkEnemy(t); }
+function freeEnemyRig(t,o){ world.remove(o); (RIG_POOL[t]=RIG_POOL[t]||[]).push(o); }
+function getSoldierRig(){ if(SOLD_POOL.length){ const o=SOLD_POOL.pop(); o.visible=true; return o; } return mkHumanoid(); }
+function freeSoldierRig(o){ world.remove(o); SOLD_POOL.push(o); }
+function spawn(t, at){
+  const li=at?at.lane:(Math.random()*LANES.length)|0, L=LANES[li], D=E[t];
+  const sc = 1 + (G.wave-1)*.17 + G.stage*.32;
   const relief = 1 - L.light*.11;
-  const p0 = L.pts[0];
-  const e = { t, x:p0.x+rnd(-3.4,3.4), z:p0.z+rnd(-3.4,3.4), lane:li, node:1,
-    hp:D.hp*sc*relief, max:D.hp*sc*relief, sp:D.sp*relief*2.0, dmg:D.dmg*sc*relief,
+  const p0 = at||L.pts[0];
+  const e = { t, x:p0.x+rnd(-3.4,3.4), z:p0.z+rnd(-3.4,3.4), lane:li, node:at?at.node:1,
+    hp:D.hp*sc*relief*1.3, max:D.hp*sc*relief*1.3, sp:D.sp*relief*2.3, dmg:D.dmg*sc*relief,
     r:D.r, armor:D.armor, atk:0, stun:0, bob:rnd(0,6), flash:0, burn:0, sum:3,
-    obj: mkEnemy(t) };
+    obj: getEnemyRig(t) };
   e.obj.position.set(e.x, terrainY(e.x,e.z)+(D.fly?7:0), e.z);
   world.add(e.obj);
   G.enemies.push(e);
@@ -1956,10 +2059,11 @@ function nextStage(){
   G.stage++; G.wave=0; G.phase="dawn";
   G.silver=Math.round(G.silver*.4)+230;
   G.castleMax=2200+G.stage*600; G.castleHp=G.castleMax;
-  for(const e of G.enemies) world.remove(e.obj);
-  for(const s of G.soldiers) world.remove(s.obj);
+  for(const e of G.enemies) freeEnemyRig(e.t,e.obj);
+  for(const s of G.soldiers) freeSoldierRig(s.obj);
   G.enemies=[]; G.soldiers=[]; G.buildings=[]; G.walls=[]; G.shots=[]; G.queue=[];
   G.hero.hp=G.hero.max; G.hero.x=0; G.hero.z=10; G.hero.dead=0;
+  G.heroObj.visible=true; G.move=null; G.holdAt=null; G.hover=null; G.selected=null;
   G.pending=null;
   document.getElementById("overlay").classList.remove("show");
   buildStage(G.stage);
@@ -2004,30 +2108,35 @@ const SFX={ shoot:()=>tone(700,.06,"square",.02,430), hit:()=>tone(180,.07,"sawt
 
 /* ══════════════════ الواجهة ══════════════════ */
 const AR=["١","٢","٣"];
+const $EL={}, $V={};
+const q=id=>$EL[id]||($EL[id]=document.getElementById(id));
+const setT=(id,v)=>{ if($V[id]!==v){ $V[id]=v; q(id).textContent=v; } };
+const setW=(id,v)=>{ v=Math.round(v*10)/10; if($V["w"+id]!==v){ $V["w"+id]=v; q(id).style.width=v+"%"; } };
 function sync(){
-  const q=id=>document.getElementById(id);
-  q("stageTxt").textContent=STAGES[G.stage].name;
-  q("waveTxt").textContent=`الليلة ${G.wave} / ${STAGES[G.stage].nights}`;
-  q("silverTxt").textContent=Math.floor(G.silver);
-  q("castleTxt").textContent=Math.max(0,Math.round(G.castleHp));
-  q("castleBar").style.width=clamp(G.castleHp/G.castleMax*100,0,100)+"%";
-  q("heroTxt").textContent=G.hero.dead>0?"—":Math.max(0,Math.round(G.hero.hp));
-  q("heroBar").style.width=clamp(G.hero.hp/G.hero.max*100,0,100)+"%";
+  setT("stageTxt",STAGES[G.stage].name);
+  setT("waveTxt",`الليلة ${G.wave} / ${STAGES[G.stage].nights}`);
+  setT("silverTxt",Math.floor(G.silver));
+  setT("castleTxt",Math.max(0,Math.round(G.castleHp)));
+  setW("castleBar",clamp(G.castleHp/G.castleMax*100,0,100));
+  setT("heroTxt",G.hero.dead>0?"—":Math.max(0,Math.round(G.hero.hp)));
+  setW("heroBar",clamp(G.hero.hp/G.hero.max*100,0,100));
 
   const left=G.enemies.length+G.queue.length;
-  q("waveBar").style.width=(G.phase==="night"?(1-left/Math.max(1,G.waveTotal))*100:0)+"%";
+  setW("waveBar",G.phase==="night"?(1-left/Math.max(1,G.waveTotal))*100:0);
   const free=G.lightPool-LANES.reduce((a,l)=>a+l.light,0);
-  q("enemyTxt").textContent = G.phase==="night" ? `${left} خصماً في الميدان` : `نقاط نور حرة: ${free}`;
+  setT("enemyTxt", G.phase==="night" ? `${left} خصماً في الميدان` : `نقاط نور حرة: ${free}`);
 
   const tg=q("phaseTag");
-  tg.textContent=G.phase==="dawn"?"الفجر — ابنِ":"الليل — دافع";
-  tg.className="tag "+(G.phase==="dawn"?"t-dawn":"t-night");
+  if($V.phase!==G.phase){ $V.phase=G.phase;
+    tg.textContent=G.phase==="dawn"?"الفجر — ابنِ":"الليل — دافع";
+    tg.className="tag "+(G.phase==="dawn"?"t-dawn":"t-night"); }
 
   const a1=q("abil1"), a2=q("abil2");
   const r1=G.hero.ab<=0, r2=G.hero.ab2<=0;
-  a1.classList.toggle("ready",r1); a2.classList.toggle("ready",r2);
-  q("ab1s").textContent=r1?"جاهز":Math.ceil(G.hero.ab)+"ث";
-  q("ab2s").textContent=r2?"جاهز":Math.ceil(G.hero.ab2)+"ث";
+  if($V.r1!==r1){ $V.r1=r1; a1.classList.toggle("ready",r1); }
+  if($V.r2!==r2){ $V.r2=r2; a2.classList.toggle("ready",r2); }
+  setT("ab1s",r1?"جاهز":Math.ceil(G.hero.ab)+"ث");
+  setT("ab2s",r2?"جاهز":Math.ceil(G.hero.ab2)+"ث");
 
   const wi=q("waveInfo");
   let html = G.phase==="night" ? "" :
@@ -2035,9 +2144,10 @@ function sync(){
   if(wi.dataset.k!==html){ wi.dataset.k=html; wi.innerHTML=html; }
 
   const sb=q("startBtn");
-  sb.hidden = G.phase!=="dawn";
+  sb.hidden = G.phase!=="dawn" || !!G.selected;
   sb.textContent=`ابدأ الليلة ${G.wave+1} ▶`;
-  q("dockRow").hidden = G.phase!=="dawn";
+  q("dockRow").hidden = G.phase!=="dawn" || !!G.selected;
+  q("orderRow").hidden = !G.soldiers.length;
   const night = G.phase==="night";
   document.querySelector(".abils").style.display = night?"flex":"none";
   const jy=document.getElementById("joy");
@@ -2091,7 +2201,7 @@ function buildThumbs(){
       }
       cx2.clearRect(0,0,W2,H2);
       cx2.putImageData(img,0,0);
-      sc2.remove(obj);
+      sc2.remove(obj); dropLights(obj);
       return cv2.toDataURL("image/png");
     };
     for(const k in B) THUMBS[k]=shot(mkBuilding(k,1,null));
@@ -2118,11 +2228,12 @@ function refresh(){
       el.append(m,v,pl); row.appendChild(el);
     }
   }
+  const orow=document.getElementById("orderRow"); orow.innerHTML="";
   if(G.soldiers.length){
     const mk=(lbl,val,key)=>{ const b=document.createElement("button");
-      b.className="ghost"; b.textContent=`${lbl} (${key})`;
+      b.className="ghost"; b.textContent=MOBILE?lbl:`${lbl} (${key})`;
       b.setAttribute("aria-pressed",G.order===val); b.onclick=()=>setOrder(val); return b; };
-    row.append(mk("اتبعني","follow","1"), mk("ثبات","hold","2"), mk("عودة","guard","3"));
+    orow.append(mk("اتبعني","follow","1"), mk("ثبات","hold","2"), mk("عودة","guard","3"));
   }
 
   const sel=G.selected;
@@ -2205,9 +2316,9 @@ const INTRO={ title:"حصن الفجر", body:"ثلاث مراحل، ثلاثة 
   </ul>`, btn:"ابدأ الحملة" };
 
 function resetAll(){
-  for(const e of G.enemies) world.remove(e.obj);
-  for(const s of G.soldiers) world.remove(s.obj);
-  newGame(); buildStage(0); world.add(G.heroObj);
+  for(const e of G.enemies) freeEnemyRig(e.t,e.obj);
+  for(const s of G.soldiers) freeSoldierRig(s.obj);
+  const hero=G.heroObj; newGame(); G.heroObj=hero; hero.visible=true; buildStage(0); world.add(hero);
   for(const L of LANES) L.light=1;
   refresh(); sync(); showOverlay(INTRO);
 }
@@ -2227,7 +2338,9 @@ addEventListener("keydown",e=>{
 addEventListener("keyup",e=>G.keys.delete(norm(e.key)));
 
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
-let dragging=false, dragged=false, lastX=0, lastY=0, rotMode=false;
+let dragging=false, dragged=false, lastX=0, lastY=0, rotMode=false, downX=0, downY=0, manualPanUntil=0;
+const panMax=()=>clamp(EDGE_R-camDist*.45, 30, PAN);
+const clampPan=()=>{ const m=panMax(); G.cam.tx=clamp(G.cam.tx,-m,m); G.cam.tz=clamp(G.cam.tz,-m,m); };
 glc.addEventListener("contextmenu", e=>e.preventDefault());
 const touches=new Map();
 let pinchD=0, pinchMid=null;
@@ -2239,7 +2352,7 @@ glc.addEventListener("pointerdown",e=>{
     pinchMid={x:(a.x+b.x)/2,y:(a.y+b.y)/2};
     dragging=false; dragged=true; return;
   }
-  dragging=true; dragged=false; lastX=e.clientX; lastY=e.clientY;
+  dragging=true; dragged=false; lastX=e.clientX; lastY=e.clientY; downX=e.clientX; downY=e.clientY;
   rotMode = (e.button===2 || e.altKey);
   try{ glc.setPointerCapture(e.pointerId); }catch(_){}
 });
@@ -2252,33 +2365,38 @@ glc.addEventListener("pointermove",e=>{
       camDist=clamp(camDist*(pinchD/Math.max(1,d)),CAM_MIN,CAM_MAX); camHigh=camDist*.66;
       const k=camDist*.0022, dx=mid.x-pinchMid.x, dy=mid.y-pinchMid.y;
       const rx=Math.cos(camAz), rz=-Math.sin(camAz), fx=-Math.sin(camAz), fz=-Math.cos(camAz);
-      G.cam.tx=clamp(G.cam.tx-(dx*rx+dy*fx)*k,-PAN,PAN);
-      G.cam.tz=clamp(G.cam.tz-(dx*rz+dy*fz)*k,-PAN,PAN);
+      G.cam.tx-=(dx*rx+dy*fx)*k; G.cam.tz-=(dx*rz+dy*fz)*k; clampPan();
+      manualPanUntil=G.t+3;
     }
     pinchD=d; pinchMid=mid; return;
   }
   if(!dragging){
     // تحويم: أبرز أقرب عقدة بناء
-    if(G.phase==="dawn" && !G.ghost){
-      const p=pickGround(e);
-      let best=null,bd=8;
-      if(p) for(const n of SLOTS.concat(WALLS)){ const d=dist2(p.x,p.z,n.x,n.z); if(d<bd){bd=d;best=n;} }
-      G.hover=best;
-    } else G.hover=null;
+    if(G.phase==="dawn" && !G.ghost) G.hover=pickNode(e);
+    else G.hover=null;
     return;
   }
+  if(!dragged && Math.hypot(e.clientX-downX,e.clientY-downY) < (e.pointerType==="touch"?10:3)) return;
+  dragged=true;
   const dx=e.clientX-lastX, dy=e.clientY-lastY;
   lastX=e.clientX; lastY=e.clientY;
-  if(Math.abs(dx)+Math.abs(dy)>2) dragged=true;
   if(rotMode){ camAz -= dx*.006; }
   else {
     const k=camDist*.0022;
     const rx=Math.cos(camAz), rz=-Math.sin(camAz);
     const fx=-Math.sin(camAz), fz=-Math.cos(camAz);
-    G.cam.tx=clamp(G.cam.tx-(dx*rx+dy*fx)*k, -PAN, PAN);
-    G.cam.tz=clamp(G.cam.tz-(dx*rz+dy*fz)*k, -PAN, PAN);
+    G.cam.tx-=(dx*rx+dy*fx)*k; G.cam.tz-=(dx*rz+dy*fz)*k; clampPan();
+    manualPanUntil=G.t+3;
   }
 });
+function pickNode(e){
+  const r=glc.getBoundingClientRect(), px=e.clientX-r.left, py=e.clientY-r.top;
+  OVW=r.width; OVH=r.height;
+  let best=null, bd=MOBILE?34:26;
+  for(const n of SLOTS){ const p=project(n.x, terrainY(n.x,n.z)+1, n.z); if(!p.vis) continue; const d=Math.hypot(p.x-px,p.y-py); if(d<bd){bd=d;best=n;} }
+  for(const n of WALLS){ const p=project(n.x, terrainY(n.x,n.z)+1, n.z); if(!p.vis) continue; const d=Math.hypot(p.x-px,p.y-py); if(d<bd){bd=d;best=n;} }
+  return best;
+}
 function pickGround(e){
   const r=glc.getBoundingClientRect();
   ndc.x=((e.clientX-r.left)/r.width)*2-1;
@@ -2294,8 +2412,7 @@ glc.addEventListener("pointerup",e=>{
   if(dragged||G.over||G.pending) return;
   const p=pickGround(e); if(!p) return;
   if(G.phase==="dawn"){
-    let best=null,bd=8;
-    for(const n of SLOTS.concat(WALLS)){ const d=dist2(p.x,p.z,n.x,n.z); if(d<bd){bd=d;best=n;} }
+    const best=pickNode(e);
     if(best){ if(G.ghost) cancelGhost(); G.selected=best; refresh(); return; }
     if(G.selected){ G.selected=null; cancelGhost(); refresh(); }
   }
@@ -2303,7 +2420,7 @@ glc.addEventListener("pointerup",e=>{
 });
 glc.addEventListener("pointercancel",e=>{ touches.delete(e.pointerId); pinchD=0; dragging=false; });
 glc.addEventListener("wheel",e=>{ e.preventDefault();
-  camDist=clamp(camDist+e.deltaY*.18,CAM_MIN,CAM_MAX); camHigh=camDist*.66; },{passive:false});
+  camDist=clamp(camDist+e.deltaY*.18,CAM_MIN,CAM_MAX); camHigh=camDist*.66; clampPan(); },{passive:false});
 
 function ability(){
   const h=G.hero;
@@ -2400,11 +2517,12 @@ function poof(x,z,col,n){
 
 /* ══════════════════ التحديث ══════════════════ */
 const ovEl=document.getElementById("overlay");
+const portraitMQ=matchMedia("(orientation:portrait) and (pointer:coarse)");
 function hurt(e,dm){ e.hp-=dm*(1-(e.armor||0)); e.flash=.16; }
 
 function update(dt){
   G.t+=dt;
-  if(G.over||G.pending||ovEl.classList.contains("show")) return;
+  if(G.over||G.pending||ovEl.classList.contains("show")||portraitMQ.matches) return;
   const h=G.hero;
 
   /* القائد */
@@ -2426,8 +2544,10 @@ function update(dt){
       if(d>.6){ vx=(G.move.x-h.x)/d; vz=(G.move.z-h.z)/d; } else G.move=null;
     }
     const m=Math.hypot(vx,vz);
-    if(m){ h.x+=vx/m*h.sp*dt; h.z+=vz/m*h.sp*dt; keepIn(h);
-      h.bob+=dt*11; h.dir=Math.atan2(vx,vz); h.moving=true; }
+    if(m){ const spd=h.sp*Math.min(1,m); h.x+=vx/m*spd*dt; h.z+=vz/m*spd*dt; keepIn(h);
+      h.bob+=dt*11; h.dir=Math.atan2(vx,vz); h.moving=true;
+      if(G.t>manualPanUntil){ const ddx=h.x-G.cam.tx, ddz=h.z-G.cam.tz, dd=Math.hypot(ddx,ddz), dead=camDist*.16;
+        if(dd>dead){ const kk=Math.min(1,dt*5)*(1-dead/dd); G.cam.tx+=ddx*kk; G.cam.tz+=ddz*kk; clampPan(); } } }
     else { h.bob+=dt*2.2; h.moving=false; }
     h.atkCd-=dt; h.swing=Math.max(0,h.swing-dt*4);
     if(h.atkCd<=0){
@@ -2444,7 +2564,7 @@ function update(dt){
   /* الليل */
   if(G.phase==="night"){
     G.spawnT-=dt;
-    if(G.spawnT<=0&&G.queue.length){ const s=G.queue.shift(); spawn(s.t); G.spawnT=s.gap; }
+    if(G.spawnT<=0&&G.queue.length){ const s=G.queue.shift(); spawn(s.t,s.at); G.spawnT=s.gap; }
     if(!G.queue.length&&!G.enemies.length) endNight();
   }
 
@@ -2461,7 +2581,7 @@ function update(dt){
     for(const e of G.enemies){ if(E[e.t].fly) continue;
       const d=dist2(tx,tz,e.x,e.z); if(d<bd){bd=d;tgt=e;} }
     const gx=tgt?tgt.x:tx, gz=tgt?tgt.z:tz, d=dist2(s.x,s.z,gx,gz);
-    if(d>(tgt?3.4:1.2)){ s.x+=(gx-s.x)/d*s.sp*dt; s.z+=(gz-s.z)/d*s.sp*dt; s.bob+=dt*12; s.moving=true;
+    if(d>(tgt?3.4:1.2)){ s.x+=(gx-s.x)/d*s.sp*dt; s.z+=(gz-s.z)/d*s.sp*dt; keepIn(s); s.bob+=dt*12; s.moving=true;
       s.obj.rotation.y=Math.atan2(gx-s.x,gz-s.z); }
     else { s.bob+=dt*3; s.moving=false; }
     s.atk-=dt;
@@ -2480,7 +2600,7 @@ function update(dt){
     if(e.burn>0){ e.hp-=e.burn*dt; e.burn=Math.max(0,e.burn-dt*4); }
     if(e.hp<=0){
       poof(e.x,e.z,D.col,D.boss?24:7);
-      world.remove(e.obj); G.enemies.splice(i,1);
+      freeEnemyRig(e.t,e.obj); G.enemies.splice(i,1);
       dropGold(e.x,e.z, D.boss?120:(D.sieger?4:2)); G.stat.kills++; SFX.die();
       if(D.boss) log(`سقط ${D.n}!`);
       continue;
@@ -2495,9 +2615,13 @@ function update(dt){
     // سور يسدّ الممر
     let blocker=null;
     if(!D.fly){
-      const ang=Math.atan2(e.z,e.x), idx=((Math.round(ang/(Math.PI*2)*WALL_N)%WALL_N)+WALL_N)%WALL_N;
-      const seg=WALLS[idx];
-      if(seg && seg.b && seg.b.hp>0 && Math.hypot(e.x,e.z) > WALL_R-3) blocker=seg.b;
+      const er=Math.hypot(e.x,e.z);
+      if(er<WALL_R-3) e.inside=true;
+      if(!e.inside && e.node>=LANES[e.lane].pts.length){
+        const ang=Math.atan2(e.z,e.x), idx=((Math.round(ang/(Math.PI*2)*WALL_N)%WALL_N)+WALL_N)%WALL_N;
+        const seg=WALLS[idx];
+        if(seg && seg.b && seg.b.hp>0) blocker=seg.b;
+      }
     }
 
     // الهدف
@@ -2510,7 +2634,7 @@ function update(dt){
     }
 
     let gx=tx,gz=tz;
-    if(!D.fly&&!blocker&&e.node<LANES[e.lane].pts.length){
+    if(!D.fly&&e.node<LANES[e.lane].pts.length){
       const n=LANES[e.lane].pts[e.node];
       if(dist2(e.x,e.z,n.x,n.z)<5) e.node++;
       else { gx=n.x; gz=n.z; }
@@ -2527,13 +2651,14 @@ function update(dt){
         const dm=e.dmg*dmul;
         if(D.boss&&D.ability==="slam"&&Math.random()<.45){
           G.fx.push({ring:true,x:e.x,z:e.z,age:0,life:.55,col:0xC4483B});
-          for(const s of G.soldiers) if(s.dead<=0&&dist2(s.x,s.z,e.x,e.z)<24) s.hp-=55;
-          if(h.dead<=0&&dist2(h.x,h.z,e.x,e.z)<24) h.hp-=55;
-          for(const w of G.walls) if(dist2(w.x,w.z,e.x,e.z)<24) w.hp-=55;
+          for(const s of G.soldiers) if(s.dead<=0&&dist2(s.x,s.z,e.x,e.z)<24){ s.hp-=55; if(s.hp<=0){ s.dead=9; poof(s.x,s.z,0xBFD8FF,6); } }
+          if(h.dead<=0&&dist2(h.x,h.z,e.x,e.z)<24){ h.hp-=55; if(h.hp<=0){ h.hp=0; h.dead=7; poof(h.x,h.z,0x4D8FD6,12); log("سقط أرين — يعود بعد سبع ثوانٍ."); } }
+          for(const w of G.walls.slice()) if(dist2(w.x,w.z,e.x,e.z)<24){ w.hp-=55; w.alert=1.4;
+            if(w.hp<=0){ poof(w.x,w.z,0x8E3A57,14); removeBuilding(w); log("هدم الحاطم سوراً!"); if(G.selected) refresh(); } }
           G.shake=reduced?0:.6;
         }
         if(D.boss&&D.ability==="summon"&&e.sum>0&&Math.random()<.35){
-          e.sum--; for(let k=0;k<3;k++){ G.queue.unshift({t:"grunt",gap:.1}); }
+          e.sum--; for(let k=0;k<3;k++){ G.queue.unshift({t:"grunt",gap:.1,at:{x:e.x,z:e.z,lane:e.lane,node:e.node}}); }
           G.spawnT=Math.min(G.spawnT,.2); log(`${D.n} تستدعي المزيد!`);
         }
         if(D.boss&&D.ability==="volley"&&Math.random()<.5){
@@ -2564,16 +2689,16 @@ function update(dt){
     if(e.obj.userData.wings){ const w=Math.sin(e.bob*3)*.75;
       e.obj.userData.wings[0].rotation.z=w; e.obj.userData.wings[1].rotation.z=-w; }
     else poseRig(e.obj, G.t*1.05+e.bob*.05, !!e.moving, e.atkAnim);
-    e.obj.userData.body.material = e.flash>0 ? mat(0xffffff) : e.obj.userData.bodyMat;
+    const bm = e.flash>0 ? MAT_FLASH : e.obj.userData.bodyMat; if(e.obj.userData.body.material!==bm) e.obj.userData.body.material=bm;
   }
 
   /* حامية القلعة — تمنع الحصار اللانهائي */
   G.castleCd-=dt;
   if(G.castleCd<=0){
-    let best=null,bd=36;
+    let best=null,bd=30;
     for(const e of G.enemies){ const d=dist2(0,0,e.x,e.z); if(d<bd){bd=d;best=e;} }
     if(best){ G.castleCd=.8; SFX.shoot();
-      G.shots.push({x:0,y:20,z:0,tx:best.x,tz:best.z,e:best,dmg:26+G.stage*10,sp:60}); }
+      G.shots.push({x:0,y:20,z:0,tx:best.x,tz:best.z,e:best,dmg:22+G.stage*10,sp:60}); }
   }
 
   /* الأبراج */
@@ -2640,25 +2765,27 @@ function update(dt){
   }
   updateGold(dt);
   G.shake=Math.max(0,G.shake-dt*2.2);
-  sync();
+  G.syncT=(G.syncT||0)+dt;
+  if(G.syncT>=.1){ G.syncT=0; sync(); }
 }
 
 /* ══════════════════ الرسم ══════════════════ */
 const NIGHT_SKY = { top:0x070B1E, hor:0x1A2444, bot:0x080A14, fog:0x141A34, sunCol:0x8FA3D8 };
+const LT_NIGHT = { hemi:.3, sun:.34, sunCol:0x7A8CC8, amb:.22, ambCol:0x35356A, fog:NIGHT_SKY.fog, top:NIGHT_SKY.top, hor:NIGHT_SKY.hor, bot:NIGHT_SKY.bot, sky:1 };
 const _c1=new THREE.Color();
 const lerpCol=(c,hex,k)=>{ _c1.set(hex).convertSRGBToLinear(); c.lerp(_c1,k); };
 function updateLighting(){
   const night = G.phase==="night";
   const cfg = STAGES[G.stage];
-  const tgt = night
-    ? { hemi:.3, sun:.28, sunCol:0x93A6E0, amb:.42, ambCol:0x35356A, fog:NIGHT_SKY.fog, top:NIGHT_SKY.top, hor:NIGHT_SKY.hor, bot:NIGHT_SKY.bot, sky:1 }
-    : { hemi:.78, sun:1.28, sunCol:cfg.sun, amb:.3, ambCol:0x404060, fog:cfg.fog, top:cfg.skyTop, hor:cfg.skyHor, bot:cfg.skyBot, sky:0 };
+  const tgt = night ? LT_NIGHT : (cfg._lt || (cfg._lt={ hemi:.6, sun:1.55, sunCol:cfg.sun, amb:.2, ambCol:0x404060, fog:cfg.fog, top:cfg.skyTop, hor:cfg.skyHor, bot:cfg.skyBot, sky:0 }));
   hemi.intensity += (tgt.hemi-hemi.intensity)*.05;
   sun.intensity  += (tgt.sun-sun.intensity)*.05;
   amb.intensity  += (tgt.amb-amb.intensity)*.05;
   lerpCol(sun.color, tgt.sunCol, .05);
   lerpCol(amb.color, tgt.ambCol, .05);
-  scene.fog.color.lerp(new THREE.Color(tgt.fog),.05);
+  lerpCol(hemi.color, night?0x5A6CA8:0xC9DCF2, .05); lerpCol(hemi.groundColor, night?0x121624:0x3C3828, .05);
+  renderer.toneMappingExposure += ((night?.8:.95)-renderer.toneMappingExposure)*.05;
+  lerpCol(scene.fog.color, tgt.fog, .05);
   const u=skyMat.uniforms;
   lerpCol(u.top.value, tgt.top, .05); lerpCol(u.hor.value, tgt.hor, .05); lerpCol(u.bot.value, tgt.bot, .05);
   lerpCol(u.sunCol.value, tgt.sunCol, .05);
@@ -2676,7 +2803,7 @@ function updateLighting(){
       u.disc.material.opacity += ((night?.13:0)-u.disc.material.opacity)*.06; }
   }
   if(G.castleObj&&G.castleObj.userData.light)
-    G.castleObj.userData.light.intensity += ((night?4.6:0)-G.castleObj.userData.light.intensity)*.06;
+    G.castleObj.userData.light.intensity += ((night?6:0)-G.castleObj.userData.light.intensity)*.06;
   if(G.safeDisc) G.safeDisc.material.opacity += ((night?.1:0)-G.safeDisc.material.opacity)*.06;
   for(const c of CAMPFIRES){
     c.pl.intensity += ((night?3.2:.6)-c.pl.intensity)*.06;
@@ -2685,13 +2812,20 @@ function updateLighting(){
   }
 }
 
+const _pv=new THREE.Vector3(), _pr={x:0,y:0,vis:false};
+let OVW=1, OVH=1;
 function project(x,y,z){
-  const v=new THREE.Vector3(x,y,z).project(camera);
-  const r=glc.getBoundingClientRect();
-  return { x:(v.x*.5+.5)*r.width, y:(-v.y*.5+.5)*r.height, vis:v.z<1 };
+  _pv.set(x,y,z).project(camera);
+  _pr.x=(_pv.x*.5+.5)*OVW; _pr.y=(-_pv.y*.5+.5)*OVH; _pr.vis=_pv.z<1;
+  return _pr;
 }
 function drawOverlay(){
-  const r=glc.getBoundingClientRect();
+  const r=glc.getBoundingClientRect(); OVW=r.width; OVH=r.height;
+  if(!G.enemies.length && !G.shots.length && !G.goldPops.length && !G.fx.length && !G.buildings.some(b=>b.hp<b.max||b.alert>0) && !G.walls.some(b=>b.hp<b.max||b.alert>0)){
+    if(OVW!==$V.ovw||OVH!==$V.ovh||$V.ovdirty){ $V.ovw=OVW; $V.ovh=OVH; $V.ovdirty=false; octx.clearRect(0,0,OVW,OVH); }
+    return;
+  }
+  $V.ovdirty=true;
   octx.clearRect(0,0,r.width,r.height);
   octx.textAlign="center"; octx.textBaseline="middle";
   // شرائط صحة الأعداء
@@ -2706,8 +2840,11 @@ function drawOverlay(){
       octx.fillText(D.n,p.x,p.y-12); }
   }
   // مبانٍ وأسوار
-  for(const b of G.buildings.concat(G.walls)){
-    const p=project(b.x,terrainY(b.x,b.z)+9.5,b.z); if(!p.vis) continue;
+  for(const b of G.buildings) drawBld(b);
+  for(const b of G.walls) drawBld(b);
+  function drawBld(b){
+    if(b.hp>=b.max && !(b.alert>0)) return;
+    const p=project(b.x,terrainY(b.x,b.z)+9.5,b.z); if(!p.vis) return;
     if(b.hp<b.max){
       octx.fillStyle="rgba(0,0,0,.55)"; octx.fillRect(p.x-20,p.y,40,5);
       octx.fillStyle="#7FBF5A"; octx.fillRect(p.x-20,p.y,40*(b.hp/b.max),5);
@@ -2729,10 +2866,11 @@ function drawOverlay(){
   for(const s of G.shots){
     const p=project(s.x,s.y||2.2,s.z);
     if(!p.vis) continue;
+    const px=p.x, py=p.y;
     const d=dist2(s.x,s.z,s.tx,s.tz)||1;
     const b=project(s.x-(s.tx-s.x)/d*1.6, 2.2, s.z-(s.tz-s.z)/d*1.6);
     octx.strokeStyle=s.dark?"#B79BF0":"#F7EBCE"; octx.lineWidth=s.dark?4:2.6; octx.lineCap="round";
-    octx.beginPath(); octx.moveTo(p.x,p.y); octx.lineTo(b.x,b.y); octx.stroke();
+    octx.beginPath(); octx.moveTo(px,py); octx.lineTo(b.x,b.y); octx.stroke();
   }
   // أرقام الذهب
   for(const q of G.goldPops){
@@ -2765,16 +2903,17 @@ function render(){
   const t=G.t;
   const shake=G.shake>0?G.shake:0;
   // كلما ابتعدت الكاميرا ارتفعت أكثر (نظرة خريطة) فلا تحجبها الجبال ولا يظهر الضباب
-  const hi = camDist*(.66+.24*clamp((camDist-160)/460,0,1));
-  camera.position.set(G.cam.tx+Math.sin(camAz)*camDist + rnd(-shake,shake),
-                      hi + rnd(-shake,shake),
-                      G.cam.tz+Math.cos(camAz)*camDist + rnd(-shake,shake));
+  let hi = camDist*(.66+.24*clamp((camDist-160)/460,0,1));
+  const cpx=G.cam.tx+Math.sin(camAz)*camDist, cpz=G.cam.tz+Math.cos(camAz)*camDist;
+  const crr=Math.hypot(cpx,cpz), cgy=terrainY(clamp(cpx,-WORLD*.49,WORLD*.49),clamp(cpz,-WORLD*.49,WORLD*.49));
+  hi=Math.max(hi, cgy + (crr>EDGE_R ? 70+(crr-EDGE_R)*1.1 : 22));
+  camera.position.set(cpx + rnd(-shake,shake), hi + rnd(-shake,shake), cpz + rnd(-shake,shake));
   camera.lookAt(G.cam.tx, 6, G.cam.tz);
   // قبة السماء تتبع الكاميرا؛ الظلال تتبع هدف الكاميرا فتظهر أينما نظرت
   skyDome.position.copy(camera.position);
   const S=clamp(camDist*1.15, 120, 420);
   if(Math.abs(sc.right-S)>1){ sc.left=-S; sc.right=S; sc.top=S; sc.bottom=-S; sc.updateProjectionMatrix(); }
-  sun.position.set(G.cam.tx+150, 230, G.cam.tz+110);
+  sun.position.set(G.cam.tx+150, 170, G.cam.tz+110);
   sun.target.position.set(G.cam.tx, 0, G.cam.tz); sun.target.updateMatrixWorld();
   // حلقات العقد
   const dawn=G.phase==="dawn";
@@ -2782,9 +2921,9 @@ function render(){
     if(!node.ring) return;
     const u=node.ring.userData;
     u.hl.material.opacity = on?.95 : hov?.55 : 0;
-    u.mark.visible = dawn && !node.b;
-    if(u.mark.visible){ u.mark.position.y = 2.6+Math.sin(t*2.6+node.x)*.35;
-      u.mark.material = mat(on?0xFFE9A8:0xF5C25B,{emissive:on?0xB08A20:0x7A5A10,roughness:.4}); }
+    u.mark.visible = dawn && !node.b && (on||hov||camDist<230);
+    if(u.mark.visible){ u.mark.position.y = 1.6+Math.sin(t*2.6+node.x)*.3;
+      const m=on?MAT_MARK_ON:MAT_MARK; if(u.mark.material!==m) u.mark.material=m; }
     node.ring.visible = !node.b || dawn;
   };
   for(const sl of SLOTS) setPad(sl, G.selected===sl, G.hover===sl);
@@ -2795,16 +2934,20 @@ function render(){
   }
   if(G.castleObj){
     G.castleObj.userData.banner.rotation.y=Math.sin(t*2)*.25;
-    const gl=G.castleObj.userData.gate;
-    gl.material=mat(0xFFC864,{emissive:G.phase==="night"?0xC48A18:0x8A5E14});
+    const gl=G.castleObj.userData.gate, gm=G.phase==="night"?MAT_GATE_NIGHT:MAT_GATE_DAY;
+    if(gl.material!==gm) gl.material=gm;
   }
-  if(CLOUDS) CLOUDS.rotation.y = t*.0045;
+  if(CLOUDS){ CLOUDS.rotation.y = t*.0045; const co=.74*(1-clamp((camDist-300)/140,0,1)); CLOUDS.material.opacity=co; CLOUDS.visible=co>.03; }
   updateWater(t);
   updateFireflies(t, G.phase==="night");
   updateLighting();
+  assignLights();
+  FRAME++;
+  if(MOBILE) renderer.shadowMap.needsUpdate = (FRAME&1)===0;
   renderer.render(scene,camera);
   drawOverlay();
 }
+let FRAME=0;
 
 /* ══════════════════ الإقلاع ══════════════════ */
 buildStage(0);
@@ -2817,11 +2960,18 @@ G.heroObj = mkHumanoid("hero");
 })();
 world.add(G.heroObj);
 document.getElementById("startBtn").onclick=startNight;
-document.getElementById("fsBtn").onclick=()=>{
-  const el=document.getElementById("stageBox");
-  if(document.fullscreenElement) document.exitFullscreen();
-  else if(el.requestFullscreen) el.requestFullscreen().catch(()=>{});
-};
+(()=>{
+  const fs=document.getElementById("fsBtn"), box=document.getElementById("stageBox");
+  if(!(document.fullscreenEnabled||document.webkitFullscreenEnabled||box.webkitRequestFullscreen)) fs.hidden=true;
+  fs.onclick=()=>{
+    const cur=document.fullscreenElement||document.webkitFullscreenElement;
+    try{
+      if(cur) (document.exitFullscreen||document.webkitExitFullscreen).call(document);
+      else { const p=(box.requestFullscreen||box.webkitRequestFullscreen).call(box);
+        if(p&&p.then) p.then(()=>{ if(screen.orientation&&screen.orientation.lock) screen.orientation.lock("landscape").catch(()=>{}); }).catch(()=>{}); }
+    }catch(_){}
+  };
+})();
 document.getElementById("homeBtn").onclick=()=>{ G.cam.tx=0; G.cam.tz=0; camDist=MOBILE?135:165; camHigh=camDist*.66; };
 document.getElementById("sheetClose").onclick=()=>{ G.selected=null; cancelGhost(); refresh(); };
 document.getElementById("abil1").onclick=ability;
@@ -2829,15 +2979,16 @@ document.getElementById("abil2").onclick=dash;
 (() => {
   const joy=document.getElementById("joy"), knob=document.getElementById("joyKnob");
   if(matchMedia("(pointer: coarse)").matches) joy.dataset.touch="1";
-  let id=null, cx=0, cy=0;
+  let id=null, cx=0, cy=0, R=34;
   const setKnob=(dx,dy)=>{ knob.style.transform=`translate(${dx}px,${dy}px)`; };
   joy.addEventListener("pointerdown",e=>{ id=e.pointerId; joy.setPointerCapture(id);
-    const r=joy.getBoundingClientRect(); cx=r.left+r.width/2; cy=r.top+r.height/2;
+    const r=joy.getBoundingClientRect(); cx=r.left+r.width/2; cy=r.top+r.height/2; R=r.width*.36;
     G.joy={x:0,y:0}; });
   joy.addEventListener("pointermove",e=>{
     if(e.pointerId!==id) return;
     let dx=e.clientX-cx, dy=e.clientY-cy;
-    const m=Math.hypot(dx,dy), R=34;
+    const m=Math.hypot(dx,dy);
+    if(m<R*.15){ setKnob(0,0); G.joy={x:0,y:0}; return; }
     if(m>R){ dx=dx/m*R; dy=dy/m*R; }
     setKnob(dx,dy);
     G.joy={x:dx/R, y:-dy/R};
