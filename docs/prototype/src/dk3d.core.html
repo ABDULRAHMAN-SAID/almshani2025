@@ -185,6 +185,8 @@
     .joy{width:132px;height:132px;right:calc(16px + env(safe-area-inset-right,0px));bottom:calc(14px + env(safe-area-inset-bottom,0px))}
   }
   .stage{touch-action:none}
+  .stage::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:2;
+    background:radial-gradient(120% 100% at 50% 42%, rgba(255,226,180,.09) 0%, rgba(0,0,0,0) 42%, rgba(8,5,16,.34) 100%)}
   .rotate{position:absolute;inset:0;display:none;place-items:center;background:#120E1C;z-index:9;
     text-align:center;padding:24px;font-size:15px;color:var(--parch)}
   @media (orientation:portrait) and (pointer:coarse){ .rotate{display:grid} }
@@ -462,7 +464,23 @@ function lockReason(t){
 }
 
 const dist2 = (a,b,c,d)=>Math.hypot(a-c,b-d);
+function riverPush(o){
+  if(!RIVER) return;
+  const proj=o.x*RIVER.nx+o.z*RIVER.nz; if(Math.abs(proj-RIVER.D0)>230) return;
+  for(let i=0;i<BRIDGES.length;i++){ const b=BRIDGES[i]; if(b.deckY===undefined) continue;
+    const dx=o.x-b.x, dz=o.z-b.z; if(Math.abs(dx*b.ca+dz*b.sa)<b.half+8 && Math.abs(-dx*b.sa+dz*b.ca)<7.5) return; }
+  let best=1e9, px=0, pz=0; const P=RIVER.pts;
+  for(let i=0;i<P.length-1;i++){
+    const a=P[i], c=P[i+1], dx=c.x-a.x, dz=c.z-a.z, L2=dx*dx+dz*dz||1;
+    let t=((o.x-a.x)*dx+(o.z-a.z)*dz)/L2; t=t<0?0:t>1?1:t;
+    const qx=a.x+dx*t, qz=a.z+dz*t, d=Math.hypot(o.x-qx,o.z-qz);
+    if(d<best){ best=d; px=qx; pz=qz; }
+  }
+  const R=RIVER.w*.95;
+  if(best<R){ const k=R/(best||1); o.x=px+(o.x-px)*k; o.z=pz+(o.z-pz)*k; }
+}
 const keepIn=o=>{ const r=Math.hypot(o.x,o.z); if(r>PLAY_R){ o.x*=PLAY_R/r; o.z*=PLAY_R/r; }
+  riverPush(o);
   if(LAKE){ const dx=o.x-LAKE.x, dz=o.z-LAKE.z, d=Math.hypot(dx,dz), R=LAKE.r*1.04; if(d<R){ const k=R/(d||1); o.x=LAKE.x+dx*k; o.z=LAKE.z+dz*k; } } };
 const clamp=(v,a,b)=>v<a?a:v>b?b:v;
 const rnd=(a,b)=>a+Math.random()*(b-a);
@@ -483,7 +501,7 @@ renderer.shadowMap.type = MOBILE ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
 if(MOBILE) renderer.shadowMap.autoUpdate=false;
 renderer.outputEncoding = THREE.sRGBEncoding;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = .95;
+renderer.toneMappingExposure = 1.02;
 
 const scene = new THREE.Scene();
 scene.matrixAutoUpdate=false;
@@ -575,16 +593,17 @@ const moonMat=new THREE.MeshBasicMaterial({color:0xF2F5FF,transparent:true,opaci
 const moon=new THREE.Mesh(new THREE.SphereGeometry(80,20,14), moonMat);
 moon.position.set(-5200,4300,-7800); moon.scale.setScalar(3.4); skyDome.add(moon);
 
-const hemi = new THREE.HemisphereLight(0xC9DCF2, 0x3C3828, .5);
+const hemi = new THREE.HemisphereLight(0xAFCDF2, 0x40382A, .42);
 hemi.color.convertSRGBToLinear(); hemi.groundColor.convertSRGBToLinear();
 scene.add(hemi);
-const sun = new THREE.DirectionalLight(0xFFF1D6, 1.5);
+const sun = new THREE.DirectionalLight(0xFFEBC4, 2.0);
 sun.color.convertSRGBToLinear();
 sun.position.set(300, 340, 220);
 sun.castShadow = true;
 sun.shadow.mapSize.set(MOBILE?1024:2048, MOBILE?1024:2048);
 sun.shadow.bias = -0.0005;
 sun.shadow.normalBias = 0.7;
+sun.shadow.radius = 2.4;
 const sc = sun.shadow.camera;
 sc.left=-170; sc.right=170; sc.top=170; sc.bottom=-170; sc.near=5; sc.far=3000;
 scene.add(sun); scene.add(sun.target);
@@ -628,6 +647,22 @@ const geo = {
   ring: new THREE.RingGeometry(1.5,1.85,32),
   plane: new THREE.PlaneGeometry(1,1,1,1)
 };
+/* صندوق مشطوف الحواف: يلتقط الضوء على الحافة فيقرأ حجراً لا مكعباً */
+function roundedRectShape(r){
+  const s=new THREE.Shape(), h=.5;
+  s.moveTo(-h+r,-h);
+  s.lineTo(h-r,-h); s.quadraticCurveTo(h,-h, h,-h+r);
+  s.lineTo(h,h-r);  s.quadraticCurveTo(h,h, h-r,h);
+  s.lineTo(-h+r,h); s.quadraticCurveTo(-h,h, -h,h-r);
+  s.lineTo(-h,-h+r);s.quadraticCurveTo(-h,-h, -h+r,-h);
+  return s;
+}
+geo.rbox = (()=>{ const g=new THREE.ExtrudeGeometry(roundedRectShape(.12),
+    {depth:.86, bevelEnabled:true, bevelThickness:.07, bevelSize:.07, bevelSegments:2, curveSegments:3});
+  g.center(); g.computeVertexNormals(); return g; })();
+/* سقف جملوني (مثلث ممتد) — القاعدة عند y=-.5 والقمة عند y=+.5، الامتداد على z */
+geo.gable = (()=>{ const s=new THREE.Shape(); s.moveTo(-.5,-.5); s.lineTo(.5,-.5); s.lineTo(0,.5); s.closePath();
+  const g=new THREE.ExtrudeGeometry(s,{depth:1,bevelEnabled:false}); g.translate(0,0,-.5); g.computeVertexNormals(); return g; })();
 /* كبسولة عبر LatheGeometry — أساس الأطراف والأجساد */
 function capsuleGeo(r,h,seg,capSeg){
   seg=seg||12; capSeg=capSeg||5;
@@ -766,6 +801,7 @@ const MAT_GATE_DAY=mat(0xFFC864,{emissive:0x8A5E14}), MAT_GATE_NIGHT=mat(0xFFC86
 let world = new THREE.Group(); world.matrixAutoUpdate=false; scene.add(world);
 let LANES=[], SLOTS=[], WALLS=[], groundMesh=null, treeGroup=null, WALL_R=52, WALL_N=18;
 let LAKE=null, WATER=null, FIREFLIES=null, CLOUDS=null, CAMPFIRES=[], PADS=null;
+let RIVER=null, RIVERMESH=null, BRIDGES=[];
 const WATER_Y=-6;
 
 /* ═══════════ التضاريس — خمسة أضعاف المساحة القديمة ═══════════ */
@@ -785,7 +821,30 @@ function makeHeightFn(seed){
       h += (fbm(x*.009-a, z*.009+a, 4)-.42)*2*24;                           // تلال
       h += (fbm(x*.03+a, z*.03-a, 2)-.5)*2*3;                            // تفاصيل
       const edge=clamp((r-EDGE_R)/220,0,1);
-      h += edge*edge*170 + edge*(fbm(x*.02,z*.02,3)-.5)*100;                   // حافة العالم ترتفع جبالاً
+      if(edge>0){                                                              // سلاسل مسنّنة لا قباب ناعمة
+        const rg=1-Math.abs(fbm(x*.0075-a*2, z*.0075+a*2, 4)*2-1);
+        h += edge*edge*(120+rg*rg*230) + edge*(fbm(x*.02,z*.02,3)-.5)*90;
+      }
+      // ملامح الممرات: لكل ممرّ شخصيته
+      for(let i=0;i<LANES.length;i++){
+        const L=LANES[i]; if(!L.feat||L.feat==="river") continue;
+        const ca=Math.cos(L.a), sa=Math.sin(L.a);
+        const along=x*ca+z*sa, perp=Math.abs(-x*sa+z*ca);
+        if(L.feat==="canyon"){                                                 // وادٍ صخري: جداران يضيقان الممر
+          if(along>195 && along<585 && perp>25 && perp<118){
+            const k=Math.min(1,(along-195)/60)*Math.min(1,(585-along)/60)
+                   *Math.min(1,(perp-25)/11)*Math.min(1,(118-perp)/30);
+            h += k*(58+fbm(x*.05,z*.05,2)*26);
+          }
+        } else if(L.feat==="pass"){                                            // ممر جبلي: حاجز يقطع الطريق والطريق يشقّه
+          const d0=Math.abs(along-400);
+          if(d0<130 && along>0 && perp<430){
+            const k=(1-d0/130)*(1-clamp((perp-300)/130,0,1));
+            h += k*k*(128+fbm(x*.04,z*.04,2)*48);
+          }
+        }
+      }
+
       if(LAKE){
         const d=Math.hypot(x-LAKE.x,z-LAKE.z)/LAKE.r;
         if(d<1.4){
@@ -799,6 +858,29 @@ function makeHeightFn(seed){
   };
 }
 
+/* ═══ النهر: مجرى متعرّج يقطع الوادي؛ الممرّ الذي يعبره يحتاج جسراً ═══ */
+function makeRiver(idx, ang){
+  const nx=Math.cos(ang), nz=Math.sin(ang), tx=-nz, tz=nx, D0=330;
+  const pts=[];
+  for(let s=-WORLD*.66; s<=WORLD*.66; s+=110){
+    const w=Math.sin(s*.0040+idx*2.1)*78 + Math.sin(s*.0113+1.7)*30;
+    pts.push({ x:nx*(D0+w)+tx*s, z:nz*(D0+w)+tz*s });
+  }
+  return { pts, w:34, nx, nz, D0, ang };
+}
+function riverDist(x,z){
+  if(!RIVER) return 1e9;
+  const proj=x*RIVER.nx+z*RIVER.nz;                    // إقصاء سريع: بعيد عن شريط النهر
+  if(Math.abs(proj-RIVER.D0)>230) return 1e9;
+  let best=1e9; const P=RIVER.pts;
+  for(let i=0;i<P.length-1;i++){
+    const a=P[i], b=P[i+1], dx=b.x-a.x, dz=b.z-a.z, L2=dx*dx+dz*dz||1;
+    let t=((x-a.x)*dx+(z-a.z)*dz)/L2; t=t<0?0:t>1?1:t;
+    const d=Math.hypot(x-(a.x+dx*t), z-(a.z+dz*t));
+    if(d<best) best=d;
+  }
+  return best;
+}
 /* أقرب مسافة إلى أي طريق (بما فيه الامتداد الزخرفي نحو الجبال والوصلة إلى القلعة) */
 function laneDist(x,z){
   let best=1e9;
@@ -820,8 +902,15 @@ function terrainYExactRaw(x,z){
   const keep = clamp((Math.hypot(x,z)-70)/45, 0, 1);
   if(keep<=0) return 0;
   const lane = clamp((laneDist(x,z)-13)/26, 0, 1);
-  const h = lane>=1 ? HEIGHT_FN.full(x,z) : HEIGHT_FN.low(x,z)*(1-lane)+HEIGHT_FN.full(x,z)*lane;
-  return h*keep;
+  let h = (lane>=1 ? HEIGHT_FN.full(x,z) : HEIGHT_FN.low(x,z)*(1-lane)+HEIGHT_FN.full(x,z)*lane)*keep;
+  if(RIVER){                                                                   // قناة النهر تقطع كل شيء — حتى الطريق
+    const rd=riverDist(x,z), W=RIVER.w;
+    if(rd<W*2.3){
+      if(rd<W){ h -= Math.pow(1-rd/W,1.4)*21; }
+      else h += Math.pow(1-(rd-W)/(W*1.3),2)*5;
+    }
+  }
+  return h;
 }
 /* تسوية موضعية: كل عقدة بناء على مصطبة، وكل قطعة سور على شريط مستوٍ */
 function terrainYExact(x,z){
@@ -835,12 +924,20 @@ function terrainYExact(x,z){
 }
 /* شبكة الارتفاعات المبنية مع الأرض — كل استعلام وقت التشغيل أربع قراءات فقط */
 let HG=null;
-function terrainY(x,z){
+function terrainYGrid(x,z){
   if(!HG) return 0;
   const s=HG.seg, n=s+1, d=HG.data;
   const fx=clamp((x+WORLD*.5)/WORLD*s, 0, s-1e-4), fz=clamp((z+WORLD*.5)/WORLD*s, 0, s-1e-4);
   const ix=fx|0, iz=fz|0, tx=fx-ix, tz=fz-iz, i=iz*n+ix;
   return (d[i]*(1-tx)+d[i+1]*tx)*(1-tz)+(d[i+n]*(1-tx)+d[i+n+1]*tx)*tz;
+}
+/* سطح المشي: الأرض، وفوق النهر سطحُ الجسر لمن يقف على بصمته */
+function terrainY(x,z){
+  let h=terrainYGrid(x,z);
+  for(let i=0;i<BRIDGES.length;i++){ const b=BRIDGES[i]; if(b.deckY===undefined) continue;
+    const dx=x-b.x, dz=z-b.z, along=Math.abs(dx*b.ca+dz*b.sa), perp=Math.abs(-dx*b.sa+dz*b.ca);
+    if(along<b.half+6 && perp<8){ const k=1-clamp((along-b.half)/6,0,1); h=Math.max(h, h*(1-k)+b.deckY*k); } }
+  return h;
 }
 function slopeAt(x,z){
   const y=terrainY(x,z);
@@ -882,10 +979,17 @@ function buildTerrain(cfg){
       if(d<1.9) tmp.lerp(cLush, clamp((1.9-d)/.9,0,1)*.7);              // خضرة أكثف حول البحيرة
       if(d<1.45 && y<WATER_Y+1.6) tmp.lerp(cSand, clamp((WATER_Y+1.6-y)/1.4,0,1));
       if(d<1.15 && y<WATER_Y+.5) tmp.multiplyScalar(.74); }
-    tmp.lerp(cRock, clamp((sl-.14)*1.5,0,1)*.85);                        // صخر على المنحدرات الحادة فقط
-    if(y>cfg.snowLine) tmp.lerp(cSnow, clamp((y-cfg.snowLine)/10,0,1)*(1-sl*.5));
+    tmp.lerp(cRock, clamp((sl-.10)*1.9,0,1)*.95);
+    for(let li=0;li<LANES.length;li++){ const L=LANES[li]; if(L.feat!=="canyon") continue;
+      const ca=Math.cos(L.a), sa=Math.sin(L.a), along=x*ca+z*sa, perp=Math.abs(-x*sa+z*ca);
+      if(along>195 && along<585 && perp>22 && perp<125){ const k=Math.min(1,(perp-22)/8)*Math.min(1,(125-perp)/20); tmp.lerp(cRock, k*.8).multiplyScalar(1-k*.18); } }                        // صخر على المنحدرات الحادة فقط
+    const snowL = r>EDGE_R*.85 ? cfg.snowLine : Math.max(cfg.snowLine, 104);
+    if(y>snowL) tmp.lerp(cSnow, clamp((y-snowL)/14,0,1)*(1-sl*.4));
     if(r>EDGE_R) tmp.lerp(cRock, clamp((r-EDGE_R)/60,0,1)*.6);
     tmp.multiplyScalar(.9+clamp(y*.012,-.08,.12));                      // القمم أفتح والوديان أغمق
+    if(RIVER){ const rv=riverDist(x,z);
+      if(rv<RIVER.w*1.7){ tmp.lerp(cSand, clamp(1-(rv-RIVER.w*.8)/(RIVER.w*.9),0,1)*.85);
+        if(rv<RIVER.w*.85) tmp.lerp(new THREE.Color(cfg.water).convertLinearToSRGB(), clamp(1-rv/(RIVER.w*.85),0,1)*.5); } }
     const d=LD[i];
     if(d<13){ const t=1-clamp((d-7.5)/5.5,0,1); tmp.lerp(d<7.6?cRoad:cRoadE, t*.85); }
     if(r<80){ tmp.lerp(cDirt, clamp((80-r)/28,0,1)*.25); }                // هضبة القلعة مدكوكة
@@ -947,6 +1051,7 @@ function buildGrass(cfg){
     const a=rnd(0,7), r=rnd(60,EDGE_R+20);
     const x=Math.cos(a)*r, z=Math.sin(a)*r;
     if(laneDist(x,z)<9) continue;
+    if(riverDist(x,z)<RIVER.w*1.3) continue;
     if(SLOTS.some(sl=>dist2(x,z,sl.x,sl.z)<8)) continue;
     if(LAKE && Math.hypot(x-LAKE.x,z-LAKE.z)<LAKE.r*1.1) continue;
     const y=terrainY(x,z); if(y>cfg.snowLine-2 || slopeAt(x,z)>.55) continue;
@@ -1072,6 +1177,7 @@ function buildWater(cfg){
   return mesh;
 }
 function updateWater(t){
+  if(RIVERMESH){ RIVERMESH.material.opacity=.78+Math.sin(t*.9)*.05; }
   if(!WATER) return;
   if(MOBILE && (FRAME&1)) return;
   if(dist2(LAKE.x,LAKE.z,G.cam.tx,G.cam.tz) > camDist*1.6+LAKE.r) return;
@@ -1084,6 +1190,80 @@ function updateWater(t){
   p.needsUpdate=true; if(camDist<340) g.computeVertexNormals();
 }
 
+/* شريط ماء النهر يتبع القاع المحفور */
+function buildRiverMesh(cfg){
+  const P=RIVER.pts, W=RIVER.w;
+  const pos=[], idx=[], uvs=[];
+  for(let i=0;i<P.length;i++){
+    const a=P[i], b=P[Math.min(P.length-1,i+1)], c=P[Math.max(0,i-1)];
+    const dx=b.x-c.x, dz=b.z-c.z, l=Math.hypot(dx,dz)||1, sx=-dz/l, sz=dx/l;
+    const y=terrainYGrid(a.x,a.z)+7.5;
+    for(const k of [-1,1]){ pos.push(a.x+sx*W*.92*k, y, a.z+sz*W*.92*k); uvs.push(i*.35,(k+1)/2); }
+    if(i<P.length-1){ const j=i*2; idx.push(j,j+2,j+1, j+1,j+2,j+3); }
+  }
+  const g=new THREE.BufferGeometry();
+  g.setAttribute("position",new THREE.Float32BufferAttribute(pos,3));
+  g.setAttribute("uv",new THREE.Float32BufferAttribute(uvs,2));
+  g.setIndex(idx); g.computeVertexNormals();
+  const m=new THREE.MeshStandardMaterial({roughness:.08, metalness:0, transparent:true, opacity:.82, envMapIntensity:.9});
+  m.color=lin(cfg.water);
+  const mesh=new THREE.Mesh(g,m); mesh.receiveShadow=true; mesh.renderOrder=1;
+  return mesh;
+}
+/* جسر خشبي بأكتاف حجرية ودعائم تنزل إلى الماء */
+function buildBridge(b, cfg){
+  const g=new THREE.Group();
+  const wood=mat(0x6B4A2C,WOOD()), wood2=mat(0x4A3320,WOOD()), stone=mat(0x8E8778,STONE());
+  const L=RIVER.w*2.9, Wd=15, yTop=b.deckY, yBed=terrainYGrid(b.x,b.z);
+  for(let i=-3;i<=3;i++) g.add(part(geo.box, wood, 0, 0, i*(L/7), Wd, 1.1, L/7-.5));
+  for(const s of [-1,1]){
+    g.add(part(geo.box, wood2, s*(Wd/2-.5), .9, 0, .9, .8, L));
+    for(let i=-3;i<=3;i++) g.add(part(geo.cyl, wood2, s*(Wd/2-.5), 2.2, i*(L/7), .32,3.4,.32));
+    g.add(part(geo.box, wood, s*(Wd/2-.5), 3.9, 0, .7, .7, L));
+  }
+  for(const s of [-1,1]){
+    const px=s*L*.3;
+    g.add(part(geo.box, stone, 0, -(yTop-yBed)/2-1, px, Wd*.8, yTop-yBed+2, 3.4));
+    g.add(part(geo.box, stone, 0, -1.6, s*L*.52, Wd+3, 4, 8));
+  }
+  bakeStatic(g);
+  g.position.set(b.x, yTop, b.z);
+  g.rotation.y = Math.PI/2 - b.a;   // المحلي z → اتجاه الممر (cos a, sin a)
+  return g;
+}
+/* صخور الضفاف وجدران الوادي: كتل مشوّهة تُظهر الحجر لا الأرض الملساء */
+function buildCliffRocks(cfg){
+  const N=MOBILE?260:520;
+  const rg=(()=>{ const g=new THREE.IcosahedronGeometry(1,1), p=g.attributes.position;
+    for(let i=0;i<p.count;i++){ const x=p.getX(i),y=p.getY(i),z=p.getZ(i);
+      const k=.62+fbm(x*2.2+9,z*2.2+y*1.7,3)*.85; p.setXYZ(i,x*k,y*k*.8,z*k); }
+    g.computeVertexNormals(); return g; })();
+  const m=new THREE.MeshStandardMaterial({roughness:.95, metalness:.02, flatShading:true, map:TEX.stone});
+  m.color=lin(cfg.mountRock).multiplyScalar(1.15);
+  const inst=new THREE.InstancedMesh(rg,m,N), d=new THREE.Object3D(), cc=new THREE.Color();
+  let k=0;
+  const put=(x,z,s)=>{ if(k>=N) return;
+    d.position.set(x, terrainY(x,z)-s*.3, z); d.rotation.set(rnd(-.3,.3),rnd(0,7),rnd(-.3,.3));
+    d.scale.set(s*rnd(.8,1.5), s*rnd(.7,1.4), s*rnd(.8,1.5)); d.updateMatrix(); inst.setMatrixAt(k,d.matrix);
+    cc.setHSL(.08,rnd(.03,.1),rnd(.45,.8)); inst.setColorAt(k,cc); k++; };
+  for(const L of LANES){
+    if(L.feat==="canyon") for(let i=0;i<90;i++){ const along=rnd(215,555), perp=rnd(36,120)*(Math.random()<.5?-1:1);
+      put(Math.cos(L.a)*along-Math.sin(L.a)*perp, Math.sin(L.a)*along+Math.cos(L.a)*perp, rnd(6,17)); }
+    if(L.feat==="pass") for(let i=0;i<70;i++){ const along=400+rnd(-110,110), perp=rnd(28,330)*(Math.random()<.5?-1:1);
+      put(Math.cos(L.a)*along-Math.sin(L.a)*perp, Math.sin(L.a)*along+Math.cos(L.a)*perp, rnd(5,14)); }
+  }
+  if(RIVER) for(let i=0;i<160 && k<N;i++){
+    const p=RIVER.pts[(Math.random()*RIVER.pts.length)|0];
+    const s=Math.random()<.5?-1:1, off=RIVER.w*rnd(1.0,1.7)*s;
+    const nx=-RIVER.nz, nz=RIVER.nx;
+    const x=p.x+RIVER.nx*off+nx*rnd(-40,40), z=p.z+RIVER.nz*off+nz*rnd(-40,40);
+    if(Math.hypot(x,z)<200) continue;
+    put(x,z,rnd(3,9));
+  }
+  inst.count=k; inst.castShadow=true; inst.receiveShadow=true;
+  if(inst.instanceColor) inst.instanceColor.needsUpdate=true;
+  return inst;
+}
 /* يراعات الليل */
 function buildFireflies(centers){
   const N=MOBILE?400:800;
@@ -1180,7 +1360,7 @@ function layoutKingdom(cfg, idx, WR, WN){
   const RNG=(s=>()=>{ s|=0; s=s+0x6D2B79F5|0; let t=Math.imul(s^s>>>15,1|s); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; })(1000+idx*77);
   const rj=(a,b)=>a+RNG()*(b-a);
   const rawY=(x,z)=>terrainYExactRaw(x,z);
-  const okPt=(x,z)=>laneDist(x,z)>=12 && !(LAKE && Math.hypot(x-LAKE.x,z-LAKE.z)<LAKE.r*1.25) && !SLOTS.some(s=>dist2(s.x,s.z,x,z)<14);
+  const okPt=(x,z)=>laneDist(x,z)>=12 && riverDist(x,z)>RIVER.w*2 && !(LAKE && Math.hypot(x-LAKE.x,z-LAKE.z)<LAKE.r*1.25) && !SLOTS.some(s=>dist2(s.x,s.z,x,z)<14);
   const settle=(x,z,rad)=>{ let best=null;
     for(let k=0;k<9;k++){ const px=k?x+rj(-rad,rad):x, pz=k?z+rj(-rad,rad):z; if(!okPt(px,pz)) continue;
       const y=rawY(px,pz), s=Math.abs(rawY(px+4,pz)-y)+Math.abs(rawY(px,pz+4)-y);
@@ -1224,10 +1404,11 @@ function buildStage(idx){
   for(let i=0;i<cfg.lanes;i++){
     const a = cfg.laneAngles ? cfg.laneAngles[i] : (i/cfg.lanes)*Math.PI*2 + 0.6;
     const pts=[], road=[];
-    const at=(r,k)=>{ const wob=Math.sin(i*3.1+k*1.3)*52*Math.min(1,(k-1)/4); return { x:Math.cos(a)*r+Math.cos(a+1.57)*wob, z:Math.sin(a)*r+Math.sin(a+1.57)*wob }; };
+    const AMP=[26,104,64,80,44][i%5], FRQ=[1.05,.58,1.55,.85,1.25][i%5], PH=[0,1.9,.7,2.8,1.2][i%5];
+    const at=(r,k)=>{ const wob=Math.sin(PH+k*1.3*FRQ)*AMP*Math.min(1,(k-1)/4); return { x:Math.cos(a)*r+Math.cos(a+1.57)*wob, z:Math.sin(a)*r+Math.sin(a+1.57)*wob }; };
     for(let k=9;k>=7;k--) road.push(at(230+k*102, k));           // 286 ← 237 (زخرفي)
     for(let k=6;k>=1;k--) pts.push(at(230+k*102, k));               // 204 ← 89
-    LANES.push({ name:`ممر ${laneName(a)}`, a, pts, road:road.concat(pts), light:1, idx:i });
+    LANES.push({ name:`ممر ${laneName(a)}`, a, pts, road:road.concat(pts), light:1, idx:i, feat:null });
   }
   G.lightPool = 3 + G.buildings.filter(b=>b.type==="beacon").length + (has("light")?1:0);
   for(const L of LANES) L.light = 1;
@@ -1236,13 +1417,30 @@ function buildStage(idx){
   SLOTS = []; WALLS = [];
   const WR=170, WN=30; WALL_R=WR; WALL_N=WN;   // التخطيط الفعلي يُبنى بعد دالة الارتفاع (انظر layoutKingdom)
 
-  // البحيرة: أبعد موضع عن الطرق في حلقة 130–190
-  let bestL=null, bestD=0;
-  for(let k=0;k<60;k++){
-    const a=rnd(0,7), r=rnd(560,950), x=Math.cos(a)*r, z=Math.sin(a)*r;
-    const d=laneDist(x,z); if(d>bestD){ bestD=d; bestL={x,z}; }
+  // النهر أولاً: يقرّر أي ممرّ يحتاج جسراً
+  RIVER = makeRiver(idx, cfg.riverAngle!==undefined?cfg.riverAngle:LANES[0].a);
+  BRIDGES=[];
+  for(const L of LANES){
+    let best=1e9, at=null;
+    for(let k=0;k<L.pts.length-1;k++){
+      for(let t=0;t<=1;t+=.08){
+        const x=L.pts[k].x+(L.pts[k+1].x-L.pts[k].x)*t, z=L.pts[k].z+(L.pts[k+1].z-L.pts[k].z)*t;
+        const d=riverDist(x,z); if(d<best){ best=d; at={x,z}; }
+      }
+    }
+    if(best<RIVER.w*1.5){ L.feat="river"; L.bridge=at; BRIDGES.push({x:at.x, z:at.z, a:L.a, lane:L.idx}); }
   }
-  const lakeR=clamp((bestD-40)/1.45, 70, 130);
+  let alt=0;
+  for(const L of LANES) if(!L.feat) L.feat = (alt++%2)?"pass":"canyon";
+  for(const L of LANES) L.name = (L.feat==="river"?"جسر ":L.feat==="canyon"?"وادي ":"ممر ")+laneName(L.a);
+  // البحيرة: يغذّيها النهر — أبعد نقطة على مجراه عن الطرق
+  let bestL=null, bestD=0;
+  for(const p of RIVER.pts){
+    if(Math.hypot(p.x,p.z)<420 || Math.hypot(p.x,p.z)>EDGE_R*.78) continue;
+    const d=laneDist(p.x,p.z); if(d>bestD){ bestD=d; bestL=p; }
+  }
+  if(!bestL){ const a=rnd(0,7), r=rnd(560,950); bestL={x:Math.cos(a)*r, z:Math.sin(a)*r}; bestD=120; }
+  const lakeR=clamp((bestD-40)/1.45, 80, 150);
   LAKE = { x:bestL.x, z:bestL.z, r:lakeR };
 
   // تضاريس
@@ -1250,10 +1448,16 @@ function buildStage(idx){
   layoutKingdom(cfg, idx, WR, WN);
   groundMesh = buildTerrain(cfg);
   world.add(groundMesh);
+  for(const b of BRIDGES){ b.ca=Math.cos(b.a); b.sa=Math.sin(b.a); b.half=RIVER.w*1.45;
+    const y1=terrainYGrid(b.x+b.ca*b.half*1.1, b.z+b.sa*b.half*1.1), y2=terrainYGrid(b.x-b.ca*b.half*1.1, b.z-b.sa*b.half*1.1);
+    b.deckY=Math.max(y1,y2)+1.2; }
   for(const L of LANES) world.add(buildRoad(L,cfg));
   world.add(buildGrass(cfg));
   world.add(buildFlowers(cfg));
   WATER = buildWater(cfg); world.add(WATER);
+  if(RIVER){ RIVERMESH = buildRiverMesh(cfg); world.add(RIVERMESH); }
+  for(const b of BRIDGES) world.add(buildBridge(b, cfg));
+  world.add(buildCliffRocks(cfg));
   world.add(buildMountains(cfg));
   CLOUDS = buildClouds(cfg); world.add(CLOUDS);
   const far = new THREE.Mesh(new THREE.PlaneGeometry(14000,14000,1,1), mat(cfg.mountRock,{roughness:1}));
@@ -1287,6 +1491,7 @@ function buildStage(idx){
     if(Math.hypot(x,z)<150 || Math.hypot(x,z)>EDGE_R+40) return false;
     if(laneDist(x,z)<12) return false;
     if(LAKE && Math.hypot(x-LAKE.x,z-LAKE.z)<LAKE.r*1.25) return false;
+    if(riverDist(x,z)<RIVER.w*1.6) return false;
     for(const sl of SLOTS) if(dist2(x,z,sl.x,sl.z)<12) return false;
     for(const w of WALLS) if(dist2(x,z,w.x,w.z)<12) return false;
     for(const L of LANES) if(dist2(x,z,L.pts[0].x,L.pts[0].z)<26) return false;
@@ -1377,7 +1582,7 @@ function buildStage(idx){
   // قاعدة مدرّجة
   cst.add(part(geo.cyl, stone2, 0,.5,0, 14.5,1,14.5));
   cst.add(part(geo.cyl, stone, 0,1.25,0, 13.2,.5,13.2));
-  cst.add(part(geo.box, stone, 0,3.2,0, 15,5.4,15));
+  cst.add(part(geo.rbox, stone, 0,3.2,0, 15,5.4,15));
   cst.add(part(geo.box, stone3, 0,6.1,0, 15.6,.7,15.6));
   // شرفات السور
   for(let i=0;i<24;i++){
@@ -1385,11 +1590,11 @@ function buildStage(idx){
     cst.add(part(geo.box, stone3, Math.cos(a)*R, 6.9, Math.sin(a)*R, 1.1,1.5,1.1, 0,-a,0));
   }
   // برج مركزي
-  cst.add(part(geo.box, stone, 0,9.4,0, 8.4,7,8.4));
+  cst.add(part(geo.rbox, stone, 0,9.4,0, 8.4,7,8.4));
   cst.add(part(geo.box, stone3, 0,13.2,0, 9.2,.8,9.2));
   for(let i=0;i<12;i++){ const a=i/12*Math.PI*2;
     cst.add(part(geo.box, stone3, Math.cos(a)*4.1, 14, Math.sin(a)*4.1, .9,1.3,.9, 0,-a,0)); }
-  cst.add(part(geo.box, stone2, 0,16.4,0, 6.2,4,6.2));
+  cst.add(part(geo.rbox, stone2, 0,16.4,0, 6.2,4,6.2));
   cst.add(part(geo.cone8, roofM, 0,20.6,0, 5.2,4.4,5.2));
   // أبراج الأركان في مجموعتين تُكشفان مع مستوى القلعة
   const twA=new THREE.Group(), twB=new THREE.Group(); twA.userData.anim=true; twB.userData.anim=true; twA.userData.keep=true; twB.userData.keep=true;
@@ -1514,19 +1719,21 @@ function mkBuilding(type, lv, branch){
   const glow=mat(0xFFC864,{emissive:0x8A5E14,roughness:.35});
 
   if(type==="cottage"){
-    g.add(part(geo.box, stone2, 0,.5,0, 5.6,1,5.6));
-    g.add(part(geo.box, mat(0xE0D3B4,{roughness:.92}), 0,2.2*H,0, 5,3.4*H,4.6));
+    g.add(part(geo.rbox, stone2, 0,.5,0, 5.8,1,5.8));
+    g.add(part(geo.rbox, mat(0xE0D3B4,{roughness:.92}), 0,2.2*H,0, 5,3.4*H,4.6));
     // إطار خشبي
     for(const [x,z,w,d] of [[-2.5,0,.34,4.6],[2.5,0,.34,4.6],[0,-2.3,5,.34],[0,2.3,5,.34]])
       g.add(part(geo.box, wood, x,2.2*H,z, w,3.4*H,d));
     g.add(part(geo.box, wood, 0,3.9*H,0, 5.2,.34,4.8));
-    // سقف قش من طبقتين
-    g.add(part(geo.cone, thatch, 0,5.3*H,0, 4.6,2.8,4.3, 0,Math.PI/4,0));
-    g.add(part(geo.cone, mat(0xA8712C,{roughness:.95,flatShading:true}), 0,6.4*H,0, 3,1.6,2.8, 0,Math.PI/4,0));
+    // سقف جملوني بقشّ وعارضة قمة وطنف بارز
+    g.add(part(geo.gable, thatch, 0,5.5*H,0, 6.2,3.1,5.6));
+    g.add(part(geo.cyl, wood2, 0,7.05*H,0, .2,5.8,.2, Math.PI/2,0,0));
+    for(const sz of [-1,1]) g.add(part(geo.gable, wood2, 0,5.5*H,sz*2.94, 5.9,3.0,.14));   // واجهتا الجملون (مثلثان خشبيان)
     g.add(part(geo.box, wood2, 0,1.3*H,2.4, 1.3,2.6*H,.2));
     g.add(part(geo.box, glow, -1.6,2.6*H,2.4, 1,1,.2));
     g.add(part(geo.box, glow,  1.6,2.6*H,2.4, 1,1,.2));
-    g.add(part(geo.box, stone3, 1.9,5.6*H,-1.4, .9,3,.9));   // مدخنة
+    g.add(part(geo.rbox, stone3, 1.9,5.9*H,-1.7, 1.05,3.4,1.05));   // مدخنة
+    g.add(part(geo.rbox, stone2, 1.9,7.6*H,-1.7, 1.35,.35,1.35));
     for(const sx of [-1.6,1.6]){ g.add(part(geo.box, wood2, sx,1.9*H,2.55, 1.2,.35,.35)); g.add(part(geo.sph, mat(sx<0?0xE04A4A:0xF2D24A,{roughness:.8}), sx,2.2*H,2.55, .35,.3,.3)); }
     if(lv>1) g.add(part(geo.box, wood2, -3.4,.9,0, 1.4,1.8,2.6));
     // دخان المدخنة
@@ -1546,8 +1753,9 @@ function mkBuilding(type, lv, branch){
       g.add(part(geo.box, mat(crop,{roughness:.95,flatShading:true}), i*1.3,.95,0, .72,1.05,8.2));
     }
     // حظيرة
-    g.add(part(geo.box, mat(0xA6552A,{roughness:.9}), 3.4,1.6,3.4, 3.4,3.2,3.2));
-    g.add(part(geo.cone, mat(0x7A3E1E,{roughness:.9,flatShading:true}), 3.4,4,3.4, 3,1.7,2.8, 0,Math.PI/4,0));
+    g.add(part(geo.rbox, mat(0xA6552A,{roughness:.9}), 3.4,1.6,3.4, 3.4,3.2,3.2));
+    g.add(part(geo.gable, mat(0x7A3E1E,{roughness:.9}), 3.4,4.35,3.4, 4,2.3,3.6));
+    g.add(part(geo.cyl, wood2, 3.4,5.5,3.4, .13,3.7,.13, Math.PI/2,0,0));
     g.add(part(geo.box, wood, 3.4,1.2,5.05, 1.4,2.4,.16));
     // سياج
     for(let i=0;i<8;i++){ const a=i/8*Math.PI*2;
@@ -1604,11 +1812,12 @@ function mkBuilding(type, lv, branch){
     const pl=lightReq(g,0,ht+2.6,0,0xFF8A30,36); pl.intensity=1.6; g.userData.firelight=pl;
   }
   else if(type==="barracks"){
-    g.add(part(geo.box, stone2, 0,.5,0, 10.4,1,6.4));
-    g.add(part(geo.box, mat(0x6E7C58,{roughness:.92}), 0,2.3,0, 9.6,3.6,5.6));
+    g.add(part(geo.rbox, stone2, 0,.5,0, 10.6,1,6.6));
+    g.add(part(geo.rbox, mat(0x6E7C58,{roughness:.92}), 0,2.3,0, 9.6,3.6,5.6));
     for(let i=-2;i<=2;i++) g.add(part(geo.box, wood, i*2.2,2.3,0, .36,3.6,5.8));
-    g.add(part(geo.box, mat(0x4E5C3E,{roughness:.9}), 0,4.5,0, 10.4,.9,6.4));
-    g.add(part(geo.cone, mat(0x3E4A32,{roughness:.9,flatShading:true}), 0,5.6,0, 6.4,1.8,4.4, 0,Math.PI/4,0));
+    g.add(part(geo.rbox, mat(0x4E5C3E,{roughness:.9}), 0,4.5,0, 10.4,.9,6.4));
+    g.add(part(geo.gable, mat(0x3E4A32,{roughness:.9}), 0,6.25,0, 6.8,2.6,11, 0,Math.PI/2,0));
+    g.add(part(geo.cyl, wood2, 0,7.5,0, .17,10.4,.17, 0,0,Math.PI/2));
     g.add(part(geo.box, wood2, 0,1.5,2.95, 2,3,.2));
     // رفّ أسلحة
     for(let i=0;i<4;i++) g.add(part(geo.cyl, wood, -4.2+i*.55,1.6,3.4, .08,3.2,.08, .12,0,.1));
@@ -3171,14 +3380,14 @@ const lerpCol=(c,hex,k)=>{ _c1.set(hex).convertSRGBToLinear(); c.lerp(_c1,k); };
 function updateLighting(){
   const night = G.phase==="night";
   const cfg = STAGES[G.stage];
-  const tgt = night ? LT_NIGHT : (cfg._lt || (cfg._lt={ hemi:.6, sun:1.55, sunCol:cfg.sun, amb:.2, ambCol:0x404060, fog:cfg.fog, top:cfg.skyTop, hor:cfg.skyHor, bot:cfg.skyBot, sky:0 }));
+  const tgt = night ? LT_NIGHT : (cfg._lt || (cfg._lt={ hemi:.5, sun:2.05, sunCol:cfg.sun, amb:.2, ambCol:0x404060, fog:cfg.fog, top:cfg.skyTop, hor:cfg.skyHor, bot:cfg.skyBot, sky:0 }));
   hemi.intensity += (tgt.hemi-hemi.intensity)*.05;
   sun.intensity  += (tgt.sun-sun.intensity)*.05;
   amb.intensity  += (tgt.amb-amb.intensity)*.05;
   lerpCol(sun.color, tgt.sunCol, .05);
   lerpCol(amb.color, tgt.ambCol, .05);
   lerpCol(hemi.color, night?0x5A6CA8:0xC9DCF2, .05); lerpCol(hemi.groundColor, night?0x121624:0x3C3828, .05);
-  renderer.toneMappingExposure += ((night?.8:.95)-renderer.toneMappingExposure)*.05;
+  renderer.toneMappingExposure += ((night?.86:1.02)-renderer.toneMappingExposure)*.05;
   lerpCol(scene.fog.color, tgt.fog, .05);
   const u=skyMat.uniforms;
   lerpCol(u.top.value, tgt.top, .05); lerpCol(u.hor.value, tgt.hor, .05); lerpCol(u.bot.value, tgt.bot, .05);

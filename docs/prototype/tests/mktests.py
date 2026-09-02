@@ -14,6 +14,7 @@ hook='''window.__d={
   rebuild:()=>{ const t0=performance.now(); buildStage(G.stage); world.add(G.heroObj); return Math.round(performance.now()-t0); },
   night:(on)=>{ G.phase=on?"night":"dawn"; for(let i=0;i<220;i++) updateLighting(); },
   hero:(x,z)=>{ G.hero.x=x; G.hero.z=z; },
+  bridge:()=>{ const b=BRIDGES[0]; if(!b) return null; return {x:b.x,z:b.z,deck:b.deckY,ground:terrainYGrid(b.x,b.z),walk:terrainY(b.x,b.z),lane:b.lane,feats:LANES.map(L=>L.feat)}; },
   showcase:(what)=>{ const W2=560,H2=420; const rt=new THREE.WebGLRenderTarget(W2,H2,{minFilter:THREE.LinearFilter,magFilter:THREE.LinearFilter});
     const sc2=new THREE.Scene(); sc2.environment=scene.environment; const hl=new THREE.HemisphereLight(0xFFFFFF,0x555544,1.0); hl.color.convertSRGBToLinear(); sc2.add(hl);
     const dl=new THREE.DirectionalLight(0xFFF2DC,2.2); dl.color.convertSRGBToLinear(); dl.position.set(8,14,10); sc2.add(dl);

@@ -52,9 +52,10 @@ const out=[]; const say=(...a)=>{ const s=a.join(' '); out.push(s); console.log(
   await page.locator('#startBtn').click({timeout:60000}); await page.waitForTimeout(250);
   say('night start:', (await st()).st, '| title:', (await page.locator('#nightTitle').innerText()).replace(/\s+/g,' '));
   let locked=false, combatSeen=false, lockTries=0;
-  for(let t=0;t<320;t++){
+  for(let t=0;t<1100;t++){
     await page.waitForTimeout(200);
     const s=await st();
+    if(t%60===0) say('  night progress t='+t, 'n='+s.n, 'q='+s.q, 'castle='+s.castle, 'builds='+s.builds);
     if(s.st==='COMBAT' && !combatSeen){ combatSeen=true; say('combat:', JSON.stringify(s)); }
     const n=await page.evaluate(()=>window.__d.near());
     if(n){ const b=await glBox();
