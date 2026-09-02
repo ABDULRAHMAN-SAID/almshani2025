@@ -1,0 +1,30 @@
+/* هاتف 844×390: شاشة التجهيز، الإيقاف، الحملة، عنوان الليلة — لقطات + فحص تجاوز الشاشة */
+const { chromium, devices } = require('playwright'); const path=require('path');
+(async () => {
+  const b = await chromium.launch({ executablePath:'/opt/pw-browsers/chromium', args:['--no-sandbox','--disable-dev-shm-usage','--use-gl=swiftshader','--enable-unsafe-swiftshader'] });
+  const ctx = await b.newContext({ viewport:{width:844,height:390}, deviceScaleFactor:2, isMobile:true, hasTouch:true });
+  const page = await ctx.newPage(); const errs=[]; page.on('pageerror',e=>errs.push(e.message));
+  await page.goto('file://'+path.resolve(__dirname,'t3d.html'),{waitUntil:'commit',timeout:60000}).catch(()=>{}); await page.waitForSelector('#ovBtn',{timeout:240000});
+  await page.tap('#ovBtn'); await page.waitForTimeout(700);
+  const ov=async sel=>await page.evaluate(s=>{ const el=document.querySelector(s); if(!el) return null; const r=el.getBoundingClientRect(); return {w:Math.round(r.width),h:Math.round(r.height),bottom:Math.round(r.bottom),right:Math.round(r.right),scroll:el.scrollHeight>el.clientHeight+2}; }, sel);
+  console.log('loadout box', JSON.stringify(await ov('#loadout .panel')||await ov('#loadout')));
+  await page.screenshot({path:'m5-loadout.png'});
+  await page.locator('#loStart').tap(); await page.waitForTimeout(500);
+  await page.tap('#pauseBtn'); await page.waitForTimeout(400);
+  console.log('pause box', JSON.stringify(await ov('#pausePanel .panel')||await ov('#pausePanel')));
+  await page.screenshot({path:'m6-pause.png'});
+  await page.locator('#pausePanel [data-tab="set"]').tap(); await page.waitForTimeout(300);
+  await page.screenshot({path:'m7-settings.png'});
+  await page.locator('#pResume').tap(); await page.waitForTimeout(300);
+  await page.tap('#campBtn'); await page.waitForTimeout(400);
+  console.log('campaign box', JSON.stringify(await ov('#campaign .panel')||await ov('#campaign')));
+  await page.screenshot({path:'m8-campaign.png'});
+  await page.locator('#cpClose').tap(); await page.waitForTimeout(200);
+  await page.locator('#startBtn').tap(); await page.waitForTimeout(900);
+  await page.screenshot({path:'m9-night.png'});
+  await page.waitForTimeout(5000);
+  await page.screenshot({path:'m10-combat.png'});
+  console.log('joystick visible:', await page.evaluate(()=>!document.getElementById('joy').hidden));
+  console.log('errors:', errs.length?errs.join('|'):'none');
+  await b.close();
+})().catch(e=>{ console.log('FATAL', e.message.split('\n')[0]); process.exit(1); });
