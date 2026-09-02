@@ -312,11 +312,11 @@ const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const STAGES = [
   { id:"ash", name:"ممر الرماد", nights:6, lanes:3, laneAngles:[-Math.PI/2, Math.PI, 0], boss:"warden", accent:"#E7B344",
     nodes:{ econ:{r:70,n:8,off:.55}, def:{r:100,n:10,off:.15}, mil:{r:82,n:3,off:2.35}, special:{r:180,n:4,off:.5} },
-    grass:"#7BB24C", grass2:"#94C45C", grass3:"#5C9840", dirt:"#B08052", road:"#DEB877", roadEdge:"#B9925C",
+    grass:"#6DB447", grass2:"#84C455", grass3:"#4F9A3A", dirt:"#B08052", road:"#DEB877", roadEdge:"#B9925C",
     rock:"#8E735C", sand:"#E6CF8C", snow:"#EEF3FA", snowLine:70, water:0x2B86B0,
     tree:[0x3E9A4A,0x62B04A,0xD08A2E], pine:0x24705A, trunk:0x6A4A30, mix:[.5,.42,.08],
     flowers:[0xF2C94C,0xF7EEDC,0xE0563F,0xB79BE6], mountRock:0x8A6E5A, cloud:0xFAF6EE,
-    skyTop:0x3F86D6, skyHor:0xCFE4F4, skyBot:0x6E7A5A, fog:0xBFD6EC, sun:0xFFE6B8 },
+    skyTop:0x3F86D6, skyHor:0xCFE4F4, skyBot:0x6E7A5A, fog:0xBFD6EC, sun:0xFFEFD2 },
   { id:"iron", name:"السهل الحديدي", nights:7, lanes:4, boss:"mother", accent:"#7FBF5A",
     nodes:{ econ:{r:70,n:9,off:.35}, def:{r:100,n:11,off:.15}, mil:{r:82,n:3,off:1.2}, special:{r:180,n:5,off:.5} },
     grass:"#5E8A3E", grass2:"#6E9A48", grass3:"#4A6E32", dirt:"#6E5A40", road:"#A0845A", roadEdge:"#846A46",
@@ -596,7 +596,7 @@ moon.position.set(-5200,4300,-7800); moon.scale.setScalar(3.4); skyDome.add(moon
 const hemi = new THREE.HemisphereLight(0xAFCDF2, 0x40382A, .42);
 hemi.color.convertSRGBToLinear(); hemi.groundColor.convertSRGBToLinear();
 scene.add(hemi);
-const sun = new THREE.DirectionalLight(0xFFEBC4, 2.0);
+const sun = new THREE.DirectionalLight(0xFFF1D6, 2.0);
 sun.color.convertSRGBToLinear();
 sun.position.set(300, 340, 220);
 sun.castShadow = true;
@@ -683,7 +683,7 @@ function mat(hex, opts){
   const m = new THREE.MeshStandardMaterial(o);
   m.color = new THREE.Color(hex).convertSRGBToLinear();
   if(o.emissive!==undefined) m.emissive = new THREE.Color(o.emissive).convertSRGBToLinear();
-  if(tex && TEX[tex]) m.map = TEX[tex];
+  /* لا خامات صورية: الأسلوب low-poly يعتمد على لون مسطّح وظلال حادة */
   matCache.set(k,m); return m;
 }
 const METAL = o => Object.assign({roughness:.42, metalness:.7, envMapIntensity:.9, flatShading:true}, o||{});
@@ -773,7 +773,7 @@ function freeze(o){
 }
 /* تجمّع أضواء نقطية ثابت العدد: لا إعادة ترجمة للمُظلِّلات عند بناء منارة، وكلفة محدودة للبكسل */
 const LREQ=[], LPOOL=[];
-(()=>{ const N=MOBILE?5:8; for(let i=0;i<N;i++){ const l=new THREE.PointLight(0xffffff,0,50,2); scene.add(l); LPOOL.push(l); } })();
+(()=>{ const N=MOBILE?6:12; for(let i=0;i<N;i++){ const l=new THREE.PointLight(0xffffff,0,50,2); scene.add(l); LPOOL.push(l); } })();
 function lightReq(parent,x,y,z,color,dist){
   const a=new THREE.Object3D(); a.position.set(x,y,z); parent.add(a);
   const r={a, color:new THREE.Color(color).convertSRGBToLinear(), dist, intensity:0};
@@ -866,7 +866,7 @@ function makeRiver(idx, ang){
     const w=Math.sin(s*.0040+idx*2.1)*78 + Math.sin(s*.0113+1.7)*30;
     pts.push({ x:nx*(D0+w)+tx*s, z:nz*(D0+w)+tz*s });
   }
-  return { pts, w:34, nx, nz, D0, ang };
+  return { pts, w:38, nx, nz, D0, ang };
 }
 function riverDist(x,z){
   if(!RIVER) return 1e9;
@@ -965,6 +965,7 @@ function buildTerrain(cfg){
   }
   HG={seg:SEG, data:grid};
   const N1=SEG+1, KS=SEG/WORLD*2.5*.32;
+  const cBed=new THREE.Color(cfg.water).multiplyScalar(.5);   // قاع النهر: أزرق داكن تحت الماء الشفاف
   for(let i=0;i<n;i++){
     const x=pos.getX(i), z=pos.getZ(i);
     const y=H[i];
@@ -972,9 +973,9 @@ function buildTerrain(cfg){
     const i2=(i%N1<SEG)?i+1:i-1, i3=(i+N1<n)?i+N1:i-N1;
     const sl=Math.min(1,(Math.abs(H[i2]-y)+Math.abs(H[i3]-y))*KS);
     // بقع عشب ناعمة بدل الترقيط
-    const p1=fbm(x*.02+3, z*.02-1, 3), p2=fbm(x*.055-7, z*.055+2, 2);
-    tmp.copy(cA).lerp(cB, p1>.52?1:0).lerp(cC, p2>.62?1:0);                      // ثلاث درجات عشب بحدود حادة (low-poly)
-    if(p2>.74) tmp.lerp(cDirt, .6);                                                  // بقع تراب
+    const p1=fbm(x*.0065+3, z*.0065-1, 3), p2=fbm(x*.017-7, z*.017+2, 2);
+    tmp.copy(cA).lerp(cB, p1>.53?1:0).lerp(cC, p2>.64?1:0);                      // ثلاث درجات عشب بمساحات واسعة وحدود حادة
+    if(p2>.80) tmp.lerp(cDirt, .35);                                                 // بقع تراب نادرة
     if(LAKE){ const d=Math.hypot(x-LAKE.x,z-LAKE.z)/LAKE.r;
       if(d<1.9) tmp.lerp(cLush, clamp((1.9-d)/.9,0,1)*.7);              // خضرة أكثف حول البحيرة
       if(d<1.45 && y<WATER_Y+1.6) tmp.lerp(cSand, clamp((WATER_Y+1.6-y)/1.4,0,1));
@@ -989,7 +990,7 @@ function buildTerrain(cfg){
     tmp.multiplyScalar(.92+clamp(y*.010,-.06,.14));                      // القمم أفتح والوديان أغمق
     if(RIVER){ const rv=riverDist(x,z);
       if(rv<RIVER.w*1.7){ tmp.lerp(cSand, clamp(1-(rv-RIVER.w*.8)/(RIVER.w*.9),0,1)*.85);
-        if(rv<RIVER.w*.85) tmp.lerp(new THREE.Color(cfg.water).convertLinearToSRGB(), clamp(1-rv/(RIVER.w*.85),0,1)*.5); } }
+        if(rv<RIVER.w*.95) tmp.lerp(cBed, clamp(1-(rv-RIVER.w*.25)/(RIVER.w*.7),0,1)*.92); } }
     const d=LD[i];
     if(d<13){ const t=1-clamp((d-7.5)/5.5,0,1); tmp.lerp(d<7.6?cRoad:cRoadE, t*.85); }
     if(r<80){ tmp.lerp(cDirt, clamp((80-r)/28,0,1)*.25); }                // هضبة القلعة مدكوكة
@@ -1034,7 +1035,7 @@ function buildRoad(L, cfg){
   g.setIndex(idx); g.computeVertexNormals();
   L.curve=curve;
   const m=new THREE.MeshStandardMaterial({vertexColors:true, transparent:true, roughness:1, metalness:0,
-    depthWrite:false, polygonOffset:true, polygonOffsetFactor:-2, polygonOffsetUnits:-2, map:TEX.ground});
+    depthWrite:false, polygonOffset:true, polygonOffsetFactor:-2, polygonOffsetUnits:-2});
   const mesh=new THREE.Mesh(g,m); mesh.receiveShadow=true; mesh.renderOrder=0;
   return mesh;
 }
@@ -1177,7 +1178,7 @@ function buildWater(cfg){
   return mesh;
 }
 function updateWater(t){
-  if(RIVERMESH){ RIVERMESH.material.opacity=.78+Math.sin(t*.9)*.05; }
+  if(RIVERMESH){ RIVERMESH.material.opacity=.88+Math.sin(t*.9)*.04; }
   if(!WATER) return;
   if(MOBILE && (FRAME&1)) return;
   if(dist2(LAKE.x,LAKE.z,G.cam.tx,G.cam.tz) > camDist*1.6+LAKE.r) return;
@@ -1197,16 +1198,18 @@ function buildRiverMesh(cfg){
   for(let i=0;i<P.length;i++){
     const a=P[i], b=P[Math.min(P.length-1,i+1)], c=P[Math.max(0,i-1)];
     const dx=b.x-c.x, dz=b.z-c.z, l=Math.hypot(dx,dz)||1, sx=-dz/l, sz=dx/l;
-    const y=terrainYGrid(a.x,a.z)+7.5;
-    for(const k of [-1,1]){ pos.push(a.x+sx*W*.92*k, y, a.z+sz*W*.92*k); uvs.push(i*.35,(k+1)/2); }
+    // سطح الماء: تحت الضفتين بقليل مهما نعّمت الشبكة قاع القناة — فيبدو النهر شريطاً مائياً لا رملياً
+    const yb=Math.min(terrainYGrid(a.x+sx*W*1.6,a.z+sz*W*1.6), terrainYGrid(a.x-sx*W*1.6,a.z-sz*W*1.6));
+    const y=Math.min(yb-3.2, terrainYGrid(a.x,a.z)+15);
+    for(const k of [-1,1]){ pos.push(a.x+sx*W*1.05*k, y, a.z+sz*W*1.05*k); uvs.push(i*.35,(k+1)/2); }
     if(i<P.length-1){ const j=i*2; idx.push(j,j+2,j+1, j+1,j+2,j+3); }
   }
   const g=new THREE.BufferGeometry();
   g.setAttribute("position",new THREE.Float32BufferAttribute(pos,3));
   g.setAttribute("uv",new THREE.Float32BufferAttribute(uvs,2));
   g.setIndex(idx); g.computeVertexNormals();
-  const m=new THREE.MeshStandardMaterial({roughness:.08, metalness:0, transparent:true, opacity:.82, envMapIntensity:.9});
-  m.color=lin(cfg.water);
+  const m=new THREE.MeshStandardMaterial({roughness:.12, metalness:0, transparent:true, opacity:.9, envMapIntensity:.8, flatShading:true});
+  m.color=lin(cfg.water).multiplyScalar(1.15);
   const mesh=new THREE.Mesh(g,m); mesh.receiveShadow=true; mesh.renderOrder=1;
   return mesh;
 }
@@ -1238,7 +1241,7 @@ function buildCliffRocks(cfg){
     for(let i=0;i<p.count;i++){ const x=p.getX(i),y=p.getY(i),z=p.getZ(i);
       const k=.62+fbm(x*2.2+9,z*2.2+y*1.7,3)*.85; p.setXYZ(i,x*k,y*k*.8,z*k); }
     g.computeVertexNormals(); return g; })();
-  const m=new THREE.MeshStandardMaterial({roughness:.95, metalness:.02, flatShading:true, map:TEX.stone});
+  const m=new THREE.MeshStandardMaterial({roughness:.95, metalness:.02, flatShading:true});
   m.color=lin(cfg.mountRock).multiplyScalar(1.15);
   const inst=new THREE.InstancedMesh(rg,m,N), d=new THREE.Object3D(), cc=new THREE.Color();
   let k=0;
@@ -1485,7 +1488,7 @@ function buildStage(idx){
     if(laneDist(x,z)<11) continue;
     if(SLOTS.some(sl=>dist2(x,z,sl.x,sl.z)<11)) continue;
     if(WALLS.some(w=>dist2(x,z,w.x,w.z)<13)) continue;
-    spots.push({x,z,s:rnd(.55,1.0)});
+    spots.push({x,z,s:rnd(.7,1.25)});
   }
   const okSpot=(x,z)=>{
     if(Math.hypot(x,z)<150 || Math.hypot(x,z)>EDGE_R+40) return false;
@@ -1498,19 +1501,19 @@ function buildStage(idx){
     if(slopeAt(x,z)>.62) return false;
     return true;
   };
-  const NT=MOBILE?3300:7400;
+  const NT=MOBILE?2600:6000;
   for(let i=0;i<NT*2.2 && spots.length<NT;i++){
     let x,z;
     if(Math.random()<.78 && centers.length){ const c=centers[(Math.random()*centers.length)|0];
       const a=rnd(0,7), r=Math.sqrt(Math.random())*c.r; x=c.x+Math.cos(a)*r; z=c.z+Math.sin(a)*r; }
     else { const a=rnd(0,7), r=rnd(170,EDGE_R+30); x=Math.cos(a)*r; z=Math.sin(a)*r; }
-    if(okSpot(x,z)) spots.push({x,z,s:rnd(.75,1.35)});
+    if(okSpot(x,z)) spots.push({x,z,s:rnd(1.05,1.85)});
   }
   const pineM=new THREE.MeshStandardMaterial({roughness:.9, flatShading:true});
   const oakM=new THREE.MeshStandardMaterial({roughness:.9, flatShading:true});
-  const trunkM=new THREE.MeshStandardMaterial({roughness:.95, flatShading:true, map:TEX.wood}); trunkM.color=lin(cfg.trunk);
+  const trunkM=new THREE.MeshStandardMaterial({roughness:.95, flatShading:true}); trunkM.color=lin(cfg.trunk);
   const deadM=new THREE.MeshStandardMaterial({roughness:.95, flatShading:true}); deadM.color=lin(cfg.trunk).multiplyScalar(.8);
-  const rockM=new THREE.MeshStandardMaterial({roughness:.95, flatShading:true, map:TEX.stone}); rockM.color=lin(cfg.rock);
+  const rockM=new THREE.MeshStandardMaterial({roughness:.95, flatShading:true}); rockM.color=lin(cfg.rock);
   const bushM=new THREE.MeshStandardMaterial({roughness:.95, flatShading:true});
   const n=spots.length;
   const pineC=new THREE.InstancedMesh(TREEG.pineCanopy,pineM,n), pineT=new THREE.InstancedMesh(TREEG.pineTrunk,trunkM,n);
@@ -1577,7 +1580,7 @@ function buildStage(idx){
 
   // القلعة — حجر مفصّل بأبراج وشرفات وبوابة
   const cst = new THREE.Group();
-  const stone=mat(0x9A9384,STONE()), stone2=mat(0x857E70,STONE()), stone3=mat(0xADA695,STONE());
+  const stone=mat(0x9A9384,STONE({emissive:0x1A150E})), stone2=mat(0x857E70,STONE({emissive:0x16120C})), stone3=mat(0xADA695,STONE({emissive:0x1C1810}));
   const roofM=mat(0x3E8C8A,{roughness:.55,metalness:.5,flatShading:true});   // نحاس بزنجار فيروزي
   // قاعدة مدرّجة
   cst.add(part(geo.cyl, stone2, 0,.5,0, 14.5,1,14.5));
@@ -1626,6 +1629,12 @@ function buildStage(idx){
     2.1, 26.6, 0, 4.2, 2.6, 1, 0, Math.PI/2, 0);
   banner.castShadow=false; cst.add(banner); cst.userData.banner = banner;
   cst.userData.light = lightReq(cst,0,18,0,0xFFD9A0,95);
+  cst.userData.lights2=[];
+  for(const [tx,tz] of [[9.6,9.6],[-9.6,9.6],[-9.6,-9.6],[9.6,-9.6]]){
+    cst.add(part(geo.cyl, mat(0x4A3B2C,WOOD()), tx,8.2,tz, .14,1.6,.14));
+    const tf=part(geo.sph, mat(0xFFB04A,{emissive:0xC05010,roughness:.3}), tx,9.2,tz, .5,.62,.5); tf.castShadow=false; cst.add(tf);
+    cst.userData.lights2.push(lightReq(cst,tx*1.25,10,tz*1.25,0xFFB870,58));
+  }
   gate.userData.anim=true; banner.userData.anim=true;
   // حرس على أسوار القلعة
   for(let i=0;i<6;i++){ const a=i/6*Math.PI*2+.3;
@@ -1634,7 +1643,7 @@ function buildStage(idx){
     cst.add(f); }
   bakeStatic(cst); bakeStatic(twA); bakeStatic(twB);
   twA.visible = G.castleLv>=2; twB.visible = G.castleLv>=3;
-  cst.scale.setScalar(1.22);
+  cst.scale.setScalar(1.42);
   world.add(cst);
   G.castleObj = cst;
 
@@ -1654,7 +1663,7 @@ function buildStage(idx){
   const wallItems=[ {g:geo.box, m:M4(0,.18,0, WLEN+1, .36,3.4), c:cDirt}, {g:geo.box, m:M4(0,.42,0, WLEN, .16,2.6), c:cStone},
     {g:geo.cyl, m:M4(-WP,1.2,1.4, .2,2.4,.2), c:cWood}, {g:geo.cyl, m:M4(WP,1.2,1.4, .2,2.4,.2), c:cWood},
     {g:geo.cyl, m:M4(0,1.5,0, .16,3,.16), c:cWood2}, {g:geo.box, m:M4(.95,2.55,0, 1.9,1.1,.06), c:cFlag} ];
-  const padMat=new THREE.MeshStandardMaterial({vertexColors:true, map:TEX.stone, roughness:.92, metalness:.02, flatShading:true});
+  const padMat=new THREE.MeshStandardMaterial({vertexColors:true, roughness:.92, metalness:.02, flatShading:true});
   const mkInst=(items, nodes, rot)=>{
     const inst=new THREE.InstancedMesh(mergeGeos(items), padMat, nodes.length);
     const d=new THREE.Object3D();
@@ -1917,7 +1926,7 @@ const RG = {
   robe:  lathe([[.001,0],[.5,0],[.46,.18],[.36,.5],[.3,.8],[.32,1],[.001,1]],16),
   skirt: new THREE.CylinderGeometry(.36,.52,.5,14,1,true),
   shield: lathe([[.001,0],[.42,0],[.47,.04],[.44,.09],[.001,.12]],20),
-  horn: new THREE.TorusGeometry(1,.16,7,10,Math.PI*.6),
+  horn: new THREE.TorusGeometry(1,.17,7,12,Math.PI*.95),
   half: new THREE.CylinderGeometry(1,1,1,14,1,false,0,Math.PI),
   oct: new THREE.OctahedronGeometry(1,0),
   dome: new THREE.SphereGeometry(1,16,8,0,Math.PI*2,0,Math.PI/2),
@@ -1975,8 +1984,9 @@ function makeRig(o){
   head.add(part(geo.sph, skin2, 0,-.05,.05, .16*hs,.12*hs,(o.longHead?.2:.15)*hs));             // فكّ
   if(!beast) head.add(part(geo.cone8, skin, 0,-.01,.2*hs, .045,.11,.045, Math.PI/2,0,0));          // أنف
   if(beast || o.glow){
-    head.add(part(geo.sphLow, eyeM, -.075*hs,.05,.17*hs, .04,.045,.03));
-    head.add(part(geo.sphLow, eyeM,  .075*hs,.05,.17*hs, .04,.045,.03));
+    const ez=(o.hood?.21:.17)*hs, es=o.hood?.05:.04;
+    head.add(part(geo.sphLow, eyeM, -.075*hs,.05,ez, es,es*1.1,.03));
+    head.add(part(geo.sphLow, eyeM,  .075*hs,.05,ez, es,es*1.1,.03));
   } else {
     // ملامح بشرية واضحة: بياض العين والبؤبؤ والحاجب والفم
     const white=mat(0xF4EFE6,{roughness:.4}), pupil=mat(0x1A1512,{roughness:.3}), brow=mat(o.beard||o.hair||0x3A2415,{roughness:.9}), lip=mat(0x8A4A44,{roughness:.8});
@@ -1999,7 +2009,9 @@ function makeRig(o){
     else head.add(part(geo.cone8, accent, 0,.5,0, .06,.16,.06));
   }
   if(o.hood) head.add(part(RG.hood, clothD, 0,.06,-.02, .95,.92,1));
-  if(o.horns) for(const s of [-1,1]) head.add(part(RG.horn, boneM, s*.15*hs,.1,0, .26,.26,.26, 0,s*Math.PI/2,s*.4));
+  if(o.horns) for(const s of [-1,1]){ const hg=new THREE.Group(); hg.position.set(s*.17*hs,.09,-.02); hg.rotation.set(-.75,0,s*-1.0); head.add(hg);
+    hg.add(part(RG.horn, boneM, 0,0,0, .17,.17,.17, 0,Math.PI/2,0));
+    hg.add(part(geo.cone8, boneM, 0,.17,.17, .045,.16,.045, Math.PI/2,0,0)); }   // طرف مدبّب
   if(o.crown){
     head.add(part(geo.torus, gold, 0,.2,0, .2,.2,.2, Math.PI/2,0,0));
     for(let i=0;i<6;i++){ const a=i/6*Math.PI*2; head.add(part(geo.cone8, gold, Math.cos(a)*.19,.31,Math.sin(a)*.19, .035,.2,.035)); }
@@ -2056,7 +2068,7 @@ function makeRig(o){
   /* عباءة متموّجة */
   if(o.cape){
     const cg=new THREE.CylinderGeometry(.4,.64,1,10,7,true,Math.PI-1.05,2.1);   // نصف أسطوانة تلتف خلف الظهر
-    const cm=new THREE.MeshStandardMaterial({side:THREE.DoubleSide, roughness:.92, map:TEX.cloth});
+    const cm=new THREE.MeshStandardMaterial({side:THREE.DoubleSide, roughness:.92, flatShading:true});
     cm.color=new THREE.Color(o.cape).convertSRGBToLinear();
     const cape=new THREE.Mesh(cg, cm);
     cape.position.set(0,-.05,-.03*bulk); cape.scale.set(.76*bulk,1.25,.72*bulk); cape.rotation.x=.06;
@@ -2169,20 +2181,21 @@ function makeHorse(o){
   body.add(part(geo.sph, coat2, 0,.02,-.58, .3,.36,.32));
   body.add(part(geo.sph, coat, 0,.06,.58, .28,.34,.3));
   body.add(part(geo.sph, coat, 0,.3,.34, .2,.16,.24));   // الكاهل
-  const neck=N(0,.2,.66); body.add(neck); H.neck=neck; neck.rotation.x=-.8;
-  neck.add(part(CAP, coat, 0,.3,0, .18,.62,.22));
-  neck.add(part(geo.box, dark, 0,.34,-.12, .07,.6,.16));
-  const head=N(0,.64,.03); neck.add(head); H.head=head; head.rotation.x=1.2;
-  head.add(part(geo.rbox, coat, 0,0,.13, .22,.24,.46));
-  head.add(part(geo.rbox, coat2, 0,-.05,.37, .18,.17,.12));
-  head.add(part(geo.box, mat(0xF2EEE6,{roughness:.8,flatShading:true}), 0,.04,.37, .1,.16,.03));
+  const neck=N(0,.16,.6); body.add(neck); H.neck=neck; neck.rotation.x=.78;   // +x: الرقبة تصعد إلى الأمام (+z هو مقدّم الحصان)
+  neck.add(part(CAP, coat, 0,.33,0, .17,.7,.21));
+  neck.add(part(geo.box, dark, 0,.36,-.12, .07,.68,.15));
+  for(let i=0;i<4;i++) neck.add(part(geo.box, dark, 0,.12+i*.16,-.2, .06,.11,.1, .45,0,0));   // عُرف مسنّن
+  const head=N(0,.72,.03); neck.add(head); H.head=head; head.rotation.x=-1.02;
+  head.add(part(geo.rbox, coat, 0,.02,.1, .17,.21,.42));
+  head.add(part(geo.rbox, coat2, 0,-.04,.33, .14,.14,.13));
+  head.add(part(geo.box, mat(0xF2EEE6,{roughness:.8,flatShading:true}), 0,.05,.335, .07,.17,.03));
   head.add(part(geo.cone8, cloth, 0,.24,-.04, .045,.24,.045));   // ريشة الرأس
   for(const s of [-1,1]){
-    head.add(part(geo.cone8, coat, s*.09,.17,-.04, .05,.19,.05, -.3,0,s*-.35));
-    const e=part(geo.sph, mat(0x1A1512,{roughness:.25}), s*.1,.06,.12, .032); e.castShadow=false; head.add(e);
+    head.add(part(geo.cone8, coat, s*.08,.2,-.06, .05,.2,.05, -.3,0,s*-.35));
+    const e=part(geo.sph, mat(0x1A1512,{roughness:.25}), s*.085,.07,.1, .032); e.castShadow=false; head.add(e);
   }
-  head.add(part(geo.torus, leather, 0,.0,.22, .13,.13,.1, 0,0,0));
-  head.add(part(geo.torus, leather, 0,.02,.0, .17,.17,.1, .3,0,0));
+  head.add(part(geo.torus, leather, 0,.0,.2, .11,.11,.1, 0,0,0));
+  head.add(part(geo.torus, leather, 0,.02,-.02, .14,.14,.1, .3,0,0));
   const tail=N(0,.16,-.72); body.add(tail); H.tail=tail; tail.rotation.x=.55;
   tail.add(part(CAP, dark, 0,-.32,0, .09,.64,.09));
   // غطاء الحصان الملكي: يغطي الظهر والردف، بحاشية ذهبية
@@ -2202,7 +2215,7 @@ function makeHorse(o){
   for(const s of [-1,1]) body.add(part(geo.box, leather, s*.3,.06,-.02, .04,.5,.06));
   H.legs=[];
   for(const [sx,sz] of [[-1,.46],[1,.46],[-1,-.46],[1,-.46]]){
-    const hip=N(sx*.21,-.3,sz); body.add(hip);
+    const hip=N(sx*.27,-.3,sz); body.add(hip);
     hip.add(part(CAP, coat, 0,-.22,0, .15,.48,.15));
     const knee=N(0,-.45,0); hip.add(knee);
     knee.add(part(CAP, coat2, 0,-.2,0, .11,.42,.11));
@@ -2222,7 +2235,7 @@ function poseHorse(obj,t,moving){
     L.hip.rotation.x=a*.8; L.knee.rotation.x=Math.max(0,(L.front?-a:a))*.95; }
   const bob=moving?Math.abs(Math.sin(t*f))*.07:0;
   H.body.position.y=1.12+bob; H.body.rotation.x=moving?Math.sin(t*f)*.05:0;
-  H.neck.rotation.x=-.8+(moving?Math.sin(t*f+.6)*.09:Math.sin(t*1.1)*.05);
+  H.neck.rotation.x=.78+(moving?Math.sin(t*f+.6)*.09:Math.sin(t*1.1)*.05);
   H.tail.rotation.x=.55+Math.sin(t*(moving?9:1.8))*.25; H.tail.rotation.z=Math.sin(t*2.3)*.2;
   const rd=obj.userData.rider; if(rd) rd.position.y=obj.userData.riderY+bob*obj.userData.k;
 }
@@ -2290,10 +2303,10 @@ function mkEnemy(t){
     return g;
   }
   const C = {
-    grunt  :{h:5.3, bulk:1.05, bare:true, beast:true, skin:D.col, cloth:D.col, cloth2:D.dark, glow:0xFF5A3A, horns:true, hunch:.26, weapon:"club", skirt:true},
-    runner :{h:4.8, bulk:.72, bare:true, beast:true, skin:D.col, cloth:D.col, cloth2:D.dark, glow:0xFF7A3A, hunch:.72, longHead:true, ears:true, tail:true, claws:true, crouch:true},
+    grunt  :{h:5.3, bulk:1.08, bare:true, beast:true, skin:D.col, cloth:D.col, cloth2:D.dark, glow:0xFF5A3A, horns:true, ears:true, headScale:1.05, hunch:.3, weapon:"club", skirt:true},
+    runner :{h:4.8, bulk:.92, bare:true, beast:true, skin:D.col, cloth:D.col, cloth2:D.dark, glow:0xFF7A3A, hunch:.38, headScale:.68, longHead:true, ears:true, tail:true, claws:true, crouch:true, skirt:true},
     brute  :{h:7.6, bulk:1.6, beast:true, cloth:D.col, cloth2:D.dark, skin:D.col, glow:0xFF6A4A, horns:true, armored:true,
-             metal:0x3A3040, metal2:0x26202E, accent:0xC0402E, hunch:.34, weapon:"axe", shield:"tower", headScale:.85},
+             metal:0x3A3040, metal2:0x26202E, accent:0xC0402E, hunch:.34, weapon:"axe", shield:"tower", headScale:.95},
     spitter:{h:5.6, bulk:.9, robe:true, cloth:D.col, cloth2:D.dark, skin:0xE6D8F0, glow:0xE0B0FF, hood:true, hunch:.22, weapon:"staff", claws:true},
     breaker:{h:11.5, bulk:2.05, beast:true, cloth:D.col, cloth2:D.dark, skin:0xE0D6C8, glow:0xFF5A3A, armored:true,
              metal:0x2E2430, metal2:0x1E1822, accent:0xC83A32, cape:0x3A1414, crown:true, hunch:.4, weapon:"hammer", headScale:.72},
@@ -3106,17 +3119,18 @@ function getShotRig(kind){
   if(!o){
     o=new THREE.Group();
     const head=new THREE.Mesh(geo.sph, new THREE.MeshBasicMaterial({color:0xffffff}));
-    head.scale.setScalar(.6); head.castShadow=false; o.add(head); o.userData.head=head;
-    const trail=new THREE.Mesh(geo.box, new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:.55, depthWrite:false}));
-    trail.castShadow=false; trail.position.z=-2.6; trail.scale.set(.32,.32,5.2); o.add(trail); o.userData.trail=trail;
-    const halo=new THREE.Mesh(geo.sph, new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:.28, depthWrite:false}));
-    halo.scale.setScalar(1.25); halo.castShadow=false; o.add(halo); o.userData.halo=halo;
+    head.scale.set(.45,.45,.8); head.castShadow=false; o.add(head); o.userData.head=head;
+    const trail=new THREE.Mesh(geo.cone8, new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:.5, depthWrite:false}));
+    trail.castShadow=false; trail.rotation.x=-Math.PI/2; trail.position.z=-2.6; trail.scale.set(.34,5.2,.34); o.add(trail); o.userData.trail=trail;
+    const halo=new THREE.Mesh(geo.sph, new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:.22, depthWrite:false}));
+    halo.scale.setScalar(1.0); halo.castShadow=false; o.add(halo); o.userData.halo=halo;
   }
   const c=SHOT_COL[kind]||SHOT_COL.arrow;
   o.userData.head.material.color.setHex(c); o.userData.trail.material.color.setHex(c); o.userData.halo.material.color.setHex(c);
   const big = kind==="dark"||kind==="fire";
-  o.userData.head.scale.setScalar(big?1.0:.6); o.userData.halo.scale.setScalar(big?2.0:1.25);
-  o.userData.trail.scale.set(big?.5:.32,big?.5:.32,big?4:5.2);
+  if(big) o.userData.head.scale.setScalar(1.0); else o.userData.head.scale.set(.45,.45,.8);
+  o.userData.halo.scale.setScalar(big?1.9:1.0);
+  o.userData.trail.scale.set(big?.55:.34, big?4:5.2, big?.55:.34); o.userData.trail.position.z=big?-2:-2.6;
   o.visible=true; world.add(o); return o;
 }
 function freeShotRig(o){ world.remove(o); SHOT_POOL.push(o); }
@@ -3472,7 +3486,8 @@ function updateLighting(){
       u.disc.material.opacity += ((night?.13:0)-u.disc.material.opacity)*.06; }
   }
   if(G.castleObj&&G.castleObj.userData.light)
-    G.castleObj.userData.light.intensity += ((night?9:0)-G.castleObj.userData.light.intensity)*.06;
+    G.castleObj.userData.light.intensity += ((night?7:0)-G.castleObj.userData.light.intensity)*.06;
+  if(G.castleObj&&G.castleObj.userData.lights2) for(const l of G.castleObj.userData.lights2) l.intensity += ((night?2.6:0)-l.intensity)*.06;
   if(G.safeDisc) G.safeDisc.material.opacity += ((night?.1:0)-G.safeDisc.material.opacity)*.06;
   for(const c of CAMPFIRES){
     c.pl.intensity += ((night?3.2:.6)-c.pl.intensity)*.06;
