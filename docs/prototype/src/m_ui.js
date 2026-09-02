@@ -185,10 +185,10 @@ HOOKS.draw.push(function(ctx){
 /* ── ثلاث حالات تكبير (بند 14) + نقرتان على القلعة (بند 13) ── */
 (()=>{ const icons=document.querySelector(".icons"); if(!icons) return;
   icons.insertAdjacentHTML("afterbegin",`<button class="icon" id="zoomBtn" title="تكبير: تكتيكي / عادي / قتال">◎</button>`);
-  const P=[420, MOBILE?135:165, 96], N=["تكتيكي","عادي","قتال"];
+  const P=[900, MOBILE?270:330, 150], N=["تكتيكي","عادي","قتال"];
   document.getElementById("zoomBtn").onclick=()=>{ let i=0, bd=1e9; for(let k=0;k<3;k++){ const d=Math.abs(camDist-P[k]); if(d<bd){bd=d;i=k;} }
     i=(i+1)%3; camDist=P[i]; camHigh=camDist*.66; clampPan(); log(`الكاميرا: ${N[i]}`); };
   let lastTap=0;
-  glc.addEventListener("pointerup",e=>{ const now=performance.now(); if(now-lastTap<320){ const p=pickGround(e); if(p&&Math.hypot(p.x,p.z)<22){ G.cam.tx=0; G.cam.tz=0; } } lastTap=now; });
+  glc.addEventListener("pointerup",e=>{ const now=performance.now(); if(now-lastTap<320){ const p=pickGround(e); if(p&&Math.hypot(p.x,p.z)<40){ G.cam.tx=0; G.cam.tz=0; } } lastTap=now; });
 })();
 setTimeout(()=>{ if(window.__d){ window.__d.paused=()=>!!G.paused; window.__d.lo=()=>({weapon:LOADOUT.weapon,perks:LOADOUT.perks,mutators:LOADOUT.mutators,diff:LOADOUT.diff,armor:LOADOUT.armor,banner:LOADOUT.banner}); } },0);

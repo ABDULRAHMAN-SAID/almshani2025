@@ -39,7 +39,7 @@ const SILVER=process.argv[2]?+process.argv[2]:600, NB=process.argv[3]?+process.a
   const sc=page.locator('#sheetClose'); if(await sc.isVisible().catch(()=>false)) await sc.click();
   await page.locator('#startBtn').click({timeout:120000});
   let out=null; const t0=Date.now();
-  for(let t=0;t<400;t++){
+  for(let t=0;t<900;t++){
     await page.waitForTimeout(200);
     if(t%2===0){ const near = await page.evaluate(()=>window.__d.near());
       if(near){ const b=await glBox(); await page.mouse.click(b.x+near.x,b.y+near.y); } }
@@ -47,7 +47,7 @@ const SILVER=process.argv[2]?+process.argv[2]:600, NB=process.argv[3]?+process.a
     if(t%30===0) console.log(`  t+${Math.round((Date.now()-t0)/1000)}s ${s.st} n=${s.n} q=${s.q} castle=${s.castle} builds=${s.builds}`);
     if(s.overlay){ out=s.head; break; }
     if(s.st==='BUILD' && s.wave>=6){ out='dawn'; break; }
-    if(Date.now()-t0>540000){ out='TIMEOUT'; break; }
+    if(Date.now()-t0>780000){ out="TIMEOUT"; break; }
   }
   const s=await st();
   console.log(`ليلة الزعيم: ${out||'TIMEOUT'} | حصن ${before.castle}→${s.castle} | مبانٍ ${s.builds} أسوار ${s.walls} | ${Math.round((Date.now()-t0)/1000)}ث`);

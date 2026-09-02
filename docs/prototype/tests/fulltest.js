@@ -78,7 +78,7 @@ const out=[]; const say=(...a)=>{ const s=a.join(' '); out.push(s); console.log(
   const after=await st();
   say('after retry:', JSON.stringify(after), '| builds kept:', after.builds===before.builds, '| wave rewound:', after.wave, '(before', before.wave+')');
   // ── تغيير السلاح وإطلاق القدرة ──
-  await page.evaluate(()=>window.__d.spawnAll(0,50,9)); await page.evaluate(()=>window.__d.hero(-4.5,55)); await page.waitForTimeout(1500);
+  await page.evaluate(()=>window.__d.spawnAll(0,50,9)); await page.evaluate(()=>window.__d.hero(-4.5,55)); await page.waitForTimeout(4000);
   const hurtN=await page.evaluate(()=>window.__d.units?window.__d.units.enemies().filter(e=>e.hp<e.max).length:-1);
   await page.click('#abil1'); await page.waitForTimeout(200);
   say('enemies hurt by hero:', hurtN, '| ability name:', await page.locator('#abil1 b').innerText());

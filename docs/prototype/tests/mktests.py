@@ -33,11 +33,11 @@ open(D+'game3d.js','w',encoding='utf-8').write(m.group(1))
 f=t.replace("  const dt=Math.min(.05,(now-last)/1000); last=now;\n  update(dt); render();","  last=now;\n  for(let i=0;i<6;i++) update(.03); render();")
 assert f!=t
 f=f.replace("sun.shadow.mapSize.set(MOBILE?1024:2048, MOBILE?1024:2048);","sun.shadow.mapSize.set(512,512);")
-f=f.replace("const SEG=MOBILE?150:210;","const SEG=100;").replace("const NT=MOBILE?1000:2100;","const NT=500;")
+f=f.replace("const SEG=MOBILE?200:330;","const SEG=150;").replace("const NT=MOBILE?2400:5200;","const NT=900;")
 open(D+'t3dfast.html','w',encoding='utf-8').write(f)
 # نسخة توربو للتوازن: 14 تحديثاً لكل إطار، ظلال مطفأة، تضاريس أخف
 g=f.replace("for(let i=0;i<6;i++) update(.03); render();","for(let i=0;i<14;i++) update(.03); render();")
-g=g.replace("sun.shadow.mapSize.set(512,512);","sun.shadow.mapSize.set(256,256);").replace("const SEG=100;","const SEG=60;").replace("const NT=500;","const NT=120;")
+g=g.replace("sun.shadow.mapSize.set(512,512);","sun.shadow.mapSize.set(256,256);").replace("const SEG=150;","const SEG=80;").replace("const NT=900;","const NT=200;")
 assert g!=f
 open(D+'t3dturbo.html','w',encoding='utf-8').write(g)
 print('tests ok')

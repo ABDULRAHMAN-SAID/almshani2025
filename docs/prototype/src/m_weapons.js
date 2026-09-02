@@ -8,7 +8,7 @@ WEAPONS.spear = { id:"spear", name:"رمح الصياد", d:"طعنات سريع
   passive:{ name:"الطعنة", d:"طعن سريع، أقوى ضد السريعين", range:10, cd:.34, dmg:21, fastMul:1.6 },
   active:{ name:"الاندفاعة", d:"اندفاع يجرح ويبطئ من في طريقك", cd:10, dmg:60, len:18, r:5.5, slow:3 } };
 WEAPONS.bow = { id:"bow", name:"قوس الحارس", d:"رمي بعيد من مسافة آمنة", unlockMap:2,
-  passive:{ name:"الرمية", d:"سهم بعيد المدى", range:30, cd:.55, dmg:27, shotSp:70 },
+  passive:{ name:"الرمية", d:"سهم بعيد المدى", range:40, cd:.55, dmg:27, shotSp:90 },
   active:{ name:"سهم الاختراق", d:"سهم يخترق صفاً كاملاً", cd:12, dmg:120, len:40, r:4 } };
 
 /* PerkDefinition: apply(MOD) يعدّل المعدِّلات عند applyLoadout() */

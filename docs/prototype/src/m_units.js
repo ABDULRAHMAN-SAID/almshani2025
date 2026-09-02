@@ -3,10 +3,10 @@
    renderOrders (مجموعات + أوامر)، أوامر النقطة/الدفاع بالضغط المطوّل، وunitSummary للقائمة. */
 
 /* ── جدول الوحدات ── */
-UNITS.guard   = { id:"guard",   name:"حرس",   d:"مدرّع متوازن يثبت في الصف",    hp:150, dmg:20, rate:.7,  range:3.4, speed:11,   tags:["melee","armored"], counters:[],                 cmul:1 };
-UNITS.spear   = { id:"spear",   name:"رمّاح", d:"رمح طويل يصيد السريع والطائر", hp:100, dmg:16, rate:.55, range:4.8, speed:11.5, tags:["melee","reach"],   counters:["runner","flyer"], cmul:1.8, reach:true };
-UNITS.archer  = { id:"archer",  name:"رماة",  d:"سهام بعيدة ويتجنّب الاشتباك",  hp:70,  dmg:15, rate:.8,  range:26,  speed:10.5, tags:["ranged"],          counters:[],                 cmul:1,   ranged:true };
-UNITS.berserk = { id:"berserk", name:"هائج",  d:"فأس ثقيلة تحطّم المدرّعين",    hp:85,  dmg:34, rate:.6,  range:3.2, speed:13,   tags:["melee","fast"],    counters:["brute"],          cmul:1.3 };
+UNITS.guard   = { id:"guard",   name:"حرس",   d:"مدرّع متوازن يثبت في الصف",    hp:150, dmg:20, rate:.7,  range:3.4, speed:16.5,   tags:["melee","armored"], counters:[],                 cmul:1 };
+UNITS.spear   = { id:"spear",   name:"رمّاح", d:"رمح طويل يصيد السريع والطائر", hp:100, dmg:16, rate:.55, range:4.8, speed:17, tags:["melee","reach"],   counters:["runner","flyer"], cmul:1.8, reach:true };
+UNITS.archer  = { id:"archer",  name:"رماة",  d:"سهام بعيدة ويتجنّب الاشتباك",  hp:70,  dmg:15, rate:.8,  range:38,  speed:16, tags:["ranged"],          counters:[],                 cmul:1,   ranged:true };
+UNITS.berserk = { id:"berserk", name:"هائج",  d:"فأس ثقيلة تحطّم المدرّعين",    hp:85,  dmg:34, rate:.6,  range:3.2, speed:19.5,   tags:["melee","fast"],    counters:["brute"],          cmul:1.3 };
 
 /* فروع الثكنة في المستوى الثالث (النواة تعرضها بطاقاتٍ عند الترقية) */
 B.barracks.branches = [
@@ -156,7 +156,7 @@ HOOKS.longPress.push(function(p){
     let best=null, bd=8;
     for(let i=0;i<G.buildings.length;i++){ const b=G.buildings[i]; const d=dist2(p.x,p.z,b.x,b.z); if(d<bd){ bd=d; best=b; } }
     if(best){ unApplyOrder("defend", best); log(unGroupName()+" يدافعون عن "+B[best.type].name+"."); }
-    else if(dist2(p.x,p.z,0,0)<20){ unApplyOrder("retreat", null); log(unGroupName()+" يدافعون عن القلعة من فنائها."); }
+    else if(dist2(p.x,p.z,0,0)<36){ unApplyOrder("retreat", null); log(unGroupName()+" يدافعون عن القلعة من فنائها."); }
     else { unApplyOrder("defend", null); log("لا مبنى هنا — "+unGroupName()+" يدافعون عن أقرب مبنى."); }
   } else {
     unApplyOrder("point", {x:p.x, z:p.z});
@@ -186,11 +186,11 @@ function soldierBehavior(s, dt, h){
   const U=UNITS[k], O=G.orders||unInitOrders(), od=O[s.grp], mode=od.mode;
   const ci=Math.cos(s.i*2.1), si=Math.sin(s.i*2.1);
   let tx, tz, leash;
-  if(mode==="follow"){ tx=h.x+ci*(U.ranged?7.4:6.2); tz=h.z+si*(U.ranged?6.6:5.6); leash=999; }
-  else if((mode==="hold"||mode==="point")&&od.at){ tx=od.at.x+ci*5.8; tz=od.at.z+si*5.2; leash=26; }
-  else if(mode==="defend"){ const db=unDefendTarget(s,od,dt), a=G.t*.3+s.i*2.1; tx=db.x+Math.cos(a)*6; tz=db.z+Math.sin(a)*6; leash=26; }
-  else if(mode==="retreat"){ const a=Math.atan2(b.z,b.x)+(s.i-2)*.4; tx=Math.cos(a)*18; tz=Math.sin(a)*18; leash=22; }
-  else { tx=b.x+ci*5.6; tz=b.z+4.6+si*3.4; leash=32; }
+  if(mode==="follow"){ tx=h.x+ci*(U.ranged?9.6:8); tz=h.z+si*(U.ranged?8.6:7.2); leash=999; }
+  else if((mode==="hold"||mode==="point")&&od.at){ tx=od.at.x+ci*7.5; tz=od.at.z+si*6.8; leash=38; }
+  else if(mode==="defend"){ const db=unDefendTarget(s,od,dt), a=G.t*.3+s.i*2.1; tx=db.x+Math.cos(a)*8; tz=db.z+Math.sin(a)*8; leash=38; }
+  else if(mode==="retreat"){ const a=Math.atan2(b.z,b.x)+(s.i-2)*.4; tx=Math.cos(a)*30; tz=Math.sin(a)*30; leash=32; }
+  else { tx=b.x+ci*7.2; tz=b.z+6+si*4.4; leash=48; }
 
   /* اختيار الهدف: أقرب عدو إلى الجندي ضمن مقود المرساة؛ المشاة لا تطارد الطائر (إلا الرمّاح) */
   const melee=!U.ranged, reach=!!U.reach, en=G.enemies;
