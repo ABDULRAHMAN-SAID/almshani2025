@@ -114,17 +114,7 @@ function weaponActive(h){
 /* هيكل القائد حسب السلاح — يُبنى مرة واحدة لكل سلاح ويُعاد استخدامه */
 const WP_RIGS={};
 function wpBuildRig(id){
-  const o={ h:5.6, cloth:0x2A4E86, cloth2:0x22406E, skin:0xE8B98C, beard:0x4A2E1A, metal:0xA3ADBB, metal2:0x5C6672,
-    accent:0xC4483B, armored:true, helm:true, plume:true, cape:0x2E63A8, emblem:true, tabard:0x1E3A6E };
-  if(id==="bow") o.bow=true;
-  else { o.weapon = id==="spear" ? "spear" : "sword"; if(id==="sword") o.shield="round"; }
-  const rig=makeRig(o);
-  if(id==="bow") rig.userData.rig.bowPose=true;
-  const ring=new THREE.Mesh(new THREE.RingGeometry(1.0,1.28,30),
-    new THREE.MeshBasicMaterial({color:0xF5C25B, transparent:true, opacity:.8, side:THREE.DoubleSide}));
-  ring.rotation.x=-Math.PI/2; ring.position.y=.06; rig.add(ring);
-  rig.userData.weaponId=id;
-  return rig;
+  return mkHero(id);   // القائد المتوَّج على حصانه، بسلاحه
 }
 function wpLabel(W){
   const b=document.querySelector("#abil1 b"), btn=document.getElementById("abil1");

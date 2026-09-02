@@ -14,6 +14,25 @@ hook='''window.__d={
   rebuild:()=>{ const t0=performance.now(); buildStage(G.stage); world.add(G.heroObj); return Math.round(performance.now()-t0); },
   night:(on)=>{ G.phase=on?"night":"dawn"; for(let i=0;i<220;i++) updateLighting(); },
   hero:(x,z)=>{ G.hero.x=x; G.hero.z=z; },
+  showcase:(what)=>{ const W2=560,H2=420; const rt=new THREE.WebGLRenderTarget(W2,H2,{minFilter:THREE.LinearFilter,magFilter:THREE.LinearFilter});
+    const sc2=new THREE.Scene(); sc2.environment=scene.environment; const hl=new THREE.HemisphereLight(0xFFFFFF,0x555544,1.0); hl.color.convertSRGBToLinear(); sc2.add(hl);
+    const dl=new THREE.DirectionalLight(0xFFF2DC,2.2); dl.color.convertSRGBToLinear(); dl.position.set(8,14,10); sc2.add(dl);
+    const cam2=new THREE.PerspectiveCamera(30,W2/H2,.1,600); const buf=new Uint8Array(W2*H2*4); const cv2=document.createElement('canvas'); cv2.width=W2; cv2.height=H2; const cx2=cv2.getContext('2d'); const img=cx2.createImageData(W2,H2);
+    const obj = what==='hero'?mkHero('sword'):what==='soldier'?mkHumanoid():what.startsWith('enemy:')?mkEnemy(what.slice(6)):mkBuilding(what,1,null);
+    if(obj.userData.rig) poseRig(obj,1.3,false,0); if(obj.userData.horse) poseHorse(obj,1.3,false);
+    sc2.add(obj); const box=new THREE.Box3().setFromObject(obj); const size=box.getSize(new THREE.Vector3()), ctr=box.getCenter(new THREE.Vector3());
+    const d=Math.max(size.x,size.y,size.z)*(what==='face'?1:2.0); cam2.position.set(ctr.x+d*.55, ctr.y+d*.45, ctr.z+d*.95); cam2.lookAt(ctr.x, ctr.y-size.y*.02, ctr.z);
+    renderer.setRenderTarget(rt); renderer.setClearColor(0x4A5A6A,1); renderer.clear(); renderer.render(sc2,cam2); renderer.render(sc2,cam2); renderer.readRenderTargetPixels(rt,0,0,W2,H2,buf); renderer.setRenderTarget(null); renderer.setClearColor(0x000000,0);
+    for(let y=0;y<H2;y++){ const s0=(H2-1-y)*W2*4, d0=y*W2*4; img.data.set(buf.subarray(s0,s0+W2*4), d0); } cx2.putImageData(img,0,0); sc2.remove(obj); dropLights(obj); rt.dispose(); return cv2.toDataURL('image/png'); },
+  faceShot:(what)=>{ const W2=560,H2=420; const rt=new THREE.WebGLRenderTarget(W2,H2,{minFilter:THREE.LinearFilter,magFilter:THREE.LinearFilter});
+    const sc2=new THREE.Scene(); sc2.environment=scene.environment; const hl=new THREE.HemisphereLight(0xFFFFFF,0x555544,1.0); hl.color.convertSRGBToLinear(); sc2.add(hl);
+    const dl=new THREE.DirectionalLight(0xFFF2DC,2.2); dl.color.convertSRGBToLinear(); dl.position.set(4,10,12); sc2.add(dl);
+    const cam2=new THREE.PerspectiveCamera(28,W2/H2,.1,600); const buf=new Uint8Array(W2*H2*4); const cv2=document.createElement('canvas'); cv2.width=W2; cv2.height=H2; const cx2=cv2.getContext('2d'); const img=cx2.createImageData(W2,H2);
+    const obj = what==='hero'?mkHero('sword'):mkHumanoid(); if(obj.userData.rig) poseRig(obj,1.3,false,0); if(obj.userData.horse) poseHorse(obj,1.3,false);
+    sc2.add(obj); obj.updateMatrixWorld(true); const hp=new THREE.Vector3(); obj.userData.rig.head.getWorldPosition(hp);
+    cam2.position.set(hp.x+1.2, hp.y+.6, hp.z+3.2); cam2.lookAt(hp.x, hp.y+.1, hp.z);
+    renderer.setRenderTarget(rt); renderer.setClearColor(0x4A5A6A,1); renderer.clear(); renderer.render(sc2,cam2); renderer.render(sc2,cam2); renderer.readRenderTargetPixels(rt,0,0,W2,H2,buf); renderer.setRenderTarget(null); renderer.setClearColor(0x000000,0);
+    for(let y=0;y<H2;y++){ const s0=(H2-1-y)*W2*4, d0=y*W2*4; img.data.set(buf.subarray(s0,s0+W2*4), d0); } cx2.putImageData(img,0,0); sc2.remove(obj); dropLights(obj); rt.dispose(); return cv2.toDataURL('image/png'); },
   heroInfo:()=>({x:Math.round(G.hero.x),z:Math.round(G.hero.z),hp:G.hero.hp,dead:G.hero.dead,cd:G.hero.atkCd,over:G.over,paused:!!G.paused,pending:!!G.pending,ov:document.getElementById('overlay').classList.contains('show'),lo:LOADOUT.weapon,auto:SET.autoTarget}),
   pickAt:(x,y)=>{ const r=glc.getBoundingClientRect(); const n=pickNode({clientX:r.left+x, clientY:r.top+y}); return n?(n.kind||'wall'):null; },
   sel:()=>G.selected?(G.selected.kind||'wall'):null,

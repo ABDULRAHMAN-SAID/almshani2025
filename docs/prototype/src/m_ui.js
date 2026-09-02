@@ -185,7 +185,7 @@ HOOKS.draw.push(function(ctx){
 /* ── ثلاث حالات تكبير (بند 14) + نقرتان على القلعة (بند 13) ── */
 (()=>{ const icons=document.querySelector(".icons"); if(!icons) return;
   icons.insertAdjacentHTML("afterbegin",`<button class="icon" id="zoomBtn" title="تكبير: تكتيكي / عادي / قتال">◎</button>`);
-  const P=[900, MOBILE?270:330, 150], N=["تكتيكي","عادي","قتال"];
+  const P=[1100, MOBILE?320:400, 170], N=["تكتيكي","عادي","قتال"];
   document.getElementById("zoomBtn").onclick=()=>{ let i=0, bd=1e9; for(let k=0;k<3;k++){ const d=Math.abs(camDist-P[k]); if(d<bd){bd=d;i=k;} }
     i=(i+1)%3; camDist=P[i]; camHigh=camDist*.66; clampPan(); log(`الكاميرا: ${N[i]}`); };
   let lastTap=0;
