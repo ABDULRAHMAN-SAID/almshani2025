@@ -3,10 +3,10 @@
    renderOrders (مجموعات + أوامر)، أوامر النقطة/الدفاع بالضغط المطوّل، وunitSummary للقائمة. */
 
 /* ── جدول الوحدات ── */
-UNITS.guard   = { id:"guard",   name:"حرس",   d:"مدرّع متوازن يثبت في الصف",    hp:150, dmg:20, rate:.7,  range:3.4, speed:16.5,   tags:["melee","armored"], counters:[],                 cmul:1 };
-UNITS.spear   = { id:"spear",   name:"رمّاح", d:"رمح طويل يصيد السريع والطائر", hp:100, dmg:16, rate:.55, range:4.8, speed:17, tags:["melee","reach"],   counters:["runner","flyer"], cmul:1.8, reach:true };
-UNITS.archer  = { id:"archer",  name:"رماة",  d:"سهام بعيدة ويتجنّب الاشتباك",  hp:70,  dmg:15, rate:.8,  range:38,  speed:16, tags:["ranged"],          counters:[],                 cmul:1,   ranged:true };
-UNITS.berserk = { id:"berserk", name:"هائج",  d:"فأس ثقيلة تحطّم المدرّعين",    hp:85,  dmg:34, rate:.6,  range:3.2, speed:19.5,   tags:["melee","fast"],    counters:["brute"],          cmul:1.3 };
+UNITS.guard   = { id:"guard",   name:"حرس",   d:"مدرّع متوازن يثبت في الصف",    hp:150, dmg:20, rate:.7,  range:3.4, speed:14.3,   tags:["melee","armored"], counters:[],                 cmul:1 };
+UNITS.spear   = { id:"spear",   name:"رمّاح", d:"رمح طويل يصيد السريع والطائر", hp:100, dmg:16, rate:.55, range:4.8, speed:14.9, tags:["melee","reach"],   counters:["runner","flyer"], cmul:1.8, reach:true };
+UNITS.archer  = { id:"archer",  name:"رماة",  d:"سهام بعيدة ويتجنّب الاشتباك",  hp:70,  dmg:15, rate:.8,  range:38,  speed:13.6, tags:["ranged"],          counters:[],                 cmul:1,   ranged:true };
+UNITS.berserk = { id:"berserk", name:"هائج",  d:"فأس ثقيلة تحطّم المدرّعين",    hp:85,  dmg:34, rate:.6,  range:3.2, speed:17,   tags:["melee","fast"],    counters:["brute"],          cmul:1.3 };
 
 /* فروع الثكنة في المستوى الثالث (النواة تعرضها بطاقاتٍ عند الترقية) */
 B.barracks.branches = [

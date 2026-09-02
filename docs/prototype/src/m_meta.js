@@ -82,7 +82,7 @@ function restore(s){
   for(const w of s.walls||[]){ const node=WALLS[w.idx]; if(!node||node.b) continue;
     const o={type:w.type||"wall",x:node.x,z:node.z,lv:w.lv||1,hp:0,max:0,node,alert:0,idx:node.idx};
     o.max=maxHp(o); o.hp=Math.min(w.hp,o.max);
-    o.obj=o.type==="wall"?mkWall(o.lv):mkBarrier(); o.obj.position.set(node.x,terrainY(node.x,node.z),node.z); o.obj.rotation.y=-node.a-Math.PI/2;
+    o.obj=o.type==="wall"?mkWall(o.lv, node.len):mkBarrier(node.len); o.obj.position.set(node.x,terrainY(node.x,node.z),node.z); o.obj.rotation.y=node.rot;
     world.add(o.obj); freeze(o.obj); node.b=o; G.walls.push(o); }
   const u=G.castleObj&&G.castleObj.userData; if(u){ if(u.towersA) u.towersA.visible=G.castleLv>=2; if(u.towersB) u.towersB.visible=G.castleLv>=3; }
   if(s.stat) G.stat=Object.assign(G.stat,s.stat); G.builtTower=!!s.builtTower; G.retried=!!s.retried;
