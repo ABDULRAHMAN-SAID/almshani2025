@@ -1628,7 +1628,7 @@ function buildStage(idx){
   const banner = part(geo.plane, new THREE.MeshStandardMaterial({color:0xF0B93C, side:THREE.DoubleSide, roughness:.85}),
     2.1, 26.6, 0, 4.2, 2.6, 1, 0, Math.PI/2, 0);
   banner.castShadow=false; cst.add(banner); cst.userData.banner = banner;
-  cst.userData.light = lightReq(cst,0,18,0,0xFFD9A0,95);
+  cst.userData.light = lightReq(cst,0,22,0,0xFFD9A0,85);
   cst.userData.lights2=[];
   for(const [tx,tz] of [[9.6,9.6],[-9.6,9.6],[-9.6,-9.6],[9.6,-9.6]]){
     cst.add(part(geo.cyl, mat(0x4A3B2C,WOOD()), tx,8.2,tz, .14,1.6,.14));
@@ -3486,7 +3486,7 @@ function updateLighting(){
       u.disc.material.opacity += ((night?.13:0)-u.disc.material.opacity)*.06; }
   }
   if(G.castleObj&&G.castleObj.userData.light)
-    G.castleObj.userData.light.intensity += ((night?7:0)-G.castleObj.userData.light.intensity)*.06;
+    G.castleObj.userData.light.intensity += ((night?4:0)-G.castleObj.userData.light.intensity)*.06;
   if(G.castleObj&&G.castleObj.userData.lights2) for(const l of G.castleObj.userData.lights2) l.intensity += ((night?2.6:0)-l.intensity)*.06;
   if(G.safeDisc) G.safeDisc.material.opacity += ((night?.1:0)-G.safeDisc.material.opacity)*.06;
   for(const c of CAMPFIRES){
