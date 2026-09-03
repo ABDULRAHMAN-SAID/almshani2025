@@ -13,6 +13,9 @@
 | `terrain_engine.js` | `Assets/Dawnkeep/Runtime/World/*` — نفس الخوارزميات والأرقام |
 | `upv_lib.js` | `SurfaceBaker` + `SurfaceLibrary` + `FoliageTextureBaker` |
 | `upv_mesh.js` | `MeshBuilder` + `TreeMeshFactory` + `RockMeshFactory` |
+| `upv_geo.js` | `ArchitectureBuilder` — كنس وخراطة وبثق مشطوف وأقواس شعاعية |
+| `upv_tex.js` | `TextureCanvas` + `TexturePainter` + `DrawnMaterials` + `BuildingMaterials` |
+| `upv_build.js` | `KingdomBuilder` — سور وأبراج وبوّابة وحصن وبيوت |
 | `upv_scene.js` | `DawnkeepTerrainPainter` (أوزان الطبقات، العشب، الأشجار) + `DawnkeepWorldSceneBuilder` |
 
 ## ما الذي لا يطابق
@@ -42,3 +45,6 @@ node upv_shot_runner.js far valley lake meadow river road
 7. جبال كالأنياب (تعرية القطرات وحدها بلا انهيار منحدرات).
 8. شريط نهر معلّق فوق الأرض (سطح الماء يعلو الضفّتين).
 9. عشب بارتفاع أربعة أمتار، وأشجار كنقاط على خريطة 3600 متر.
+10. **قلعة تبدو «ماين كرافت»** — كل قطعة صندوق محاذٍ للمحاور؛ استُبدلت بأربع أدوات معمارية.
+11. مداميك حجر بارتفاع مترين (إحداثيات نسيج خاطئة).
+12. حشوة كتفَي القوس شرائح رأسية مخطّطة بدل مداميك أفقية.

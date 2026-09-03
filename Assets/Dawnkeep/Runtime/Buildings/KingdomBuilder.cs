@@ -5,8 +5,9 @@ using UnityEngine;
 namespace Dawnkeep.Buildings
 {
     /// <summary>
-    /// عمارة المملكة مولّدة بالكود: سور بشرفات ودعامات، أبراج بأسقف مخروطية،
-    /// بوّابة بقوس ومَشيقولة، حصن بأبراج ركنية، وبيوت بإطار خشبي وجصّ وقرميد.
+    /// عمارة المملكة بهندسة معمارية لا بصناديق: السور جسم واحد مكنوس بمقطع
+    /// (قاعدة بارزة، بَطّة مائلة، إفريز، ممشى، ستارة)، والأبراج مخروطة بحلقات
+    /// ومَشْط بارز وسقف بأفاريز، والبوّابة فتحة حقيقية بقوس أحجار شعاعية.
     /// النِّسَب معمارية عامّة — لا نسخ من أي لعبة أو صورة مرجعية.
     /// </summary>
     public static class KingdomBuilder
@@ -23,14 +24,11 @@ namespace Dawnkeep.Buildings
 
         public delegate float GroundSampler(float x, float z);
 
-        /// <summary>ارتفاعات وأبعاد المجمّع — كلّها بالأمتار.</summary>
         public struct Layout
         {
             public float Radius;
             public float GateAngle;
             public int Sides;
-            public float WallHeight;
-            public float WallThickness;
         }
 
         public static Layout DefaultLayout(float radius, float gateAngle)
@@ -39,251 +37,468 @@ namespace Dawnkeep.Buildings
             l.Radius = radius;
             l.GateAngle = gateAngle;
             l.Sides = 11;
-            l.WallHeight = 11f;
-            l.WallThickness = 3.4f;
             return l;
         }
+
+        /// <summary>
+        /// مقطع السور: قاعدة بارزة ← انحسار ← بَطّة مائلة ← إفريز بارز ← ممشى ← ستارة.
+        /// موجب x = خارج الحصن.
+        /// </summary>
+        private static readonly Vector2[] WallProfile =
+        {
+            new Vector2(2.30f, 0.00f), new Vector2(2.30f, 0.95f), new Vector2(1.92f, 1.55f), new Vector2(1.74f, 2.15f),
+            new Vector2(1.58f, 8.40f), new Vector2(1.94f, 8.90f), new Vector2(2.04f, 9.30f), new Vector2(1.66f, 9.78f),
+            new Vector2(1.66f, 11.35f), new Vector2(1.40f, 11.62f),
+            new Vector2(0.96f, 11.62f), new Vector2(0.96f, 10.15f),
+            new Vector2(-2.12f, 10.15f), new Vector2(-2.48f, 9.72f), new Vector2(-2.06f, 9.34f), new Vector2(-1.56f, 8.60f),
+            new Vector2(-1.50f, 2.15f), new Vector2(-1.74f, 1.55f), new Vector2(-2.12f, 0.95f), new Vector2(-2.12f, 0.00f),
+        };
 
         public static Parts BuildCastle(GroundSampler ground, Layout layout, uint seed)
         {
             Parts m = new Parts();
             TexRandom rng = new TexRandom(seed);
             float r = layout.Radius;
-            int sides = Mathf.Max(5, layout.Sides);
+            int sides = Mathf.Max(7, layout.Sides);
+            float ga = layout.GateAngle;
 
-            // مضلّع السور: غير منتظم كما تُبنى الحصون على تضاريس
-            List<Vector2> pts = new List<Vector2>(sides);
+            // رأس المضلّع الأول عند البوّابة تماماً، والسور يُفتح عندها فتصير فتحة حقيقية
+            Vector2[] pts = new Vector2[sides];
             for (int i = 0; i < sides; i++)
             {
-                float a = (float)i / sides * Mathf.PI * 2f;
+                float a = ga + ((float)i / sides * Mathf.PI * 2f);
                 float rr = r * (0.88f + (0.22f * Mathf.Sin((a * 2.3f) + 1.1f)) + (rng.Next() * 0.06f));
-                pts.Add(new Vector2(Mathf.Cos(a) * rr, Mathf.Sin(a) * rr));
+                pts[i] = new Vector2(Mathf.Cos(a) * rr, Mathf.Sin(a) * rr);
             }
 
-            BuildWall(m, pts, ground, layout.WallHeight, layout.WallThickness);
+            const float Gap = 9.2f;
+            Vector2 dIn = (pts[1] - pts[0]).normalized;
+            Vector2 dOut = (pts[sides - 1] - pts[0]).normalized;
 
-            for (int i = 0; i < sides; i += 2)
+            List<Vector2> wallPath = new List<Vector2>(sides + 1);
+            wallPath.Add(pts[0] + (dIn * Gap));
+            for (int i = 1; i < sides; i++)
             {
-                Vector2 p = pts[i];
-                BuildTower(m, p.x, p.y, ground(p.x, p.y), 4.2f + (rng.Next() * 1.2f), 15f + (rng.Next() * 5f));
+                wallPath.Add(pts[i]);
             }
 
-            BuildGatehouse(m, ground, layout);
-            BuildKeep(m, ground, rng);
-            BuildCourtyard(m, ground, layout, pts, ref rng);
+            wallPath.Add(pts[0] + (dOut * Gap));
 
-            return m;
-        }
+            BuildWall(m, wallPath, ground);
 
-        private static void BuildWall(Parts m, List<Vector2> pts, GroundSampler ground, float height, float thick)
-        {
-            for (int i = 0; i < pts.Count; i++)
+            for (int i = 1; i < sides; i++)
             {
-                Vector2 a = pts[i];
-                Vector2 b = pts[(i + 1) % pts.Count];
-                Vector2 delta = b - a;
-                float len = delta.magnitude;
-                if (len < 0.5f)
+                if (i % 2 == 0)
                 {
                     continue;
                 }
 
-                float rot = Mathf.Atan2(delta.y, delta.x);
-                int segs = Mathf.Max(1, Mathf.RoundToInt(len / 6f));
+                BuildTower(m, pts[i].x, pts[i].y, ground(pts[i].x, pts[i].y), 4.2f + (rng.Next() * 1.2f), 15f + (rng.Next() * 5f));
+            }
 
-                for (int q = 0; q < segs; q++)
+            BuildGatehouse(m, ground, pts[0], ga, ref rng);
+            BuildKeep(m, ground, ref rng);
+            BuildCourtyard(m, ground, layout, pts, ref rng);
+            return m;
+        }
+
+        private static void BuildWall(Parts m, List<Vector2> path, GroundSampler ground)
+        {
+            // يتبع الأرض: كل عقدة تنزل إلى أوطأ نقطة قريبة كي لا يطفو السور
+            System.Func<float, float, float> baseAt = delegate (float x, float z)
+            {
+                float low = ground(x, z);
+                low = Mathf.Min(low, ground(x + 6f, z));
+                low = Mathf.Min(low, ground(x - 6f, z));
+                low = Mathf.Min(low, ground(x, z + 6f));
+                low = Mathf.Min(low, ground(x, z - 6f));
+                return low - 3.2f;
+            };
+
+            ArchitectureBuilder.SweepProfile(m.Stone, path, WallProfile, baseAt, 0.40f, false, true);
+
+            for (int i = 0; i < path.Count - 1; i++)
+            {
+                Vector2 a = path[i];
+                Vector2 b = path[i + 1];
+                Vector2 d = b - a;
+                float len = d.magnitude;
+                if (len < 1f)
                 {
-                    float t0 = (float)q / segs;
-                    float t1 = (float)(q + 1) / segs;
-                    float tm = (t0 + t1) * 0.5f;
-                    Vector2 mid = a + (delta * tm);
-                    float slen = len / segs;
+                    continue;
+                }
 
-                    float gy = Mathf.Min(
-                        ground(a.x + (delta.x * t0), a.y + (delta.y * t0)),
-                        ground(a.x + (delta.x * t1), a.y + (delta.y * t1)));
-                    float bse = gy - 4f;
+                Vector2 u = d / len;
+                Vector2 p = new Vector2(u.y, -u.x);
+                int n = Mathf.Max(1, Mathf.RoundToInt(len / 2.9f));
 
-                    // قاعدة أعرض ثم جسم ثم إفريز — لا لوح مسطّح واحد
-                    m.Stone.AddBox(new Vector3(mid.x, bse + 1.4f, mid.y), new Vector3(slen * 1.02f, 2.8f, thick * 1.28f), rot, 0.42f);
-                    m.Stone.AddBox(new Vector3(mid.x, bse + 2.8f + ((height - 2.8f) * 0.5f), mid.y),
-                        new Vector3(slen * 1.02f, height - 2.8f, thick), rot, 0.42f);
-                    m.Stone.AddBox(new Vector3(mid.x, bse + height - 1.1f, mid.y),
-                        new Vector3(slen * 1.02f, 0.42f, thick * 1.14f), rot, 0.5f);
-                    m.Stone.AddBox(new Vector3(mid.x, bse + height + 0.35f, mid.y),
-                        new Vector3(slen * 1.02f, 0.7f, thick * 1.30f), rot, 0.5f);
+                for (int q = 0; q < n; q++)
+                {
+                    float t = (q + 0.35f) / n;
+                    float w = len / n * 0.52f;
+                    Vector2 c = a + (d * t);
+                    const float Off = 1.30f;
 
-                    if (q % 2 == 0)
+                    Vector2[] poly =
                     {
-                        m.Stone.AddBox(
-                            new Vector3(mid.x - (Mathf.Sin(rot) * thick * 0.62f), bse + ((height - 1f) * 0.5f),
-                                mid.y + (Mathf.Cos(rot) * thick * 0.62f)),
-                            new Vector3(1.9f, height - 1f, thick * 0.55f), rot, 0.42f);
-                    }
+                        c + (u * -w * 0.5f) + (p * (Off - 0.36f)),
+                        c + (u * w * 0.5f) + (p * (Off - 0.36f)),
+                        c + (u * w * 0.5f) + (p * (Off + 0.36f)),
+                        c + (u * -w * 0.5f) + (p * (Off + 0.36f)),
+                    };
 
-                    int mer = Mathf.Max(1, Mathf.RoundToInt(slen / 3.0f));
-                    for (int k = 0; k < mer; k++)
-                    {
-                        float tt = (k + 0.5f) / mer;
-                        Vector2 p = a + (delta * (t0 + ((t1 - t0) * tt)));
-                        float off = thick * 0.42f;
-                        m.Stone.AddBox(
-                            new Vector3(p.x + (Mathf.Sin(rot) * off), bse + height + 1.6f, p.y - (Mathf.Cos(rot) * off)),
-                            new Vector3(slen / mer * 0.55f, 1.9f, thick * 0.34f), rot, 0.55f);
-                    }
+                    ArchitectureBuilder.Prism(m.Stone, poly, baseAt(c.x, c.y) + 11.62f, 1.95f, 0.14f, 0.55f, 0f);
                 }
             }
         }
 
-        private static void BuildTower(Parts m, float x, float z, float groundY, float radius, float height)
+        /// <summary>برج: قاعدة، بَطّة، مَشْط بارز، ستارة بشرفات، سقف قرميدي بأفاريز مرفرفة.</summary>
+        private static void BuildTower(Parts m, float x, float z, float groundY, float r, float h)
         {
-            m.Stone.AddCylinder(new Vector3(x, groundY - 2f, z), radius * 1.12f, radius, height, 14, 0.40f, false);
+            float y0 = groundY - 3f;
+            Vector2[] profile =
+            {
+                new Vector2(r * 1.30f, 0.0f), new Vector2(r * 1.30f, 1.1f),
+                new Vector2(r * 1.16f, 1.9f), new Vector2(r * 1.10f, 2.6f),
+                new Vector2(r * 1.00f, h * 0.55f), new Vector2(r * 0.96f, h * 0.92f),
+                new Vector2(r * 1.13f, h * 0.96f), new Vector2(r * 1.20f, h * 1.00f),
+                new Vector2(r * 1.16f, h * 1.05f), new Vector2(r * 1.06f, h * 1.07f),
+            };
 
-            int merlons = Mathf.Max(8, Mathf.RoundToInt(radius * 2.2f));
+            ArchitectureBuilder.Lathe(m.Stone, new Vector3(x, y0, z), profile, 20, 0.40f, false);
+
+            float topY = y0 + (h * 1.07f);
+            float radius = r * 1.06f;
+            int merlons = Mathf.Max(9, Mathf.RoundToInt(r * 2.6f));
+
             for (int i = 0; i < merlons; i++)
             {
                 float a = (float)i / merlons * Mathf.PI * 2f;
-                m.Stone.AddBox(
-                    new Vector3(x + (Mathf.Cos(a) * radius * 0.94f), groundY - 2f + height + 0.9f, z + (Mathf.Sin(a) * radius * 0.94f)),
-                    new Vector3(radius * 0.42f, 1.8f, radius * 0.30f), a, 0.55f);
+                float w = radius * 2f * Mathf.PI / merlons * 0.55f;
+                float t = radius * 0.30f;
+                float ca = Mathf.Cos(a);
+                float sa = Mathf.Sin(a);
+                Vector2 tangent = new Vector2(-sa, ca);
+                Vector2 outward = new Vector2(ca, sa);
+                Vector2 c = new Vector2(x + (ca * (radius - (t * 0.1f))), z + (sa * (radius - (t * 0.1f))));
+
+                Vector2[] poly =
+                {
+                    c + (tangent * -w * 0.5f) + (outward * -t * 0.5f),
+                    c + (tangent * w * 0.5f) + (outward * -t * 0.5f),
+                    c + (tangent * w * 0.5f) + (outward * t * 0.5f),
+                    c + (tangent * -w * 0.5f) + (outward * t * 0.5f),
+                };
+
+                ArchitectureBuilder.Prism(m.Stone, poly, topY, 2.1f, 0.16f, 0.55f, 0f);
             }
 
-            m.Stone.AddCylinder(new Vector3(x, groundY - 2f + height, z), radius * 1.06f, radius * 1.06f, 0.55f, 14, 0.5f, true);
-            m.Tile.AddCylinder(new Vector3(x, groundY - 2f + height + 2.0f, z), radius * 1.10f, 0.10f, radius * 1.5f, 14, 0.55f, false);
+            Vector2[] parapet =
+            {
+                new Vector2(radius, 0f), new Vector2(radius, 0.55f), new Vector2(radius * 0.94f, 0.75f),
+            };
+
+            ArchitectureBuilder.Lathe(m.Stone, new Vector3(x, topY, z), parapet, 20, 0.5f, false);
+
+            float ry = topY + 2.1f;
+            Vector2[] roof =
+            {
+                new Vector2(radius * 1.02f, -0.35f), new Vector2(radius * 1.22f, -0.05f),
+                new Vector2(radius * 1.10f, 0.35f), new Vector2(radius * 0.72f, r * 0.85f),
+                new Vector2(0.06f, r * 1.85f),
+            };
+
+            ArchitectureBuilder.Lathe(m.Tile, new Vector3(x, ry, z), roof, 20, 0.55f, false);
+
+            Vector2[] finial = { new Vector2(0.30f, 0f), new Vector2(0.16f, 0.5f), new Vector2(0.05f, 0.9f) };
+            ArchitectureBuilder.Lathe(m.Stone, new Vector3(x, ry + (r * 1.85f), z), finial, 8, 0.6f, true);
         }
 
-        private static void BuildGatehouse(Parts m, GroundSampler ground, Layout layout)
+        private static void BuildGatehouse(Parts m, GroundSampler ground, Vector2 gate, float ga, ref TexRandom rng)
         {
-            float ga = layout.GateAngle;
-            float gx = Mathf.Cos(ga) * layout.Radius * 0.98f;
-            float gz = Mathf.Sin(ga) * layout.Radius * 0.98f;
-            float gy = ground(gx, gz);
-            float rot = ga + (Mathf.PI * 0.5f);
+            float gx = gate.x;
+            float gz = gate.y;
+            float gy = ground(gx, gz) - 3.2f;
+            Vector2 outward = new Vector2(Mathf.Cos(ga), Mathf.Sin(ga));
+            Vector2 across = new Vector2(-outward.y, outward.x);
+
+            const float AR = 3.6f;
+            const float Pier = 2.6f;
+            const float Depth = 7.8f;
+            const float Spring = 8.4f;
+            const float Ring = 1.35f;
+            float w = (AR * 2f) + (Pier * 2f);
+            float ro = AR + Ring;
+            float springY = gy + Spring;
+            float topY = springY + ro + 5.8f;
 
             for (int s = -1; s <= 1; s += 2)
             {
-                float px = gx - (Mathf.Sin(ga) * s * 5.6f);
-                float pz = gz + (Mathf.Cos(ga) * s * 5.6f);
-                BuildTower(m, px, pz, ground(px, pz), 4.0f, 19f);
+                Vector2 tp = new Vector2(gx, gz) + (across * s * 8.6f);
+                BuildTower(m, tp.x, tp.y, ground(tp.x, tp.y), 4.3f, 21f);
             }
 
-            m.Stone.AddBox(new Vector3(gx, gy - 4f + 8.5f, gz), new Vector3(13.5f, 17f, 6.5f), rot, 0.42f);
-            m.Stone.AddBox(new Vector3(gx, gy - 4f + 17.4f, gz), new Vector3(15.2f, 1.2f, 8.2f), rot, 0.5f);
-
-            for (int i = 0; i < 6; i++)
+            for (int s = -1; s <= 1; s += 2)
             {
-                float t = ((i + 0.5f) / 6f) - 0.5f;
-                m.Stone.AddBox(
-                    new Vector3(gx - (Mathf.Sin(ga) * t * 13.0f), gy - 4f + 19.0f, gz + (Mathf.Cos(ga) * t * 13.0f)),
-                    new Vector3(1.5f, 1.9f, 8.0f), rot, 0.55f);
+                Vector2 c = new Vector2(gx, gz) + (across * s * (AR + (Pier * 0.5f)));
+                Vector2[] poly =
+                {
+                    c + (across * -Pier * 0.5f) + (outward * -Depth * 0.5f),
+                    c + (across * Pier * 0.5f) + (outward * -Depth * 0.5f),
+                    c + (across * Pier * 0.5f) + (outward * Depth * 0.5f),
+                    c + (across * -Pier * 0.5f) + (outward * Depth * 0.5f),
+                };
+
+                ArchitectureBuilder.Prism(m.Stone, poly, gy, Spring, 0.28f, 0.42f, 0f);
             }
 
-            // فتحة القوس: أعمدة بارتفاع متدرّج تحفر القوس في الكتلة
-            for (int i = 0; i < 9; i++)
+            ArchitectureBuilder.VoussoirArch(m.Stone, new Vector3(gx, springY, gz),
+                ga + (Mathf.PI * 0.5f), AR, Depth, Ring, 15, 0.42f, 0.10f);
+
+            // حشوة الكَتِفين وما فوق القوس: مداميك أفقية تلتفّ حول القوس
+            const float Dh = 0.62f;
+            for (float y = springY; y < topY - 0.01f; y += Dh)
             {
-                float t = (i + 0.5f) / 9f;
-                float h2 = Mathf.Sin(Mathf.PI * t) * 4.6f;
-                m.Stone.AddBox(
-                    new Vector3(gx - (Mathf.Sin(ga) * (t - 0.5f) * 9.6f), gy - 4f + 9.0f + (h2 * 0.5f) + 2.0f,
-                        gz + (Mathf.Cos(ga) * (t - 0.5f) * 9.6f)),
-                    new Vector3(1.1f, 12.0f - h2, 6.8f), rot, 0.42f);
+                float ym = Mathf.Min(y + Dh, topY);
+                float mid = ((y + ym) * 0.5f) - springY;
+                float half = mid < ro ? Mathf.Sqrt(Mathf.Max(0f, (ro * ro) - (mid * mid))) : 0f;
+
+                int spans = half > 0.05f ? 2 : 1;
+                for (int sp = 0; sp < spans; sp++)
+                {
+                    float a0 = spans == 1 ? -w * 0.5f : (sp == 0 ? -w * 0.5f : half);
+                    float a1 = spans == 1 ? w * 0.5f : (sp == 0 ? -half : w * 0.5f);
+                    if (a1 - a0 < 0.05f)
+                    {
+                        continue;
+                    }
+
+                    Vector2[] poly =
+                    {
+                        new Vector2(gx, gz) + (across * a0) + (outward * -Depth * 0.5f),
+                        new Vector2(gx, gz) + (across * a1) + (outward * -Depth * 0.5f),
+                        new Vector2(gx, gz) + (across * a1) + (outward * Depth * 0.5f),
+                        new Vector2(gx, gz) + (across * a0) + (outward * Depth * 0.5f),
+                    };
+
+                    ArchitectureBuilder.Prism(m.Stone, poly, y, ym - y, 0f, 0.42f, a0 + (w * 0.5f));
+                }
+            }
+
+            // أكتاف المَشيقولة ثم ستارة معلّقة بشرفات
+            for (int face = -1; face <= 1; face += 2)
+            {
+                int n = Mathf.RoundToInt(w / 1.6f);
+                for (int i = 0; i < n; i++)
+                {
+                    float a = (-w * 0.5f) + ((i + 0.5f) * w / n);
+                    for (int k = 0; k < 3; k++)
+                    {
+                        float outw = 0.55f + (k * 0.42f);
+                        float wdt = 1.0f - (k * 0.12f);
+                        Vector2[] poly =
+                        {
+                            new Vector2(gx, gz) + (across * (a - (wdt * 0.5f))) + (outward * face * ((Depth * 0.5f) + outw - 0.42f)),
+                            new Vector2(gx, gz) + (across * (a + (wdt * 0.5f))) + (outward * face * ((Depth * 0.5f) + outw - 0.42f)),
+                            new Vector2(gx, gz) + (across * (a + (wdt * 0.5f))) + (outward * face * ((Depth * 0.5f) + outw)),
+                            new Vector2(gx, gz) + (across * (a - (wdt * 0.5f))) + (outward * face * ((Depth * 0.5f) + outw)),
+                        };
+
+                        ArchitectureBuilder.Prism(m.Stone, poly, topY - 1.2f + (k * 0.40f), 0.44f, 0.06f, 0.55f, 0f);
+                    }
+                }
+            }
+
+            List<Vector2> parapetPath = new List<Vector2>
+            {
+                new Vector2(gx, gz) + (across * -w * 0.5f),
+                new Vector2(gx, gz) + (across * w * 0.5f),
+            };
+
+            Vector2[] parapetProfile =
+            {
+                new Vector2((Depth * 0.5f) + 1.5f, 0f), new Vector2((Depth * 0.5f) + 1.5f, 2.4f),
+                new Vector2((Depth * 0.5f) + 1.2f, 2.7f),
+                new Vector2(-(Depth * 0.5f) - 1.2f, 2.7f), new Vector2(-(Depth * 0.5f) - 1.5f, 2.4f),
+                new Vector2(-(Depth * 0.5f) - 1.5f, 0f),
+            };
+
+            ArchitectureBuilder.SweepProfile(m.Stone, parapetPath, parapetProfile,
+                delegate (float x, float z) { return topY; }, 0.45f, false, true);
+
+            int mn = Mathf.RoundToInt(w / 2.9f);
+            for (int i = 0; i < mn; i++)
+            {
+                float a = (-w * 0.5f) + ((i + 0.4f) * w / mn);
+                float w2 = w / mn * 0.5f;
+                for (int face = -1; face <= 1; face += 2)
+                {
+                    Vector2[] poly =
+                    {
+                        new Vector2(gx, gz) + (across * (a - (w2 * 0.5f))) + (outward * face * ((Depth * 0.5f) + 0.85f)),
+                        new Vector2(gx, gz) + (across * (a + (w2 * 0.5f))) + (outward * face * ((Depth * 0.5f) + 0.85f)),
+                        new Vector2(gx, gz) + (across * (a + (w2 * 0.5f))) + (outward * face * ((Depth * 0.5f) + 1.5f)),
+                        new Vector2(gx, gz) + (across * (a - (w2 * 0.5f))) + (outward * face * ((Depth * 0.5f) + 1.5f)),
+                    };
+
+                    ArchitectureBuilder.Prism(m.Stone, poly, topY + 2.7f, 2.0f, 0.14f, 0.55f, 0f);
+                }
             }
 
             // باب خشبي مدعّم
-            m.Timber.AddBox(new Vector3(gx, gy + 3.4f, gz), new Vector3(8.4f, 6.8f, 0.5f), rot, 0.45f);
+            float rot = ga + (Mathf.PI * 0.5f);
+            m.Timber.AddBox(new Vector3(gx, gy + 4.0f, gz), new Vector3(AR * 2f, 8.0f, 0.5f), rot, 0.45f);
             for (int i = 0; i < 5; i++)
             {
-                m.Timber.AddBox(
-                    new Vector3(gx - (Mathf.Sin(ga) * (i - 2) * 1.6f), gy + 3.4f, gz + (Mathf.Cos(ga) * (i - 2) * 1.6f)),
-                    new Vector3(0.34f, 6.8f, 0.72f), rot, 0.6f);
+                Vector2 p = new Vector2(gx, gz) + (across * (i - 2) * 1.5f);
+                m.Timber.AddBox(new Vector3(p.x, gy + 4.0f, p.y), new Vector3(0.34f, 8.0f, 0.72f), rot, 0.6f);
             }
 
-            m.Timber.AddBox(new Vector3(gx, gy + 1.2f, gz), new Vector3(8.4f, 0.55f, 0.75f), rot, 0.6f);
-            m.Timber.AddBox(new Vector3(gx, gy + 5.6f, gz), new Vector3(8.4f, 0.55f, 0.75f), rot, 0.6f);
+            m.Timber.AddBox(new Vector3(gx, gy + 1.4f, gz), new Vector3(AR * 2f, 0.55f, 0.75f), rot, 0.6f);
+            m.Timber.AddBox(new Vector3(gx, gy + 6.4f, gz), new Vector3(AR * 2f, 0.55f, 0.75f), rot, 0.6f);
         }
 
-        private static void BuildKeep(Parts m, GroundSampler ground, TexRandom rng)
+        private static void BuildKeep(Parts m, GroundSampler ground, ref TexRandom rng)
         {
-            float ky = ground(0f, 0f);
+            float ky = ground(0f, 0f) - 3f;
             const float KW = 19f;
             const float KD = 15f;
-            const float KH = 21f;
+            const float KH = 22f;
             const float Rot = 0.35f;
             float co = Mathf.Cos(Rot);
             float si = Mathf.Sin(Rot);
 
-            m.Stone.AddBox(new Vector3(0f, ky - 3f + (KH * 0.5f), 0f), new Vector3(KW, KH, KD), Rot, 0.42f);
-            m.Stone.AddBox(new Vector3(0f, ky - 3f + KH + 0.55f, 0f), new Vector3(KW + 1.6f, 1.1f, KD + 1.6f), Rot, 0.5f);
-
-            int mx = Mathf.RoundToInt((KW + 1.6f) / 2.6f);
-            int mz = Mathf.RoundToInt((KD + 1.6f) / 2.6f);
-
-            for (int i = 0; i < mx; i++)
-            {
-                float lx = (-(KW + 1.6f) * 0.5f) + ((i + 0.5f) * (KW + 1.6f) / mx);
-                for (int s = -1; s <= 1; s += 2)
-                {
-                    float lz = s * (((KD + 1.6f) * 0.5f) - 0.5f);
-                    m.Stone.AddBox(new Vector3((lx * co) - (lz * si), ky - 3f + KH + 2.0f, (lx * si) + (lz * co)),
-                        new Vector3((KW + 1.6f) / mx * 0.55f, 1.8f, 0.9f), Rot, 0.55f);
-                }
-            }
-
-            for (int i = 0; i < mz; i++)
-            {
-                float lz = (-(KD + 1.6f) * 0.5f) + ((i + 0.5f) * (KD + 1.6f) / mz);
-                for (int s = -1; s <= 1; s += 2)
-                {
-                    float lx = s * (((KW + 1.6f) * 0.5f) - 0.5f);
-                    m.Stone.AddBox(new Vector3((lx * co) - (lz * si), ky - 3f + KH + 2.0f, (lx * si) + (lz * co)),
-                        new Vector3(0.9f, 1.8f, (KD + 1.6f) / mz * 0.55f), Rot, 0.55f);
-                }
-            }
-
-            Vector3 eave = new Vector3(0f, ky - 3f + KH + 1.2f, 0f);
-            m.Tile.AddGableRoof(eave, KW - 2.4f, KD - 2.4f, 8.5f, Rot, 0.52f, 0.3f);
-            m.Stone.AddGableEnd(eave, KW - 2.4f, 8.5f, Rot, (KD - 2.4f) * 0.5f, 0.42f);
-            m.Stone.AddGableEnd(eave, KW - 2.4f, 8.5f, Rot, -(KD - 2.4f) * 0.5f, 0.42f);
-
+            Vector2[] poly = new Vector2[4];
             float[,] corners = { { -KW * 0.5f, -KD * 0.5f }, { KW * 0.5f, -KD * 0.5f }, { KW * 0.5f, KD * 0.5f }, { -KW * 0.5f, KD * 0.5f } };
             for (int i = 0; i < 4; i++)
             {
                 float lx = corners[i, 0];
                 float lz = corners[i, 1];
-                BuildTower(m, (lx * co) - (lz * si), (lx * si) + (lz * co), ky, 3.2f, KH + 4f);
+                poly[i] = new Vector2((lx * co) - (lz * si), (lx * si) + (lz * co));
             }
 
-            for (int i = 0; i < 3; i++)
+            ArchitectureBuilder.Prism(m.Stone, poly, ky, KH, 0.55f, 0.42f, 0f);
+
+            Vector2[] band = new Vector2[4];
+            for (int i = 0; i < 4; i++)
             {
-                for (int lvl = 0; lvl < 2; lvl++)
+                band[i] = poly[i] + (poly[i].normalized * 0.45f);
+            }
+
+            ArchitectureBuilder.Prism(m.Stone, band, ky + (KH * 0.52f), 0.55f, 0.16f, 0.5f, 0f);
+
+            Vector2[] outer = new Vector2[4];
+            for (int i = 0; i < 4; i++)
+            {
+                outer[i] = poly[i] + (poly[i].normalized * 1.45f);
+            }
+
+            for (int e = 0; e < 4; e++)
+            {
+                Vector2 a = poly[e];
+                Vector2 b = poly[(e + 1) % 4];
+                float len = Vector2.Distance(a, b);
+                int n = Mathf.Max(2, Mathf.RoundToInt(len / 1.7f));
+                Vector2 u = (b - a) / len;
+                Vector2 p = new Vector2(u.y, -u.x);
+
+                for (int i = 0; i < n; i++)
                 {
-                    float lx = (-KW * 0.28f) + (i * KW * 0.28f);
-                    float lz = (KD * 0.5f) + 0.1f;
-                    m.Timber.AddBox(new Vector3((lx * co) - (lz * si), ky - 3f + 6f + (lvl * 7f), (lx * si) + (lz * co)),
-                        new Vector3(1.1f, 2.2f, 0.25f), Rot, 0.6f);
+                    Vector2 c = a + ((b - a) * ((i + 0.5f) / n));
+                    for (int k = 0; k < 3; k++)
+                    {
+                        float outw = 0.35f + (k * 0.40f);
+                        float wdt = 1.0f - (k * 0.14f);
+                        Vector2[] br =
+                        {
+                            c + (u * -wdt * 0.5f) + (p * (outw - 0.40f)),
+                            c + (u * wdt * 0.5f) + (p * (outw - 0.40f)),
+                            c + (u * wdt * 0.5f) + (p * outw),
+                            c + (u * -wdt * 0.5f) + (p * outw),
+                        };
+
+                        ArchitectureBuilder.Prism(m.Stone, br, ky + KH - 1.3f + (k * 0.40f), 0.42f, 0.06f, 0.55f, 0f);
+                    }
+                }
+            }
+
+            Vector2[] keepParapet =
+            {
+                new Vector2(0.30f, 0f), new Vector2(0.30f, 2.5f), new Vector2(0.05f, 2.8f),
+                new Vector2(-0.65f, 2.8f), new Vector2(-0.65f, 0f),
+            };
+
+            ArchitectureBuilder.SweepProfile(m.Stone, outer, keepParapet,
+                delegate (float x, float z) { return ky + KH; }, 0.45f, true, false);
+
+            for (int e = 0; e < 4; e++)
+            {
+                Vector2 a = outer[e];
+                Vector2 b = outer[(e + 1) % 4];
+                float len = Vector2.Distance(a, b);
+                int n = Mathf.Max(2, Mathf.RoundToInt(len / 2.7f));
+                Vector2 u = (b - a) / len;
+                Vector2 p = new Vector2(u.y, -u.x);
+
+                for (int i = 0; i < n; i++)
+                {
+                    Vector2 c = a + ((b - a) * ((i + 0.35f) / n));
+                    float w2 = len / n * 0.52f;
+                    Vector2[] mer =
+                    {
+                        c + (u * -w2 * 0.5f) + (p * -0.30f),
+                        c + (u * w2 * 0.5f) + (p * -0.30f),
+                        c + (u * w2 * 0.5f) + (p * 0.30f),
+                        c + (u * -w2 * 0.5f) + (p * 0.30f),
+                    };
+
+                    ArchitectureBuilder.Prism(m.Stone, mer, ky + KH + 2.8f, 1.9f, 0.12f, 0.55f, 0f);
+                }
+            }
+
+            Vector3 eave = new Vector3(0f, ky + KH + 2.4f, 0f);
+            m.Tile.AddGableRoof(eave, KW - 3.0f, KD - 3.0f, 9.5f, Rot, 0.52f, 0.85f);
+            m.Stone.AddGableEnd(eave, KW - 3.0f, 9.5f, Rot, (KD - 3.0f) * 0.5f, 0.42f);
+            m.Stone.AddGableEnd(eave, KW - 3.0f, 9.5f, Rot, -(KD - 3.0f) * 0.5f, 0.42f);
+
+            for (int i = 0; i < 4; i++)
+            {
+                BuildTower(m, poly[i].x, poly[i].y, ground(poly[i].x, poly[i].y), 3.1f, KH + 3f);
+            }
+
+            for (int face = -1; face <= 1; face += 2)
+            {
+                for (int i = 0; i < 3; i++)
+                {
+                    for (int lvl = 0; lvl < 2; lvl++)
+                    {
+                        float lx = (-KW * 0.28f) + (i * KW * 0.28f);
+                        float lz = face * ((KD * 0.5f) + 0.06f);
+                        Vector3 p = new Vector3((lx * co) - (lz * si), 0f, (lx * si) + (lz * co));
+                        ArchitectureBuilder.VoussoirArch(m.Stone, new Vector3(p.x, ky + 6.4f + (lvl * 7.2f), p.z),
+                            Rot + (face > 0 ? 0f : Mathf.PI), 0.72f, 0.6f, 0.34f, 7, 0.55f, 0f);
+                        m.Timber.AddBox(new Vector3(p.x, ky + 5.2f + (lvl * 7.2f), p.z),
+                            new Vector3(1.30f, 2.4f, 0.22f), Rot, 0.7f);
+                    }
                 }
             }
         }
 
-        private static void BuildCourtyard(Parts m, GroundSampler ground, Layout layout, List<Vector2> pts, ref TexRandom rng)
+        private static void BuildCourtyard(Parts m, GroundSampler ground, Layout layout, Vector2[] pts, ref TexRandom rng)
         {
             float ga = layout.GateAngle;
             float r = layout.Radius;
-            float gx = Mathf.Cos(ga) * r * 0.98f;
-            float gz = Mathf.Sin(ga) * r * 0.98f;
+            Vector2 gate = pts[0];
 
-            // ممرّ مرصوف من البوّابة إلى الحصن
             const int Steps = 16;
             for (int i = 0; i < Steps; i++)
             {
                 float t = (float)i / (Steps - 1);
-                float px = gx * (1f - t);
-                float pz = gz * (1f - t);
-                m.Stone.AddBox(new Vector3(px, ground(px, pz) + 0.10f, pz),
+                Vector2 p = gate * (1f - t);
+                m.Stone.AddBox(new Vector3(p.x, ground(p.x, p.y) + 0.10f, p.y),
                     new Vector3(7.5f, 0.7f, r * 2f / Steps * 1.2f), ga + (Mathf.PI * 0.5f), 0.45f);
             }
 
-            // سلالم إلى ممشى السور
             for (int i = 0; i < 2; i++)
             {
                 float a = ga + (i == 0 ? -2.2f : 2.2f);
@@ -300,11 +515,11 @@ namespace Dawnkeep.Buildings
                 }
             }
 
-            // بئر الساحة
             float wx = Mathf.Cos(ga + 2.1f) * r * 0.34f;
             float wz = Mathf.Sin(ga + 2.1f) * r * 0.34f;
             float wy = ground(wx, wz);
-            m.Stone.AddCylinder(new Vector3(wx, wy - 0.4f, wz), 2.1f, 1.9f, 1.5f, 12, 0.55f, false);
+            Vector2[] wellProfile = { new Vector2(2.1f, 0f), new Vector2(2.2f, 0.4f), new Vector2(1.95f, 1.5f) };
+            ArchitectureBuilder.Lathe(m.Stone, new Vector3(wx, wy - 0.4f, wz), wellProfile, 14, 0.55f, false);
             for (int s = -1; s <= 1; s += 2)
             {
                 m.Timber.AddBox(new Vector3(wx + (s * 1.7f), wy + 1.9f, wz), new Vector3(0.28f, 2.6f, 0.28f), 0f, 0.6f);
@@ -313,7 +528,6 @@ namespace Dawnkeep.Buildings
             m.Timber.AddBox(new Vector3(wx, wy + 3.3f, wz), new Vector3(4.4f, 0.35f, 2.6f), 0f, 0.4f);
             m.Tile.AddGableRoof(new Vector3(wx, wy + 3.3f, wz), 4.4f, 2.8f, 1.0f, 0f, 0.6f, 0.25f);
 
-            // براميل وصناديق
             for (int i = 0; i < 14; i++)
             {
                 float a = rng.Next() * Mathf.PI * 2f;
@@ -324,7 +538,8 @@ namespace Dawnkeep.Buildings
 
                 if (rng.Next() < 0.5f)
                 {
-                    m.Timber.AddCylinder(new Vector3(bx, by, bz), 0.55f, 0.5f, 1.15f, 9, 0.7f, true);
+                    Vector2[] barrel = { new Vector2(0.48f, 0f), new Vector2(0.58f, 0.55f), new Vector2(0.46f, 1.15f) };
+                    ArchitectureBuilder.Lathe(m.Timber, new Vector3(bx, by, bz), barrel, 10, 0.7f, true);
                 }
                 else
                 {
@@ -332,16 +547,13 @@ namespace Dawnkeep.Buildings
                 }
             }
 
-            // رايات على الأبراج
-            for (int i = 0; i < pts.Count; i += 2)
+            for (int i = 1; i < pts.Length; i += 2)
             {
-                Vector2 p = pts[i];
-                float py = ground(p.x, p.y);
-                m.Timber.AddBox(new Vector3(p.x, py + 22f, p.y), new Vector3(0.18f, 8f, 0.18f), 0f, 0.8f);
-                m.Thatch.AddBox(new Vector3(p.x + 1.3f, py + 24.5f, p.y), new Vector3(2.6f, 2.0f, 0.10f), 0f, 0.6f);
+                float py = ground(pts[i].x, pts[i].y);
+                m.Timber.AddBox(new Vector3(pts[i].x, py + 24f, pts[i].y), new Vector3(0.18f, 8f, 0.18f), 0f, 0.8f);
+                m.Thatch.AddBox(new Vector3(pts[i].x + 1.3f, py + 26.5f, pts[i].y), new Vector3(2.6f, 2.0f, 0.10f), 0f, 0.6f);
             }
 
-            // قاعات داخل السور
             for (int i = 0; i < 5; i++)
             {
                 float a = ga + (Mathf.PI * 0.5f) + (i * 0.72f);
@@ -351,7 +563,6 @@ namespace Dawnkeep.Buildings
                 BuildHouse(m, hx, hz, ground(hx, hz), a + (Mathf.PI * 0.5f), ref rng, 12f, 8.5f, false);
             }
         }
-
         /// <summary>
         /// بيت: قاعدة حجرية، طابق مجصّص بإطار خشبي حقيقي (قوائم وعوارض ومساند مائلة)،
         /// سقف قرميد أو قشّ، مدخنة، باب بعتبة، ونوافذ بإطار.

@@ -43,7 +43,7 @@
 | `Dawnkeep_LakeSurface` | `DawnkeepWorldSceneBuilder` من خلايا البحيرة | أصلي |
 | `Dawnkeep_RiverSurface` | `DawnkeepWorldSceneBuilder` من مضلّع النهر | أصلي |
 | `Dawnkeep_TerrainData` | `DawnkeepTerrainPainter` من حقول التوليد | أصلي |
-| `Dawnkeep_Kingdom_*` (5 شبكات) | `KingdomBuilder` — سور وأبراج وبوّابة وحصن وبيوت | أصلي |
+| `Dawnkeep_Kingdom_*` (5 شبكات) | `KingdomBuilder` + `ArchitectureBuilder` — كنس وخراطة وبثق مشطوف وأقواس شعاعية | أصلي |
 | `docs/world_preview_seed3.jpg` | خريطة تحليلية مولّدة بالكود لعالم البذرة 3 | أصلي |
 | `docs/renders/unity_preview_*.jpg` | لقطات معاينة مولّدة بالكود (Three.js بلا رأس) | أصلي |
 

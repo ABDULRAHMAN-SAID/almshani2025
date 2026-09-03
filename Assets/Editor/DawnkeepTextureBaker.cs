@@ -54,7 +54,7 @@ namespace Dawnkeep.EditorTools
 
                 EditorUtility.DisplayProgressBar("مملكة الرماد", "رسم خامات البناء…", 0.45f);
                 WriteCanvas("stone", BuildingMaterials.StoneWall(BuildTextureSize, 7001u), 2.4f);
-                WriteCanvas("tile", BuildingMaterials.RoofTile(BuildTextureSize, 7002u, new Color(0.435f, 0.294f, 0.235f)), 2.2f);
+                WriteCanvas("tile", BuildingMaterials.RoofTile(BuildTextureSize, 7002u, new Color(0.494f, 0.290f, 0.196f)), 2.2f);
                 WriteCanvas("tile_blue", BuildingMaterials.RoofTile(BuildTextureSize, 7005u, new Color(0.235f, 0.318f, 0.408f)), 2.2f);
                 WriteCanvas("plaster", BuildingMaterials.Plaster(BuildTextureSize, 7003u), 2.0f);
                 WriteCanvas("timber", BuildingMaterials.Timber(BuildTextureSize, 7004u), 2.0f);

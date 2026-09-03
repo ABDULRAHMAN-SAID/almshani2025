@@ -10,9 +10,9 @@ namespace Dawnkeep.Rendering
     {
         private static readonly Color[] GrassHues =
         {
-            new Color(0.243f, 0.373f, 0.129f), new Color(0.318f, 0.443f, 0.157f),
-            new Color(0.404f, 0.494f, 0.192f), new Color(0.192f, 0.294f, 0.110f),
-            new Color(0.518f, 0.529f, 0.243f), new Color(0.596f, 0.549f, 0.271f),
+            new Color(0.196f, 0.376f, 0.129f), new Color(0.259f, 0.447f, 0.157f),
+            new Color(0.318f, 0.494f, 0.184f), new Color(0.145f, 0.302f, 0.106f),
+            new Color(0.400f, 0.510f, 0.212f), new Color(0.482f, 0.522f, 0.243f),
         };
 
         public static TextureCanvas GrassGround(int size, uint seed)
@@ -21,7 +21,7 @@ namespace Dawnkeep.Rendering
             TexRandom rng = new TexRandom(seed);
             float k = size / 512f;
 
-            TexturePainter.Base(c, seed, new Color(0.152f, 0.129f, 0.086f), new Color(0.286f, 0.235f, 0.145f), 1.2f);
+            TexturePainter.Base(c, seed, new Color(0.129f, 0.118f, 0.078f), new Color(0.243f, 0.220f, 0.129f), 1.2f);
 
             TileableNoise patch = new TileableNoise(11, seed + 313u);
             int blades = Mathf.RoundToInt(15000f * k * k);
@@ -38,7 +38,7 @@ namespace Dawnkeep.Rendering
                 }
 
                 Color col = GrassHues[(int)(rng.Next() * GrassHues.Length) % GrassHues.Length];
-                if (rng.Next() < 0.16f)
+                if (rng.Next() < 0.09f)
                 {
                     col = new Color((col.r * 1.25f) + 0.10f, (col.g * 1.08f) + 0.05f, col.b * 0.85f);
                 }
@@ -114,7 +114,7 @@ namespace Dawnkeep.Rendering
             TexRandom rng = new TexRandom(seed);
             float k = size / 512f;
 
-            TexturePainter.Base(c, seed, new Color(0.243f, 0.231f, 0.212f), new Color(0.639f, 0.616f, 0.573f), 2.6f);
+            TexturePainter.Base(c, seed, new Color(0.259f, 0.239f, 0.212f), new Color(0.655f, 0.620f, 0.565f), 2.6f);
 
             int bands = Mathf.RoundToInt(14f + (rng.Next() * 8f));
             for (int i = 0; i < bands; i++)

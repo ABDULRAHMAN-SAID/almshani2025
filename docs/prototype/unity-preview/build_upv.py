@@ -11,11 +11,12 @@ assert 'TER.N = '+N in ter and 'DROPS = '+DR in ter, 'substitution failed'
 lib=open(D+'upv_lib.js',encoding='utf-8').read()
 tex=open(D+'upv_tex.js',encoding='utf-8').read()
 mesh=open(D+'upv_mesh.js',encoding='utf-8').read()
+geo=open(D+'upv_geo.js',encoding='utf-8').read()
 bld=open(D+'upv_build.js',encoding='utf-8').read()
 scene=open(D+'upv_scene.js',encoding='utf-8').read()
 parts=['<!doctype html><html><head><meta charset="utf-8"><title>loading</title>',
  '<style>html,body{margin:0;height:100%;overflow:hidden;background:#0b0d10}canvas{display:block}</style>','</head><body>']
-for src in (three,ter,lib,tex,mesh,bld):
+for src in (three,ter,lib,tex,mesh,geo,bld):
     parts += ['<script>', src, '</script>']
 parts += ['<script>','window.__err=[];',
  "window.addEventListener('error', e=>{ window.__err.push(String(e.message)+' @'+e.lineno); document.title='ERR'; });",

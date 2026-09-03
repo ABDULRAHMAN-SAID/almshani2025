@@ -156,54 +156,70 @@ function buildHouse(M, x, z, groundY, rot, rng, opts){
   return {w, d, h: stoneH+wallH+roofH};
 }
 
-/* ═══ برج بسقف مخروطي ═══ */
+/* ═══ برج: مقطع مخروط يدور — قاعدة، بَطّة، مَشْط بارز، ستارة، سقف بأفاريز ═══ */
 function buildTower(M, x, z, baseY, r, h, rng){
-  M.stone.cyl(x, baseY-2, z, r*1.12, r, h, 14, 0.40, false);
-  // شرفات
-  const merlons=Math.max(8, Math.round(r*2.2));
+  const y0=baseY-3;
+  const prof=[
+    [r*1.30, 0.0], [r*1.30, 1.1], [r*1.16, 1.9], [r*1.10, 2.6],
+    [r*1.00, h*0.55], [r*0.96, h*0.92],
+    [r*1.13, h*0.96], [r*1.20, h*1.00], [r*1.16, h*1.05],   // مَشْط بارز
+    [r*1.06, h*1.07]
+  ];
+  M.stone.lathe(x, y0, z, prof, 20, 0.40, false);
+  const topY=y0+h*1.07, R=r*1.06;
+  // ستارة وشرفات على شكل موشور مشطوف لا صندوق
+  const merlons=Math.max(9, Math.round(r*2.6));
   for(let i=0;i<merlons;i++){
-    const a=i/merlons*Math.PI*2;
-    M.stone.box(x+Math.cos(a)*(r*0.94), baseY-2+h+0.9, z+Math.sin(a)*(r*0.94),
-                r*0.42, 1.8, r*0.30, a, 0.55);
+    const a=i/merlons*Math.PI*2, w=R*2*Math.PI/merlons*0.55, t=R*0.30;
+    const ca=Math.cos(a), sa=Math.sin(a), px=-sa, pz=ca;
+    const poly=[];
+    for(const [du,dv] of [[-w/2,-t/2],[w/2,-t/2],[w/2,t/2],[-w/2,t/2]])
+      poly.push([x+ca*(R-t*0.1)+px*du+ca*dv, z+sa*(R-t*0.1)+pz*du+sa*dv]);
+    M.stone.prism(poly, topY, 2.1, 0.16, 0.55);
   }
-  M.stone.cyl(x, baseY-2+h, z, r*1.06, r*1.06, 0.55, 14, 0.5, true);
-  // سقف مخروطي
-  M.tile.cyl(x, baseY-2+h+2.0, z, r*1.10, 0.10, r*1.5, 14, 0.55, false);
+  // حلقة الستارة بين الشرفات
+  M.stone.lathe(x, topY, z, [[R,0],[R,0.55],[R*0.94,0.75]], 20, 0.5, false);
+  // سقف مخروطي بأفاريز مرفرفة
+  const ry=topY+2.1;
+  M.tile.lathe(x, ry, z, [[R*1.02,-0.35],[R*1.22,-0.05],[R*1.10,0.35],[R*0.72,r*0.85],[0.06,r*1.85]], 20, 0.55, false);
+  M.stone.lathe(x, ry+r*1.85, z, [[0.30,0],[0.16,0.5],[0.05,0.9]], 8, 0.6, true);
 }
 
-/* ═══ سور بشرفات يتبع مضلّعاً ═══ */
-function buildWall(M, pts, groundAt, height, thick){
-  for(let i=0;i<pts.length;i++){
+/* ═══ سور: مقطع معماري واحد يُكنس على المضلّع ═══
+   قاعدة بارزة ← انحسار ← بَطّة مائلة ← إفريز بارز ← ممشى ← ستارة بشرفات.
+   جسم متّصل لا صناديق مرصوصة.                                              */
+const WALL_PROFILE=[
+  [ 2.30, 0.00], [ 2.30, 0.95], [ 1.92, 1.55], [ 1.74, 2.15],
+  [ 1.58, 8.40], [ 1.94, 8.90], [ 2.04, 9.30], [ 1.66, 9.78],
+  [ 1.66, 11.35], [ 1.40, 11.62],
+  [ 0.96, 11.62], [ 0.96, 10.15],
+  [-2.12, 10.15], [-2.48,  9.72], [-2.06,  9.34], [-1.56,  8.60],
+  [-1.50, 2.15], [-1.74, 1.55], [-2.12, 0.95], [-2.12, 0.00]
+];
+function buildWall(M, pts, groundAt, height, thick, closed){
+  // تُتبع الأرض: كل عقدة تنزل إلى أوطأ نقطة قريبة كي لا يطفو السور
+  const base=(x,z)=>{
+    let m=groundAt(x,z);
+    for(const [dx,dz] of [[6,0],[-6,0],[0,6],[0,-6]]) m=Math.min(m, groundAt(x+dx,z+dz));
+    return m-3.2;
+  };
+  M.stone.sweepProfile(pts, WALL_PROFILE, base, 0.40, !!closed, true);
+  // شرفات: مواشير مشطوفة على حافّة الستارة
+  const segs = closed ? pts.length : pts.length-1;
+  for(let i=0;i<segs;i++){
     const a=pts[i], b=pts[(i+1)%pts.length];
     const dx=b[0]-a[0], dz=b[1]-a[1], len=Math.hypot(dx,dz);
-    if(len<0.5) continue;
-    const rot=Math.atan2(dz,dx);
-    const segs=Math.max(1, Math.round(len/6));
-    for(let q=0;q<segs;q++){
-      const t0=q/segs, t1=(q+1)/segs, tm=(t0+t1)/2;
-      const mx=a[0]+dx*tm, mz=a[1]+dz*tm, slen=len/segs;
-      const gy=Math.min(groundAt(a[0]+dx*t0, a[1]+dz*t0), groundAt(a[0]+dx*t1, a[1]+dz*t1));
-      const base=gy-4;
-      // القاعدة أعرض (بَطّة) ثم الجسم ثم إفريز — لا لوح مسطّح واحد
-      M.stone.box(mx, base+1.4, mz, slen*1.02, 2.8, thick*1.28, rot, 0.42);
-      M.stone.box(mx, base+2.8+(height-2.8)/2, mz, slen*1.02, height-2.8, thick, rot, 0.42);
-      M.stone.box(mx, base+height-1.1, mz, slen*1.02, 0.42, thick*1.14, rot, 0.5);   // إفريز
-      // ممشى
-      M.stone.box(mx, base+height+0.35, mz, slen*1.02, 0.7, thick*1.30, rot, 0.5);
-      // دعامة كل مقطعين
-      if(q%2===0){
-        M.stone.box(mx - Math.sin(rot)*(thick*0.62), base+(height-1)/2, mz + Math.cos(rot)*(thick*0.62),
-                    1.9, height-1, thick*0.55, rot, 0.42);
-      }
-      // شرفات
-      const mer=Math.max(1, Math.round(slen/3.0));
-      for(let m=0;m<mer;m++){
-        const tt=(m+0.5)/mer;
-        const px=a[0]+dx*(t0+(t1-t0)*tt), pz=a[1]+dz*(t0+(t1-t0)*tt);
-        const off=thick*0.42;
-        M.stone.box(px - Math.sin(rot)*off*-1, base+height+1.6, pz + Math.cos(rot)*off*-1,
-                    slen/mer*0.55, 1.9, thick*0.34, rot, 0.55);
-      }
+    if(len<1) continue;
+    const ux=dx/len, uz=dz/len, px=uz, pz=-ux;
+    const n=Math.max(1, Math.round(len/2.9));
+    for(let q=0;q<n;q++){
+      const t=(q+0.35)/n, w=len/n*0.52;
+      const cx=a[0]+dx*t, cz=a[1]+dz*t;
+      const off=1.30;
+      const poly=[];
+      for(const [du,dv] of [[-w/2,-0.36],[w/2,-0.36],[w/2,0.36],[-w/2,0.36]])
+        poly.push([cx+ux*du+px*(off+dv), cz+uz*du+pz*(off+dv)]);
+      M.stone.prism(poly, base(cx,cz)+11.62, 1.95, 0.14, 0.55);
     }
   }
 }
@@ -214,81 +230,171 @@ function buildKingdom(groundAt, rng, opts){
   const R=opts.radius, cx=opts.cx||0, cz=opts.cz||0;
   const gateAngle=opts.gateAngle||0;
 
-  // مضلّع السور: غير منتظم كما تُبنى الحصون على تضاريس
+  // مضلّع السور: رأسه الأول عند البوّابة تماماً، والسور يُفتح عندها فتصير فتحة حقيقية
   const sides=11, pts=[];
   for(let i=0;i<sides;i++){
-    const a=i/sides*Math.PI*2;
+    const a=gateAngle + i/sides*Math.PI*2;
     const rr=R*(0.88+0.22*Math.sin(a*2.3+1.1)+rng()*0.06);
     pts.push([cx+Math.cos(a)*rr, cz+Math.sin(a)*rr, a, rr]);
   }
-  buildWall(M, pts.map(p=>[p[0],p[1]]), groundAt, 11, 3.4);
-  // أبراج على رؤوس متناوبة
-  for(let i=0;i<sides;i++){
-    if(i%2 && i!==0) continue;
+  const GAP=9.2;                                  // نصف عرض فتحة البوّابة
+  const nrm=(a,b)=>{ const dx=b[0]-a[0], dz=b[1]-a[1], d=Math.hypot(dx,dz)||1; return [dx/d, dz/d]; };
+  const dIn=nrm(pts[0], pts[1]), dOut=nrm(pts[0], pts[sides-1]);
+  const wallPath=[[pts[0][0]+dIn[0]*GAP, pts[0][1]+dIn[1]*GAP]];
+  for(let i=1;i<sides;i++) wallPath.push([pts[i][0], pts[i][1]]);
+  wallPath.push([pts[0][0]+dOut[0]*GAP, pts[0][1]+dOut[1]*GAP]);
+  buildWall(M, wallPath, groundAt, 11, 3.4, false);
+
+  // أبراج على رؤوس متناوبة (لا على رأس البوّابة — له برجاه)
+  for(let i=1;i<sides;i++){
+    if(i%2===0) continue;
     const p=pts[i];
     buildTower(M, p[0], p[1], groundAt(p[0],p[1]), 4.2+rng()*1.2, 15+rng()*5, rng);
   }
-  // بوّابة: برجان وقوس
-  const gx=cx+Math.cos(gateAngle)*R*0.98, gz=cz+Math.sin(gateAngle)*R*0.98;
-  const gy=groundAt(gx,gz);
+
+  // ═══ البوّابة: بُرجان، دِعامتان، قوس بأحجار شعاعية، ومَشيقولة على أكتاف ═══
+  const gx=pts[0][0], gz=pts[0][1];
+  const gy=groundAt(gx,gz)-3.2;
+  const gux=Math.cos(gateAngle), guz=Math.sin(gateAngle);      // للخارج
+  const gpx=-guz, gpz=gux;                                      // عرضاً
+  const GP=(a,b)=>[gx+gpx*a+gux*b, gz+gpz*a+guz*b];            // a عرضاً، b عمقاً
+
+  for(const s2 of [-1,1]){ const tp=GP(s2*8.6,0); buildTower(M, tp[0], tp[1], groundAt(tp[0],tp[1]), 4.3, 21, rng); }
+
+  const AR=3.6, PIER=2.6, DEPTH=7.8;
+  const SPRING=8.4;
+  // دِعامتان جانبيتان بمقطع مشطوف
   for(const s2 of [-1,1]){
-    const px=gx - Math.sin(gateAngle)*s2*5.6, pz=gz + Math.cos(gateAngle)*s2*5.6;
-    buildTower(M, px, pz, groundAt(px,pz), 4.0, 19, rng);
+    const c0=GP(s2*(AR+PIER/2), 0);
+    const poly=[];
+    for(const [a,b] of [[-PIER/2,-DEPTH/2],[PIER/2,-DEPTH/2],[PIER/2,DEPTH/2],[-PIER/2,DEPTH/2]])
+      poly.push([c0[0]+gpx*a+gux*b, c0[1]+gpz*a+guz*b]);
+    M.stone.prism(poly, gy, SPRING, 0.28, 0.42);
   }
-  // جسم البوّابة: أعلى من السور، بإفريز بارز وشرفات
-  M.stone.box(gx, gy-4+8.5, gz, 13.5, 17, 6.5, gateAngle+Math.PI/2, 0.42);
-  M.stone.box(gx, gy-4+17.4, gz, 15.2, 1.2, 8.2, gateAngle+Math.PI/2, 0.5);
-  for(let i=0;i<6;i++){
-    const t=(i+0.5)/6-0.5;
-    M.stone.box(gx - Math.sin(gateAngle)*t*13.0, gy-4+19.0, gz + Math.cos(gateAngle)*t*13.0,
-                1.5, 1.9, 8.0, gateAngle+Math.PI/2, 0.55);
+  // القوس نفسه
+  M.stone.voussoirArch(gx, gy+SPRING, gz, gateAngle+Math.PI/2, AR, DEPTH, 1.35, 15, 0.42, 0.10);
+  // حشوة الكَتِفين وما فوق القوس: مداميك أفقية تلتفّ حول القوس — لا شرائح رأسية مخطّطة
+  {
+    const W=AR*2+PIER*2, RO=AR+1.35, springY=gy+SPRING, topY=springY+RO+5.8;
+    const dh=0.62;
+    for(let y=springY; y<topY-0.01; y+=dh){
+      const ym=Math.min(y+dh, topY), mid=(y+ym)/2 - springY;
+      const half = mid<RO ? Math.sqrt(Math.max(0,RO*RO-mid*mid)) : 0;
+      const spans = half>0.05 ? [[-W/2, -half], [half, W/2]] : [[-W/2, W/2]];
+      for(const [a0,a1] of spans){
+        if(a1-a0 < 0.05) continue;
+        const pp=[];
+        for(const [aa,bb] of [[a0,-DEPTH/2],[a1,-DEPTH/2],[a1,DEPTH/2],[a0,DEPTH/2]])
+          pp.push([gx+gpx*aa+gux*bb, gz+gpz*aa+guz*bb]);
+        M.stone.prism(pp, y, ym-y, 0.0, 0.42, (a0+W/2)+ (y-springY)*0.0);
+      }
+    }
   }
-  // فتحة القوس: أعمدة بارتفاع متدرّج تحفر القوس في الكتلة
-  for(let i=0;i<9;i++){
-    const t=(i+0.5)/9, a=Math.PI*t, h2=Math.sin(a)*4.6;
-    M.stone.box(gx - Math.sin(gateAngle)*(t-0.5)*9.6, gy-4+9.0+h2*0.5+2.0, gz + Math.cos(gateAngle)*(t-0.5)*9.6,
-                1.1, 12.0-h2, 6.8, gateAngle+Math.PI/2, 0.5);
+  // أكتاف المَشيقولة: كوابيل بارزة ثم ستارة معلّقة
+  {
+    const W=AR*2+PIER*2, top=gy+SPRING+AR+1.35+5.8;
+    for(const face of [-1,1]){
+      const n=Math.round(W/1.6);
+      for(let i=0;i<n;i++){
+        const a=-W/2+(i+0.5)*W/n;
+        for(let k2=0;k2<3;k2++){
+          const outw=0.55+k2*0.42, wdt=1.0-k2*0.12;
+          const pp=[];
+          for(const [aa,bb] of [[a-wdt/2, face*(DEPTH/2+outw-0.42)],[a+wdt/2, face*(DEPTH/2+outw-0.42)],
+                                 [a+wdt/2, face*(DEPTH/2+outw)],[a-wdt/2, face*(DEPTH/2+outw)]])
+            pp.push([gx+gpx*aa+gux*bb, gz+gpz*aa+guz*bb]);
+          M.stone.prism(pp, top-1.2+k2*0.40, 0.44, 0.06, 0.55);
+        }
+      }
+    }
+    // ستارة البوّابة وشرفاتها
+    const path=[GP(-W/2, 0), GP(W/2, 0)];
+    const par=[[ DEPTH/2+1.5, 0],[ DEPTH/2+1.5, 2.4],[ DEPTH/2+1.2, 2.7],
+               [-DEPTH/2-1.2, 2.7],[-DEPTH/2-1.5, 2.4],[-DEPTH/2-1.5, 0]];
+    M.stone.sweepProfile(path, par, top, 0.45, false, true);
+    const mn=Math.round(W/2.9);
+    for(let i=0;i<mn;i++){
+      const a=-W/2+(i+0.4)*W/mn, w2=W/mn*0.5;
+      for(const face of [-1,1]){
+        const pp=[];
+        for(const [aa,bb] of [[a-w2/2, face*(DEPTH/2+0.85)],[a+w2/2, face*(DEPTH/2+0.85)],
+                               [a+w2/2, face*(DEPTH/2+1.5)],[a-w2/2, face*(DEPTH/2+1.5)]])
+          pp.push([gx+gpx*aa+gux*bb, gz+gpz*aa+guz*bb]);
+        M.stone.prism(pp, top+2.7, 2.0, 0.14, 0.55);
+      }
+    }
   }
 
-  // الحصن الداخلي: كتلة مشرّفة بأبراج ركنية وسقف حادّ
-  const ky=groundAt(cx,cz);
-  const KW=19, KD=15, KH=21, kr=0.35;
-  M.stone.box(cx, ky-3+KH/2, cz, KW, KH, KD, kr, 0.42);
-  // إفريز بارز (مَشيقولة)
-  M.stone.box(cx, ky-3+KH+0.55, cz, KW+1.6, 1.1, KD+1.6, kr, 0.2);
-  // شرفات حول السطح
+  // ═══ الحصن: كتلة مشطوفة الحواف بأربعة أبراج ركنية ومَشيقولة وسقف بأفاريز ═══
+  const ky=groundAt(cx,cz)-3;
+  const KW=19, KD=15, KH=22, kr=0.35;
+  const kco=Math.cos(kr), ksi=Math.sin(kr);
+  const KP=(lx,lz)=>[cx+lx*kco-lz*ksi, cz+lx*ksi+lz*kco];
+  const kpoly=[KP(-KW/2,-KD/2), KP(KW/2,-KD/2), KP(KW/2,KD/2), KP(-KW/2,KD/2)];
+  M.stone.prism(kpoly, ky, KH, 0.55, 0.42);
+  // سطر إفريز في منتصف الارتفاع
   {
-    const co=Math.cos(kr), si=Math.sin(kr);
-    const P=(lx,lz)=>[cx+lx*co-lz*si, cz+lx*si+lz*co];
-    const mx=Math.round((KW+1.6)/2.6), mz=Math.round((KD+1.6)/2.6);
-    for(let i=0;i<mx;i++){ const lx=-(KW+1.6)/2+(i+0.5)*(KW+1.6)/mx;
-      for(const lz of [(KD+1.6)/2-0.5, -(KD+1.6)/2+0.5]){ const p=P(lx,lz);
-        M.stone.box(p[0], ky-3+KH+2.0, p[1], (KW+1.6)/mx*0.55, 1.8, 0.9, kr, 0.55); } }
-    for(let i=0;i<mz;i++){ const lz=-(KD+1.6)/2+(i+0.5)*(KD+1.6)/mz;
-      for(const lx of [(KW+1.6)/2-0.5, -(KW+1.6)/2+0.5]){ const p=P(lx,lz);
-        M.stone.box(p[0], ky-3+KH+2.0, p[1], 0.9, 1.8, (KD+1.6)/mz*0.55, kr, 0.55); } }
+    const e=0.45, wide=kpoly.map(p=>[p[0],p[1]]);
+    M.stone.prism(wide.map((p,i)=>{
+      const c2=[(kpoly[0][0]+kpoly[2][0])/2,(kpoly[0][1]+kpoly[2][1])/2];
+      const dx=p[0]-c2[0], dz=p[1]-c2[1], d=Math.hypot(dx,dz);
+      return [p[0]+dx/d*e, p[1]+dz/d*e];
+    }), ky+KH*0.52, 0.55, 0.16, 0.5);
   }
-  // سقف حادّ داخل الشرفات
-  M.tile.gable(cx, ky-3+KH+1.2, cz, KW-2.4, KD-2.4, 8.5, kr, 0.52, 0.3);
-  M.stone.gableEnd(cx, ky-3+KH+1.2, cz, KW-2.4, 8.5, kr,  (KD-2.4)/2, 0.16);
-  M.stone.gableEnd(cx, ky-3+KH+1.2, cz, KW-2.4, 8.5, kr, -(KD-2.4)/2, 0.16);
+  // مَشيقولة: كوابيل ثم ستارة
+  {
+    const c2=[cx,cz];
+    const outer=kpoly.map(p=>{ const dx=p[0]-c2[0], dz=p[1]-c2[1], d=Math.hypot(dx,dz);
+      return [p[0]+dx/d*1.45, p[1]+dz/d*1.45]; });
+    for(let e=0;e<4;e++){
+      const a=kpoly[e], b=kpoly[(e+1)%4];
+      const len=Math.hypot(b[0]-a[0], b[1]-a[1]), n=Math.max(2,Math.round(len/1.7));
+      const ux=(b[0]-a[0])/len, uz=(b[1]-a[1])/len, px2=uz, pz2=-ux;
+      for(let i=0;i<n;i++){
+        const t=(i+0.5)/n, mx2=a[0]+(b[0]-a[0])*t, mz2=a[1]+(b[1]-a[1])*t;
+        for(let k2=0;k2<3;k2++){
+          const outw=0.35+k2*0.40, wdt=1.0-k2*0.14;
+          const pp=[];
+          for(const [du,dv] of [[-wdt/2,outw-0.40],[wdt/2,outw-0.40],[wdt/2,outw],[-wdt/2,outw]])
+            pp.push([mx2+ux*du+px2*dv, mz2+uz*du+pz2*dv]);
+          M.stone.prism(pp, ky+KH-1.3+k2*0.40, 0.42, 0.06, 0.55);
+        }
+      }
+    }
+    M.stone.sweepProfile(outer, [[0.30,0],[0.30,2.5],[0.05,2.8],[-0.65,2.8],[-0.65,0]], ky+KH, 0.45, true, false);
+    // شرفات السطح
+    for(let e=0;e<4;e++){
+      const a=outer[e], b=outer[(e+1)%4];
+      const len=Math.hypot(b[0]-a[0], b[1]-a[1]), n=Math.max(2,Math.round(len/2.7));
+      const ux=(b[0]-a[0])/len, uz=(b[1]-a[1])/len, px2=uz, pz2=-ux;
+      for(let i=0;i<n;i++){
+        const t=(i+0.35)/n, mx2=a[0]+(b[0]-a[0])*t, mz2=a[1]+(b[1]-a[1])*t, w2=len/n*0.52;
+        const pp=[];
+        for(const [du,dv] of [[-w2/2,-0.30],[w2/2,-0.30],[w2/2,0.30],[-w2/2,0.30]])
+          pp.push([mx2+ux*du+px2*dv, mz2+uz*du+pz2*dv]);
+        M.stone.prism(pp, ky+KH+2.8, 1.9, 0.12, 0.55);
+      }
+    }
+  }
+  // سقف حادّ بأفاريز داخل الشرفات
+  M.tile.gable(cx, ky+KH+2.4, cz, KW-3.0, KD-3.0, 9.5, kr, 0.52, 0.85);
+  M.stone.gableEnd(cx, ky+KH+2.4, cz, KW-3.0, 9.5, kr,  (KD-3.0)/2, 0.42);
+  M.stone.gableEnd(cx, ky+KH+2.4, cz, KW-3.0, 9.5, kr, -(KD-3.0)/2, 0.42);
   // أبراج ركنية
-  {
-    const co=Math.cos(kr), si=Math.sin(kr);
-    for(const [lx,lz] of [[-KW/2,-KD/2],[KW/2,-KD/2],[KW/2,KD/2],[-KW/2,KD/2]]){
-      const px=cx+lx*co-lz*si, pz=cz+lx*si+lz*co;
-      buildTower(M, px, pz, ky, 3.2, KH+4, rng);
-    }
+  for(const [lx,lz] of [[-KW/2,-KD/2],[KW/2,-KD/2],[KW/2,KD/2],[-KW/2,KD/2]]){
+    const p=KP(lx,lz);
+    buildTower(M, p[0], p[1], groundAt(p[0],p[1]), 3.1, KH+3, rng);
   }
-  // نوافذ مقوّسة على الواجهة
-  {
-    const co=Math.cos(kr), si=Math.sin(kr);
+  // نوافذ مقوّسة غائرة على الواجهات
+  for(const face of [1,-1]){
     for(let i=0;i<3;i++) for(let lvl=0;lvl<2;lvl++){
-      const lx=-KW*0.28+i*KW*0.28, lz=KD/2+0.1;
-      const px=cx+lx*co-lz*si, pz=cz+lx*si+lz*co;
-      M.timber.box(px, ky-3+6+lvl*7, pz, 1.1, 2.2, 0.25, kr, 0.5);
+      const lx=-KW*0.28+i*KW*0.28, lz=face*(KD/2+0.06);
+      const p=KP(lx,lz);
+      M.stone.voussoirArch(p[0], ky+6.4+lvl*7.2, p[1], kr+(face>0?0:Math.PI), 0.72, 0.6, 0.34, 7, 0.55);
+      M.timber.box(p[0], ky+5.2+lvl*7.2, p[1], 1.30, 2.4, 0.22, kr, 0.7);
     }
   }
+
   // قاعات داخلية
   for(let i=0;i<5;i++){
     const a=gateAngle+Math.PI*0.5+i*0.72, rr=R*(0.50+rng()*0.14);

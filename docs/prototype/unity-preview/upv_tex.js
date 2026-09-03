@@ -129,17 +129,17 @@ function texStratum(c, y0, thickness, tone, warpAmp, seed){
 
 function drawGrassGround(size, seed){
   const c=new TexCanvas(size), rng=texRng(seed), k=size/512;
-  texBase(c, seed, [0.152,0.129,0.086], [0.286,0.235,0.145], 1.2);   // تربة تحت العشب
+  texBase(c, seed, [0.129,0.118,0.078], [0.243,0.220,0.129], 1.2);   // تربة تحت العشب
   // بقع تربة عارية تبقى ظاهرة
   const blades=Math.round(15000*k*k);
-  const HUES=[[0.243,0.373,0.129],[0.318,0.443,0.157],[0.404,0.494,0.192],
-              [0.192,0.294,0.110],[0.518,0.529,0.243],[0.596,0.549,0.271]];
+  const HUES=[[0.196,0.376,0.129],[0.259,0.447,0.157],[0.318,0.494,0.184],
+              [0.145,0.302,0.106],[0.400,0.510,0.212],[0.482,0.522,0.243]];
   const Patch=tNoise(11, seed+313);
   for(let i=0;i<blades;i++){
     const x=rng()*size, y=rng()*size;
     if(Patch((x+0.5)/size,(y+0.5)/size) < 0.34 && rng()<0.55) continue;  // بقع جرداء صغيرة
     const col=HUES[(rng()*HUES.length)|0];
-    const dry=rng()<0.16;
+    const dry=rng()<0.09;
     const cc= dry ? [col[0]*1.25+0.10, col[1]*1.08+0.05, col[2]*0.85] : col;
     texBlade(c, x, y, -Math.PI/2+(rng()-0.5)*1.5, (7+rng()*15)*k, (0.9+rng()*1.0)*k, cc, rng);
   }
@@ -269,7 +269,7 @@ function canvasToNormal(c, strength){
 /* حجر مُنَحَّت: مداميك بمونة وحوافّ متآكلة */
 function drawStoneWall(size, seed){
   const c=new TexCanvas(size), rng=texRng(seed), k=size/512;
-  texBase(c, seed, [0.180,0.169,0.153], [0.259,0.243,0.220], 0.6);   // مونة داكنة
+  texBase(c, seed, [0.220,0.196,0.165], [0.318,0.286,0.243], 0.6);   // مونة داكنة
   const courses=Math.round(7*k);
   const ch=size/courses;
   for(let row=0; row<courses; row++){
@@ -280,7 +280,7 @@ function drawStoneWall(size, seed){
       const bw=ch*(1.15+rng()*1.5), bh=ch*(0.78+rng()*0.16);
       const mortar=Math.max(1.4, ch*0.075);
       const tone=0.80+rng()*0.5;
-      const base=[0.451*tone, 0.427*tone, 0.392*tone];
+      const base=[0.545*tone, 0.494*tone, 0.416*tone];
       const px0=x+mortar, px1=x+bw-mortar, py0=y0+mortar, py1=y0+bh-mortar;
       // وجه الحجر مع تعرّج طفيف على الحافّة
       for(let yy=Math.floor(py0); yy<=Math.ceil(py1); yy++){

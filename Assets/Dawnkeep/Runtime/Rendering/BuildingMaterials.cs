@@ -15,7 +15,7 @@ namespace Dawnkeep.Rendering
             TexRandom rng = new TexRandom(seed);
             float k = size / 512f;
 
-            TexturePainter.Base(c, seed, new Color(0.180f, 0.169f, 0.153f), new Color(0.259f, 0.243f, 0.220f), 0.6f);
+            TexturePainter.Base(c, seed, new Color(0.220f, 0.196f, 0.165f), new Color(0.318f, 0.286f, 0.243f), 0.6f);
 
             int courses = Mathf.Max(3, Mathf.RoundToInt(7f * k));
             float ch = (float)size / courses;
@@ -32,7 +32,7 @@ namespace Dawnkeep.Rendering
                     float bh = ch * (0.78f + (rng.Next() * 0.16f));
                     float mortar = Mathf.Max(1.4f, ch * 0.075f);
                     float tone = 0.80f + (rng.Next() * 0.5f);
-                    Color baseColor = new Color(0.451f * tone, 0.427f * tone, 0.392f * tone);
+                    Color baseColor = new Color(0.545f * tone, 0.494f * tone, 0.416f * tone);
 
                     float px0 = x + mortar;
                     float px1 = x + bw - mortar;

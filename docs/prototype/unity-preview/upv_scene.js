@@ -84,15 +84,15 @@ const sky=new THREE.Mesh(new THREE.SphereGeometry(4600, 24, 16), new THREE.Shade
 }));
 scene.add(sky);
 
-const sun=new THREE.DirectionalLight(0xffe6be, 2.05);
+const sun=new THREE.DirectionalLight(0xffdfae, 2.15);
 sun.position.set(-780, 900, 640);
 sun.castShadow=true;
 sun.shadow.mapSize.set(4096,4096);
 sun.shadow.camera.near=10; sun.shadow.camera.far=3400;
 sun.shadow.bias=-0.0004; sun.shadow.normalBias=0.9;
 scene.add(sun); scene.add(sun.target);
-scene.add(new THREE.HemisphereLight(0x8fb0d8, 0x5c4c38, 0.62));
-scene.add(new THREE.AmbientLight(0xffffff, 0.06));
+scene.add(new THREE.HemisphereLight(0x9dbbe0, 0x6b5946, 0.80));
+scene.add(new THREE.AmbientLight(0xffe9cf, 0.13));
 
 /* ═══ خامات الأرض ═══ */
 function dataTex(arr, size, srgb){
@@ -268,7 +268,7 @@ const BUILD={};
     const [fn,sd,st]=defs[k2], cv=fn(512, sd);
     BUILD[k2]={ alb:dataTex(canvasToAlbedo(cv),512,true), nrm:dataTex(canvasToNormal(cv,st),512,false) };
   }
-  const t1=drawRoofTile(512, 7002, [0.435,0.294,0.235]);
+  const t1=drawRoofTile(512, 7002, [0.494,0.290,0.196]);
   BUILD.tile={ alb:dataTex(canvasToAlbedo(t1),512,true), nrm:dataTex(canvasToNormal(t1,2.2),512,false) };
   const t2=drawRoofTile(512, 7005, [0.235,0.318,0.408]);
   BUILD.tileBlue={ alb:dataTex(canvasToAlbedo(t2),512,true), nrm:dataTex(canvasToNormal(t2,2.2),512,false) };
@@ -445,12 +445,13 @@ function populate(cx, cz, treeR, rockR, grassR, grassN){
 }
 
 /* ═══ اللقطات ═══ */
-function look(target, dist, yawDeg, pitchDeg){
+function look(target, dist, yawDeg, pitchDeg, lift, camLift){
   const yaw=yawDeg*Math.PI/180, pitch=pitchDeg*Math.PI/180;
   const ty=groundY(target[0],target[1])*SC;
-  const t=new THREE.Vector3(target[0]*SC, ty+3.2, target[1]*SC);
+  const t=new THREE.Vector3(target[0]*SC, ty+3.2+(lift||0), target[1]*SC);
   const off=new THREE.Vector3(Math.sin(yaw)*Math.cos(pitch), Math.sin(pitch), Math.cos(yaw)*Math.cos(pitch)).multiplyScalar(dist);
   camera.position.copy(t).add(off);
+  if(camLift) camera.position.y += camLift;
   camera.lookAt(t);
   sun.target.position.copy(t);
   // الشمس مائلة على يسار الكاميرا: الضوء الزاحف هو ما يُظهر النتوء والملمس
@@ -473,27 +474,34 @@ const villP = routes[0] ? (()=>{ const r=routes[0].path.find(p=>Math.hypot(p.x,p
 const GA = GATE_ANGLE*180/Math.PI;
 // موضع البوّابة بإحداثيات التوليد (القلعة نصف قطرها 150 وحدة توليد)
 const GATE_R = 150;
-const gateOut = [Math.cos(GATE_ANGLE)*GATE_R*1.65, Math.sin(GATE_ANGLE)*GATE_R*1.65];
+const gatePos = [Math.cos(GATE_ANGLE)*GATE_R*0.98, Math.sin(GATE_ANGLE)*GATE_R*0.98];
 const YAW_OUT = 90 - GA;          // الكاميرا خارج البوّابة تنظر إلى الداخل
 const SHOTS={
-  far:    ()=>{ populate(0,0, 1700, 1700, 0, 0);
-                look([120,60], 1150, 208, 26); scene.fog.density=0.00030; },
+  // زوايا مؤطَّرة: منخفضة وقريبة عند البوّابة، علوية ثلاثية الأرباع للمجمّع
+  hero:   ()=>{ populate(0,0, 700, 560, 330, 18000);
+                look(gatePos, 46, YAW_OUT, 1, 16, -3); scene.fog.density=0.00048; },
+  aerial: ()=>{ populate(0,0, 1000, 800, 340, 15000);
+                look([0,0], 265, YAW_OUT+28, 24, 8); scene.fog.density=0.00040; },
+  tower:  ()=>{ populate(0,0, 600, 480, 300, 16000);
+                look([Math.cos(GATE_ANGLE+0.62)*GATE_R*0.95, Math.sin(GATE_ANGLE+0.62)*GATE_R*0.95],
+                     34, (GATE_ANGLE+0.62)*180/Math.PI*-1+90, 4, 14, -2); scene.fog.density=0.00050; },
+  through:()=>{ populate(0,0, 700, 560, 320, 16000);
+                look([Math.cos(GATE_ANGLE)*GATE_R*0.45, Math.sin(GATE_ANGLE)*GATE_R*0.45],
+                     46, YAW_OUT+180, 3, 5, 0); scene.fog.density=0.00050; },
+  gate:   ()=>{ populate(0,0, 700, 560, 330, 17000);
+                look(gatePos, 52, YAW_OUT, 5); scene.fog.density=0.00050; },
   castle: ()=>{ populate(0,0, 900, 700, 340, 15000);
                 look([0,0], 250, YAW_OUT, 15); scene.fog.density=0.00042; },
-  gate:   ()=>{ populate(0,0, 700, 560, 330, 17000);
-                look(gateOut, 78, YAW_OUT, 6); scene.fog.density=0.00050; },
   keep:   ()=>{ populate(0,0, 700, 560, 330, 15000);
                 look([0,0], 130, YAW_OUT+40, 16); scene.fog.density=0.00046; },
   village:()=>{ populate(villP[0], villP[1], 700, 520, 280, 17000);
                 look(villP, 95, YAW_OUT-70, 13); scene.fog.density=0.00050; },
   valley: ()=>{ populate(150,-260, 900, 700, 220, 12000);
                 look([150,-260], 330, 200, 18); scene.fog.density=0.00050; },
-  meadow: ()=>{ populate(-260, 420, 620, 460, 200, 16000);
-                look([-260, 420], 70, 300, 6); scene.fog.density=0.00060; },
-  river:  ()=>{ populate(riverMid.x, riverMid.z, 640, 470, 210, 16000);
-                look([riverMid.x, riverMid.z], 95, 250, 8); scene.fog.density=0.00060; },
   lake:   ()=>{ populate(lakePt.x, lakePt.z, 950, 720, 230, 13000);
                 look([lakePt.x, lakePt.z], 330, 145, 8); scene.fog.density=0.00048; },
+  far:    ()=>{ populate(0,0, 1700, 1700, 0, 0);
+                look([120,60], 1150, 208, 26); scene.fog.density=0.00030; },
 };
 let ready=false;
 function render(){ renderer.render(scene, camera); }
