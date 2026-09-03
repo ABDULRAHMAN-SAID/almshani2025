@@ -1,6 +1,6 @@
 import re
-import os as _o; D=_o.path.dirname(_o.path.abspath(__file__))+'/'
-src=open(D+'../dawnkeep-3d.html',encoding='utf-8').read()
+D='/tmp/claude-0/-home-user/784c5919-9435-5c65-a565-9209e2871cba/scratchpad/'
+src=open(D+'dawnkeep3d.html',encoding='utf-8').read()
 # ═══════ ملفات الاختبار ═══════
 t=src.replace('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>',
               '<script src="node_modules/three/build/three.min.js"></script>')
@@ -38,6 +38,8 @@ hook='''window.__d={
   pickAt:(x,y)=>{ const r=glc.getBoundingClientRect(); const n=pickNode({clientX:r.left+x, clientY:r.top+y}); return n?(n.kind||'wall'):null; },
   sel:()=>G.selected?(G.selected.kind||'wall'):null,
   set:(w,s)=>{ G.wave=w; G.silver=s; refresh(); sync(); },
+  river:()=>RIVER?{n:RIVER.pts.length, w:RIVER.w, first:RIVER.pts[0], last:RIVER.pts[RIVER.pts.length-1], bridges:BRIDGES.length}:null,
+  feats:()=>LANES.map(L=>({name:L.name, feat:L.feat, spawn:L.pts[0], n:L.pts.length})),
   info:()=>({lake:LAKE, lanes:LANES.map(L=>L.pts[0]), tri:renderer.info.render.triangles, calls:renderer.info.render.calls, fog:[scene.fog.near,scene.fog.far], camDist}),
   state:()=>({stage:G.stage,wave:G.wave,phase:G.phase,st:G.state,lv:G.castleLv,castle:Math.round(G.castleHp),silver:Math.floor(G.silver),
     n:G.enemies.length,q:G.queue.length,walls:G.walls.length,builds:G.buildings.length,ghost:!!G.ghost,sel:!!G.selected,
