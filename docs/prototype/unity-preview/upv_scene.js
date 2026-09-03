@@ -45,22 +45,46 @@ for(let j=0;j<N;j++) for(let i=0;i<N;i++){ const k=j*N+i;
 function splatAt(i,j){
   const k=j*N+i, sl=slopeAt(i,j), m=MOIST[k], alt=(h[k]-LOW)/SPAN;
   const wx=terWX(i), wz=terWX(j);
-  // تبقيع: بدونه تتحوّل الأرض إلى مناطق ملساء متدرّجة تبدو طيناً
+  const sm=(a,b,x)=>{ const t=clamp((x-a)/(b-a),0,1); return t*t*(3-2*t); };
+  // ثلاثة مقاييس من التبقيع: كبير يعطي تنوّع لون على مستوى الجبل، ودقيق يكسر التدرّج
+  const macro=fbm(wx*0.0034+53, wz*0.0034-29, 4)-0.5;
   const spotA=fbm(wx*0.026+11, wz*0.026-7, 3)-0.5;
   const spotB=fbm(wx*0.085-3, wz*0.085+19, 2)-0.5;
-  const sm=(a,b,x)=>{ const t=clamp((x-a)/(b-a),0,1); return t*t*(3-2*t); };
-  let rockAdd=0;
-  let rock=sm(0.36,0.80,sl)+sm(0.62,0.92,alt)*0.55;
+
+  // جرف: الوجه المكشوف الحادّ العالي
+  let cliff = sm(0.44,0.92,sl) * sm(0.15,0.42,alt);
+  cliff *= 0.55 + 0.9*clamp(macro*2.2+0.5,0,1);
+  // حطام السفح: ميل متوسّط تحت الجروف، وفي الأخاديد حيث يتجمّع الانهيار
+  const flowN=clamp(Math.log(1+flow[k])/7,0,1);
+  let scree = sm(0.22,0.50,sl)*(1-sm(0.72,1.10,sl)) * sm(0.22,0.52,alt);
+  scree *= 0.45 + 1.0*clamp(-macro*2.2+0.5,0,1);
+  scree += flowN*sm(0.30,0.70,sl)*sm(0.28,0.60,alt)*0.55;
+  // صخر عام على المنحدرات الأدنى
+  let rock = sm(0.36,0.80,sl)*(1-sm(0.30,0.62,alt)*0.75) + sm(0.62,0.95,alt)*0.30;
+  rock += clamp(spotB*0.5,0,1)*clamp((sl-0.30)*2.2,0,1);
+  // حصى: ضفاف وطرق وقاع البحيرة
   let gravel=0;
   if(RW>0) gravel+=clamp(1-(rd[k]/(RW*1.9)),0,1);
   if(roadD[k]<FEATH) gravel+=clamp(1-(roadD[k]/FEATH),0,1)*1.35;
   if(lake && lake[k]) gravel+=0.9;
-  let grass=clamp((m+0.22+spotA*0.30)*1.9,0,1)*clamp(1-sl*1.7,0,1);
-  let soil=clamp((0.42-m-spotA*0.34+spotB*0.16)*1.8,0,1)*0.9+clamp((sl-0.24)*1.8,0,1);
-  rockAdd = clamp(spotB*0.5,0,1)*clamp((sl-0.30)*2.2,0,1);
-  rock=Math.max(rock+rockAdd,0); gravel=Math.max(gravel,0); soil=Math.max(soil,0.04); grass=Math.max(grass,0);
-  const sum=grass+soil+rock+gravel||1;
-  return [grass/sum, soil/sum, rock/sum, gravel/sum];
+  // عشب وتربة
+  let grass=clamp((m+0.22+spotA*0.30)*1.9,0,1)*clamp(1-sl*1.7,0,1)*(1-sm(0.42,0.70,alt)*0.85);
+  let soil=(clamp((0.42-m-spotA*0.34+spotB*0.16)*1.8,0,1)*0.9+0.14)*clamp(1-(sl-0.26)*2.4,0,1);
+  soil *= 1-sm(0.38,0.66,alt)*0.9;
+
+  // ثلج القمم: خطّ الثلج يتموّج مع التضاريس ولا يقطع الجبل بخطّ مسطرة،
+  // ولا يثبت على الوجوه شبه العمودية لأنّه ينزلق عنها.
+  const snowLine = 0.635 + macro*0.26 + spotA*0.10;
+  let snow = sm(snowLine, snowLine+0.115, alt) * (1-sm(0.74,1.18,sl));
+  snow = Math.max(snow,0);
+  const keep = 1-snow*0.93;
+
+  grass=Math.max(grass,0)*keep; soil=Math.max(soil,0.03)*keep;
+  rock=Math.max(rock,0)*keep; gravel=Math.max(gravel,0)*keep;
+  cliff=Math.max(cliff,0)*keep; scree=Math.max(scree,0)*keep;
+  snow*=1.6;
+  const sum=grass+soil+rock+gravel+cliff+scree+snow||1;
+  return [grass/sum, soil/sum, rock/sum, gravel/sum, cliff/sum, scree/sum, snow/sum];
 }
 
 /* ═══ Three.js ═══ */
@@ -69,19 +93,19 @@ renderer.setPixelRatio(1);
 renderer.setSize(innerWidth, innerHeight);
 renderer.outputEncoding=THREE.sRGBEncoding;
 renderer.toneMapping=THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure=1.10;
+renderer.toneMappingExposure=1.22;
 renderer.shadowMap.enabled=true;
 renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
 
 const scene=new THREE.Scene();
 const camera=new THREE.PerspectiveCamera(42, innerWidth/innerHeight, 1.2, 6000);
-scene.fog=new THREE.FogExp2(0x9db2c4, 0.00040);
+scene.fog=new THREE.FogExp2(0xc6d5e4, 0.00062);
 
 /* سماء متدرّجة */
 const sky=new THREE.Mesh(new THREE.SphereGeometry(4600, 24, 16), new THREE.ShaderMaterial({
   side:THREE.BackSide, depthWrite:false,
-  uniforms:{ top:{value:new THREE.Color(0x3f6fae)}, mid:{value:new THREE.Color(0xa8c0d4)}, bot:{value:new THREE.Color(0xe6cfa8)} },
+  uniforms:{ top:{value:new THREE.Color(0x2f63b4)}, mid:{value:new THREE.Color(0xc6d5e4)}, bot:{value:new THREE.Color(0xf2e2c2)} },
   vertexShader:'varying vec3 vP; void main(){ vP=position; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
   fragmentShader:`varying vec3 vP; uniform vec3 top, mid, bot;
     void main(){ float t=normalize(vP).y;
@@ -90,15 +114,15 @@ const sky=new THREE.Mesh(new THREE.SphereGeometry(4600, 24, 16), new THREE.Shade
 }));
 scene.add(sky);
 
-const sun=new THREE.DirectionalLight(0xffdfae, 2.15);
-sun.position.set(-780, 900, 640);
+const sun=new THREE.DirectionalLight(0xffe0b0, 2.75);
+sun.position.set(-950, 680, 780);
 sun.castShadow=true;
 sun.shadow.mapSize.set(4096,4096);
 sun.shadow.camera.near=10; sun.shadow.camera.far=3400;
 sun.shadow.bias=-0.0004; sun.shadow.normalBias=0.9;
 scene.add(sun); scene.add(sun.target);
-scene.add(new THREE.HemisphereLight(0x9dbbe0, 0x6b5946, 0.80));
-scene.add(new THREE.AmbientLight(0xffe9cf, 0.13));
+scene.add(new THREE.HemisphereLight(0x9dbde8, 0x6d6152, 0.86));
+scene.add(new THREE.AmbientLight(0xfff0dc, 0.15));
 
 /* ═══ خامات الأرض ═══ */
 function dataTex(arr, size, srgb){
@@ -113,7 +137,8 @@ function dataTex(arr, size, srgb){
 const TSIZE=512, SURF={};
 const DRAW={grass:[drawGrassGround,20260101,1.5], soil:[drawSoilGround,20260202,2.4],
             rock:[drawRockGround,20260303,2.6], gravel:[drawGravelGround,20260404,2.4],
-            bark:[drawBarkTexture,20260505,2.2]};
+            cliff:[drawCliffRock,20260909,3.0], scree:[drawScree,20261010,2.4],
+            snow:[drawSnow,20261111,1.6], bark:[drawBarkTexture,20260505,2.2]};
 for(const name of Object.keys(DRAW)){
   const [fn,sd,st]=DRAW[name], cv=fn(TSIZE, sd);
   SURF[name]={ alb:dataTex(canvasToAlbedo(cv),TSIZE,true), nrm:dataTex(canvasToNormal(cv,st),TSIZE,false) };
@@ -127,14 +152,30 @@ needleTex.wrapS=needleTex.wrapT=THREE.ClampToEdgeWrapping;
 
 /* خريطة الطبقات + الانحجاب */
 const SP=1024;
-const splatData=new Uint8ClampedArray(SP*SP*4), aoData=new Uint8ClampedArray(SP*SP*4);
+const splatData=new Uint8ClampedArray(SP*SP*4), splat2Data=new Uint8ClampedArray(SP*SP*4), aoData=new Uint8ClampedArray(SP*SP*4);
 for(let y=0;y<SP;y++){ const j=Math.min(N-1, Math.round(y/(SP-1)*(N-1)));
   for(let x=0;x<SP;x++){ const i=Math.min(N-1, Math.round(x/(SP-1)*(N-1)));
     const w=splatAt(i,j), o=(y*SP+x)*4;
     splatData[o]=w[0]*255; splatData[o+1]=w[1]*255; splatData[o+2]=w[2]*255; splatData[o+3]=w[3]*255;
+    splat2Data[o]=w[4]*255; splat2Data[o+1]=w[5]*255; splat2Data[o+2]=w[6]*255; splat2Data[o+3]=255;
     const a=ao[j*N+i]*255; aoData[o]=a; aoData[o+1]=a; aoData[o+2]=a; aoData[o+3]=255;
   } }
+const MC=256, macroData=new Uint8ClampedArray(MC*MC*4);
+for(let y=0;y<MC;y++){ const wz=(y+0.5)/MC*WORLD-WORLD/2;
+  for(let x=0;x<MC;x++){ const wx=(x+0.5)/MC*WORLD-WORLD/2;
+    const a=fbm(wx*0.0016+91, wz*0.0016-37, 4);
+    const b=fbm(wx*0.0055-13, wz*0.0055+61, 3);
+    const bright=0.80+0.40*a+0.12*(b-0.5);
+    const warm=0.95+0.13*(b-0.5)*2;
+    const o=(y*MC+x)*4;
+    macroData[o]=Math.min(255,bright*warm*255);
+    macroData[o+1]=Math.min(255,bright*255);
+    macroData[o+2]=Math.min(255,bright*(2-warm)*255);
+    macroData[o+3]=255;
+  } }
+const macroTex=dataTex(macroData, MC, false); macroTex.wrapS=macroTex.wrapT=THREE.ClampToEdgeWrapping;
 const splatTex=dataTex(splatData, SP, false); splatTex.wrapS=splatTex.wrapT=THREE.ClampToEdgeWrapping;
+const splat2Tex=dataTex(splat2Data, SP, false); splat2Tex.wrapS=splat2Tex.wrapT=THREE.ClampToEdgeWrapping;
 const aoTex=dataTex(aoData, SP, false); aoTex.wrapS=aoTex.wrapT=THREE.ClampToEdgeWrapping;
 
 /* ═══ شبكة التضاريس: دقّة أعلى من المحاكاة برفع Catmull-Rom ناعم + نتوء دقيق ═══ */
@@ -166,40 +207,83 @@ terGeo.setAttribute('uv', new THREE.BufferAttribute(uvs,2));
 terGeo.setIndex(new THREE.BufferAttribute(idx,1));
 terGeo.computeVertexNormals();
 
+let terShaderRef=null;
 const terMat=new THREE.MeshStandardMaterial({color:0xffffff, roughness:0.95, metalness:0.0});
 terMat.onBeforeCompile = sh => {
-  sh.uniforms.uSplat={value:splatTex}; sh.uniforms.uAO={value:aoTex};
+  sh.uniforms.uSplat={value:splatTex}; sh.uniforms.uSplat2={value:splat2Tex}; sh.uniforms.uAO={value:aoTex};
+  sh.uniforms.uMacro={value:macroTex};
+  sh.uniforms.uAOAmt={value:1.0}; sh.uniforms.uNrmAmt={value:1.0}; terShaderRef=sh;
   sh.uniforms.uT0={value:SURF.grass.alb}; sh.uniforms.uT1={value:SURF.soil.alb};
   sh.uniforms.uT2={value:SURF.rock.alb};  sh.uniforms.uT3={value:SURF.gravel.alb};
   sh.uniforms.uN0={value:SURF.grass.nrm}; sh.uniforms.uN1={value:SURF.soil.nrm};
   sh.uniforms.uN2={value:SURF.rock.nrm};  sh.uniforms.uN3={value:SURF.gravel.nrm};
+  sh.uniforms.uT4={value:SURF.cliff.alb}; sh.uniforms.uT5={value:SURF.scree.alb};
+  sh.uniforms.uN4={value:SURF.cliff.nrm}; sh.uniforms.uN5={value:SURF.scree.nrm};
+  sh.uniforms.uT6={value:SURF.snow.alb};  sh.uniforms.uN6={value:SURF.snow.nrm};
+  sh.uniforms.uLow={value:LOW*SC}; sh.uniforms.uSpan={value:SPAN*SC};
   sh.vertexShader = sh.vertexShader
-    .replace('#include <common>', '#include <common>\nvarying vec3 vWP;\nvarying vec2 vSUv;')
-    .replace('#include <project_vertex>', 'vWP=(modelMatrix*vec4(transformed,1.0)).xyz;\nvSUv=uv;\n#include <project_vertex>');
+    .replace('#include <common>', '#include <common>\nvarying vec3 vWP;\nvarying vec2 vSUv;\nvarying vec3 vWN;')
+    .replace('#include <project_vertex>', 'vWP=(modelMatrix*vec4(transformed,1.0)).xyz;\nvSUv=uv;\nvWN=normalize(mat3(modelMatrix)*objectNormal);\n#include <project_vertex>');
   sh.fragmentShader = sh.fragmentShader
     .replace('#include <common>', `#include <common>
       varying vec3 vWP; varying vec2 vSUv;
-      uniform sampler2D uSplat, uAO, uT0,uT1,uT2,uT3, uN0,uN1,uN2,uN3;
-      vec4 dkWeights(){ vec4 w=texture2D(uSplat, vSUv); return w/max(w.r+w.g+w.b+w.a, 1e-4); }`)
+      uniform sampler2D uSplat, uSplat2, uAO, uT0,uT1,uT2,uT3,uT4,uT5,uT6, uN0,uN1,uN2,uN3,uN4,uN5,uN6;
+      uniform float uAOAmt, uNrmAmt, uLow, uSpan;
+      uniform sampler2D uMacro;
+      varying vec3 vWN;
+      // إسقاط ثلاثي المحاور: بدونه يُمطّ النسيج على الوجوه الحادّة فيظهر نقش متكرّر
+      // بلاطة واحدة تتكرّر مئات المرّات على جدار الجبل فتُقرأ كنقش حِراشف.
+      // مزج المقياسين — قريب وبعيد بإزاحة — يُذيب التكرار.
+      vec3 dkFlat(sampler2D t, vec2 p, float sc){
+        return mix(texture2D(t, p/sc).rgb,
+                   texture2D(t, p/(sc*3.9)+vec2(0.37,0.61)).rgb, 0.42);
+      }
+      vec3 dkTri(sampler2D t, vec3 wp, vec3 n, float sc){
+        vec3 bw = abs(n); bw = bw*bw*bw*bw; bw /= max(bw.x+bw.y+bw.z, 1e-4);
+        return dkFlat(t, wp.zy, sc)*bw.x + dkFlat(t, wp.xz, sc)*bw.y + dkFlat(t, wp.xy, sc)*bw.z;
+      }
+      vec4 dkW1; vec3 dkW2;
+      void dkWeights(){
+        vec4 a=texture2D(uSplat, vSUv); vec3 b=texture2D(uSplat2, vSUv).rgb;
+        float s=max(a.r+a.g+a.b+a.a+b.r+b.g+b.b, 1e-4);
+        dkW1=a/s; dkW2=b/s;
+      }`)
     .replace('#include <map_fragment>', `#include <map_fragment>
-      vec4 dw = dkWeights();
-      vec3 dkCol = texture2D(uT0, vWP.xz/26.0).rgb*dw.r
-                 + texture2D(uT1, vWP.xz/30.0).rgb*dw.g
-                 + texture2D(uT2, vWP.xz/34.0).rgb*dw.b
-                 + texture2D(uT3, vWP.xz/14.0).rgb*dw.a;
-      dkCol *= texture2D(uAO, vSUv).r;
+      dkWeights();
+      vec3 dkN3 = normalize(vWN);
+      vec3 dkCol = dkFlat(uT0, vWP.xz, 26.0)*dkW1.r
+                 + dkFlat(uT1, vWP.xz, 30.0)*dkW1.g
+                 + dkTri(uT2, vWP, dkN3, 34.0)*dkW1.b
+                 + dkFlat(uT3, vWP.xz, 14.0)*dkW1.a
+                 + dkTri(uT4, vWP, dkN3, 30.0)*dkW2.r
+                 + dkTri(uT5, vWP, dkN3, 18.0)*dkW2.g
+                 + dkTri(uT6, vWP, dkN3, 22.0)*dkW2.b;
+      dkCol *= mix(1.0, texture2D(uAO, vSUv).r, uAOAmt);
+      dkCol *= texture2D(uMacro, vSUv).rgb * 1.10;
+      // تدرّج ارتفاعي: الوادي دافئ مخضرّ، السفح ترابي، القمّة رمادية باردة
+      float dkAlt = clamp((vWP.y - uLow)/max(uSpan,1.0), 0.0, 1.0);
+      dkCol *= mix(vec3(1.07,1.035,0.905), vec3(0.855,0.925,1.075),
+                   smoothstep(0.22, 0.86, dkAlt));
+      // طبقات جيولوجية بمقياس الجبل لا بمقياس البلاطة: لا تتكرّر فتصير شرائط
+      float dkBand = sin(vWP.y*0.075 + sin(vWP.x*0.0035)*2.1 + cos(vWP.z*0.0031)*1.7)*0.62
+                   + sin(vWP.y*0.021 + cos(vWP.x*0.0019)*1.4)*0.38;
+      dkCol *= 1.0 + dkBand*0.105*smoothstep(0.24,0.58,dkAlt)*(dkW1.b+dkW2.r+dkW2.g);
       // القراءة اليدوية لا تمرّ بفكّ ترميز sRGB الذي يضيفه Three للخانة map — نفكّه هنا
       diffuseColor.rgb = pow(dkCol, vec3(2.2));`)
     .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
-      vec4 nw = dkWeights();
-      vec3 dkN = (texture2D(uN0, vWP.xz/26.0).xyz*2.0-1.0)*nw.r
-               + (texture2D(uN1, vWP.xz/30.0).xyz*2.0-1.0)*nw.g
-               + (texture2D(uN2, vWP.xz/34.0).xyz*2.0-1.0)*nw.b
-               + (texture2D(uN3, vWP.xz/14.0).xyz*2.0-1.0)*nw.a;
+      dkWeights();
+      vec3 dkNw = normalize(vWN);
+      vec3 dkN = (texture2D(uN0, vWP.xz/26.0).xyz*2.0-1.0)*dkW1.r
+               + (texture2D(uN1, vWP.xz/30.0).xyz*2.0-1.0)*dkW1.g
+               + (dkTri(uN2, vWP, dkNw, 34.0)*2.0-1.0)*dkW1.b
+               + (texture2D(uN3, vWP.xz/14.0).xyz*2.0-1.0)*dkW1.a
+               + (dkTri(uN4, vWP, dkNw, 30.0)*2.0-1.0)*dkW2.r
+               + (dkTri(uN5, vWP, dkNw, 18.0)*2.0-1.0)*dkW2.g
+               + (dkTri(uN6, vWP, dkNw, 22.0)*2.0-1.0)*dkW2.b;
       // الإسقاط على المستوى المماسّ يمنع انقلاب المُسوّي على الجروف شبه العمودية
       vec3 dkPert = vec3(dkN.x, 0.0, dkN.y)*0.70;
       dkPert -= normal * dot(dkPert, normal);
-      normal = normalize(normal + dkPert*1.55);`);
+      normal = normalize(normal + dkPert*1.55*uNrmAmt);`);
 };
 const terrain=new THREE.Mesh(terGeo, terMat);
 terrain.receiveShadow=true; terrain.castShadow=true;
@@ -214,7 +298,7 @@ const waterUniforms={
   uSky:{value:new THREE.Color(0.58,0.72,0.88)},
   uSunDir:{value:new THREE.Vector3(0.4,0.6,0.5)},
   uSunCol:{value:new THREE.Color(1.0,0.94,0.82)},
-  fogColor:{value:new THREE.Color(0x9db2c4)},
+  fogColor:{value:new THREE.Color(0xc6d5e4)},
   fogDensity:{value:0.0004}
 };
 const waterMat=new THREE.ShaderMaterial({
@@ -384,7 +468,7 @@ const TREES=[];
 for(let v=0;v<3;v++) TREES.push({...buildBroadleaf(4110000+v*977, 11+v*2.6), conifer:false});
 for(let v=0;v<3;v++) TREES.push({...buildConifer(5220000+v*977, 14+v*3.1), conifer:true});
 
-const TMAXS=0.42, TMINM=0.22, TARGET=2600;
+const TMAXS=0.60, TMINM=0.13, TARGET=6200;
 const treePool=[];
 {
   const rnd=rngFrom(SEED*31+17);
@@ -397,15 +481,19 @@ const treePool=[];
     if(RW>0 && rd[k]<RW*1.35) continue;
     if(roadD[k]<62) continue;
     if(wx*wx+wz*wz < 300*300) continue;
-    const sl=slopeAt(i,j); if(sl>TMAXS) continue;
+    const alt0=(h[k]-LOW)/SPAN;
+    const slLimit=TMAXS+clamp((0.45-alt0)*0.5,0,0.14);
+    const sl=slopeAt(i,j); if(sl>slLimit) continue;
     const m=MOIST[k]; if(m<TMINM) continue;
     const clumpN=fbm(wx*0.0016+41, wz*0.0016-17, 4);
-    const chance=clamp((m-TMINM)*2.2,0,1)*clamp((clumpN-0.30)*3.4,0,1)*clamp(1-(sl/TMAXS),0,1);
+    // خطّ الشجر يعلو حتى ~0.66 من ارتفاع الخريطة ثم ينقطع دون حدّ الثلج
+    const chance=clamp((m-TMINM)*2.6,0,1)*clamp((clumpN-0.24)*3.2,0,1)*clamp(1-(sl/slLimit)*0.85,0,1)
+                 *clamp(1-(alt0-0.42)/0.24,0,1);
     if(rnd()>chance) continue;
     const alt=(h[k]-LOW)/SPAN;
-    const conifer = alt>0.34 || m<0.42;
+    const conifer = alt>0.30 || m<0.42;
     const pool=[0,1,2].map(q=>q+(conifer?3:0));
-    const sc=0.78+rnd()*0.55;
+    const sc=(0.78+rnd()*0.55)*(1-clamp((alt-0.32)/0.42,0,1)*0.34);
     const warm=0.86+rnd()*0.30, cool=0.86+rnd()*0.26;
     treePool.push({x:wx, z:wz, y:groundY(wx,wz), v:pool[(rnd()*3)|0], s:sc, r:rnd()*Math.PI*2,
                    tr:warm*(0.92+rnd()*0.20), tg:cool, tb:0.80+rnd()*0.34});
@@ -415,8 +503,10 @@ const treePool=[];
 /* ═══ الصخور ═══ */
 const rockMat=new THREE.MeshStandardMaterial({map:SURF.rock.alb, normalMap:SURF.rock.nrm, roughness:0.93, metalness:0.02});
 rockMat.map.repeat.set(1.6,1.6);
+const cliffMat=new THREE.MeshStandardMaterial({map:SURF.cliff.alb, normalMap:SURF.cliff.nrm, roughness:0.95, metalness:0.02, vertexColors:true});
+cliffMat.map.repeat.set(1.4,1.4);
 const ROCKS=[buildBoulder(6330000,1.4), buildBoulder(6330613,2.2), buildOutcrop(6331226,6.1), buildOutcrop(6331839,7.7)];
-const rockPool=[];
+const rockPool=[], cliffPool=[];
 {
   const rnd=rngFrom(SEED*977+5), grid=90, cell=WORLD/grid;
   for(let gy=0;gy<grid;gy++) for(let gx=0;gx<grid;gx++){
@@ -431,6 +521,28 @@ const rockPool=[];
     rockPool.push({x:wx, z:wz, y:groundY(wx,wz)-(0.35+rnd()*0.5),
                    v:(rnd()*4)|0, s:0.7+rnd()*1.1, sy:0.8+rnd()*0.5, r:rnd()*Math.PI*2,
                    tx:(rnd()-0.5)*0.32, tz:(rnd()-0.5)*0.32});
+  }
+}
+/* نتوءات الجرف: كتل كبيرة كثيفة حيث ينكشف الصخر — بها يصير للجبل شكل */
+{
+  const rnd=rngFrom(SEED*613+91), grid=210, cell=WORLD/grid;
+  let lo=1e9, hi=-1e9; for(const v of h){ if(v<lo)lo=v; if(v>hi)hi=v; }
+  const span=Math.max(1,hi-lo);
+  for(let gy=0;gy<grid;gy++) for(let gx=0;gx<grid;gx++){
+    const wx=(gx+rnd())*cell-WORLD/2, wz=(gy+rnd())*cell-WORLD/2;
+    const i=Math.min(N-1,Math.max(0,Math.round((wx+WORLD/2)/s))), j=Math.min(N-1,Math.max(0,Math.round((wz+WORLD/2)/s)));
+    const k=j*N+i;
+    const sl=slopeAt(i,j), alt=(h[k]-lo)/span;
+    const chance=clamp((sl-0.55)*1.5,0,1)*clamp((alt-0.20)/0.35,0,1);
+    if(rnd()>chance*0.85) continue;
+    if(cliffPool.length>=4200) break;
+    const big=rnd()<0.50;
+    cliffPool.push({x:wx, z:wz, y:groundY(wx,wz)-(0.4+rnd()*1.1),
+                    v:big?(2+((rnd()*2)|0)):((rnd()*2)|0),
+                    s:(big? 5.4+rnd()*8.2 : 2.2+rnd()*3.4),
+                    sy:0.7+rnd()*0.9, r:rnd()*Math.PI*2,
+                    tx:(rnd()-0.5)*0.5, tz:(rnd()-0.5)*0.5,
+                    tr:0.82+rnd()*0.30, tg:0.85+rnd()*0.28, tb:0.90+rnd()*0.28});
   }
 }
 
@@ -513,6 +625,10 @@ function populate(cx, cz, treeR, rockR, grassR, grassN){
     const list=rockPool.filter(r=>r.v===v && near(r.x,r.z,rockR));
     addInstanced(ROCKS[v], rockMat, list, (it,p,e,sc)=>{ p.set(it.x*SC,it.y*SC,it.z*SC); e.set(it.tx,it.r,it.tz); sc.set(it.s,it.s*it.sy,it.s); }, true);
   }
+  for(let v=0;v<ROCKS.length;v++){
+    const list=cliffPool.filter(r=>r.v===v && near(r.x,r.z,rockR*2.2));
+    addInstanced(ROCKS[v], cliffMat, list, (it,p,e,sc)=>{ p.set(it.x*SC,it.y*SC,it.z*SC); e.set(it.tx,it.r,it.tz); sc.set(it.s,it.s*it.sy,it.s); }, true, true);
+  }
   if(grassR>0){
     const rnd=rngFrom(4242), list=[];
     let tries=0;
@@ -546,10 +662,11 @@ function look(target, dist, yawDeg, pitchDeg, lift, camLift){
   if(camLift) camera.position.y += camLift;
   camera.lookAt(t);
   sun.target.position.copy(t);
-  // الشمس مائلة على يسار الكاميرا: الضوء الزاحف هو ما يُظهر النتوء والملمس
-  const yawR=yaw + 2.30;
+  // الشمس أمام الكاميرا بميل يسار: تضيء الوجه المواجه ويبقى الظلّ يرسم الأضلاع.
+  // خلف الكاميرا تماماً يُسطّح المشهد، وخلف الهدف يجعل الجبل كتلة سوداء.
+  const yawR=yaw + 0.95;
   const dist2=1000;
-  sun.position.copy(t).add(new THREE.Vector3(Math.sin(yawR)*dist2, 420, Math.cos(yawR)*dist2));
+  sun.position.copy(t).add(new THREE.Vector3(Math.sin(yawR)*dist2, 540, Math.cos(yawR)*dist2));
   const span = Math.max(180, Math.min(1500, dist*1.5));
   sun.shadow.camera.left=-span; sun.shadow.camera.right=span;
   sun.shadow.camera.top=span; sun.shadow.camera.bottom=-span;
@@ -571,39 +688,47 @@ const GATE_R = 150;
 const gatePos = [Math.cos(GATE_ANGLE)*GATE_R*0.98, Math.sin(GATE_ANGLE)*GATE_R*0.98];
 const YAW_OUT = 90 - GA;          // الكاميرا خارج البوّابة تنظر إلى الداخل
 const SHOTS={
-  ground: ()=>{ populate(-260, 420, 420, 320, 150, 26000);
-                look([-260, 420], 34, 300, 5); scene.fog.density=0.00060; },
+  mountain: ()=>{ populate(-560, 700, 1500, 1400, 260, 16000);
+                  look([-560, 700], 620, 152, 7, 60); scene.fog.density=0.00040; },
+  peaks:    ()=>{ populate(-300, 1050, 1400, 1300, 0, 0);
+                  look([-300, 1050], 760, 150, 8, 150); scene.fog.density=0.00036; },
+  ridge:    ()=>{ populate(-420, 880, 1600, 1500, 240, 14000);
+                  look([-420, 880], 980, 168, 12, 90); scene.fog.density=0.00042; },
+  ground: ()=>{ populate(-260, 420, 520, 420, 190, 30000);
+                look([-260, 420], 92, 300, 21, 6); scene.fog.density=0.00060; },
   // زوايا مؤطَّرة: منخفضة وقريبة عند البوّابة، علوية ثلاثية الأرباع للمجمّع
   hero:   ()=>{ populate(0,0, 700, 560, 330, 18000);
-                look(gatePos, 46, YAW_OUT, 1, 16, -3); scene.fog.density=0.00048; },
+                look(gatePos, 46, YAW_OUT, 1, 16, -3); scene.fog.density=0.00074; },
   aerial: ()=>{ populate(0,0, 1000, 800, 340, 15000);
-                look([0,0], 265, YAW_OUT+28, 24, 8); scene.fog.density=0.00040; },
+                look([0,0], 265, YAW_OUT+28, 24, 8); scene.fog.density=0.00066; },
   tower:  ()=>{ populate(0,0, 600, 480, 300, 16000);
                 look([Math.cos(GATE_ANGLE+0.62)*GATE_R*0.95, Math.sin(GATE_ANGLE+0.62)*GATE_R*0.95],
-                     34, (GATE_ANGLE+0.62)*180/Math.PI*-1+90, 4, 14, -2); scene.fog.density=0.00050; },
+                     34, (GATE_ANGLE+0.62)*180/Math.PI*-1+90, 4, 14, -2); scene.fog.density=0.00078; },
   through:()=>{ populate(0,0, 700, 560, 320, 16000);
                 look([Math.cos(GATE_ANGLE)*GATE_R*0.45, Math.sin(GATE_ANGLE)*GATE_R*0.45],
-                     46, YAW_OUT+180, 3, 5, 0); scene.fog.density=0.00050; },
+                     46, YAW_OUT+180, 3, 5, 0); scene.fog.density=0.00078; },
   gate:   ()=>{ populate(0,0, 700, 560, 330, 17000);
-                look(gatePos, 52, YAW_OUT, 5); scene.fog.density=0.00050; },
+                look(gatePos, 52, YAW_OUT, 5); scene.fog.density=0.00078; },
   castle: ()=>{ populate(0,0, 900, 700, 340, 15000);
-                look([0,0], 250, YAW_OUT, 15); scene.fog.density=0.00042; },
+                look([0,0], 250, YAW_OUT, 15); scene.fog.density=0.00068; },
   keep:   ()=>{ populate(0,0, 700, 560, 330, 15000);
-                look([0,0], 130, YAW_OUT+40, 16); scene.fog.density=0.00046; },
+                look([0,0], 130, YAW_OUT+40, 16); scene.fog.density=0.00072; },
   village:()=>{ populate(villP[0], villP[1], 700, 520, 280, 17000);
-                look(villP, 95, YAW_OUT-70, 13); scene.fog.density=0.00050; },
+                look(villP, 95, YAW_OUT-70, 13); scene.fog.density=0.00078; },
   valley: ()=>{ populate(150,-260, 900, 700, 220, 12000);
-                look([150,-260], 330, 200, 18); scene.fog.density=0.00050; },
+                look([150,-260], 330, 200, 18); scene.fog.density=0.00078; },
   lake:   ()=>{ populate(lakePt.x, lakePt.z, 950, 720, 230, 13000);
-                look([lakePt.x, lakePt.z], 330, 145, 8); scene.fog.density=0.00048; },
+                look([lakePt.x, lakePt.z], 330, 145, 8); scene.fog.density=0.00074; },
   far:    ()=>{ populate(0,0, 1700, 1700, 0, 0);
-                look([120,60], 1150, 208, 26); scene.fog.density=0.00030; },
+                look([120,60], 1150, 208, 26); scene.fog.density=0.00058; },
 };
 let ready=false;
 function render(){ waterUniforms.fogDensity.value = scene.fog.density; renderer.render(scene, camera); }
 window.__d = {
+  setAO(v){ if(terShaderRef) terShaderRef.uniforms.uAOAmt.value=v; render(); return true; },
+  setNrm(v){ if(terShaderRef) terShaderRef.uniforms.uNrmAmt.value=v; render(); return true; },
   shot(name){ (SHOTS[name]||SHOTS.far)(); render(); render(); return true; },
-  info(){ return { N, trees:treePool.length, rocks:rockPool.length,
+  info(){ return { N, trees:treePool.length, rocks:rockPool.length, cliffs:cliffPool.length,
                    lake: LAKE?{r:Math.round(LAKE.r), level:+LAKE.level.toFixed(1)}:null,
                    river: RIVER?{pts:RIVER.pts.length, w:+RIVER.w.toFixed(1)}:null,
                    roads: routes.length, range:+(HIGH-LOW).toFixed(0) }; },

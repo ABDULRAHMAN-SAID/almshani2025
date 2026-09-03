@@ -183,5 +183,96 @@ namespace Dawnkeep.Rendering
                 }
             }
         }
+        /// <summary>
+        /// وجوه صخرية بخلايا فورونوي: الصخر مكسور إلى ألواح غير منتظمة بمفاصل
+        /// غائرة وحوافّ مضيئة. هذا شكل الصخر الحقيقي — لا شبكة شقوق مرسومة فوق
+        /// ضجيج، فتلك كانت تُقرأ عن بُعد كنسيج عنكبوتي أبيض على الجبل.
+        /// تُستدعى بثلاثة مقاييس متراكبة: ألواح كبيرة ثم تكسير ثانوي ثم حبيبات.
+        /// </summary>
+        public static void Facets(TextureCanvas c, int cellsX, uint seed, Color[] palette,
+            float jointWidth, float bevel, float heightAmount, float alpha, float toneSpread)
+        {
+            int n = c.Size;
+            int g = Mathf.Max(2, cellsX);
+            float cell = n / (float)g;
+            TexRandom rng = new TexRandom(seed);
+
+            float[] ox = new float[g * g];
+            float[] oy = new float[g * g];
+            float[] tone = new float[g * g];
+            int[] pick = new int[g * g];
+            for (int i = 0; i < g * g; i++)
+            {
+                ox[i] = 0.12f + (rng.Next() * 0.76f);
+                oy[i] = 0.12f + (rng.Next() * 0.76f);
+                tone[i] = (1f - (toneSpread * 0.5f)) + (rng.Next() * toneSpread);
+                pick[i] = Mathf.Min(palette.Length - 1, (int)(rng.Next() * palette.Length));
+            }
+
+            for (int y = 0; y < n; y++)
+            {
+                int gj = Mathf.FloorToInt(y / cell);
+                for (int x = 0; x < n; x++)
+                {
+                    int gi = Mathf.FloorToInt(x / cell);
+                    float d1 = float.MaxValue;
+                    float d2 = float.MaxValue;
+                    int best = 0;
+                    float by = 0f;
+
+                    for (int dj = -1; dj <= 1; dj++)
+                    {
+                        for (int di = -1; di <= 1; di++)
+                        {
+                            int a = gi + di;
+                            int b = gj + dj;
+                            int idx = (((b % g) + g) % g * g) + (((a % g) + g) % g);
+                            float sx = (a + ox[idx]) * cell;
+                            float sy = (b + oy[idx]) * cell;
+                            float dx = x - sx;
+                            float dy = y - sy;
+                            float d = (dx * dx) + (dy * dy);
+                            if (d < d1)
+                            {
+                                d2 = d1;
+                                d1 = d;
+                                best = idx;
+                                by = sy;
+                            }
+                            else if (d < d2)
+                            {
+                                d2 = d;
+                            }
+                        }
+                    }
+
+                    // القرب من المفصل: الفرق بين أقرب بذرتين هو المسافة إلى الحدّ
+                    float edge = Mathf.Sqrt(d2) - Mathf.Sqrt(d1);
+                    float joint = 1f - Mathf.Min(1f, edge / Mathf.Max(1e-4f, jointWidth));
+                    Color col = palette[pick[best]];
+                    float t = tone[best];
+                    // انحدار الوجه: أعلاه أفتح وأسفله أغمق فتُقرأ الكتلة مجسّمة
+                    float face = 0.86f + (bevel * ((by - y) / cell) * 0.9f);
+                    float shade = (1f - (joint * 0.72f)) * face * t;
+
+                    int k = (y * n) + x;
+                    c.R[k] += ((col.r * shade) - c.R[k]) * alpha;
+                    c.G[k] += ((col.g * shade) - c.G[k]) * alpha;
+                    c.B[k] += ((col.b * shade) - c.B[k]) * alpha;
+                    c.H[k] += ((((1f - joint) * heightAmount) - (joint * heightAmount * 0.9f)
+                                + ((t - 1f) * heightAmount * 0.35f)) - c.H[k]) * alpha;
+
+                    // حافّة مضيئة على الجانب المقابل للمفصل — خافتة عمداً:
+                    // اللمعة القوية على مئات الحوافّ تتجمّع فتصير شبكة بيضاء
+                    if (joint > 0.55f && joint < 0.9f && (y - by) < 0f)
+                    {
+                        float l = (joint - 0.55f) / 0.35f;
+                        c.R[k] += (1.22f - c.R[k]) * l * 0.22f * alpha;
+                        c.G[k] += (1.19f - c.G[k]) * l * 0.22f * alpha;
+                        c.B[k] += (1.15f - c.B[k]) * l * 0.22f * alpha;
+                    }
+                }
+            }
+        }
     }
 }

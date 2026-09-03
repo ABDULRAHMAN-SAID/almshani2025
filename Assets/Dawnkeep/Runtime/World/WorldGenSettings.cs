@@ -67,13 +67,20 @@ namespace Dawnkeep.World
 
         [Header("التعرية الحرارية (انهيار المنحدرات)")]
         [Tooltip("عدد المرّات التي يُعاد فيها ترتيب المنحدرات فوق زاوية الاستقرار.")]
-        [SerializeField] private int thermalIterations = 55;
+        [SerializeField] private int thermalIterations = 32;
 
-        [Tooltip("زاوية استقرار الحطام كميل (0.72 ≈ 36 درجة). أعلى = جبال أحدّ.")]
-        [SerializeField] private float talusAngle = 0.72f;
+        [Tooltip("زاوية استقرار الحطام كميل (0.82 ≈ 39 درجة). أعلى = جبال أحدّ.")]
+        [SerializeField] private float talusAngle = 0.82f;
 
         [Range(0.05f, 1f)]
-        [SerializeField] private float thermalRate = 0.5f;
+        [SerializeField] private float thermalRate = 0.45f;
+
+        [Header("تفصيل الصخر (أضلاع وأخاديد الجبل)")]
+        [Tooltip("سعة الأعراف الثانوية على الميول الحادّة. التعرية الحرارية تُنعّم الجبل حتى يصير كتلة صمّاء — هذا يعيد له حدّته.")]
+        [SerializeField] private float rockDetailAmplitude = 104f;
+
+        [Tooltip("تشويه المجال قبل الضجيج المطويّ. بدونه تخرج الأضلاع متوازية منتظمة كتضليع صناعي.")]
+        [SerializeField] private float rockDetailWarp = 760f;
 
         [Header("البحيرة")]
         [Tooltip("أقل عمق غمر يُعدّ خلية بحيرة.")]
@@ -117,11 +124,11 @@ namespace Dawnkeep.World
         [Header("الغطاء النباتي")]
         [Tooltip("أعلى ميل (0..1) تنبت عليه الأشجار.")]
         [Range(0f, 1f)]
-        [SerializeField] private float treeMaxSlope = 0.42f;
+        [SerializeField] private float treeMaxSlope = 0.60f;
         [Tooltip("أقلّ رطوبة (0..1) مطلوبة للغابة.")]
         [Range(0f, 1f)]
-        [SerializeField] private float treeMinMoisture = 0.22f;
-        [SerializeField] private int treeTarget = 2600;
+        [SerializeField] private float treeMinMoisture = 0.13f;
+        [SerializeField] private int treeTarget = 4200;
         [Range(0f, 1f)]
         [SerializeField] private float grassMaxSlope = 0.5f;
         [SerializeField] private int grassDensity = 9;
@@ -161,6 +168,10 @@ namespace Dawnkeep.World
         public int ThermalIterations { get { return thermalIterations; } }
         public float TalusAngle { get { return talusAngle; } }
         public float ThermalRate { get { return thermalRate; } }
+
+        public float RockDetailAmplitude { get { return rockDetailAmplitude; } }
+
+        public float RockDetailWarp { get { return rockDetailWarp; } }
 
         public float LakeMinDepth { get { return lakeMinDepth; } }
         public int LakeMinCells { get { return lakeMinCells; } }

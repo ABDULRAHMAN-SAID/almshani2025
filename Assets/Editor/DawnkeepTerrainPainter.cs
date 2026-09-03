@@ -90,7 +90,12 @@ namespace Dawnkeep.EditorTools
             return data;
         }
 
-        /// <summary>أوزان الطبقات الأربع لكل خلية: عشب، تربة، صخر، حصى.</summary>
+        /// <summary>
+        /// أوزان الطبقات السبع لكل خلية: عشب، تربة، صخر، حصى، جرف، حطام سفح، ثلج.
+        /// القاعدتان اللتان تصنعان جبلاً بدل كتلة طينية:
+        /// (أ) التربة لا تثبت على وجه شديد الميل فتقلّ معه لا تزداد،
+        /// (ب) خطّ الثلج يتموّج مع ضجيج كبير فلا يقطع الجبل بخطّ مسطرة أفقي.
+        /// </summary>
         private static void PaintSplat(WorldGenSettings settings, WorldData world, TerrainData data)
         {
             TerrainLayer[] layers = DawnkeepTextureBaker.BuildTerrainLayers();
@@ -121,14 +126,26 @@ namespace Dawnkeep.EditorTools
                     float altitude = (world.Height[k] - world.MinHeight) / range;
                     float riverDist = world.RiverDistance[k];
                     float roadDist = world.RoadDistance[k];
+                    float flowN = Mathf.Clamp01(Mathf.Log(1f + world.Flow[k]) / 7f);
 
-                    // تبقيع: بدونه تتحوّل الأرض إلى مناطق ملساء متدرّجة تبدو طيناً
+                    // ثلاثة مقاييس من التبقيع: كبير يلوّن الجبل، ودقيق يكسر التدرّج
+                    float macro = ValueNoise.Fbm((wx * 0.0034) + 53.0, (wz * 0.0034) - 29.0, 4) - 0.5f;
                     float spotA = ValueNoise.Fbm((wx * 0.026) + 11.0, (wz * 0.026) - 7.0, 3) - 0.5f;
                     float spotB = ValueNoise.Fbm((wx * 0.085) - 3.0, (wz * 0.085) + 19.0, 2) - 0.5f;
 
-                    // صخر مكشوف حيث لا تثبت التربة
-                    float rock = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.36f, 0.80f, slope));
-                    rock += Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.62f, 0.92f, altitude)) * 0.55f;
+                    // جرف: الوجه المكشوف الحادّ العالي
+                    float cliff = Smooth(0.44f, 0.92f, slope) * Smooth(0.15f, 0.42f, altitude);
+                    cliff *= 0.55f + (0.9f * Mathf.Clamp01((macro * 2.2f) + 0.5f));
+
+                    // حطام السفح: ميل متوسّط تحت الجروف، وفي الأخاديد حيث يتجمّع الانهيار
+                    float scree = Smooth(0.22f, 0.50f, slope) * (1f - Smooth(0.72f, 1.10f, slope))
+                                * Smooth(0.22f, 0.52f, altitude);
+                    scree *= 0.45f + (1.0f * Mathf.Clamp01((-macro * 2.2f) + 0.5f));
+                    scree += flowN * Smooth(0.30f, 0.70f, slope) * Smooth(0.28f, 0.60f, altitude) * 0.55f;
+
+                    // صخر عام على المنحدرات الأدنى
+                    float rock = Smooth(0.36f, 0.80f, slope) * (1f - (Smooth(0.30f, 0.62f, altitude) * 0.75f));
+                    rock += Smooth(0.62f, 0.95f, altitude) * 0.30f;
                     rock += Mathf.Clamp01(spotB * 0.5f) * Mathf.Clamp01((slope - 0.30f) * 2.2f);
 
                     // حصى: ضفاف النهر، قاع البحيرة، وممرّ الطريق المدكوك
@@ -148,19 +165,31 @@ namespace Dawnkeep.EditorTools
                         gravel += 0.9f;
                     }
 
-                    // العشب هو الغطاء الافتراضي على الأرض اللطيفة غير القاحلة —
-                    // والتربة العارية بقعٌ فيه حيث يجفّ أو يشتدّ الميل، لا العكس.
+                    // العشب هو الغطاء الافتراضي على الأرض اللطيفة غير القاحلة
                     float grass = Mathf.Clamp01((moisture + 0.22f + (spotA * 0.30f)) * 1.9f)
-                                * Mathf.Clamp01(1f - (slope * 1.7f));
-                    float soil = (Mathf.Clamp01((0.42f - moisture - (spotA * 0.34f) + (spotB * 0.16f)) * 1.8f) * 0.9f)
-                               + Mathf.Clamp01((slope - 0.24f) * 1.8f);
+                                * Mathf.Clamp01(1f - (slope * 1.7f))
+                                * (1f - (Smooth(0.42f, 0.70f, altitude) * 0.85f));
 
-                    rock = Mathf.Max(rock, 0f);
-                    gravel = Mathf.Max(gravel, 0f);
-                    soil = Mathf.Max(soil, 0.04f);
-                    grass = Mathf.Max(grass, 0f);
+                    // التربة تقلّ مع الميل: لا تثبت على وجه جبلي حادّ
+                    float soil = ((Mathf.Clamp01((0.42f - moisture - (spotA * 0.34f) + (spotB * 0.16f)) * 1.8f) * 0.9f) + 0.14f)
+                               * Mathf.Clamp01(1f - ((slope - 0.26f) * 2.4f));
+                    soil *= 1f - (Smooth(0.38f, 0.66f, altitude) * 0.9f);
 
-                    float sum = grass + soil + rock + gravel;
+                    // ثلج القمم: لا يثبت على الوجوه شبه العمودية لأنّه ينزلق عنها
+                    float snowLine = 0.635f + (macro * 0.26f) + (spotA * 0.10f);
+                    float snow = Smooth(snowLine, snowLine + 0.115f, altitude) * (1f - Smooth(0.74f, 1.18f, slope));
+                    snow = Mathf.Max(snow, 0f);
+                    float keep = 1f - (snow * 0.93f);
+
+                    grass = Mathf.Max(grass, 0f) * keep;
+                    soil = Mathf.Max(soil, 0.03f) * keep;
+                    rock = Mathf.Max(rock, 0f) * keep;
+                    gravel = Mathf.Max(gravel, 0f) * keep;
+                    cliff = Mathf.Max(cliff, 0f) * keep;
+                    scree = Mathf.Max(scree, 0f) * keep;
+                    snow *= 1.6f;
+
+                    float sum = grass + soil + rock + gravel + cliff + scree + snow;
                     if (sum <= 1e-4f)
                     {
                         grass = 1f;
@@ -171,10 +200,20 @@ namespace Dawnkeep.EditorTools
                     map[y, x, 1] = soil / sum;
                     map[y, x, 2] = rock / sum;
                     map[y, x, 3] = gravel / sum;
+                    map[y, x, 4] = cliff / sum;
+                    map[y, x, 5] = scree / sum;
+                    map[y, x, 6] = snow / sum;
                 }
             }
 
             data.SetAlphamaps(0, 0, map);
+        }
+
+        /// <summary>تنعيم smoothstep بين حدّين — يوافق sm() في نموذج المعاينة.</summary>
+        private static float Smooth(float a, float b, float v)
+        {
+            float t = Mathf.Clamp01((v - a) / Mathf.Max(1e-5f, b - a));
+            return t * t * (3f - (2f * t));
         }
 
         /// <summary>العشب: كثافة مشتقّة من وزن طبقة العشب، ممنوع في الماء والطريق والجرف.</summary>
@@ -375,8 +414,13 @@ namespace Dawnkeep.EditorTools
                         continue;
                     }
 
+                    float altitude = (world.Height[k] - world.MinHeight) / range;
+
+                    // خطّ الشجر: الغابة تتسلّق سفح الجبل وتخفّ مع الارتفاع حتى
+                    // تنقطع دون حدّ الثلج. قطعُها عند قاع الوادي يترك جداراً أجرد.
+                    float slopeLimit = settings.TreeMaxSlope + Mathf.Clamp(((0.45f - altitude) * 0.5f), 0f, 0.14f);
                     float slope = world.SlopeAt(i, j);
-                    if (slope > settings.TreeMaxSlope)
+                    if (slope > slopeLimit)
                     {
                         continue;
                     }
@@ -389,17 +433,17 @@ namespace Dawnkeep.EditorTools
 
                     // تجمّع الغابة في بقع بدل توزّع متساوٍ ممل
                     float clump = ValueNoise.Fbm((wx * 0.0016) + 41.0, (wz * 0.0016) - 17.0, 4);
-                    float chance = Mathf.Clamp01((moisture - settings.TreeMinMoisture) * 2.2f)
-                                 * Mathf.Clamp01((clump - 0.30f) * 3.4f)
-                                 * Mathf.Clamp01(1f - (slope / settings.TreeMaxSlope));
+                    float chance = Mathf.Clamp01((moisture - settings.TreeMinMoisture) * 2.6f)
+                                 * Mathf.Clamp01((clump - 0.24f) * 3.2f)
+                                 * Mathf.Clamp01(1f - ((slope / slopeLimit) * 0.85f))
+                                 * Mathf.Clamp01(1f - ((altitude - 0.42f) / 0.24f));
 
                     if (rng.NextDouble() > chance)
                     {
                         continue;
                     }
 
-                    float altitude = (world.Height[k] - world.MinHeight) / range;
-                    bool wantConifer = altitude > 0.34f || moisture < 0.42f;
+                    bool wantConifer = altitude > 0.30f || moisture < 0.42f;
 
                     int prototype = PickPrototype(isConifer, wantConifer, rng);
                     if (prototype < 0)
@@ -414,7 +458,8 @@ namespace Dawnkeep.EditorTools
                         (wz + half) / world.WorldSize);
                     instance.prototypeIndex = prototype;
 
-                    float scale = 0.78f + ((float)rng.NextDouble() * 0.55f);
+                    float scale = (0.78f + ((float)rng.NextDouble() * 0.55f))
+                                * (1f - (Mathf.Clamp01((altitude - 0.32f) / 0.42f) * 0.34f));
                     instance.widthScale = scale * (0.92f + ((float)rng.NextDouble() * 0.18f));
                     instance.heightScale = scale;
                     instance.rotation = (float)rng.NextDouble() * Mathf.PI * 2f;

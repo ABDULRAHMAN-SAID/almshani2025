@@ -32,6 +32,9 @@ namespace Dawnkeep.EditorTools
                 new GroundSurface { Name = "soil", Draw = DrawnMaterials.SoilGround, Seed = 20260202u, NormalStrength = 2.4f },
                 new GroundSurface { Name = "rock", Draw = DrawnMaterials.RockGround, Seed = 20260303u, NormalStrength = 2.6f },
                 new GroundSurface { Name = "gravel", Draw = DrawnMaterials.GravelGround, Seed = 20260404u, NormalStrength = 2.4f },
+                new GroundSurface { Name = "cliff", Draw = DrawnMaterials.CliffRock, Seed = 20260909u, NormalStrength = 3.0f },
+                new GroundSurface { Name = "scree", Draw = DrawnMaterials.Scree, Seed = 20261010u, NormalStrength = 2.4f },
+                new GroundSurface { Name = "snow", Draw = DrawnMaterials.Snow, Seed = 20261111u, NormalStrength = 1.6f },
                 new GroundSurface { Name = "bark", Draw = DrawnMaterials.Bark, Seed = 20260505u, NormalStrength = 2.2f },
             };
         }
@@ -176,10 +179,12 @@ namespace Dawnkeep.EditorTools
         /// <summary>طبقات الأرض الأربع بترتيب ثابت: عشب، تربة، صخر، حصى نهر.</summary>
         public static TerrainLayer[] BuildTerrainLayers()
         {
-            string[] names = { "grass", "soil", "rock", "gravel" };
-            float[] tiles = { 26f, 30f, 34f, 14f };
-            float[] smooth = { 0.10f, 0.14f, 0.22f, 0.28f };
-            float[] normalScale = { 0.7f, 1.0f, 1.4f, 1.0f };
+            // سبع طبقات: عشب، تربة، صخر، حصى، جرف، حطام سفح، ثلج قمم.
+            // الثلاث الأخيرة هي ما يجعل الجبل جبلاً لا كتلة طينية واحدة.
+            string[] names = { "grass", "soil", "rock", "gravel", "cliff", "scree", "snow" };
+            float[] tiles = { 26f, 30f, 34f, 14f, 30f, 18f, 22f };
+            float[] smooth = { 0.10f, 0.14f, 0.22f, 0.28f, 0.20f, 0.24f, 0.42f };
+            float[] normalScale = { 0.7f, 1.0f, 1.4f, 1.0f, 1.6f, 1.2f, 0.6f };
 
             TerrainLayer[] layers = new TerrainLayer[names.Length];
 

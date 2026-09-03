@@ -1,18 +1,32 @@
 const clamp=(v,a,b)=>v<a?a:v>b?b:v;
-function vnoise(x,z){
+/* ═══ ضجيج تدرّجي (Perlin) بتَبْيين خماسي ودوران لكل طبقة ═══
+   الضجيج القيمي على شبكة محاذية للمحاور يترك نقشاً ماسيّاً ظاهراً في التضاريس —
+   وهو ما كان يجعل الجبال تبدو منقوشة بنسيج متكرّر. التدرّجي يزيله تماماً،
+   ودوران المجال بين الطبقات يمنع اصطفاف الطبقات على نفس المحاور. */
+function _h2(a,b){ const v=Math.sin(a*127.1+b*311.7)*43758.5453; return v-Math.floor(v); }
+function pnoise(x,z){
   const xi=Math.floor(x), zi=Math.floor(z), xf=x-xi, zf=z-zi;
-  const h=(a,b)=>{ const v=Math.sin(a*127.1+b*311.7)*43758.5453; return v-Math.floor(v); };
-  const u=xf*xf*(3-2*xf), v=zf*zf*(3-2*zf);
-  return h(xi,zi)*(1-u)*(1-v)+h(xi+1,zi)*u*(1-v)+h(xi,zi+1)*(1-u)*v+h(xi+1,zi+1)*u*v;
+  const u=xf*xf*xf*(xf*(xf*6-15)+10), v=zf*zf*zf*(zf*(zf*6-15)+10);
+  const g=(ix,iz,dx,dz)=>{ const a=_h2(ix,iz)*6.28318530718; return Math.cos(a)*dx + Math.sin(a)*dz; };
+  const n00=g(xi,zi,xf,zf), n10=g(xi+1,zi,xf-1,zf);
+  const n01=g(xi,zi+1,xf,zf-1), n11=g(xi+1,zi+1,xf-1,zf-1);
+  const a=n00*(1-u)+n10*u, b=n01*(1-u)+n11*u;
+  return (a*(1-v)+b*v)*0.72+0.5;
 }
+function vnoise(x,z){ return pnoise(x,z); }
+const _FC=Math.cos(0.6180339), _FS=Math.sin(0.6180339);
 function fbm(x,z,oct){
   let a=.5,s=0,n=0;
-  for(let i=0;i<oct;i++){ s+=vnoise(x,z)*a; n+=a; a*=.5; x=x*2.03+17.1; z=z*2.11+9.7; }
+  for(let i=0;i<oct;i++){
+    s+=pnoise(x,z)*a; n+=a; a*=.5;
+    const nx=(x*_FC - z*_FS)*2.03+17.1, nz=(x*_FS + z*_FC)*2.11+9.7;
+    x=nx; z=nz;
+  }
   return s/n;
 }
 const WORLD=3600, EDGE_R=1300;
 let KNOLL=52, LAKE=null, RIVER=null;
-let THERMAL_ITERS=55, TALUS=0.72, THERMAL_RATE=0.5;
+let THERMAL_ITERS=32, TALUS=0.82, THERMAL_RATE=0.45, ROCK_DETAIL=104;
 let BOWL_D=560, BOWL_H=52, BOWL_R=250;
 const MOBILE=false;
 const TER = { N:0, step:0, h:null, flow:null, ao:null, down:null, rdist:null, lakeLv:-1e9 };
@@ -187,7 +201,7 @@ function terLake(N, s, h, hf){
         const kk=k+NB[n];
         if(kk<0||kk>=N*N||seen[kk]) continue;
         if(n<2 && Math.abs((kk%N)-ii)!==1) continue;
-        if(hf[kk]-h[kk] < 1.2) continue;
+        if(hf[kk]-h[kk] < 0.8) continue;
         seen[kk]=1; stack[sp++]=kk;
       }
     }
@@ -423,6 +437,34 @@ function terTerrace(N, s, h, cx, cz, rInner, rOuter){
   return level;
 }
 
+
+/* تفصيل الصخر: أعراف ثانوية وأخاديد دقيقة على الميول الحادّة العالية.
+   التعرية الحرارية تُنعّم الجبل حتى يصير كتلة صمّاء — هذا يعيد له حدّته. */
+function terRockDetail(N, s, h, seed, amp){
+  const src=Float32Array.from(h);
+  const slopeOf=(i,j)=>{
+    const im=Math.max(i-1,0), ip=Math.min(i+1,N-1), jm=Math.max(j-1,0), jp=Math.min(j+1,N-1);
+    const dx=(src[j*N+ip]-src[j*N+im])/((ip-im)*s), dz=(src[jp*N+i]-src[jm*N+i])/((jp-jm)*s);
+    return Math.hypot(dx,dz);
+  };
+  let lo=1e9, hi=-1e9; for(const v of src){ if(v<lo)lo=v; if(v>hi)hi=v; }
+  const span=Math.max(1,hi-lo);
+  for(let j=1;j<N-1;j++) for(let i=1;i<N-1;i++){
+    const k=j*N+i, x=terWX(i), z=terWX(j);
+    const sl=slopeOf(i,j), alt=(src[k]-lo)/span;
+    const w=clamp((sl-0.22)/0.42,0,1)*clamp((alt-0.16)/0.30,0,1);
+    if(w<=0.01) continue;
+    // ضجيج مطويّ: يعطي أعرافاً حادّة لا نتوءات مستديرة
+    // بدون تشويه المجال تخرج الأضلاع متوازية منتظمة كتضليع صناعي
+    const qx=x+(fbm(x*0.0011+7, z*0.0011-3, 2)-0.5)*760;
+    const qz=z+(fbm(x*0.0011-9, z*0.0011+5, 2)-0.5)*760;
+    const r0=1-Math.abs(fbm(qx*0.0026-seed*3, qz*0.0026+seed*3, 4)*2-1);
+    const r1=1-Math.abs(fbm(x*0.0062+seed, z*0.0062-seed, 4)*2-1);
+    const r2=1-Math.abs(fbm(x*0.0155-seed*2, z*0.0155+seed*2, 3)*2-1);
+    h[k] += (Math.pow(r0,1.4)*0.46 + Math.pow(r1,1.5)*0.36 + Math.pow(r2,1.7)*0.18 - 0.34) * amp * w;
+  }
+}
+
 /* ── التوليد الكامل ── */
 function terGenerate(seed){
   const N = TER.N = MOBILE ? 193 : 257;
@@ -431,6 +473,7 @@ function terGenerate(seed){
   terShape(seed, N, s, h);
   terErode(seed, N, s, h);
   terThermal(N, s, h, THERMAL_ITERS, TALUS, THERMAL_RATE);
+  terRockDetail(N, s, h, seed, ROCK_DETAIL);
   const hf = terFill(N, h);
   terFlow(N, hf);
   terLake(N, s, h, hf);

@@ -102,8 +102,8 @@ function texCrack(c, x0, y0, angle, len, depth, rng){
       c.put(x+px*o, y+py*o, dark, dark, dark, (1-t)*0.85*Math.min(1,w), -(1-t)*1.6*w);
     }
     // شفة مضيئة
-    c.put(x+px*2.2, y+py*2.2, 1.18,1.18,1.18, 0.20, 0.5*w);
-    if(rng()<0.035){ texCrack(c, x, y, a+(rng()<0.5?1:-1)*(0.6+rng()*0.6), len*0.35, depth*0.7, rng); }
+    c.put(x+px*2.2, y+py*2.2, 1.06,1.05,1.02, 0.07, 0.5*w);
+    if(rng()<0.018){ texCrack(c, x, y, a+(rng()<0.5?1:-1)*(0.6+rng()*0.6), len*0.32, depth*0.7, rng); }
   }
 }
 
@@ -171,31 +171,29 @@ function drawSoilGround(size, seed){
 
 function drawRockGround(size, seed){
   const c=new TexCanvas(size), rng=texRng(seed), k=size/512;
-  texBase(c, seed, [0.243,0.231,0.212], [0.639,0.616,0.573], 2.6);
-  // طبقات: ما يجعل الصخر صخراً لا رمادياً مموّهاً
-  const bands=Math.round(14+rng()*8);
-  for(let i=0;i<bands;i++)
-    texStratum(c, rng()*size, (4+rng()*16)*k, 0.58+rng()*0.85, (14+rng()*34)*k, seed+i*57);
-  for(let i=0;i<Math.round(58*k*k);i++)
-    texCrack(c, rng()*size, rng()*size, (rng()<0.65? (rng()-0.5)*0.4 : rng()*6.28), (48+rng()*190)*k, 0.95+rng()*1.0, rng);
-  // شظايا وحوافّ مكسورة
-  for(let i=0;i<Math.round(420*k*k);i++){
-    const r=(1.6+rng()*5.5)*k, tone=0.78+rng()*0.5;
+  const P=[[0.396,0.384,0.361],[0.463,0.447,0.416],[0.325,0.325,0.322],
+           [0.494,0.467,0.427],[0.361,0.365,0.369],[0.435,0.412,0.376]];
+  texFacets(c, Math.round(3*k), seed, P, 5.0*k, 0.34, 4.2, 1.0, 0.30);        // ألواح كبيرة
+  texFacets(c, Math.round(8*k), seed+7717, P, 2.6*k, 0.26, 2.4, 0.52, 0.22);   // تكسير ثانوي
+  texFacets(c, Math.round(19*k), seed+3313, P, 1.5*k, 0.18, 1.2, 0.24, 0.16);  // حبيبات
+  // شقوق قليلة عميقة لا شبكة
+  for(let i=0;i<Math.round(4*k*k);i++)
+    texCrack(c, rng()*size, rng()*size, rng()*6.28, (60+rng()*170)*k, 1.1+rng()*0.9, rng);
+  // شظايا متناثرة
+  for(let i=0;i<Math.round(140*k*k);i++){
+    const r=(1.8+rng()*5)*k, tone=0.78+rng()*0.44;
     texPebble(c, rng()*size, rng()*size, r, r*(0.5+rng()*0.5), rng()*3.14,
-      [0.478*tone,0.463*tone,0.435*tone], rng);
+      [0.502*tone,0.494*tone,0.478*tone], rng);
   }
-  // أشنة تتجمّع في الشقوق والمنخفضات لا في بقع عشوائية
+  // أشنة في المفاصل
   const L=tNoise(9, seed+4242);
-  let hmin=1e9, hmax=-1e9;
-  for(let i=0;i<size*size;i++){ if(c.h[i]<hmin)hmin=c.h[i]; if(c.h[i]>hmax)hmax=c.h[i]; }
+  let hmin=1e9,hmax=-1e9; for(let i=0;i<size*size;i++){ if(c.h[i]<hmin)hmin=c.h[i]; if(c.h[i]>hmax)hmax=c.h[i]; }
   const span=Math.max(1e-3,hmax-hmin);
   for(let y=0;y<size;y++) for(let x=0;x<size;x++){
-    const i=y*size+x;
-    const low=1-Math.min(1,Math.max(0,(c.h[i]-hmin)/span));   // 1 في القاع
+    const i=y*size+x, low=1-Math.min(1,Math.max(0,(c.h[i]-hmin)/span));
     const t=L((x+0.5)/size,(y+0.5)/size);
-    const a=Math.min(0.42, Math.max(0,(t-0.55)*1.9) * low*low);
-    if(a<=0.01) continue;
-    c.put(x,y, 0.216,0.259,0.157, a, 0);
+    const a=Math.min(0.34, Math.max(0,(t-0.58)*1.8)*low*low);
+    if(a>0.01) c.put(x,y, 0.235,0.286,0.169, a, 0);
   }
   return c;
 }
@@ -401,6 +399,107 @@ function drawThatch(size, seed){
     const x=rng()*size, y=rng()*size, tone=0.72+rng()*0.62;
     texBlade(c, x, y, Math.PI/2+(rng()-0.5)*0.45, (10+rng()*22)*k, (0.8+rng()*0.9)*k,
       [0.545*tone,0.451*tone,0.263*tone], rng);
+  }
+  return c;
+}
+
+/* جرف صخري: طبقات داكنة حادّة الشقوق — وجه الجبل المكشوف */
+function drawCliffRock(size, seed){
+  const c=new TexCanvas(size), rng=texRng(seed), k=size/512;
+  // رمادي بارد مائل للأزرق: هذا لون الصخر المكشوف، لا الطين البنّي
+  const P=[[0.376,0.380,0.388],[0.290,0.302,0.322],[0.455,0.451,0.443],
+           [0.333,0.345,0.365],[0.243,0.255,0.278],[0.420,0.408,0.388]];
+  // ألواح أكبر وأطول: وجه الجرف مكسور إلى كتل ضخمة
+  texFacets(c, Math.round(2*k), seed, P, 7.0*k, 0.46, 6.0, 1.0, 0.34);        // كتل ضخمة
+  texFacets(c, Math.round(5*k), seed+4411, P, 3.6*k, 0.32, 3.2, 0.50, 0.24);   // تكسير ثانوي
+  texFacets(c, Math.round(13*k), seed+8823, P, 1.8*k, 0.20, 1.6, 0.26, 0.18);  // حبيبات
+  for(let i=0;i<Math.round(6*k*k);i++)
+    texCrack(c, rng()*size, rng()*size, (rng()<0.7? (rng()-0.5)*0.35 : rng()*6.28), (90+rng()*230)*k, 1.4+rng()*1.0, rng);
+  for(let i=0;i<Math.round(180*k*k);i++){
+    const r=(2.2+rng()*7)*k, tone=0.70+rng()*0.5;
+    texPebble(c, rng()*size, rng()*size, r, r*(0.42+rng()*0.5), rng()*3.14,
+      [0.435*tone,0.443*tone,0.455*tone], rng);
+  }
+  return c;
+}
+
+/* حطام السفح (طاليوس): حصى زاويّ فاتح دافئ يتراكم تحت الجروف */
+function drawScree(size, seed){
+  const c=new TexCanvas(size), rng=texRng(seed), k=size/512;
+  texBase(c, seed, [0.412,0.408,0.404], [0.588,0.584,0.576], 1.4);
+  const P=[[0.545,0.541,0.537],[0.639,0.639,0.631],[0.459,0.467,0.478],
+           [0.580,0.569,0.549],[0.494,0.502,0.518]];
+  for(let pass=0; pass<3; pass++){
+    const count=Math.round((150+pass*280)*k*k), scale=(16.0-pass*4.4);
+    for(let i=0;i<count;i++){
+      const r=(2.6+rng()*scale)*k;
+      // شظايا زاويّة: بيضويّات ممطوطة بزوايا مختلفة
+      texPebble(c, rng()*size, rng()*size, r, r*(0.34+rng()*0.42), rng()*3.14, P[(rng()*P.length)|0], rng);
+    }
+  }
+  return c;
+}
+
+/* ═══ وجوه صخرية (خلايا فورونوي): الصخر مكسور إلى ألواح غير منتظمة
+       بمفاصل غائرة وحوافّ مضيئة — هذا شكل الصخر الحقيقي، لا شبكة خطوط. ═══ */
+function texFacets(c, cellsX, seed, palette, jointW, bevel, hAmp, alpha, toneSpread){
+  const n=c.n, g=Math.max(2,cellsX), cell=n/g, rng=texRng(seed);
+  const ox=new Float32Array(g*g), oy=new Float32Array(g*g),
+        tn=new Float32Array(g*g), tp=new Int32Array(g*g);
+  for(let i=0;i<g*g;i++){ ox[i]=0.12+rng()*0.76; oy[i]=0.12+rng()*0.76;
+    const ts=(toneSpread===undefined)?0.62:toneSpread;
+    tn[i]=(1-ts*0.5)+rng()*ts; tp[i]=(rng()*palette.length)|0; }
+  const W=(v)=>((v%g)+g)%g;
+  for(let y=0;y<n;y++){
+    const gj=Math.floor(y/cell);
+    for(let x=0;x<n;x++){
+      const gi=Math.floor(x/cell);
+      let d1=1e9, d2=1e9, best=0, bx=0, by=0;
+      for(let dj=-1;dj<=1;dj++) for(let di=-1;di<=1;di++){
+        const a=gi+di, b=gj+dj, idx=W(b)*g+W(a);
+        const sx=(a+ox[idx])*cell, sy=(b+oy[idx])*cell;
+        const dx=x-sx, dy=y-sy, d=dx*dx+dy*dy;
+        if(d<d1){ d2=d1; d1=d; best=idx; bx=sx; by=sy; }
+        else if(d<d2){ d2=d; }
+      }
+      const e=Math.sqrt(d2)-Math.sqrt(d1);           // القرب من المفصل
+      const joint=1-Math.min(1, e/jointW);            // 1 عند المفصل
+      const col=palette[tp[best]], t=tn[best];
+      // انحدار الوجه: أعلى الوجه أفتح وأسفله أغمق فتُقرأ الكتلة
+      const face=0.86 + bevel*((by-y)/cell)*0.9;
+      const shade=(1-joint*0.72)*face*t;
+      const k=y*n+x, A=(alpha===undefined)?1:alpha;
+      c.r[k]+=(col[0]*shade-c.r[k])*A; c.g[k]+=(col[1]*shade-c.g[k])*A; c.b[k]+=(col[2]*shade-c.b[k])*A;
+      c.h[k]+=((1-joint)*hAmp - joint*hAmp*0.9 + (t-1)*hAmp*0.35 - c.h[k])*A;
+      // حافّة مضيئة على الجانب المقابل للمفصل
+      if(joint>0.55 && joint<0.9 && (y-by)<0){
+        const l=(joint-0.55)/0.35, A2=(alpha===undefined)?1:alpha;
+        c.r[k]+= (1.22-c.r[k])*l*0.22*A2; c.g[k]+=(1.19-c.g[k])*l*0.22*A2; c.b[k]+=(1.15-c.b[k])*l*0.22*A2;
+      }
+    }
+  }
+}
+
+/* ثلج القمم: سطح ناعم مذرور ببلّورات، الفجوات مزرقّة كما يفعل الضوء داخل الجليد */
+function drawSnow(size, seed){
+  const c=new TexCanvas(size), rng=texRng(seed), k=size/512;
+  texBase(c, seed, [0.855,0.878,0.918], [0.976,0.984,1.000], 0.7);
+  // كثبان صغيرة تنحتها الريح
+  const W=tNoise(5, seed+31), W2=tNoise(11, seed+77);
+  for(let y=0;y<size;y++) for(let x=0;x<size;x++){
+    const i=y*size+x, u=(x+0.5)/size, v=(y+0.5)/size;
+    const d=(W(u,v)-0.5)*1.6 + (W2(u,v)-0.5)*0.7;
+    const lit=1+d*0.10, blue=Math.max(0,-d)*0.16;
+    c.r[i]=Math.min(1,c.r[i]*lit*(1-blue*1.2));
+    c.g[i]=Math.min(1,c.g[i]*lit*(1-blue*0.5));
+    c.b[i]=Math.min(1,c.b[i]*lit*(1+blue*0.35));
+    c.h[i]+=d*1.5;
+  }
+  // بلّورات لامعة
+  for(let i=0;i<Math.round(900*k*k);i++){
+    const r=(0.9+rng()*2.0)*k;
+    texPebble(c, rng()*size, rng()*size, r, r*(0.7+rng()*0.3), rng()*3.14,
+      [0.996,0.996,1.000], rng);
   }
   return c;
 }

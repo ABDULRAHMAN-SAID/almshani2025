@@ -21,7 +21,7 @@ const { chromium } = require('playwright');
   for (const s of shots) {
     const t0 = Date.now();
     await page.evaluate(n => window.__d.shot(n), s);
-    await page.screenshot({ path: __dirname + '/upv_' + s + '.png' });
+    await page.screenshot({ timeout: 120000, path: __dirname + '/upv_' + s + '.png' });
     console.log('shot', s, ((Date.now()-t0)/1000).toFixed(1) + 's');
   }
   if (errs.length) console.log('ERRORS:', errs.slice(0,8)); else console.log('ERRORS: none');

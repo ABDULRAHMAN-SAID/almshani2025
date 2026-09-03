@@ -494,6 +494,78 @@ namespace Dawnkeep.EditorTools
                     placed++;
                 }
             }
+
+            ScatterCliffOutcrops(settings, world, prefabs, parent.transform);
+        }
+
+        /// <summary>
+        /// نتوءات الجرف: كتل صخرية ضخمة كثيفة حيث ينكشف الصخر على وجه الجبل.
+        /// بدونها يبقى الجدار سطحاً أملس بلا شكل مهما جوّدنا خامته.
+        /// </summary>
+        private static void ScatterCliffOutcrops(WorldGenSettings settings, WorldData world,
+            List<GameObject> prefabs, Transform parent)
+        {
+            float scale = settings.WorldScale;
+            System.Random rng = new System.Random((settings.Seed * 613) + 91);
+            int n = world.Resolution;
+            float half = world.WorldSize * 0.5f;
+            float range = Mathf.Max(1f, world.MaxHeight - world.MinHeight);
+            int placed = 0;
+            const int Limit = 2400;
+
+            int grid = 210;
+            float cell = world.WorldSize / grid;
+
+            for (int gy = 0; gy < grid && placed < Limit; gy++)
+            {
+                for (int gx = 0; gx < grid && placed < Limit; gx++)
+                {
+                    float wx = ((gx + (float)rng.NextDouble()) * cell) - half;
+                    float wz = ((gy + (float)rng.NextDouble()) * cell) - half;
+
+                    int i = Mathf.Clamp(Mathf.RoundToInt((wx + half) / world.Step), 0, n - 1);
+                    int j = Mathf.Clamp(Mathf.RoundToInt((wz + half) / world.Step), 0, n - 1);
+                    int k = (j * n) + i;
+
+                    float slope = world.SlopeAt(i, j);
+                    float altitude = (world.Height[k] - world.MinHeight) / range;
+                    float chance = Mathf.Clamp01((slope - 0.55f) * 1.5f)
+                                 * Mathf.Clamp01((altitude - 0.20f) / 0.35f);
+
+                    if (rng.NextDouble() > chance * 0.85f)
+                    {
+                        continue;
+                    }
+
+                    bool big = rng.NextDouble() < 0.5;
+                    // النصف الأعلى من القوالب نتوءات لا جلاميد
+                    int pick = big
+                        ? Mathf.Min(prefabs.Count - 1, (prefabs.Count / 2) + rng.Next(0, Mathf.Max(1, prefabs.Count / 2)))
+                        : rng.Next(0, Mathf.Max(1, prefabs.Count / 2));
+
+                    GameObject instance = (GameObject)PrefabUtility.InstantiatePrefab(prefabs[pick], parent);
+                    if (instance == null)
+                    {
+                        continue;
+                    }
+
+                    float y = (world.SampleSmooth(world.Height, wx, wz) * scale)
+                            - (0.4f + ((float)rng.NextDouble() * 1.1f));
+                    instance.transform.position = new Vector3(wx * scale, y, wz * scale);
+                    instance.transform.rotation = Quaternion.Euler(
+                        ((float)rng.NextDouble() - 0.5f) * 28f,
+                        (float)rng.NextDouble() * 360f,
+                        ((float)rng.NextDouble() - 0.5f) * 28f);
+
+                    float outcropScale = big
+                        ? 5.4f + ((float)rng.NextDouble() * 8.2f)
+                        : 2.2f + ((float)rng.NextDouble() * 3.4f);
+                    instance.transform.localScale = new Vector3(
+                        outcropScale, outcropScale * (0.7f + ((float)rng.NextDouble() * 0.9f)), outcropScale);
+                    instance.isStatic = true;
+                    placed++;
+                }
+            }
         }
 
         /// <summary>
@@ -620,13 +692,15 @@ namespace Dawnkeep.EditorTools
             GameObject sunObject = new GameObject("Sun");
             Light sun = sunObject.AddComponent<Light>();
             sun.type = LightType.Directional;
-            sun.color = new Color(1f, 0.947f, 0.855f);
-            sun.intensity = 1.45f;
+            sun.color = new Color(1f, 0.878f, 0.690f);
+            // شمس منخفضة قويّة: الضوء الزاحف هو ما ينمذج أضلاع الجبل بالظلّ.
+            // الشمس العالية الخافتة تُسطّح الجبل فيصير جداراً بنّياً بلا شكل.
+            sun.intensity = 1.90f;
             sun.shadows = LightShadows.Soft;
-            sun.shadowStrength = 0.82f;
-            sun.shadowBias = 0.05f;
-            sun.shadowNormalBias = 0.35f;
-            sunObject.transform.rotation = Quaternion.Euler(38f, -47f, 0f);
+            sun.shadowStrength = 0.88f;
+            sun.shadowBias = 0.04f;
+            sun.shadowNormalBias = 0.30f;
+            sunObject.transform.rotation = Quaternion.Euler(27f, -52f, 0f);
 
             Material sky = AssetDatabase.LoadAssetAtPath<Material>(SkyboxPath);
             if (sky == null)
@@ -653,16 +727,18 @@ namespace Dawnkeep.EditorTools
 
             RenderSettings.sun = sun;
             RenderSettings.ambientMode = AmbientMode.Trilight;
-            RenderSettings.ambientSkyColor = new Color(0.51f, 0.60f, 0.72f);
-            RenderSettings.ambientEquatorColor = new Color(0.44f, 0.44f, 0.41f);
-            RenderSettings.ambientGroundColor = new Color(0.24f, 0.22f, 0.19f);
-            RenderSettings.ambientIntensity = 1f;
+            // سماء زرقاء أنقى وأرض أدفأ: الفرق بينهما هو ما يفصل الوجه المضاء
+            // عن الوجه الظليل حين لا تصله الشمس مباشرة.
+            RenderSettings.ambientSkyColor = new Color(0.435f, 0.565f, 0.745f);
+            RenderSettings.ambientEquatorColor = new Color(0.412f, 0.416f, 0.400f);
+            RenderSettings.ambientGroundColor = new Color(0.212f, 0.196f, 0.169f);
+            RenderSettings.ambientIntensity = 0.82f;
 
             // ضباب هوائي: البعيد يزرقّ ويبهت — منه يأتي إحساس المسافة
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.ExponentialSquared;
             RenderSettings.fogDensity = 0.00040f;
-            RenderSettings.fogColor = new Color(0.66f, 0.72f, 0.79f);
+            RenderSettings.fogColor = new Color(0.776f, 0.835f, 0.894f);
 
             RenderSettings.reflectionIntensity = 0.85f;
             RenderSettings.defaultReflectionMode = DefaultReflectionMode.Skybox;

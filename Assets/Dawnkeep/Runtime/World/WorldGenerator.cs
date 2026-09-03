@@ -36,6 +36,9 @@ namespace Dawnkeep.World
                 Report(onProgress, "انهيار المنحدرات (تعرية حرارية)", 0.50f + (t * 0.06f));
             });
 
+            Report(onProgress, "نحت أضلاع الصخر وأخاديده", 0.56f);
+            RockDetail.Apply(settings, w);
+
             Report(onProgress, "ملء المنخفضات", 0.57f);
             float[] filled = DrainageSolver.FillDepressions(w);
 

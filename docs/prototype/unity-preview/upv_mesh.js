@@ -99,9 +99,9 @@ function buildBroadleaf(seed, height){
   const rnd=rngFrom(seed), trunk=new MB(), can=new MB();
   const br=height*0.065, phase=rnd();
   const lean=[(rnd()-0.5)*height*0.10, 0, (rnd()-0.5)*height*0.10];
-  const top=[lean[0], height*0.46, lean[2]];
+  const top=[lean[0], height*0.33, lean[2]];
   trunk.tube([0,0,0], top, br, br*0.52, 9, 1.4, 0, 0.16, phase);
-  const crownC=[top[0], height*0.74, top[2]], crownR=height*0.40;
+  const crownC=[top[0], height*0.60, top[2]], crownR=height*0.46;
   const main=4+((rnd()*3)|0);
   for(let b=0;b<main;b++){
     const a=b/main*Math.PI*2+rnd()*0.7, spread=height*(0.15+rnd()*0.12), rise=height*(0.20+rnd()*0.13);

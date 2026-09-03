@@ -16,8 +16,11 @@
 |---|---|---|
 | `grass_albedo/normal.png` | `DrawnMaterials.GrassGround` — 15 ألف عود مرسوم | أصلي — هذا المستودع |
 | `soil_albedo/normal.png` | `DrawnMaterials.SoilGround` — حصى وشقوق وجذور | أصلي |
-| `rock_albedo/normal.png` | `DrawnMaterials.RockGround` — طبقات وشقوق وأشنة | أصلي |
+| `rock_albedo/normal.png` | `DrawnMaterials.RockGround` — ألواح فورونوي بثلاثة مقاييس وأشنة في المفاصل | أصلي |
 | `gravel_albedo/normal.png` | `DrawnMaterials.GravelGround` — حصى متراكب | أصلي |
+| `cliff_albedo/normal.png` | `DrawnMaterials.CliffRock` — كتل ضخمة رمادية باردة | أصلي |
+| `scree_albedo/normal.png` | `DrawnMaterials.Scree` — شظايا زاويّة لحطام السفح | أصلي |
+| `snow_albedo/normal.png` | `DrawnMaterials.Snow` — كثبان ريح وبلّورات وفجوات مزرقّة | أصلي |
 | `bark_albedo/normal.png` | `DrawnMaterials.Bark` — أخاديد طولية وعقد | أصلي |
 | `stone_albedo/normal.png` | `BuildingMaterials.StoneWall` — مداميك ومونة | أصلي |
 | `tile_albedo/normal.png` · `tile_blue_*` | `BuildingMaterials.RoofTile` | أصلي |
