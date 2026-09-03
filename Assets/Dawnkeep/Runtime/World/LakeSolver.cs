@@ -69,10 +69,11 @@ namespace Dawnkeep.World
                         cz += z;
                         level += filled[k];
 
+                        // لا نكسر هنا: الخروج من نصف المنطقة يترك بقيّتها غير مزارة،
+                        // فتُلتقط في المسح التالي كبحيرة مقصوصة بحافّة مستقيمة.
                         if (area > s.LakeMaxCells)
                         {
                             valid = false;
-                            break;
                         }
 
                         for (int dir = 0; dir < 4; dir++)

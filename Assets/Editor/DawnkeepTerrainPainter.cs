@@ -94,7 +94,7 @@ namespace Dawnkeep.EditorTools
                     float roadDist = world.RoadDistance[k];
 
                     // صخر مكشوف حيث لا تثبت التربة
-                    float rock = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.34f, 0.78f, slope));
+                    float rock = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.36f, 0.80f, slope));
                     rock += Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.62f, 0.92f, altitude)) * 0.55f;
 
                     // حصى: ضفاف النهر، قاع البحيرة، وممرّ الطريق المدكوك
@@ -114,15 +114,15 @@ namespace Dawnkeep.EditorTools
                         gravel += 0.9f;
                     }
 
-                    // تربة عارية حيث تجفّ الأرض أو يشتدّ الميل قليلاً
-                    float soil = Mathf.Clamp01((1f - moisture) * 1.25f) + Mathf.Clamp01((slope - 0.18f) * 1.4f);
-
-                    // عشب حيث الرطوبة والميل اللطيف
-                    float grass = Mathf.Clamp01(moisture * 1.65f) * Mathf.Clamp01(1f - (slope * 1.5f));
+                    // العشب هو الغطاء الافتراضي على الأرض اللطيفة غير القاحلة —
+                    // والتربة العارية بقعٌ فيه حيث يجفّ أو يشتدّ الميل، لا العكس.
+                    float grass = Mathf.Clamp01((moisture + 0.22f) * 1.9f) * Mathf.Clamp01(1f - (slope * 1.7f));
+                    float soil = (Mathf.Clamp01((0.42f - moisture) * 1.8f) * 0.9f)
+                               + Mathf.Clamp01((slope - 0.24f) * 1.8f);
 
                     rock = Mathf.Max(rock, 0f);
                     gravel = Mathf.Max(gravel, 0f);
-                    soil = Mathf.Max(soil, 0.05f);
+                    soil = Mathf.Max(soil, 0.04f);
                     grass = Mathf.Max(grass, 0f);
 
                     float sum = grass + soil + rock + gravel;
@@ -298,10 +298,13 @@ namespace Dawnkeep.EditorTools
             System.Random rng = new System.Random(settings.Seed * 31 + 17);
 
             int target = Mathf.Max(200, settings.TreeTarget);
-            int grid = Mathf.CeilToInt(Mathf.Sqrt(target * 3f));
+
+            // شبكة مرشّحين أوسع من الهدف بكثير: أكثر من نصف الخريطة طوق جبال يُرفض على الميل،
+            // ولو ساوينا الشبكة بالهدف لتوقّف الزرع قبل أن يعمّ الخريطة.
+            int grid = Mathf.CeilToInt(Mathf.Sqrt(target * 18f));
             float cell = world.WorldSize / grid;
 
-            List<TreeInstance> instances = new List<TreeInstance>(target);
+            List<TreeInstance> pool = new List<TreeInstance>(target * 2);
 
             for (int gy = 0; gy < grid; gy++)
             {
@@ -348,9 +351,9 @@ namespace Dawnkeep.EditorTools
                     }
 
                     // تجمّع الغابة في بقع بدل توزّع متساوٍ ممل
-                    float clump = ValueNoise.Fbm(wx * 0.0016 + 41.0, wz * 0.0016 - 17.0, 4);
+                    float clump = ValueNoise.Fbm((wx * 0.0016) + 41.0, (wz * 0.0016) - 17.0, 4);
                     float chance = Mathf.Clamp01((moisture - settings.TreeMinMoisture) * 2.2f)
-                                 * Mathf.Clamp01((clump - 0.34f) * 3.1f)
+                                 * Mathf.Clamp01((clump - 0.30f) * 3.4f)
                                  * Mathf.Clamp01(1f - (slope / settings.TreeMaxSlope));
 
                     if (rng.NextDouble() > chance)
@@ -359,7 +362,7 @@ namespace Dawnkeep.EditorTools
                     }
 
                     float altitude = (world.Height[k] - world.MinHeight) / range;
-                    bool wantConifer = altitude > 0.46f || moisture < 0.34f;
+                    bool wantConifer = altitude > 0.34f || moisture < 0.42f;
 
                     int prototype = PickPrototype(isConifer, wantConifer, rng);
                     if (prototype < 0)
@@ -381,17 +384,26 @@ namespace Dawnkeep.EditorTools
                     instance.color = Color.white;
                     instance.lightmapColor = Color.white;
 
-                    instances.Add(instance);
-
-                    if (instances.Count >= target)
-                    {
-                        gy = grid;
-                        break;
-                    }
+                    pool.Add(instance);
                 }
             }
 
-            data.SetTreeInstances(instances.ToArray(), true);
+            // القصّ عشوائي على كامل الشبكة، لا توقّف عند بلوغ الهدف —
+            // وإلا امتلأ نصف الخريطة الأول بالغابة وبقي النصف الآخر أجرد.
+            if (pool.Count > target)
+            {
+                for (int i = pool.Count - 1; i > 0; i--)
+                {
+                    int j = rng.Next(0, i + 1);
+                    TreeInstance tmp = pool[i];
+                    pool[i] = pool[j];
+                    pool[j] = tmp;
+                }
+
+                pool.RemoveRange(target, pool.Count - target);
+            }
+
+            data.SetTreeInstances(pool.ToArray(), true);
         }
 
         private static int PickPrototype(List<bool> isConifer, bool wantConifer, System.Random rng)

@@ -35,6 +35,7 @@
 | `Dawnkeep_LakeSurface` | `DawnkeepWorldSceneBuilder` من خلايا البحيرة | أصلي |
 | `Dawnkeep_RiverSurface` | `DawnkeepWorldSceneBuilder` من مضلّع النهر | أصلي |
 | `Dawnkeep_TerrainData` | `DawnkeepTerrainPainter` من حقول التوليد | أصلي |
+| `docs/world_preview_seed3.png` | خريطة تحليلية مولّدة بالكود لعالم البذرة 3 | أصلي |
 
 ## الشادرات
 

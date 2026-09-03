@@ -14,7 +14,7 @@ namespace Dawnkeep.World
     {
         [Header("الشبكة")]
         [Tooltip("بذرة التوليد — نفس البذرة تعطي نفس الخريطة تماماً.")]
-        [SerializeField] private int seed = 7;
+        [SerializeField] private int seed = 3;
 
         [Tooltip("دقّة شبكة المحاكاة (يُفضّل 2^n+1). 513 توازن جيد بين التفصيل وزمن التوليد.")]
         [SerializeField] private int resolution = 513;
@@ -30,8 +30,8 @@ namespace Dawnkeep.World
 
         [Header("التضاريس المبدئية")]
         [SerializeField] private float broadHills = 78f;
-        [SerializeField] private float midHills = 29f;
-        [SerializeField] private float roughness = 7f;
+        [SerializeField] private float midHills = 38f;
+        [SerializeField] private float roughness = 10f;
         [SerializeField] private float basinTilt = 0.019f;
         [SerializeField] private float rimBase = 150f;
         [SerializeField] private float rimRidges = 440f;
@@ -59,7 +59,7 @@ namespace Dawnkeep.World
         [Tooltip("أقل عمق غمر يُعدّ خلية بحيرة.")]
         [SerializeField] private float lakeMinDepth = 1.2f;
         [SerializeField] private int lakeMinCells = 180;
-        [SerializeField] private int lakeMaxCells = 36000;
+        [SerializeField] private int lakeMaxCells = 52000;
 
         [Header("النهر")]
         [SerializeField] private float riverSearchInner = 260f;
