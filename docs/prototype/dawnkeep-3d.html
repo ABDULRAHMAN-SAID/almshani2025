@@ -312,7 +312,7 @@ const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const STAGES = [
   { id:"ash", name:"ممر الرماد", nights:6, lanes:3, laneAngles:[-Math.PI/2, Math.PI, 0], boss:"warden", accent:"#E7B344",
     nodes:{ econ:{r:70,n:8,off:.55}, def:{r:100,n:10,off:.15}, mil:{r:82,n:3,off:2.35}, special:{r:180,n:4,off:.5} },
-    grass:"#759A4A", grass2:"#87A854", grass3:"#5A7D3D", dirt:"#977951", road:"#C9AE80", roadEdge:"#AC926B",
+    grass:"#78A348", grass2:"#8CB155", grass3:"#587F39", dirt:"#977951", road:"#C9AE80", roadEdge:"#AC926B",
     rock:"#8A7A67", sand:"#CFBE92", snow:"#EEF3FA", snowLine:9999, mountTop:0x9C8B76, water:0x35667E,
     tree:[0x4A7A3A,0x5E8C42,0x7E8438], pine:0x2E5C42, trunk:0x5E4A34, mix:[.52,.45,.03],
     flowers:[0xE8C54C,0xF2ECD8,0xC8503E,0xA08AC8], mountRock:0x6E655C, cloud:0xF4F1E8,
@@ -504,7 +504,7 @@ renderer.shadowMap.type = MOBILE ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
 if(MOBILE) renderer.shadowMap.autoUpdate=false;
 renderer.outputEncoding = THREE.sRGBEncoding;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = .96;
+renderer.toneMappingExposure = 1.04;
 
 const scene = new THREE.Scene();
 scene.matrixAutoUpdate=false;
@@ -525,6 +525,99 @@ function fbm(x,z,oct){
   for(let i=0;i<oct;i++){ s+=vnoise(x,z)*a; n+=a; a*=.5; x=x*2.03+17.1; z=z*2.11+9.7; }
   return s/n;
 }
+
+/* ═══ ضجيج قابل للتبليط: القيم على الحواف متطابقة فلا يظهر خطّ وصل ═══ */
+function tileNoise(freq, seed){
+  const g=new Float32Array(freq*freq); let s=seed>>>0;
+  for(let i=0;i<freq*freq;i++){ s=(s*1664525+1013904223)>>>0; g[i]=s/4294967296; }
+  return (u,v)=>{                                   // u,v في [0,1)
+    const fx=u*freq, fy=v*freq;
+    const i0=((fx|0)%freq+freq)%freq, j0=((fy|0)%freq+freq)%freq;
+    const i1=(i0+1)%freq, j1=(j0+1)%freq;
+    let tx=fx-Math.floor(fx), ty=fy-Math.floor(fy);
+    tx=tx*tx*(3-2*tx); ty=ty*ty*(3-2*ty);
+    const a=g[j0*freq+i0], b=g[j0*freq+i1], c=g[j1*freq+i0], d=g[j1*freq+i1];
+    return (a*(1-tx)+b*tx)*(1-ty)+(c*(1-tx)+d*tx)*ty;
+  };
+}
+function tileFbm(base, oct, seed){
+  const L=[]; let amp=1, tot=0;
+  for(let o=0;o<oct;o++){ L.push({n:tileNoise(base<<o, seed+o*131), a:amp}); tot+=amp; amp*=.5; }
+  return (u,v)=>{ let s=0; for(let i=0;i<L.length;i++) s+=L[i].n(u,v)*L[i].a; return s/tot; };
+}
+/* خريطة نتوء من حقل ارتفاع دوري: الإضاءة وحدها تُظهر التفصيل بلا مضلّعات إضافية */
+function normalTex(size, hf, strength){
+  const c=document.createElement("canvas"); c.width=c.height=size;
+  const g=c.getContext("2d"), id=g.createImageData(size,size);
+  const H=new Float32Array(size*size);
+  for(let y=0;y<size;y++) for(let x=0;x<size;x++) H[y*size+x]=hf(x/size, y/size);
+  const at=(x,y)=>H[(((y%size)+size)%size)*size + (((x%size)+size)%size)];
+  for(let y=0;y<size;y++) for(let x=0;x<size;x++){
+    const dx=(at(x+1,y)-at(x-1,y))*strength, dy=(at(x,y+1)-at(x,y-1))*strength;
+    const l=Math.hypot(dx,dy,1), i=(y*size+x)*4;
+    id.data[i]=(-dx/l*.5+.5)*255; id.data[i+1]=(-dy/l*.5+.5)*255; id.data[i+2]=(1/l*.5+.5)*255; id.data[i+3]=255;
+  }
+  g.putImageData(id,0,0);
+  const t=new THREE.CanvasTexture(c);
+  t.wrapS=t.wrapT=THREE.RepeatWrapping;
+  t.anisotropy=Math.min(4, renderer.capabilities.getMaxAnisotropy());
+  return t;
+}
+/* خريطة تفصيل رمادية تُضرب في اللون: تعطي الخامة هويّتها بلا نقش صارخ */
+function detailTex(size, hf, lo, hi){
+  const c=document.createElement("canvas"); c.width=c.height=size;
+  const g=c.getContext("2d"), id=g.createImageData(size,size);
+  for(let y=0;y<size;y++) for(let x=0;x<size;x++){
+    const v=clamp(lo+(hi-lo)*hf(x/size,y/size),0,1)*255, i=(y*size+x)*4;
+    id.data[i]=id.data[i+1]=id.data[i+2]=v; id.data[i+3]=255;
+  }
+  g.putImageData(id,0,0);
+  const t=new THREE.CanvasTexture(c);
+  t.wrapS=t.wrapT=THREE.RepeatWrapping; t.encoding=THREE.sRGBEncoding;
+  t.anisotropy=Math.min(4, renderer.capabilities.getMaxAnisotropy());
+  return t;
+}
+
+/* ═══ حقول ارتفاع الخامات ═══ */
+const _tfA=tileFbm(4,5,11), _tfB=tileFbm(8,4,29), _tfC=tileFbm(16,3,53), _tfW=tileFbm(3,3,71);
+const HF = {
+  // صخر: طبقات أفقية متموّجة + شقوق + خشونة — هذا ما يجعل الجرف يُقرأ صخراً
+  rock:(u,v)=>{
+    let h=_tfA(u,v)*.55 + _tfB(u,v)*.28;
+    h += Math.sin(v*Math.PI*2*7 + _tfW(u,v)*5.5)*.14;
+    const cr=Math.abs(_tfB(u*1.3+.2,v*1.3-.1)-.5);
+    h -= Math.max(0,.075-cr)*3.4;
+    return h + _tfC(u,v)*.12;
+  },
+  // تربة: حبيبات ناعمة وكتل صغيرة
+  soil:(u,v)=> _tfB(u,v)*.5 + _tfC(u,v)*.35 + _tfA(u,v)*.15,
+  // بناء حجري: مداميك متبادلة بملاط غائر
+  stone:(u,v)=>{
+    const rows=8, cols=6, by=Math.floor(v*rows), off=(by%2)*.5;
+    const bx=u*cols+off, fx=bx-Math.floor(bx), fy=v*rows-by;
+    const edge=Math.min(fx,1-fx,fy,1-fy);
+    return Math.min(1,edge*13)*(.7+_tfB(u,v)*.5) + _tfC(u,v)*.14;
+  },
+  // خشب: عروق طولية
+  wood:(u,v)=> .5 + Math.sin(u*Math.PI*2*4 + _tfA(u,v)*7)*.22 + _tfC(u*.4,v*3)*.28,
+  // قرميد: صفوف متبادلة مقوّسة
+  tile:(u,v)=>{
+    const rows=9, cols=13, ry=Math.floor(v*rows), off=(ry%2)*.5;
+    const fx=(u*cols+off)%1, fy=v*rows-ry;
+    return 1-fy*.55-Math.pow(Math.abs(fx-.5)*2,3)*.6;
+  },
+  cloth:(u,v)=> .5+Math.sin(u*Math.PI*2*26)*.12+Math.sin(v*Math.PI*2*26)*.12+_tfC(u,v)*.2
+};
+const NM = {}, DTL = {};
+(()=>{
+  const S=MOBILE?128:256;
+  NM.rock =normalTex(S, HF.rock , 3.4); DTL.rock =detailTex(S, HF.rock , .74, 1.0);
+  NM.soil =normalTex(S, HF.soil , 1.9);
+  NM.stone=normalTex(S, HF.stone, 2.6); DTL.stone=detailTex(S, HF.stone, .78, 1.0);
+  NM.wood =normalTex(S, HF.wood , 1.7); DTL.wood =detailTex(S, HF.wood , .80, 1.0);
+  NM.tile =normalTex(S, HF.tile , 2.4); DTL.tile =detailTex(S, HF.tile , .76, 1.0);
+  NM.cloth=normalTex(S, HF.cloth, 1.1);
+})();
 
 /* خامات إجرائية (قماش/حجر/خشب/أرض) — تفاصيل عالية التردد بلا أي أصل خارجي */
 function noiseTex(size, fn, rep){
@@ -683,17 +776,27 @@ function mat(hex, opts){
   if (matCache.has(k)) return matCache.get(k);
   const o = Object.assign({color:hex, roughness:.82, metalness:.03}, opts||{});
   const tex=o.tex; delete o.tex;
+  const nrm=o.nrm, det=o.det, rp=o.rp||1, ns=o.ns===undefined?.85:o.ns;
+  delete o.nrm; delete o.det; delete o.rp; delete o.ns;
   const m = new THREE.MeshStandardMaterial(o);
   m.color = new THREE.Color(hex).convertSRGBToLinear();
   if(o.emissive!==undefined) m.emissive = new THREE.Color(o.emissive).convertSRGBToLinear();
-  /* لا خامات صورية: الأسلوب low-poly يعتمد على لون مسطّح وظلال حادة */
+  if(nrm && NM[nrm]){
+    m.normalMap = rp===1 ? NM[nrm] : NM[nrm].clone();
+    if(rp!==1){ m.normalMap.repeat.set(rp,rp); m.normalMap.needsUpdate=true; }
+    m.normalScale = new THREE.Vector2(ns,ns);
+  }
+  if(det && DTL[det]){
+    m.map = rp===1 ? DTL[det] : DTL[det].clone();
+    if(rp!==1){ m.map.repeat.set(rp,rp); m.map.needsUpdate=true; }
+  }
   matCache.set(k,m); return m;
 }
 const METAL = o => Object.assign({roughness:.42, metalness:.7, envMapIntensity:.9, flatShading:true}, o||{});
 const CLOTH = o => Object.assign({roughness:.9, metalness:0, flatShading:true}, o||{});
 const SKIN  = o => Object.assign({roughness:.62, metalness:0, flatShading:true}, o||{});
-const STONE = o => Object.assign({roughness:.92, metalness:.02, flatShading:true, tex:"stone"}, o||{});
-const WOOD  = o => Object.assign({roughness:.84, metalness:.02, flatShading:true}, o||{});
+const STONE = o => Object.assign({roughness:.92, metalness:.02, flatShading:true, nrm:"stone", det:"stone", rp:1.6, ns:.9}, o||{});
+const WOOD  = o => Object.assign({roughness:.84, metalness:.02, flatShading:true, det:"wood", rp:1.4}, o||{});
 function part(g, m, x,y,z, sx,sy,sz, rx,ry,rz){
   const o = new THREE.Mesh(g, m);
   if(sy===undefined) sy=sx;          // بُعد واحد = مقياس متساوٍ
@@ -732,9 +835,8 @@ const TREEG = {
   pineCanopy: mergeGeos([ {g:geo.cone8, m:M4(0,3.3,0, 2.3,3.6,2.3)}, {g:geo.cone8, m:M4(0,5.4,0, 1.8,3.2,1.8)},
                           {g:geo.cone8, m:M4(0,7.2,0, 1.25,2.8,1.25)} ]),
   pineTrunk: (()=>{ const g=new THREE.CylinderGeometry(.2,.42,3.4,7); g.translate(0,1.7,0); return g; })(),
-  oakCanopy: mergeGeos([ {g:geo.ico1, m:M4(0,5.4,0, 2.5,2.2,2.5)}, {g:geo.ico, m:M4(1.4,4.5,.6, 1.7,1.5,1.7)},
-                         {g:geo.ico, m:M4(-1.3,4.7,-.5, 1.8,1.6,1.8)}, {g:geo.ico, m:M4(.2,6.7,-.3, 1.6,1.4,1.6)},
-                         {g:geo.ico, m:M4(-.3,4.3,1.4, 1.5,1.3,1.5)} ]),
+  oakCanopy: mergeGeos([ {g:geo.ico, m:M4(0,5.4,0, 2.6,2.3,2.6)}, {g:geo.ico, m:M4(1.4,4.5,.6, 1.7,1.5,1.7)},
+                         {g:geo.ico, m:M4(-1.3,4.7,-.5, 1.8,1.6,1.8)}, {g:geo.ico, m:M4(.2,6.7,-.3, 1.6,1.4,1.6)} ]),
   oakTrunk: mergeGeos([ {g:new THREE.CylinderGeometry(.3,.6,4.4,7), m:M4(0,2.2,0, 1,1,1)},
                         {g:new THREE.CylinderGeometry(.12,.22,2,5), m:M4(.95,4.1,.3, 1,1,1, 0,0,-.75)},
                         {g:new THREE.CylinderGeometry(.12,.22,2,5), m:M4(-.85,4.2,-.2, 1,1,1, .3,0,.8)} ]),
@@ -1206,7 +1308,7 @@ function terGenerate(seed){
 function lakeDepth(x,z){
   if(!LAKE) return -1e9;
   const dx=x-LAKE.x, dz=z-LAKE.z;
-  if(dx*dx+dz*dz > LAKE.r*LAKE.r*4.4) return -1e9;
+  if(dx*dx+dz*dz > LAKE.r*LAKE.r*7.3) return -1e9;   // 2.7 أضعاف نصف القطر المكافئ: يسع البحيرة الممدودة
   return LAKE.level - terrainYExactRaw(x,z);
 }
 /* أقرب مسافة إلى أي طريق (بما فيه الامتداد الزخرفي نحو الجبال والوصلة إلى القلعة) */
@@ -1319,6 +1421,8 @@ function buildTerrain(cfg){
   g.setAttribute("color", new THREE.BufferAttribute(col,3));
   g.computeVertexNormals();
   const m=groundDetail(new THREE.MeshStandardMaterial({vertexColors:true, roughness:.95, metalness:0}), .16, .085);
+  m.normalMap=NM.soil.clone(); m.normalMap.repeat.set(WORLD/17, WORLD/17); m.normalMap.needsUpdate=true;
+  m.normalScale=new THREE.Vector2(.8,.8);
   const mesh=new THREE.Mesh(g,m);
   mesh.receiveShadow=true;
   return mesh;
@@ -1391,12 +1495,13 @@ function windify(m, str){
 }
 /* خصلات عشب وزهور — كثافة تُحسّس بالحياة */
 function buildGrass(cfg){
-  const N=MOBILE?4200:12000;
+  const N=MOBILE?5200:15000;
   const blade=mergeGeos([ {g:new THREE.ConeGeometry(.24,1.9,3), m:M4(0,.95,0, 1,1,1)}, {g:new THREE.ConeGeometry(.22,1.5,3), m:M4(.45,.7,.2, 1,1,1, .1,0,-.35)}, {g:new THREE.ConeGeometry(.22,1.4,3), m:M4(-.4,.65,-.25, 1,1,1, -.15,0,.4)}, {g:new THREE.ConeGeometry(.2,1.3,3), m:M4(.15,.6,-.45, 1,1,1, .35,0,.1)}, {g:new THREE.ConeGeometry(.2,1.2,3), m:M4(-.2,.55,.42, 1,1,1, -.35,0,-.15)} ]);
   const m=windify(new THREE.MeshStandardMaterial({roughness:1, metalness:0, flatShading:true}), .2);
-  m.color=lin(cfg.grass2).multiplyScalar(.84);
+  m.color=new THREE.Color(0xffffff);
   const inst=new THREE.InstancedMesh(blade,m,N);
-  const d=new THREE.Object3D(); let k=0;
+  const d=new THREE.Object3D(), gc=new THREE.Color(); let k=0;
+  const gA=lin(cfg.grass2).multiplyScalar(.80), gB=lin(cfg.grass3).multiplyScalar(.95), gD=lin(cfg.grass).multiplyScalar(1.06);
   for(let i=0;i<N*3 && k<N;i++){
     const a=rnd(0,7), r=60+Math.pow(Math.random(),1.5)*(EDGE_R-40);   // أكثف قرب القلعة حيث ينظر اللاعب
     const x=Math.cos(a)*r, z=Math.sin(a)*r;
@@ -1408,9 +1513,13 @@ function buildGrass(cfg){
     d.position.set(x, y-.15, z);
     d.rotation.set(rnd(-.12,.12), rnd(0,7), rnd(-.12,.12));
     d.scale.set(rnd(1.0,1.8), rnd(.9,1.7), rnd(1.0,1.8));
-    d.updateMatrix(); inst.setMatrixAt(k++, d.matrix);
+    d.updateMatrix(); inst.setMatrixAt(k, d.matrix);
+    const t=Math.random();                                  // خصلات فاتحة وأخرى داكنة: العشب ليس لوناً واحداً
+    gc.copy(t<.42?gA:t<.78?gB:gD).offsetHSL(rnd(-.02,.02),rnd(-.06,.06),rnd(-.07,.07));
+    inst.setColorAt(k,gc); k++;
   }
   inst.count=k; inst.castShadow=false; inst.receiveShadow=true;
+  if(inst.instanceColor) inst.instanceColor.needsUpdate=true;
   return inst;
 }
 function buildFlowers(cfg){
@@ -1452,6 +1561,8 @@ function mountainGeo(rockHex, snowHex){
 function buildMountains(cfg){
   const gm=mountainGeo(cfg.mountRock, cfg.snowLine>1000 ? (cfg.mountTop||cfg.mountRock) : cfg.snow);   // قمم صخرية مضاءة لا ثلج في الدفء
   const m=groundDetail(new THREE.MeshStandardMaterial({vertexColors:true, roughness:.97, metalness:0}), .13, .02);
+  m.normalMap=NM.rock.clone(); m.normalMap.repeat.set(7,7); m.normalMap.needsUpdate=true;
+  m.normalScale=new THREE.Vector2(1.1,1.1);
   const N=MOBILE?100:160;
   const inst=new THREE.InstancedMesh(gm,m,N);
   const d=new THREE.Object3D(), cc=new THREE.Color();
@@ -1499,12 +1610,12 @@ function buildClouds(cfg){
 
 /* بحيرة متموّجة */
 function buildWater(cfg){
-  const S=LAKE.r*3.4, SEG=MOBILE?40:64;
+  const S=LAKE.r*5.6, SEG=MOBILE?52:84;
   const g=new THREE.PlaneGeometry(S,S,SEG,SEG); g.rotateX(-Math.PI/2);
   const p=g.attributes.position;
   for(let i=0;i<p.count;i++){                            // الشاطئ يتبع خطّ الكنتور: ما ارتفع عن مستوى الماء يُدفن
     const x=p.getX(i), z=p.getZ(i);
-    if(Math.hypot(x,z) > LAKE.r*1.9 || terrainYExactRaw(LAKE.x+x, LAKE.z+z) > LAKE.level+.15) p.setY(i,-60);
+    if(Math.hypot(x,z) > LAKE.r*2.7 || terrainYExactRaw(LAKE.x+x, LAKE.z+z) > LAKE.level+.15) p.setY(i,-60);
   }
   g.userData.base=p.array.slice();
   const m=new THREE.MeshStandardMaterial({roughness:.05, metalness:.1, transparent:true, opacity:.88, envMapIntensity:1.5});
@@ -1530,7 +1641,7 @@ function updateWater(t){
   if(RIVERMESH){ RIVERMESH.material.opacity=.88+Math.sin(t*.9)*.04; }
   if(!WATER) return;
   if(MOBILE && (FRAME&1)) return;
-  if(dist2(LAKE.x,LAKE.z,G.cam.tx,G.cam.tz) > camDist*1.6+LAKE.r) return;
+  if(dist2(LAKE.x,LAKE.z,G.cam.tx,G.cam.tz) > camDist*1.6+LAKE.r*2.4) return;
   const g=WATER.geometry, p=g.attributes.position, b=g.userData.base;
   for(let i=0;i<p.count;i++){
     const y0=b[i*3+1]; if(y0<-30) continue;
@@ -1592,6 +1703,9 @@ function buildCliffRocks(cfg){
     g.computeVertexNormals(); return g; })();
   const m=new THREE.MeshStandardMaterial({roughness:.95, metalness:.02, flatShading:true});
   m.color=lin(cfg.mountRock).multiplyScalar(1.15);
+  m.normalMap=NM.rock.clone(); m.normalMap.repeat.set(2,2); m.normalMap.needsUpdate=true;
+  m.normalScale=new THREE.Vector2(1.2,1.2);
+  m.map=DTL.rock.clone(); m.map.repeat.set(2,2); m.map.needsUpdate=true;
   const inst=new THREE.InstancedMesh(rg,m,N), d=new THREE.Object3D(), cc=new THREE.Color();
   let k=0;
   const put=(x,z,s)=>{ if(k>=N) return;
@@ -1967,7 +2081,7 @@ function buildStage(idx){
   // القلعة — حجر مفصّل بأبراج وشرفات وبوابة
   const cst = new THREE.Group();
   const stone=mat(0x9A9384,STONE({emissive:0x1A150E})), stone2=mat(0x857E70,STONE({emissive:0x16120C})), stone3=mat(0xADA695,STONE({emissive:0x1C1810}));
-  const roofM=mat(0x3E8C8A,{roughness:.55,metalness:.5,flatShading:true});   // نحاس بزنجار فيروزي
+  const roofM=mat(0x3E8C8A,{roughness:.55,metalness:.5,flatShading:true,nrm:"tile",rp:2.6,ns:.7});   // نحاس بزنجار فيروزي
   // قاعدة مستديرة مدرّجة
   cst.add(part(geo.cyl, stone2, 0,.5,0, 14.5,1,14.5));
   cst.add(part(geo.cyl, stone, 0,1.25,0, 13.2,.5,13.2));
@@ -2108,7 +2222,7 @@ function mkBuilding(type, lv, branch){
   const H = lv===1?1:lv===2?1.16:1.32;
   const stone=mat(0x9A9384,STONE()), stone2=mat(0x847D6F,STONE()), stone3=mat(0xB0A896,STONE());
   const wood=mat(0x5C4228,WOOD()), wood2=mat(0x7A5A36,WOOD());
-  const thatch=mat(0xC28A3A,{roughness:.95,flatShading:true});
+  const thatch=mat(0xC28A3A,{roughness:.95,flatShading:true,nrm:"tile",det:"tile",rp:2.2,ns:.8});
   const glow=mat(0xFFC864,{emissive:0x8A5E14,roughness:.35});
 
   if(type==="cottage"){
@@ -2147,7 +2261,7 @@ function mkBuilding(type, lv, branch){
     }
     // حظيرة
     g.add(part(geo.rbox, mat(0xA6552A,{roughness:.9}), 3.4,1.6,3.4, 3.4,3.2,3.2));
-    g.add(part(geo.gable, mat(0x7A3E1E,{roughness:.9}), 3.4,4.35,3.4, 4,2.3,3.6));
+    g.add(part(geo.gable, mat(0x7A3E1E,{roughness:.9,det:"tile",rp:1.8}), 3.4,4.35,3.4, 4,2.3,3.6));
     g.add(part(geo.cyl, wood2, 3.4,5.5,3.4, .13,3.7,.13, Math.PI/2,0,0));
     g.add(part(geo.box, wood, 3.4,1.2,5.05, 1.4,2.4,.16));
     // سياج
@@ -2209,7 +2323,7 @@ function mkBuilding(type, lv, branch){
     g.add(part(geo.rbox, mat(0x6E7C58,{roughness:.92}), 0,2.3,0, 9.6,3.6,5.6));
     for(let i=-2;i<=2;i++) g.add(part(geo.box, wood, i*2.2,2.3,0, .36,3.6,5.8));
     g.add(part(geo.rbox, mat(0x4E5C3E,{roughness:.9}), 0,4.5,0, 10.4,.9,6.4));
-    g.add(part(geo.gable, mat(0x3E4A32,{roughness:.9}), 0,6.25,0, 6.8,2.6,11, 0,Math.PI/2,0));
+    g.add(part(geo.gable, mat(0x3E4A32,{roughness:.9,det:"tile",rp:2.4}), 0,6.25,0, 6.8,2.6,11, 0,Math.PI/2,0));
     g.add(part(geo.cyl, wood2, 0,7.5,0, .17,10.4,.17, 0,0,Math.PI/2));
     g.add(part(geo.box, wood2, 0,1.5,2.95, 2,3,.2));
     // رفّ أسلحة
@@ -3851,7 +3965,7 @@ function updateLighting(){
   lerpCol(sun.color, tgt.sunCol, .05);
   lerpCol(amb.color, tgt.ambCol, .05);
   lerpCol(hemi.color, night?0x6E86D8:0xC9DCF2, .05); lerpCol(hemi.groundColor, night?0x18204A:0x3C3828, .05);
-  renderer.toneMappingExposure += ((night?.78:.96)-renderer.toneMappingExposure)*.05;
+  renderer.toneMappingExposure += ((night?.82:1.04)-renderer.toneMappingExposure)*.05;
   lerpCol(scene.fog.color, tgt.fog, .05);
   const u=skyMat.uniforms;
   lerpCol(u.top.value, tgt.top, .05); lerpCol(u.hor.value, tgt.hor, .05); lerpCol(u.bot.value, tgt.bot, .05);

@@ -4,6 +4,7 @@ const { chromium } = require('playwright'); const path=require('path');
   const browser = await chromium.launch({ executablePath:'/opt/pw-browsers/chromium', args:['--no-sandbox','--disable-dev-shm-usage','--use-gl=swiftshader','--enable-unsafe-swiftshader'] });
   const page = await browser.newPage({ viewport:{width:1100,height:640} });
   const errors=[]; page.on('pageerror',e=>errors.push(e.message+' @ '+(e.stack||'').split('\n')[1]));
+  page.on('console',m=>{ if(m.type()==='error'||m.type()==='warning') console.log('CONSOLE', m.type(), m.text().slice(0,300)); });
   const t0=Date.now();
   await page.goto('file://'+path.resolve(__dirname,'t3d.html'),{waitUntil:'commit',timeout:60000}).catch(()=>{});
   await page.waitForSelector('#ovBtn',{timeout:300000});
