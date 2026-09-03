@@ -39,6 +39,12 @@ namespace Dawnkeep.World
             Report(onProgress, "نحت أضلاع الصخر وأخاديده", 0.56f);
             RockDetail.Apply(settings, w);
 
+            Report(onProgress, "شقّ مصبّ الوادي", 0.565f);
+            OutletBreach.Carve(settings, w);
+
+            Report(onProgress, "نحت حوض البحيرة", 0.568f);
+            LakeBasin.Carve(settings, w);
+
             Report(onProgress, "ملء المنخفضات", 0.57f);
             float[] filled = DrainageSolver.FillDepressions(w);
 

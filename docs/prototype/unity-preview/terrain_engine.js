@@ -27,7 +27,7 @@ function fbm(x,z,oct){
 const WORLD=3600, EDGE_R=1300;
 let KNOLL=52, LAKE=null, RIVER=null;
 let THERMAL_ITERS=32, TALUS=0.82, THERMAL_RATE=0.45, ROCK_DETAIL=104;
-let BOWL_D=560, BOWL_H=52, BOWL_R=250;
+let BOWL_D=560, BOWL_H=58, BOWL_R=192, BOWL_AT=null;
 const MOBILE=false;
 const TER = { N:0, step:0, h:null, flow:null, ao:null, down:null, rdist:null, lakeLv:-1e9 };
 function terSample(f, x, z){
@@ -465,6 +465,155 @@ function terRockDetail(N, s, h, seed, amp){
   }
 }
 
+/* شقّ المصبّ: مجرى يُحفر على **أقلّ المسارات ارتفاعاً** من أعمق نقطة في الوادي
+   إلى حافّة الخريطة.
+
+   المشكلة: الوادي كلّه منخفض مغلق — حلّ التصريف يملأه بعمق 452 وحدة، فلا يميّز
+   مستخرج البحيرات بحيرةً من غرقٍ عامّ، فتخرج الخريطة بلا ماء.
+
+   ولا ينفع اتّباع `down` على السطح المملوء: السطح المملوء **مستوٍ تماماً**، فلا
+   جار أخفض لأي خليّة، فتخرج `down = -1` ويتوقّف المشي عند أول خطوة (وهذا ما حدث).
+   ولا ينفع نحت مضيق مستقيم في الطوق: أخفض نقطة قد تكون بعيدة عنه فيبقى الماء
+   محبوساً دونه.
+
+   الحلّ: مسار «الأدنى-أعلى» (minimax) — نبدأ من حافّة الخريطة ونزحف بأولوية
+   أقلّ ارتفاع بلغناه، فيكون لكل خليّة أوطأ سرج يفصلها عن الخارج. ثم نتتبّع
+   المسار من أعمق نقطة إلى الحافّة ونحفر على طوله قاعاً هابطاً. */
+function terBreach(N, s, h){
+  // تمريرة واحدة تصرّف أعمق منخفض وحده، وفي الوادي منخفضات عدّة: بعضها يبقى
+  // مغلقاً فيتّصل بحوض البحيرة عند الفيض، فيرفض المستخرج المنطقة كلّها.
+  // نكرّر حتى يجفّ ميدان اللعب.
+  const carved=new Uint8Array(N*N);
+  for(let pass=0; pass<5; pass++){
+    if(!terBreachOnce(N, s, h, carved)) break;
+  }
+  // تنعيم المجرى: القطع بشرط `min` يترك حدّاً حادّاً كالسكّين على الضفاف.
+  // تمريرتا تنعيم على الخلايا المحفورة وحدها تحوّلانه إلى وادٍ منحوت.
+  const tmp=new Float32Array(N*N);
+  for(let it=0; it<2; it++){
+    tmp.set(h);
+    for(let j=1;j<N-1;j++) for(let i=1;i<N-1;i++){
+      const k=j*N+i;
+      if(!carved[k]) continue;
+      h[k] = (tmp[k]*4 + tmp[k-1]+tmp[k+1]+tmp[k-N]+tmp[k+N]
+              + (tmp[k-N-1]+tmp[k-N+1]+tmp[k+N-1]+tmp[k+N+1])*0.5) / 10;
+    }
+  }
+}
+function terBreachOnce(N, s, h, carved){
+  const hf = terFill(N, h);
+  let deepest=-1, dmax=0;
+  // البحث داخل ميدان اللعب وحده: منخفضات الأركان خارج الطوق لا تعني اللاعب
+  for(let k=0;k<N*N;k++){
+    const x=terWX(k%N), z=terWX((k/N)|0);
+    if(x*x+z*z > EDGE_R*EDGE_R*1.14) continue;
+    const d=hf[k]-h[k]; if(d>dmax){ dmax=d; deepest=k; }
+  }
+  if(deepest<0 || dmax<24) return false;
+
+  // زحف أولوية من الحافّة: barrier[k] = أوطأ «أعلى ارتفاع» على مسار إلى الخارج
+  const barrier=new Float32Array(N*N).fill(Infinity);
+  const parent=new Int32Array(N*N).fill(-1);
+  const done=new Uint8Array(N*N);
+  const hp=new TerHeap(N*8);
+  for(let i=0;i<N;i++) for(const k of [i, (N-1)*N+i, i*N, i*N+N-1]){
+    if(barrier[k]===Infinity){ barrier[k]=h[k]; hp.push(k, h[k]); }
+  }
+  const NB=[-1,1,-N,N];
+  while(hp.n>0){
+    const k=hp.pop();
+    if(done[k]) continue;
+    done[k]=1;
+    if(k===deepest) break;
+    const i=k%N;
+    for(let n=0;n<4;n++){
+      const kk=k+NB[n];
+      if(kk<0||kk>=N*N||done[kk]) continue;
+      if(n<2 && Math.abs((kk%N)-i)!==1) continue;
+      const cand=Math.max(barrier[k], h[kk]);
+      if(cand<barrier[kk]){ barrier[kk]=cand; parent[kk]=k; hp.push(kk, cand); }
+    }
+  }
+  if(parent[deepest]<0) return false;
+
+  // الحفر على طول المسار: القاع ينزل مع كل خطوة فلا يبقى فيه مطبّ
+  const HALF=112;
+  let k=deepest, bed=h[deepest]-3, guard=0;
+  while(k>=0 && guard++ < N*8){
+    const cx=terWX(k%N), cz=terWX((k/N)|0);
+    // الحدّ الأدنى صفر لا واحد: حصر الحفر داخل الإطار كان يترك صفّ الحافّة مرتفعاً
+    // فيقف المجرى على بُعد خليّة واحدة من المخرج ويبقى الوادي مغلقاً كما كان.
+    const i0=Math.max(0,Math.floor((cx-HALF+WORLD/2)/s)), i1=Math.min(N-1,Math.ceil((cx+HALF+WORLD/2)/s));
+    const j0=Math.max(0,Math.floor((cz-HALF+WORLD/2)/s)), j1=Math.min(N-1,Math.ceil((cz+HALF+WORLD/2)/s));
+    for(let j=j0;j<=j1;j++){ const z=terWX(j);
+      for(let i=i0;i<=i1;i++){ const x=terWX(i);
+        const d=Math.hypot(x-cx, z-cz);
+        if(d>HALF) continue;
+        const kk=j*N+i;
+        // قاع مستوٍ ثم ضفّتان ترتفعان: مجرى لا خندق بجدارين عموديين
+        const t=Math.max(0,(d-HALF*0.26)/(HALF*0.74));
+        const target = bed + t*t*46;
+        if(h[kk]>target){ h[kk]=target; carved[kk]=1; }
+      } }
+    const nk=parent[k];
+    if(nk<0) break;
+    bed -= Math.hypot(terWX(nk%N)-cx, terWX((nk/N)|0)-cz) * 0.030;
+    k=nk;
+  }
+  return true;
+}
+
+/* حوض البحيرة: منخفض **مغلق** يُنحت عمداً بعد التعرية.
+   ترك البحيرة لمصادفة التضاريس يعني خريطة بلا ماء في أغلب البذور — وقد حدث.
+   ولا يكفي حفر قعر ورفع حافّة: ميل الوادي العامّ (0.019) يهبط عبر قطر الحوض
+   أكثر ممّا ترفعه الحافّة، فيتسرّب الماء من الجهة المنخفضة. الصواب أن يُقاس
+   **أوطأ نقطة في حلقة الحافّة** ثم يُحفر القعر تحتها كلّه — عندها يكون
+   الانغلاق مضموناً هندسياً لا مرجوّاً. */
+function terLakeBasin(N, s, h, seed){
+  const ringLo=BOWL_D*1.16, ringHi=BOWL_D*1.48, outA=TER.drainA;
+  let bx=0, bz=0, bestH=1e9, found=false;
+  for(let t=0;t<720;t++){
+    const a=(t/720)*Math.PI*2;
+    // لا يُحفر في اتجاه المصبّ: هناك ينفتح الطوق فلا تنغلق حافّة
+    const da=Math.abs(((a-outA+Math.PI*3)%(Math.PI*2))-Math.PI);
+    if(da<0.95) continue;
+    for(let r=ringLo; r<=ringHi; r+=s*1.5){
+      const x=Math.cos(a)*r, z=Math.sin(a)*r;
+      if(Math.hypot(x,z) < 620) continue;                 // ساحة القلعة وحرمها يبقيان يابسين
+      const y=h[terCell(x,z)];
+      if(y<bestH){ bestH=y; bx=x; bz=z; found=true; }
+    }
+  }
+  if(!found) return;
+
+  const R=BOWL_R, RIM=R*1.54, D=BOWL_H;
+  // 1) أوطأ نقطة في حلقة الحافّة: هي التي يتسرّب منها الماء لو تجاهلناها
+  let rimMin=1e9;
+  for(let t=0;t<1440;t++){
+    const a=(t/1440)*Math.PI*2;
+    for(let r=R; r<=RIM; r+=s){
+      const y=h[terCell(bx+Math.cos(a)*r, bz+Math.sin(a)*r)];
+      if(y<rimMin) rimMin=y;
+    }
+  }
+  // 2) القعر يُخفض تحت تلك النقطة كلّه، بعمق يتلاشى نحو الشاطئ
+  for(let j=1;j<N-1;j++){ const z=terWX(j);
+    for(let i=1;i<N-1;i++){ const x=terWX(i);
+      const d=Math.hypot(x-bx, z-bz);
+      if(d>RIM) continue;
+      const k=j*N+i;
+      if(d<=R){
+        const t=d/R;
+        const target = rimMin - 1.2 - D*Math.pow(1-t*t, 1.10);
+        if(h[k]>target) h[k]=target;
+      }
+      // لا تُرفع حلقة الحافّة أبداً: رفعها يقيم سدّاً عرضياً في الوادي يحبس
+      // النهر فيغرق الحوض الأعلى كلّه — وقد حدث: 43 ألف خليّة غارقة بعمق 451.
+      // الانغلاق مضمون أصلاً لأن القعر كلّه تحت أوطأ نقطة في الحافّة الطبيعية.
+    } }
+  BOWL_AT=[bx,bz];
+}
+
 /* ── التوليد الكامل ── */
 function terGenerate(seed){
   const N = TER.N = MOBILE ? 193 : 257;
@@ -474,6 +623,8 @@ function terGenerate(seed){
   terErode(seed, N, s, h);
   terThermal(N, s, h, THERMAL_ITERS, TALUS, THERMAL_RATE);
   terRockDetail(N, s, h, seed, ROCK_DETAIL);
+  terBreach(N, s, h);
+  terLakeBasin(N, s, h, seed);
   const hf = terFill(N, h);
   terFlow(N, hf);
   terLake(N, s, h, hf);

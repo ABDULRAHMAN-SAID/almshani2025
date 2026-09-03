@@ -82,6 +82,25 @@ namespace Dawnkeep.World
         [Tooltip("تشويه المجال قبل الضجيج المطويّ. بدونه تخرج الأضلاع متوازية منتظمة كتضليع صناعي.")]
         [SerializeField] private float rockDetailWarp = 760f;
 
+        [Header("المصبّ والبحيرة")]
+        [Tooltip("عرض مجرى المصبّ المحفور نحو حافّة الخريطة.")]
+        [SerializeField] private float outletChannelWidth = 224f;
+
+        [Tooltip("ارتفاع ضفّتي المجرى فوق قاعه.")]
+        [SerializeField] private float outletBankRise = 46f;
+
+        [Tooltip("انحدار قاع المجرى لكل متر من طوله. صفر يعني قاعاً مستوياً لا يصرّف.")]
+        [SerializeField] private float outletSlope = 0.030f;
+
+        [Tooltip("عمق حوض البحيرة تحت أوطأ نقطة في حافّته. صفر = لا بحيرة محفورة.")]
+        [SerializeField] private float lakeBasinDepth = 58f;
+
+        [Tooltip("نصف قطر قعر الحوض.")]
+        [SerializeField] private float lakeBasinRadius = 192f;
+
+        [Tooltip("نصف قطر الحلقة التي يُبحث فيها عن موضع الحوض حول مركز الخريطة.")]
+        [SerializeField] private float lakeBasinRing = 560f;
+
         [Header("البحيرة")]
         [Tooltip("أقل عمق غمر يُعدّ خلية بحيرة.")]
         [SerializeField] private float lakeMinDepth = 1.2f;
@@ -172,6 +191,18 @@ namespace Dawnkeep.World
         public float RockDetailAmplitude { get { return rockDetailAmplitude; } }
 
         public float RockDetailWarp { get { return rockDetailWarp; } }
+
+        public float OutletChannelWidth { get { return outletChannelWidth; } }
+
+        public float OutletBankRise { get { return outletBankRise; } }
+
+        public float OutletSlope { get { return outletSlope; } }
+
+        public float LakeBasinDepth { get { return lakeBasinDepth; } }
+
+        public float LakeBasinRadius { get { return lakeBasinRadius; } }
+
+        public float LakeBasinRing { get { return lakeBasinRing; } }
 
         public float LakeMinDepth { get { return lakeMinDepth; } }
         public int LakeMinCells { get { return lakeMinCells; } }

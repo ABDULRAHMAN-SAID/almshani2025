@@ -68,6 +68,8 @@ namespace Almshani.EditorTools
             var camera = cameraObject.AddComponent<Camera>();
             camera.clearFlags = CameraClearFlags.Skybox;
             cameraObject.AddComponent<AudioListener>();
+            // الضباب يتبع بُعد الكاميرا فلا يبيضّ المشهد كلّما ابتعدت
+            cameraObject.AddComponent<Dawnkeep.CameraRig.DistanceFog>();
             var follow = cameraObject.AddComponent<CameraFollow>();
             follow.SetTarget(player.transform);
             cameraObject.transform.position = player.transform.position + new Vector3(0f, 9f, -9f);

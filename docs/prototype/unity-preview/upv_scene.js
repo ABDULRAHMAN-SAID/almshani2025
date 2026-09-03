@@ -697,6 +697,16 @@ function populate(cx, cz, treeR, rockR, grassR, grassN){
 }
 
 /* ═══ اللقطات ═══ */
+/* الضباب يُقاس بمضاعفات بُعد الكاميرا لا بالمتر: عند الإبعاد يتراجع تلقائياً
+   فيبقى الميدان صافياً، ولا يبقى منه إلا تدرّج المسافة على حافّة الخريطة. */
+// exp2: نسبة الضباب على مسافة d هي 1-exp(-(density·d)²).
+// المعامل 0.135 مضبوط ليعطي ~16٪ ضباباً على ثلاثة أضعاف بُعد الكاميرا
+// و~70٪ على ثمانية أضعافه: الميدان صافٍ، والعمق يبقى مقروءاً على الحافّة.
+const FOG_K = 0.135;
+function applyFog(camDist){
+  scene.fog.density = FOG_K / Math.max(120, camDist);
+  waterUniforms.fogDensity.value = scene.fog.density;
+}
 function look(target, dist, yawDeg, pitchDeg, lift, camLift){
   const yaw=yawDeg*Math.PI/180, pitch=pitchDeg*Math.PI/180;
   const ty=groundY(target[0],target[1])*SC;
@@ -711,6 +721,7 @@ function look(target, dist, yawDeg, pitchDeg, lift, camLift){
   const yawR=yaw + 0.95;
   const dist2=1000;
   sun.position.copy(t).add(new THREE.Vector3(Math.sin(yawR)*dist2, 540, Math.cos(yawR)*dist2));
+  applyFog(dist);
   const span = Math.max(180, Math.min(1500, dist*1.5));
   sun.shadow.camera.left=-span; sun.shadow.camera.right=span;
   sun.shadow.camera.top=span; sun.shadow.camera.bottom=-span;
@@ -733,38 +744,38 @@ const gatePos = [Math.cos(GATE_ANGLE)*GATE_R*0.98, Math.sin(GATE_ANGLE)*GATE_R*0
 const YAW_OUT = 90 - GA;          // الكاميرا خارج البوّابة تنظر إلى الداخل
 const SHOTS={
   mountain: ()=>{ populate(-560, 700, 1500, 1400, 260, 16000);
-                  look([-560, 700], 620, 152, 7, 60); scene.fog.density=0.00018; },
+                  look([-560, 700], 620, 152, 7, 60); },
   peaks:    ()=>{ populate(-300, 1050, 1400, 1300, 0, 0);
-                  look([-300, 1050], 760, 150, 8, 150); scene.fog.density=0.00016; },
+                  look([-300, 1050], 760, 150, 8, 150); },
   ridge:    ()=>{ populate(-420, 880, 1600, 1500, 240, 14000);
-                  look([-420, 880], 980, 168, 12, 90); scene.fog.density=0.00018; },
+                  look([-420, 880], 980, 168, 12, 90); },
   ground: ()=>{ populate(-260, 420, 520, 420, 190, 30000);
-                look([-260, 420], 92, 300, 21, 6); scene.fog.density=0.00026; },
+                look([-260, 420], 92, 300, 21, 6); },
   // زوايا مؤطَّرة: منخفضة وقريبة عند البوّابة، علوية ثلاثية الأرباع للمجمّع
   hero:   ()=>{ populate(0,0, 700, 560, 330, 18000);
-                look(gatePos, 46, YAW_OUT, 1, 16, -3); scene.fog.density=0.00033; },
+                look(gatePos, 46, YAW_OUT, 1, 16, -3); },
   aerial: ()=>{ populate(0,0, 1000, 800, 340, 15000);
-                look([0,0], 265, YAW_OUT+28, 24, 8); scene.fog.density=0.00029; },
+                look([0,0], 265, YAW_OUT+28, 24, 8); },
   tower:  ()=>{ populate(0,0, 600, 480, 300, 16000);
                 look([Math.cos(GATE_ANGLE+0.62)*GATE_R*0.95, Math.sin(GATE_ANGLE+0.62)*GATE_R*0.95],
-                     34, (GATE_ANGLE+0.62)*180/Math.PI*-1+90, 4, 14, -2); scene.fog.density=0.00034; },
+                     34, (GATE_ANGLE+0.62)*180/Math.PI*-1+90, 4, 14, -2); },
   through:()=>{ populate(0,0, 700, 560, 320, 16000);
                 look([Math.cos(GATE_ANGLE)*GATE_R*0.45, Math.sin(GATE_ANGLE)*GATE_R*0.45],
-                     46, YAW_OUT+180, 3, 5, 0); scene.fog.density=0.00034; },
+                     46, YAW_OUT+180, 3, 5, 0); },
   gate:   ()=>{ populate(0,0, 700, 560, 330, 17000);
-                look(gatePos, 52, YAW_OUT, 5); scene.fog.density=0.00034; },
+                look(gatePos, 52, YAW_OUT, 5); },
   castle: ()=>{ populate(0,0, 900, 700, 340, 15000);
-                look([0,0], 250, YAW_OUT, 15); scene.fog.density=0.00030; },
+                look([0,0], 250, YAW_OUT, 15); },
   keep:   ()=>{ populate(0,0, 700, 560, 330, 15000);
-                look([0,0], 130, YAW_OUT+40, 16); scene.fog.density=0.00032; },
+                look([0,0], 130, YAW_OUT+40, 16); },
   village:()=>{ populate(villP[0], villP[1], 700, 520, 280, 17000);
-                look(villP, 95, YAW_OUT-70, 13); scene.fog.density=0.00034; },
+                look(villP, 95, YAW_OUT-70, 13); },
   valley: ()=>{ populate(150,-260, 900, 700, 220, 12000);
-                look([150,-260], 330, 200, 18); scene.fog.density=0.00034; },
+                look([150,-260], 330, 200, 18); },
   lake:   ()=>{ populate(lakePt.x, lakePt.z, 950, 720, 230, 13000);
-                look([lakePt.x, lakePt.z], 330, 145, 8); scene.fog.density=0.00033; },
+                look([lakePt.x, lakePt.z], 330, 145, 8); },
   far:    ()=>{ populate(0,0, 1700, 1700, 0, 0);
-                look([120,60], 1150, 208, 26); scene.fog.density=0.00026; },
+                look([120,60], 1150, 208, 26); },
 };
 let ready=false;
 /* ═══ تمريرة التدرّج اللوني: هي ما يصنع «الجوّ» ═══
@@ -861,7 +872,6 @@ function blit(mat, target){
 }
 
 function render(){
-  waterUniforms.fogDensity.value = scene.fog.density;
   // اتجاه الشمس يغذّي توهّج السماء فيتّفق الأفق مع مصدر الضوء
   skyUniforms.uSunDir.value.copy(sun.position).sub(sun.target.position).normalize();
   renderer.setRenderTarget(rtScene);
@@ -884,7 +894,8 @@ window.__d = {
   setAO(v){ if(terShaderRef) terShaderRef.uniforms.uAOAmt.value=v; render(); return true; },
   setNrm(v){ if(terShaderRef) terShaderRef.uniforms.uNrmAmt.value=v; render(); return true; },
   shot(name){ (SHOTS[name]||SHOTS.far)(); render(); render(); return true; },
-  info(){ return { N, trees:treePool.length, rocks:rockPool.length, cliffs:cliffPool.length,
+  info(){ return { N, basin: BOWL_AT ? [Math.round(BOWL_AT[0]), Math.round(BOWL_AT[1])] : null,
+                   trees:treePool.length, rocks:rockPool.length, cliffs:cliffPool.length,
                    lake: LAKE?{r:Math.round(LAKE.r), level:+LAKE.level.toFixed(1)}:null,
                    river: RIVER?{pts:RIVER.pts.length, w:+RIVER.w.toFixed(1)}:null,
                    roads: routes.length, range:+(HIGH-LOW).toFixed(0) }; },

@@ -765,6 +765,10 @@ namespace Dawnkeep.EditorTools
             cameraObject.AddComponent<AudioListener>();
             DawnkeepRenderPipelineSetup.ConfigureCamera(camera);
 
+            // الضباب يتبع بُعد الكاميرا: بكثافة ثابتة يبيضّ الميدان كلّما أبعدتَ،
+            // وهنا يتراجع تلقائياً فيبقى ما تلعب عليه صافياً عند أي تقريب أو إبعاد.
+            cameraObject.AddComponent<Dawnkeep.CameraRig.DistanceFog>();
+
             RtsCameraRig rig = cameraObject.AddComponent<RtsCameraRig>();
             rig.Configure(Vector3.zero, 240f, 35f, 42f, world.WorldSize * scale * 0.42f);
 

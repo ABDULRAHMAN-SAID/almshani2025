@@ -33,6 +33,16 @@ namespace Dawnkeep.CameraRig
         [SerializeField] private float boundsRadius = 1500f;
         [SerializeField] private float pivotHeightOffset = 4f;
 
+        [Header("ملاحقة شخصية")]
+        [Tooltip("حين يُضبط، تلاحق الكاميرا هذا الهدف والمسافة تبقى كما ضبطها اللاعب.")]
+        [SerializeField] private Transform followTarget;
+
+        [Tooltip("أقصى ما يتخلّف به مركز الكاميرا عن الهدف بالمتر. بعده يُشدّ إليه فوراً فلا يخرج من الكادر.")]
+        [SerializeField] private float followMaxLag = 26f;
+
+        [Tooltip("تحريك الكاميرا يدوياً يفكّ الملاحقة تلقائياً.")]
+        [SerializeField] private bool breakFollowOnPan = true;
+
         private Transform _transform;
         private Terrain _terrain;
         private Vector3 _pivotVelocity;
@@ -72,9 +82,44 @@ namespace Dawnkeep.CameraRig
 #endif
         }
 
+        /// <summary>تلاحق الكاميرا هذا الهدف بمسافة ثابتة. مرّر null لفكّ الملاحقة.</summary>
+        public void SetFollowTarget(Transform value)
+        {
+            followTarget = value;
+        }
+
+        /// <summary>مسافة الكاميرا الحالية عن مركز نظرها — لا تتغيّر إلا بالتقريب.</summary>
+        public float Distance
+        {
+            get { return distance; }
+        }
+
         private void LateUpdate()
         {
             ReadInput();
+
+            // الملاحقة تحرّك **مركز النظر** فقط؛ المسافة تبقى كما ضبطها اللاعب،
+            // لأنّ موضع الكاميرا يُحسب دائماً من المركز بالمسافة نفسها.
+            if (followTarget != null)
+            {
+                Vector3 goal = followTarget.position;
+                Vector2 lag = new Vector2(pivot.x - goal.x, pivot.z - goal.z);
+                float lagSqr = lag.sqrMagnitude;
+
+                if (lagSqr > followMaxLag * followMaxLag)
+                {
+                    // شدّ فوري: التنعيم وحده يترك الهدف يهرب من الكادر عند الجري الطويل
+                    float k = followMaxLag / Mathf.Sqrt(lagSqr);
+                    pivot.x = goal.x + (lag.x * k);
+                    pivot.z = goal.z + (lag.y * k);
+                }
+                else
+                {
+                    float t = 1f - Mathf.Exp(-9f * Time.deltaTime);
+                    pivot.x = Mathf.Lerp(pivot.x, goal.x, t);
+                    pivot.z = Mathf.Lerp(pivot.z, goal.z, t);
+                }
+            }
 
             distance = Mathf.Clamp(distance, minDistance, maxDistance);
             pivot.y = SampleGround(pivot.x, pivot.z) + pivotHeightOffset;
@@ -207,6 +252,16 @@ namespace Dawnkeep.CameraRig
 
         private void MovePivot(float right, float forward)
         {
+            if (followTarget != null)
+            {
+                if (!breakFollowOnPan)
+                {
+                    return;
+                }
+
+                followTarget = null;
+            }
+
             float yaw = yawDegrees * Mathf.Deg2Rad;
             float sin = Mathf.Sin(yaw);
             float cos = Mathf.Cos(yaw);
