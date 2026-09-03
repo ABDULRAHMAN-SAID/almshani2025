@@ -94,6 +94,7 @@ Shader "Dawnkeep/Foliage"
                 float4 positionOS : POSITION;
                 float3 normalOS : NORMAL;
                 float2 uv : TEXCOORD0;
+                float2 windUv : TEXCOORD1;
                 float4 color : COLOR;
                 UNITY_VERTEX_INPUT_INSTANCE_ID
             };
@@ -105,6 +106,7 @@ Shader "Dawnkeep/Foliage"
                 float3 normalWS : TEXCOORD1;
                 float3 positionWS : TEXCOORD2;
                 float fogFactor : TEXCOORD3;
+                half3 tint : TEXCOORD4;
                 UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
@@ -115,9 +117,10 @@ Shader "Dawnkeep/Foliage"
                 UNITY_TRANSFER_INSTANCE_ID(input, output);
 
                 float3 positionWS = TransformObjectToWorld(input.positionOS.xyz);
-                positionWS = DawnkeepWind(positionWS, input.color.a, input.color.r);
+                positionWS = DawnkeepWind(positionWS, input.color.a, input.windUv.x);
 
                 output.positionWS = positionWS;
+                output.tint = input.color.rgb;
                 output.positionCS = TransformWorldToHClip(positionWS);
                 output.normalWS = TransformObjectToWorldNormal(input.normalOS);
                 output.uv = TRANSFORM_TEX(input.uv, _BaseMap);
@@ -142,7 +145,8 @@ Shader "Dawnkeep/Foliage"
                 half diffuse = lerp(ndl, wrapped, _Translucency);
 
                 half3 ambient = SampleSH(normalWS) * _AmbientBoost;
-                half3 color = albedo.rgb * (ambient + (mainLight.color * mainLight.shadowAttenuation * diffuse));
+                // تظليل التاج المخبوز في لون الرأس: القلب أغمق والأطراف أفتح
+                half3 color = albedo.rgb * input.tint * (ambient + (mainLight.color * mainLight.shadowAttenuation * diffuse));
 
                 color = MixFog(color, input.fogFactor);
                 return half4(color, 1.0);
@@ -180,6 +184,7 @@ Shader "Dawnkeep/Foliage"
                 float4 positionOS : POSITION;
                 float3 normalOS : NORMAL;
                 float2 uv : TEXCOORD0;
+                float2 windUv : TEXCOORD1;
                 float4 color : COLOR;
                 UNITY_VERTEX_INPUT_INSTANCE_ID
             };
@@ -198,7 +203,7 @@ Shader "Dawnkeep/Foliage"
                 UNITY_TRANSFER_INSTANCE_ID(input, output);
 
                 float3 positionWS = TransformObjectToWorld(input.positionOS.xyz);
-                positionWS = DawnkeepWind(positionWS, input.color.a, input.color.r);
+                positionWS = DawnkeepWind(positionWS, input.color.a, input.windUv.x);
                 float3 normalWS = TransformObjectToWorldNormal(input.normalOS);
 
                 #if _CASTING_PUNCTUAL_LIGHT_SHADOW
@@ -252,6 +257,7 @@ Shader "Dawnkeep/Foliage"
             {
                 float4 positionOS : POSITION;
                 float2 uv : TEXCOORD0;
+                float2 windUv : TEXCOORD1;
                 float4 color : COLOR;
                 UNITY_VERTEX_INPUT_INSTANCE_ID
             };
@@ -270,7 +276,7 @@ Shader "Dawnkeep/Foliage"
                 UNITY_TRANSFER_INSTANCE_ID(input, output);
 
                 float3 positionWS = TransformObjectToWorld(input.positionOS.xyz);
-                positionWS = DawnkeepWind(positionWS, input.color.a, input.color.r);
+                positionWS = DawnkeepWind(positionWS, input.color.a, input.windUv.x);
 
                 output.positionCS = TransformWorldToHClip(positionWS);
                 output.uv = TRANSFORM_TEX(input.uv, _BaseMap);

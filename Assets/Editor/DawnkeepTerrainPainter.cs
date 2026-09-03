@@ -122,9 +122,14 @@ namespace Dawnkeep.EditorTools
                     float riverDist = world.RiverDistance[k];
                     float roadDist = world.RoadDistance[k];
 
+                    // تبقيع: بدونه تتحوّل الأرض إلى مناطق ملساء متدرّجة تبدو طيناً
+                    float spotA = ValueNoise.Fbm((wx * 0.026) + 11.0, (wz * 0.026) - 7.0, 3) - 0.5f;
+                    float spotB = ValueNoise.Fbm((wx * 0.085) - 3.0, (wz * 0.085) + 19.0, 2) - 0.5f;
+
                     // صخر مكشوف حيث لا تثبت التربة
                     float rock = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.36f, 0.80f, slope));
                     rock += Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.62f, 0.92f, altitude)) * 0.55f;
+                    rock += Mathf.Clamp01(spotB * 0.5f) * Mathf.Clamp01((slope - 0.30f) * 2.2f);
 
                     // حصى: ضفاف النهر، قاع البحيرة، وممرّ الطريق المدكوك
                     float gravel = 0f;
@@ -145,8 +150,9 @@ namespace Dawnkeep.EditorTools
 
                     // العشب هو الغطاء الافتراضي على الأرض اللطيفة غير القاحلة —
                     // والتربة العارية بقعٌ فيه حيث يجفّ أو يشتدّ الميل، لا العكس.
-                    float grass = Mathf.Clamp01((moisture + 0.22f) * 1.9f) * Mathf.Clamp01(1f - (slope * 1.7f));
-                    float soil = (Mathf.Clamp01((0.42f - moisture) * 1.8f) * 0.9f)
+                    float grass = Mathf.Clamp01((moisture + 0.22f + (spotA * 0.30f)) * 1.9f)
+                                * Mathf.Clamp01(1f - (slope * 1.7f));
+                    float soil = (Mathf.Clamp01((0.42f - moisture - (spotA * 0.34f) + (spotB * 0.16f)) * 1.8f) * 0.9f)
                                + Mathf.Clamp01((slope - 0.24f) * 1.8f);
 
                     rock = Mathf.Max(rock, 0f);

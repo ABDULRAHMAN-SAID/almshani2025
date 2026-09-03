@@ -212,6 +212,7 @@ namespace Dawnkeep.EditorTools
             List<Vector3> vertices = new List<Vector3>();
             List<Vector3> normals = new List<Vector3>();
             List<Vector2> uvs = new List<Vector2>();
+            List<Vector2> depths = new List<Vector2>();
             List<int> triangles = new List<int>();
 
             for (int j = 0; j < n - 1; j++)
@@ -231,10 +232,10 @@ namespace Dawnkeep.EditorTools
                         continue;
                     }
 
-                    int va = GetVertex(map, vertices, normals, uvs, world, a, level, scale);
-                    int vb = GetVertex(map, vertices, normals, uvs, world, b, level, scale);
-                    int vc = GetVertex(map, vertices, normals, uvs, world, c, level, scale);
-                    int vd = GetVertex(map, vertices, normals, uvs, world, d, level, scale);
+                    int va = GetVertex(map, vertices, normals, uvs, depths, world, a, level, scale);
+                    int vb = GetVertex(map, vertices, normals, uvs, depths, world, b, level, scale);
+                    int vc = GetVertex(map, vertices, normals, uvs, depths, world, c, level, scale);
+                    int vd = GetVertex(map, vertices, normals, uvs, depths, world, d, level, scale);
 
                     triangles.Add(va);
                     triangles.Add(vd);
@@ -256,13 +257,14 @@ namespace Dawnkeep.EditorTools
             mesh.SetVertices(vertices);
             mesh.SetNormals(normals);
             mesh.SetUVs(0, uvs);
+            mesh.SetUVs(1, depths);
             mesh.SetTriangles(triangles, 0);
             mesh.RecalculateBounds();
             return mesh;
         }
 
         private static int GetVertex(Dictionary<int, int> map, List<Vector3> vertices, List<Vector3> normals,
-            List<Vector2> uvs, WorldData world, int key, float level, float scale)
+            List<Vector2> uvs, List<Vector2> depths, WorldData world, int key, float level, float scale)
         {
             int index;
             if (map.TryGetValue(key, out index))
@@ -275,9 +277,11 @@ namespace Dawnkeep.EditorTools
             float z = world.NodeToWorld(key / n);
 
             index = vertices.Count;
+            float depth = Mathf.Max(0f, (level - world.SampleSmooth(world.Height, x, z)) * scale);
             vertices.Add(new Vector3(x * scale, level * scale, z * scale));
             normals.Add(Vector3.up);
             uvs.Add(new Vector2(x * scale / 22f, z * scale / 22f));
+            depths.Add(new Vector2(depth, 0f));
             map[key] = index;
             return index;
         }
@@ -324,17 +328,18 @@ namespace Dawnkeep.EditorTools
                 }
             }
 
-            List<Vector3> vertices = new List<Vector3>(count * 2);
-            List<Vector3> normals = new List<Vector3>(count * 2);
-            List<Vector2> uvs = new List<Vector2>(count * 2);
-            List<int> triangles = new List<int>((count - 1) * 6);
+            List<Vector3> vertices = new List<Vector3>(count * 3);
+            List<Vector3> normals = new List<Vector3>(count * 3);
+            List<Vector2> uvs = new List<Vector2>(count * 3);
+            List<Vector2> depths = new List<Vector2>(count * 3);
+            List<int> triangles = new List<int>((count - 1) * 12);
             float travelled = 0f;
 
             for (int i = 0; i < count; i++)
             {
                 Vector2 prev = pts[Mathf.Max(i - 1, 0)];
                 Vector2 next = pts[Mathf.Min(i + 1, count - 1)];
-                Vector2 dir = (next - prev);
+                Vector2 dir = next - prev;
 
                 if (dir.sqrMagnitude < 1e-6f)
                 {
@@ -349,23 +354,33 @@ namespace Dawnkeep.EditorTools
                     travelled += Vector2.Distance(pts[i], pts[i - 1]);
                 }
 
+                float centreDepth = Mathf.Max(0f, (ys[i] - world.SampleSmooth(world.Height, pts[i].x, pts[i].y)) * scale);
+
                 vertices.Add(new Vector3((pts[i].x - side.x) * scale, ys[i] * scale, (pts[i].y - side.y) * scale));
+                vertices.Add(new Vector3(pts[i].x * scale, ys[i] * scale, pts[i].y * scale));
                 vertices.Add(new Vector3((pts[i].x + side.x) * scale, ys[i] * scale, (pts[i].y + side.y) * scale));
-                normals.Add(Vector3.up);
-                normals.Add(Vector3.up);
+
+                for (int k = 0; k < 3; k++)
+                {
+                    normals.Add(Vector3.up);
+                }
+
                 uvs.Add(new Vector2(0f, travelled * scale / 22f));
+                uvs.Add(new Vector2(0.5f, travelled * scale / 22f));
                 uvs.Add(new Vector2(1f, travelled * scale / 22f));
+
+                depths.Add(new Vector2(0.05f, 0f));
+                depths.Add(new Vector2(centreDepth, 0f));
+                depths.Add(new Vector2(0.05f, 0f));
             }
 
             for (int i = 0; i < count - 1; i++)
             {
-                int a = i * 2;
-                triangles.Add(a);
-                triangles.Add(a + 2);
-                triangles.Add(a + 3);
-                triangles.Add(a);
-                triangles.Add(a + 3);
-                triangles.Add(a + 1);
+                int a = i * 3;
+                triangles.Add(a); triangles.Add(a + 3); triangles.Add(a + 4);
+                triangles.Add(a); triangles.Add(a + 4); triangles.Add(a + 1);
+                triangles.Add(a + 1); triangles.Add(a + 4); triangles.Add(a + 5);
+                triangles.Add(a + 1); triangles.Add(a + 5); triangles.Add(a + 2);
             }
 
             Mesh mesh = new Mesh();
@@ -373,6 +388,7 @@ namespace Dawnkeep.EditorTools
             mesh.SetVertices(vertices);
             mesh.SetNormals(normals);
             mesh.SetUVs(0, uvs);
+            mesh.SetUVs(1, depths);
             mesh.SetTriangles(triangles, 0);
             mesh.RecalculateBounds();
             return mesh;

@@ -105,7 +105,7 @@ namespace Dawnkeep.Rendering
                     mb.AddVertex(rings[i][q],
                         new Vector3(perps[i].x * nrm.x, nrm.y, perps[i].y * nrm.x).normalized,
                         new Vector2(travels[i] * uvScale, arc[q] * uvScale),
-                        new Color(0f, 0.5f, 0.5f, 0f));
+                        new Color(1f, 1f, 1f, 0f));
                 }
             }
 
@@ -142,10 +142,10 @@ namespace Dawnkeep.Rendering
             center /= m;
             Vector3 n = new Vector3(flip ? -perp.y : perp.y, 0f, flip ? perp.x : -perp.x);
 
-            mb.AddVertex(center, n, Vector2.zero, new Color(0f, 0.5f, 0.5f, 0f));
+            mb.AddVertex(center, n, Vector2.zero, new Color(1f, 1f, 1f, 0f));
             for (int q = 0; q <= m; q++)
             {
-                mb.AddVertex(ring[q % m], n, profile[q % m] * uvScale, new Color(0f, 0.5f, 0.5f, 0f));
+                mb.AddVertex(ring[q % m], n, profile[q % m] * uvScale, new Color(1f, 1f, 1f, 0f));
             }
 
             for (int q = 0; q < m; q++)
@@ -201,7 +201,7 @@ namespace Dawnkeep.Rendering
 
                     mb.AddVertex(new Vector3(center.x + (ca * r), center.y + y, center.z + (sa * r)), n,
                         new Vector2((float)s / segments * Mathf.PI * 2f * Mathf.Max(r, 0.4f) * uvScale, arc[q] * uvScale),
-                        new Color(0f, 0.5f, 0.5f, 0f));
+                        new Color(1f, 1f, 1f, 0f));
                 }
             }
 
@@ -221,14 +221,14 @@ namespace Dawnkeep.Rendering
                 float r = profile[m - 1].x;
                 float y = profile[m - 1].y;
                 mb.AddVertex(new Vector3(center.x, center.y + y, center.z), Vector3.up, Vector2.zero,
-                    new Color(0f, 0.5f, 0.5f, 0f));
+                    new Color(1f, 1f, 1f, 0f));
 
                 for (int s = 0; s <= segments; s++)
                 {
                     float a = (float)s / segments * Mathf.PI * 2f;
                     mb.AddVertex(new Vector3(center.x + (Mathf.Cos(a) * r), center.y + y, center.z + (Mathf.Sin(a) * r)),
                         Vector3.up, new Vector2(Mathf.Cos(a) * r * uvScale, Mathf.Sin(a) * r * uvScale),
-                        new Color(0f, 0.5f, 0.5f, 0f));
+                        new Color(1f, 1f, 1f, 0f));
                 }
 
                 for (int s = 0; s < segments; s++)
@@ -298,7 +298,7 @@ namespace Dawnkeep.Rendering
                     nrm.Normalize();
                     mb.AddVertex(new Vector3(p.x, ys[l], p.y), new Vector3(nrm.x, 0f, nrm.y),
                         new Vector2((perim[i] + uOffset) * uvScale, ys[l] * uvScale),
-                        new Color(0f, 0.5f, 0.5f, 0f));
+                        new Color(1f, 1f, 1f, 0f));
                 }
             }
 
@@ -322,13 +322,13 @@ namespace Dawnkeep.Rendering
 
             topCenter /= m;
             mb.AddVertex(new Vector3(topCenter.x, ys[3], topCenter.y), Vector3.up, Vector2.zero,
-                new Color(0f, 0.5f, 0.5f, 0f));
+                new Color(1f, 1f, 1f, 0f));
 
             for (int i = 0; i <= m; i++)
             {
                 Vector2 p = shrunk[i % m];
                 mb.AddVertex(new Vector3(p.x, ys[3], p.y), Vector3.up,
-                    new Vector2(p.x * uvScale, p.y * uvScale), new Color(0f, 0.5f, 0.5f, 0f));
+                    new Vector2(p.x * uvScale, p.y * uvScale), new Color(1f, 1f, 1f, 0f));
             }
 
             for (int i = 0; i < m; i++)
@@ -372,7 +372,7 @@ namespace Dawnkeep.Rendering
                         mb.AddVertex(new Vector3(wx, spring.y + pts[p].y, wz),
                             new Vector3(Mathf.Cos(am) * co, Mathf.Sin(am), Mathf.Cos(am) * si).normalized,
                             new Vector2((pts[p].x + radius) * uvScale, pts[p].y * uvScale),
-                            new Color(0f, 0.5f, 0.5f, 0f));
+                            new Color(1f, 1f, 1f, 0f));
                     }
                 }
 

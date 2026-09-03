@@ -220,7 +220,7 @@ function drawBarkTexture(size, seed){
   const c=new TexCanvas(size), rng=texRng(seed), k=size/512;
   texBase(c, seed, [0.161,0.129,0.094], [0.384,0.318,0.235], 1.4);
   // أخاديد رأسية: اللحاء شقوق طولية لا بقع
-  for(let i=0;i<Math.round(150*k*k);i++){
+  for(let i=0;i<Math.round(230*k*k);i++){
     const x=rng()*size;
     let y=rng()*size;
     const len=(60+rng()*260)*k, depth=0.5+rng()*0.9;

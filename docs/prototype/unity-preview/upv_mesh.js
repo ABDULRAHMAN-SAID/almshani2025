@@ -1,7 +1,10 @@
 /* ═══ منفذ MeshBuilder + TreeMeshFactory + RockMeshFactory إلى Three.js ═══ */
-function MB(){ this.p=[]; this.n=[]; this.u=[]; this.c=[]; this.t=[]; }
-MB.prototype.v=function(px,py,pz, nx,ny,nz, u,v, cr,ca){
-  this.p.push(px,py,pz); this.n.push(nx,ny,nz); this.u.push(u,v); this.c.push(cr,0.5,0.5,ca);
+function MB(){ this.p=[]; this.n=[]; this.u=[]; this.u2=[]; this.c=[]; this.t=[]; }
+MB.prototype.v=function(px,py,pz, nx,ny,nz, u,v, phase,sway, shade){
+  const sh = (shade===undefined) ? 1 : shade;
+  this.p.push(px,py,pz); this.n.push(nx,ny,nz); this.u.push(u,v);
+  this.u2.push(phase||0, 0);
+  this.c.push(sh, sh, sh, sway||0);
   return (this.p.length/3)-1;
 };
 MB.prototype.quad=function(a,b,c,d){ this.t.push(a,b,c, a,c,d); };
@@ -20,13 +23,13 @@ MB.prototype.tube=function(from,to,r0,r1,sides,uvScale,sway0,sway1,phase){
     for(let i=0;i<=sides;i++){
       const a=i/sides*Math.PI*2, ca=Math.cos(a), sa=Math.sin(a);
       const ox=sx*ca+ux*sa, oy=sy*ca+uy*sa, oz=sz*ca+uz*sa;
-      this.v(cx+ox*r, cy+oy*r, cz+oz*r, ox,oy,oz, i/sides*uvScale, ring?len*uvScale*0.25:0, phase, sw);
+      this.v(cx+ox*r, cy+oy*r, cz+oz*r, ox,oy,oz, i/sides*(2*Math.PI*Math.max(r,0.05))*uvScale, (ring?len:0)*uvScale, phase, sw);
     }
   }
   const stride=sides+1;
   for(let i=0;i<sides;i++) this.quad(start+i, start+i+1, start+stride+i+1, start+stride+i);
 };
-MB.prototype.card=function(c, right, up, w, h, sway, phase){
+MB.prototype.card=function(c, right, up, w, h, sway, phase, shade){
   const nx=right[1]*up[2]-right[2]*up[1], ny=right[2]*up[0]-right[0]*up[2], nz=right[0]*up[1]-right[1]*up[0];
   const nl=Math.hypot(nx,ny,nz)||1;
   const hw=[right[0]*w*0.5, right[1]*w*0.5, right[2]*w*0.5];
@@ -34,11 +37,11 @@ MB.prototype.card=function(c, right, up, w, h, sway, phase){
   const P=(sx,sy)=>[c[0]+hw[0]*sx+hh[0]*sy, c[1]+hw[1]*sx+hh[1]*sy, c[2]+hw[2]*sx+hh[2]*sy];
   const s=this.p.length/3;
   const q=[[-1,-1,0,0],[1,-1,1,0],[1,1,1,1],[-1,1,0,1]];
-  for(const [sx,sy,u,v] of q){ const p=P(sx,sy); this.v(p[0],p[1],p[2], nx/nl,ny/nl,nz/nl, u,v, phase, sway); }
+  for(const [sx,sy,u,v] of q){ const p=P(sx,sy); this.v(p[0],p[1],p[2], nx/nl,ny/nl,nz/nl, u,v, phase, sway, shade); }
   this.quad(s,s+1,s+2,s+3);
   const b=this.p.length/3;
   const q2=[[-1,-1,1,0],[-1,1,1,1],[1,1,0,1],[1,-1,0,0]];
-  for(const [sx,sy,u,v] of q2){ const p=P(sx,sy); this.v(p[0],p[1],p[2], -nx/nl,-ny/nl,-nz/nl, u,v, phase, sway); }
+  for(const [sx,sy,u,v] of q2){ const p=P(sx,sy); this.v(p[0],p[1],p[2], -nx/nl,-ny/nl,-nz/nl, u,v, phase, sway, shade); }
   this.quad(b,b+1,b+2,b+3);
 };
 MB.prototype.blob=function(c, radii, rings, segs, rough, seed){
@@ -65,6 +68,7 @@ MB.prototype.geo=function(recalc){
   g.setAttribute('position', new THREE.Float32BufferAttribute(this.p,3));
   g.setAttribute('normal', new THREE.Float32BufferAttribute(this.n,3));
   g.setAttribute('uv', new THREE.Float32BufferAttribute(this.u,2));
+  g.setAttribute('uv2', new THREE.Float32BufferAttribute(this.u2,2));
   g.setAttribute('color', new THREE.Float32BufferAttribute(this.c,4));
   g.setIndex(this.t);
   if(recalc) g.computeVertexNormals();
@@ -72,37 +76,53 @@ MB.prototype.geo=function(recalc){
   return g;
 };
 function rngFrom(seed){ let s=(seed>>>0)||1; return ()=>{ s=(s*1664525+1013904223)>>>0; return (s>>>8)/16777216; }; }
-function leafCards(mb, rnd, c, size, count, sway, phase){
+function leafCards(mb, rnd, c, size, count, sway, phase, ctr, crownR){
   for(let i=0;i<count;i++){
     const yaw=rnd()*Math.PI*2, pitch=(rnd()-0.5)*0.9;
     const right=[Math.cos(yaw),0,Math.sin(yaw)];
     const up=[-Math.sin(yaw)*Math.sin(pitch), Math.cos(pitch), Math.cos(yaw)*Math.sin(pitch)];
-    const j=[(rnd()-0.5)*size*0.45,(rnd()-0.5)*size*0.35,(rnd()-0.5)*size*0.45];
-    const sc=size*(0.75+rnd()*0.5);
-    mb.card([c[0]+j[0],c[1]+j[1],c[2]+j[2]], right, up, sc, sc*0.82, sway, phase+rnd()*0.4);
+    const j=[(rnd()-0.5)*size*0.85,(rnd()-0.5)*size*0.62,(rnd()-0.5)*size*0.85];
+    const px=c[0]+j[0], py=c[1]+j[1], pz=c[2]+j[2];
+    // ظلّ التاج: ما قرب من قلب الشجرة أغمق، وما علا أفتح — هكذا تُقرأ التيجان
+    let sh=1;
+    if(ctr){
+      const dx=px-ctr[0], dy=py-ctr[1], dz=pz-ctr[2];
+      const d=Math.sqrt(dx*dx+dy*dy+dz*dz)/(crownR||1);
+      sh = 0.34 + 0.58*Math.min(1, Math.pow(Math.max(0,d), 0.85));
+      sh *= 0.86 + 0.28*Math.min(1, Math.max(0, (dy/(crownR||1))*0.9+0.5));
+    }
+    const sc=size*(0.55+rnd()*0.42);
+    mb.card([px,py,pz], right, up, sc, sc*0.86, sway, phase+rnd()*0.4, Math.min(0.94, sh));
   }
 }
 function buildBroadleaf(seed, height){
   const rnd=rngFrom(seed), trunk=new MB(), can=new MB();
   const br=height*0.065, phase=rnd();
   const lean=[(rnd()-0.5)*height*0.10, 0, (rnd()-0.5)*height*0.10];
-  const top=[lean[0], height*0.48, lean[2]];
-  trunk.tube([0,0,0], top, br, br*0.55, 8, 1.4, 0, 0.16, phase);
+  const top=[lean[0], height*0.46, lean[2]];
+  trunk.tube([0,0,0], top, br, br*0.52, 9, 1.4, 0, 0.16, phase);
+  const crownC=[top[0], height*0.74, top[2]], crownR=height*0.40;
   const main=4+((rnd()*3)|0);
   for(let b=0;b<main;b++){
-    const a=b/main*Math.PI*2+rnd()*0.7, spread=height*(0.16+rnd()*0.12), rise=height*(0.20+rnd()*0.14);
+    const a=b/main*Math.PI*2+rnd()*0.7, spread=height*(0.15+rnd()*0.12), rise=height*(0.20+rnd()*0.13);
     const tip=[top[0]+Math.cos(a)*spread, top[1]+rise, top[2]+Math.sin(a)*spread];
-    trunk.tube(top, tip, br*0.5, br*0.22, 6, 1.2, 0.16, 0.55, phase);
+    trunk.tube(top, tip, br*0.52, br*0.22, 7, 1.2, 0.16, 0.55, phase);
     const twigs=3+((rnd()*3)|0);
     for(let t=0;t<twigs;t++){
       const ta=a+(rnd()-0.5)*1.7, tl=height*(0.09+rnd()*0.09);
-      const tt=[tip[0]+Math.cos(ta)*tl, tip[1]+height*(0.05+rnd()*0.10), tip[2]+Math.sin(ta)*tl];
-      trunk.tube(tip, tt, br*0.2, br*0.08, 5, 1, 0.55, 0.9, phase);
-      leafCards(can, rnd, tt, height*(0.30+rnd()*0.14), 4, 0.95, phase);
-      const mid=[(tip[0]+tt[0])*0.5, (tip[1]+tt[1])*0.5, (tip[2]+tt[2])*0.5];
-      leafCards(can, rnd, mid, height*0.26, 2, 0.85, phase);
+      const tt=[tip[0]+Math.cos(ta)*tl, tip[1]+height*(0.04+rnd()*0.09), tip[2]+Math.sin(ta)*tl];
+      trunk.tube(tip, tt, br*0.2, br*0.07, 5, 1, 0.55, 0.9, phase);
+      leafCards(can, rnd, tt, height*0.155, 7, 0.95, phase, crownC, crownR);
     }
-    leafCards(can, rnd, tip, height*0.34, 3, 0.75, phase);
+    leafCards(can, rnd, tip, height*0.145, 4, 0.75, phase, crownC, crownR);
+  }
+  // قشرة التاج: بطاقات على سطح كرة مفلطحة فيصير للشجرة صورة ظلّية مستديرة
+  const shell=Math.round(46+rnd()*18);
+  for(let i=0;i<shell;i++){
+    const u=rnd()*2-1, th=rnd()*Math.PI*2, r2=Math.sqrt(Math.max(0,1-u*u));
+    const rr=crownR*(0.72+rnd()*0.30);
+    const p=[crownC[0]+Math.cos(th)*r2*rr, crownC[1]+u*rr*0.72, crownC[2]+Math.sin(th)*r2*rr];
+    leafCards(can, rnd, p, height*0.135, 1, 0.95, phase, crownC, crownR);
   }
   return {trunk:trunk.geo(false), canopy:can.geo(false), height};
 }
@@ -121,11 +141,11 @@ function buildConifer(seed, height){
       const root=[top[0]*t, y, top[2]*t];
       const tip=[root[0]+Math.cos(ang)*radius, root[1]-height*0.03, root[2]+Math.sin(ang)*radius];
       trunk.tube(root, tip, br*0.16, br*0.05, 5, 1, sway*0.5, sway, phase);
-      leafCards(can, rnd, [root[0]+(tip[0]-root[0])*0.62, root[1]+(tip[1]-root[1])*0.62, root[2]+(tip[2]-root[2])*0.62], radius*1.6, 3, sway, phase);
-      leafCards(can, rnd, [root[0]+(tip[0]-root[0])*0.30, root[1]+(tip[1]-root[1])*0.30, root[2]+(tip[2]-root[2])*0.30], radius*1.1, 1, sway*0.8, phase);
+      leafCards(can, rnd, [root[0]+(tip[0]-root[0])*0.62, root[1]+(tip[1]-root[1])*0.62, root[2]+(tip[2]-root[2])*0.62], radius*0.95, 5, sway, phase, [top[0]*0.5, height*0.5, top[2]*0.5], height*0.42);
+      leafCards(can, rnd, [root[0]+(tip[0]-root[0])*0.32, root[1]+(tip[1]-root[1])*0.32, root[2]+(tip[2]-root[2])*0.32], radius*0.72, 2, sway*0.8, phase, [top[0]*0.5, height*0.5, top[2]*0.5], height*0.42);
     }
   }
-  leafCards(can, rnd, [top[0], height*0.94, top[2]], height*0.14, 2, 0.95, phase);
+  leafCards(can, rnd, [top[0], height*0.94, top[2]], height*0.10, 4, 0.95, phase, [top[0]*0.5, height*0.5, top[2]*0.5], height*0.42);
   return {trunk:trunk.geo(false), canopy:can.geo(false), height};
 }
 function buildBoulder(seed, size){

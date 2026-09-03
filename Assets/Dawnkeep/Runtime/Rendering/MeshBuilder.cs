@@ -12,6 +12,7 @@ namespace Dawnkeep.Rendering
         private readonly List<Vector3> _vertices = new List<Vector3>();
         private readonly List<Vector3> _normals = new List<Vector3>();
         private readonly List<Vector2> _uvs = new List<Vector2>();
+        private readonly List<Vector2> _uv2 = new List<Vector2>();
         private readonly List<Color> _colors = new List<Color>();
         private readonly List<int> _triangles = new List<int>();
 
@@ -20,11 +21,21 @@ namespace Dawnkeep.Rendering
             get { return _vertices.Count; }
         }
 
+        /// <summary>
+        /// لون الرأس يحمل التظليل (rgb) ووزن التمايل (a)، وقناة UV الثانية تحمل
+        /// طور الريح. هكذا يقرأ الشادر التظليل والريح معاً بلا سمات إضافية.
+        /// </summary>
         public void AddVertex(Vector3 position, Vector3 normal, Vector2 uv, Color color)
+        {
+            AddVertex(position, normal, uv, Vector2.zero, color);
+        }
+
+        public void AddVertex(Vector3 position, Vector3 normal, Vector2 uv, Vector2 uv2, Color color)
         {
             _vertices.Add(position);
             _normals.Add(normal);
             _uvs.Add(uv);
+            _uv2.Add(uv2);
             _colors.Add(color);
         }
 
@@ -72,8 +83,10 @@ namespace Dawnkeep.Rendering
                     AddVertex(
                         center + (offset * radius),
                         offset,
-                        new Vector2((float)i / sides * uvScale, ring == 0 ? 0f : length * uvScale * 0.25f),
-                        new Color(phase, 0.5f, 0.5f, sway));
+                        new Vector2((float)i / sides * (2f * Mathf.PI * Mathf.Max(radius, 0.05f)) * uvScale,
+                            (ring == 0 ? 0f : length) * uvScale),
+                        new Vector2(phase, 0f),
+                        new Color(1f, 1f, 1f, sway));
                 }
             }
 
@@ -92,24 +105,31 @@ namespace Dawnkeep.Rendering
         public void AddCard(Vector3 center, Vector3 right, Vector3 up, float width, float height,
             float sway, float phase)
         {
+            AddCard(center, right, up, width, height, sway, phase, 1f);
+        }
+
+        public void AddCard(Vector3 center, Vector3 right, Vector3 up, float width, float height,
+            float sway, float phase, float shade)
+        {
             Vector3 normal = Vector3.Normalize(Vector3.Cross(right, up));
             Vector3 hw = right * (width * 0.5f);
             Vector3 hh = up * (height * 0.5f);
 
             int start = _vertices.Count;
-            Color c = new Color(phase, 0.5f, 0.5f, sway);
+            Color c = new Color(shade, shade, shade, sway);
+            Vector2 wind = new Vector2(phase, 0f);
 
-            AddVertex(center - hw - hh, normal, new Vector2(0f, 0f), c);
-            AddVertex(center + hw - hh, normal, new Vector2(1f, 0f), c);
-            AddVertex(center + hw + hh, normal, new Vector2(1f, 1f), c);
-            AddVertex(center - hw + hh, normal, new Vector2(0f, 1f), c);
+            AddVertex(center - hw - hh, normal, new Vector2(0f, 0f), wind, c);
+            AddVertex(center + hw - hh, normal, new Vector2(1f, 0f), wind, c);
+            AddVertex(center + hw + hh, normal, new Vector2(1f, 1f), wind, c);
+            AddVertex(center - hw + hh, normal, new Vector2(0f, 1f), wind, c);
             AddQuad(start, start + 1, start + 2, start + 3);
 
             int back = _vertices.Count;
-            AddVertex(center - hw - hh, -normal, new Vector2(1f, 0f), c);
-            AddVertex(center - hw + hh, -normal, new Vector2(1f, 1f), c);
-            AddVertex(center + hw + hh, -normal, new Vector2(0f, 1f), c);
-            AddVertex(center + hw - hh, -normal, new Vector2(0f, 0f), c);
+            AddVertex(center - hw - hh, -normal, new Vector2(1f, 0f), wind, c);
+            AddVertex(center - hw + hh, -normal, new Vector2(1f, 1f), wind, c);
+            AddVertex(center + hw + hh, -normal, new Vector2(0f, 1f), wind, c);
+            AddVertex(center + hw - hh, -normal, new Vector2(0f, 0f), wind, c);
             AddQuad(back, back + 1, back + 2, back + 3);
         }
 
@@ -147,7 +167,7 @@ namespace Dawnkeep.Rendering
                         + (Mathf.Sin((unit.y * 5.3f) + offsets[2]) * Mathf.Cos((unit.x * 4.1f) + offsets[3]) * roughness * 0.5f);
 
                     Vector3 p = new Vector3(unit.x * radii.x, unit.y * radii.y, unit.z * radii.z) * bump;
-                    AddVertex(center + p, unit, new Vector2(u * 2f, v * 2f), new Color(0f, 0.5f, 0.5f, 0f));
+                    AddVertex(center + p, unit, new Vector2(u * 2f, v * 2f), new Color(1f, 1f, 1f, 0f));
                 }
             }
 
@@ -209,7 +229,7 @@ namespace Dawnkeep.Rendering
                 for (int i = 0; i < 4; i++)
                 {
                     Vector3 p = Rotate(faces[f][i], co, si);
-                    AddVertex(center + p, n, uv[i], new Color(0f, 0.5f, 0.5f, 0f));
+                    AddVertex(center + p, n, uv[i], new Color(1f, 1f, 1f, 0f));
                 }
 
                 AddQuad(start, start + 1, start + 2, start + 3);
@@ -237,7 +257,7 @@ namespace Dawnkeep.Rendering
                         new Vector3(baseCenter.x + (ca * r), y, baseCenter.z + (sa * r)),
                         new Vector3(ca, 0f, sa),
                         new Vector2((float)i / segments * circumference * uvScale, (ring == 1 ? height : 0f) * uvScale),
-                        new Color(0f, 0.5f, 0.5f, 0f));
+                        new Color(1f, 1f, 1f, 0f));
                 }
             }
 
@@ -251,7 +271,7 @@ namespace Dawnkeep.Rendering
             {
                 int capStart = VertexCount;
                 AddVertex(new Vector3(baseCenter.x, baseCenter.y + height, baseCenter.z), Vector3.up,
-                    Vector2.zero, new Color(0f, 0.5f, 0.5f, 0f));
+                    Vector2.zero, new Color(1f, 1f, 1f, 0f));
 
                 for (int i = 0; i <= segments; i++)
                 {
@@ -261,7 +281,7 @@ namespace Dawnkeep.Rendering
                             baseCenter.z + (Mathf.Sin(a) * radiusTop)),
                         Vector3.up,
                         new Vector2(Mathf.Cos(a) * radiusTop * uvScale, Mathf.Sin(a) * radiusTop * uvScale),
-                        new Color(0f, 0.5f, 0.5f, 0f));
+                        new Color(1f, 1f, 1f, 0f));
                 }
 
                 for (int i = 0; i < segments; i++)
@@ -310,7 +330,7 @@ namespace Dawnkeep.Rendering
                 Vector3 p = Rotate(new Vector3(local[i].x, local[i].y, z), co, si);
                 AddVertex(eaveCenter + p, n,
                     new Vector2((local[i].x + (width * 0.5f)) * uvScale, local[i].y * uvScale),
-                    new Color(0f, 0.5f, 0.5f, 0f));
+                    new Color(1f, 1f, 1f, 0f));
             }
 
             AddTriangle(start, start + 1, start + 2);
@@ -319,10 +339,10 @@ namespace Dawnkeep.Rendering
         private void AddSlope(Vector3 a, Vector3 b, Vector3 c, Vector3 d, Vector3 n, float uSpan, float vSpan)
         {
             int start = VertexCount;
-            AddVertex(a, n, new Vector2(0f, 0f), new Color(0f, 0.5f, 0.5f, 0f));
-            AddVertex(b, n, new Vector2(uSpan, 0f), new Color(0f, 0.5f, 0.5f, 0f));
-            AddVertex(c, n, new Vector2(uSpan, vSpan), new Color(0f, 0.5f, 0.5f, 0f));
-            AddVertex(d, n, new Vector2(0f, vSpan), new Color(0f, 0.5f, 0.5f, 0f));
+            AddVertex(a, n, new Vector2(0f, 0f), new Color(1f, 1f, 1f, 0f));
+            AddVertex(b, n, new Vector2(uSpan, 0f), new Color(1f, 1f, 1f, 0f));
+            AddVertex(c, n, new Vector2(uSpan, vSpan), new Color(1f, 1f, 1f, 0f));
+            AddVertex(d, n, new Vector2(0f, vSpan), new Color(1f, 1f, 1f, 0f));
             AddQuad(start, start + 1, start + 2, start + 3);
         }
 
@@ -342,6 +362,7 @@ namespace Dawnkeep.Rendering
             mesh.SetVertices(_vertices);
             mesh.SetNormals(_normals);
             mesh.SetUVs(0, _uvs);
+            mesh.SetUVs(1, _uv2);
             mesh.SetColors(_colors);
             mesh.SetTriangles(_triangles, 0);
 

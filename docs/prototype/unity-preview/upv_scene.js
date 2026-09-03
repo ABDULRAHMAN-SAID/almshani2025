@@ -44,15 +44,21 @@ for(let j=0;j<N;j++) for(let i=0;i<N;i++){ const k=j*N+i;
 }
 function splatAt(i,j){
   const k=j*N+i, sl=slopeAt(i,j), m=MOIST[k], alt=(h[k]-LOW)/SPAN;
+  const wx=terWX(i), wz=terWX(j);
+  // تبقيع: بدونه تتحوّل الأرض إلى مناطق ملساء متدرّجة تبدو طيناً
+  const spotA=fbm(wx*0.026+11, wz*0.026-7, 3)-0.5;
+  const spotB=fbm(wx*0.085-3, wz*0.085+19, 2)-0.5;
   const sm=(a,b,x)=>{ const t=clamp((x-a)/(b-a),0,1); return t*t*(3-2*t); };
+  let rockAdd=0;
   let rock=sm(0.36,0.80,sl)+sm(0.62,0.92,alt)*0.55;
   let gravel=0;
   if(RW>0) gravel+=clamp(1-(rd[k]/(RW*1.9)),0,1);
   if(roadD[k]<FEATH) gravel+=clamp(1-(roadD[k]/FEATH),0,1)*1.35;
   if(lake && lake[k]) gravel+=0.9;
-  let grass=clamp((m+0.22)*1.9,0,1)*clamp(1-sl*1.7,0,1);
-  let soil=clamp((0.42-m)*1.8,0,1)*0.9+clamp((sl-0.24)*1.8,0,1);
-  rock=Math.max(rock,0); gravel=Math.max(gravel,0); soil=Math.max(soil,0.04); grass=Math.max(grass,0);
+  let grass=clamp((m+0.22+spotA*0.30)*1.9,0,1)*clamp(1-sl*1.7,0,1);
+  let soil=clamp((0.42-m-spotA*0.34+spotB*0.16)*1.8,0,1)*0.9+clamp((sl-0.24)*1.8,0,1);
+  rockAdd = clamp(spotB*0.5,0,1)*clamp((sl-0.30)*2.2,0,1);
+  rock=Math.max(rock+rockAdd,0); gravel=Math.max(gravel,0); soil=Math.max(soil,0.04); grass=Math.max(grass,0);
   const sum=grass+soil+rock+gravel||1;
   return [grass/sum, soil/sum, rock/sum, gravel/sum];
 }
@@ -191,45 +197,116 @@ terMat.onBeforeCompile = sh => {
                + (texture2D(uN2, vWP.xz/34.0).xyz*2.0-1.0)*nw.b
                + (texture2D(uN3, vWP.xz/14.0).xyz*2.0-1.0)*nw.a;
       // الإسقاط على المستوى المماسّ يمنع انقلاب المُسوّي على الجروف شبه العمودية
-      vec3 dkPert = vec3(dkN.x, 0.0, dkN.y)*0.45;
+      vec3 dkPert = vec3(dkN.x, 0.0, dkN.y)*0.70;
       dkPert -= normal * dot(dkPert, normal);
-      normal = normalize(normal + dkPert);`);
+      normal = normalize(normal + dkPert*1.55);`);
 };
 const terrain=new THREE.Mesh(terGeo, terMat);
 terrain.receiveShadow=true; terrain.castShadow=true;
 scene.add(terrain);
 
 /* ═══ الماء ═══ */
-const rippleR={base:14, oct:4, seed:99001, warp:0.10, ridged:false, stretch:2.4, contrast:1.1, nrm:0.7, grain:0.2, gfreq:70};
-const rippleF=bakeHeightField(rippleR, 256);
-const rippleN=dataTex(bakeNormal(rippleF, 256, 0.7), 256, false);
-const waterMat=new THREE.MeshStandardMaterial({
-  color:0x0a2731, roughness:0.33, metalness:0.0, transparent:true, opacity:0.95,
-  normalMap:rippleN, normalScale:new THREE.Vector2(0.85,0.85), side:THREE.DoubleSide});
-waterMat.normalMap.repeat.set(1,1);
+const waterUniforms={
+  uTime:{value:0},
+  uShallow:{value:new THREE.Color(0.36,0.60,0.58)},
+  uDeep:{value:new THREE.Color(0.045,0.145,0.185)},
+  uFoam:{value:new THREE.Color(0.92,0.96,0.97)},
+  uSky:{value:new THREE.Color(0.58,0.72,0.88)},
+  uSunDir:{value:new THREE.Vector3(0.4,0.6,0.5)},
+  uSunCol:{value:new THREE.Color(1.0,0.94,0.82)},
+  fogColor:{value:new THREE.Color(0x9db2c4)},
+  fogDensity:{value:0.0004}
+};
+const waterMat=new THREE.ShaderMaterial({
+  transparent:true, side:THREE.DoubleSide, depthWrite:true,
+  uniforms:waterUniforms,
+  vertexShader:`
+    attribute vec2 uv2;
+    varying float vDepth; varying vec3 vWPos;
+    uniform float uTime;
+    float wv(vec2 p, float t){
+      return sin(p.x*0.085 + t*0.9)*0.55
+           + sin((p.x*0.6+p.y*0.8)*0.062 - t*0.71)*0.45
+           + sin((p.y*0.9-p.x*0.4)*0.23 + t*1.6)*0.14;
+    }
+    void main(){
+      vDepth = uv2.x;
+      vec3 wp = (modelMatrix*vec4(position,1.0)).xyz;
+      float amp = clamp(vDepth*0.55, 0.05, 0.42);
+      wp.y += wv(wp.xz, uTime)*amp;
+      vWPos = wp;
+      gl_Position = projectionMatrix * viewMatrix * vec4(wp,1.0);
+    }`,
+  fragmentShader:`
+    precision highp float;
+    varying float vDepth; varying vec3 vWPos;
+    uniform float uTime;
+    uniform vec3 uShallow, uDeep, uFoam, uSky, uSunDir, uSunCol, fogColor;
+    uniform float fogDensity;
+    float wv(vec2 p, float t){
+      return sin(p.x*0.085 + t*0.9)*0.55
+           + sin((p.x*0.6+p.y*0.8)*0.062 - t*0.71)*0.45
+           + sin((p.y*0.9-p.x*0.4)*0.23 + t*1.6)*0.14;
+    }
+    vec3 waveNormal(vec2 p, float t, float amp){
+      float e=0.55;
+      float hL=wv(p-vec2(e,0.0),t), hR=wv(p+vec2(e,0.0),t);
+      float hD=wv(p-vec2(0.0,e),t), hU=wv(p+vec2(0.0,e),t);
+      return normalize(vec3((hL-hR)*amp, 2.0*e, (hD-hU)*amp));
+    }
+    void main(){
+      float amp = clamp(vDepth*0.55, 0.05, 0.42);
+      vec3 n  = waveNormal(vWPos.xz, uTime, amp*2.2);
+      vec3 n2 = waveNormal(vWPos.xz*3.7+vec2(31.0,17.0), uTime*1.7, amp*0.8);
+      n = normalize(n + (n2-vec3(0.0,1.0,0.0))*0.55);
+      vec3 view = normalize(cameraPosition - vWPos);
+      float fres = pow(clamp(1.0 - max(dot(n,view),0.0), 0.0, 1.0), 4.0);
+      float dt = clamp(vDepth/5.0, 0.0, 1.0);
+      dt = dt*dt*(3.0-2.0*dt);
+      vec3 body = mix(uShallow, uDeep, dt);
+      float ndl = max(dot(n, normalize(uSunDir)), 0.0);
+      body *= 0.55 + 0.55*ndl;
+      vec3 col = mix(body, uSky, fres*0.72);
+      vec3 h = normalize(normalize(uSunDir) + view);
+      col += uSunCol * pow(max(dot(n,h),0.0), 300.0) * 1.9;
+      // زبد الشاطئ: شريط يتموّج مع الموج
+      float edge = 1.0 - smoothstep(0.0, 0.85, vDepth);
+      float ripple = 0.55 + 0.45*sin(vWPos.x*0.55 + vWPos.z*0.42 + uTime*1.5 + wv(vWPos.xz,uTime)*3.0);
+      float foam = clamp(edge*ripple*1.05, 0.0, 1.0);
+      col = mix(col, uFoam, foam*0.72);
+      float alpha = mix(0.42, 0.97, dt);
+      alpha = max(alpha, foam*0.9);
+      float fd = fogDensity * length(cameraPosition - vWPos);
+      col = mix(col, fogColor, 1.0 - exp(-fd*fd));
+      gl_FragColor = vec4(col, alpha);
+    }`
+});
 
+/* ═══ أسطح الماء: عمق حقيقي مخزّن في كل رأس ═══ */
 if(LAKE && lake){
-  const vp=[], vu=[], ti=[], map=new Map();
+  const vp=[], vu=[], vd=[], ti=[], map=new Map();
   const vert=k=>{ if(map.has(k)) return map.get(k);
     const x=terWX(k%N), z=terWX((k/N)|0), id=vp.length/3;
-    vp.push(x*SC, LAKE.level*SC, z*SC); vu.push(x*SC/22, z*SC/22); map.set(k,id); return id; };
+    const depth=Math.max(0, (LAKE.level - sampleSmooth(h,x,z))*SC);
+    vp.push(x*SC, LAKE.level*SC, z*SC); vu.push(x*SC/22, z*SC/22); vd.push(depth, 0);
+    map.set(k,id); return id; };
   for(let j=0;j<N-1;j++) for(let i=0;i<N-1;i++){
     const a=j*N+i, b=a+1, c=a+N+1, d=a+N;
     if(!lake[a]&&!lake[b]&&!lake[c]&&!lake[d]) continue;
-    const va=vert(a), vb=vert(b), vc=vert(c), vd=vert(d);
-    ti.push(va,vd,vc, va,vc,vb);
+    const va=vert(a), vb=vert(b), vc=vert(c), vd2=vert(d);
+    ti.push(va,vd2,vc, va,vc,vb);
   }
   if(ti.length){
     const g=new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute(vp,3));
     g.setAttribute('uv', new THREE.Float32BufferAttribute(vu,2));
+    g.setAttribute('uv2', new THREE.Float32BufferAttribute(vd,2));
     g.setIndex(ti); g.computeVertexNormals();
-    scene.add(new THREE.Mesh(g, waterMat));
+    const mesh=new THREE.Mesh(g, waterMat); mesh.renderOrder=2; scene.add(mesh);
   }
 }
 if(RIVER && RIVER.pts.length>1){
   const P=RIVER.pts, cnt=P.length, hw=RW*0.94, fill=22*0.52;
-  // سطح النهر لا يعلو ضفّتيه أبداً — وإلا ظهر شريط ماء معلّقاً فوق الأرض
   const ys=[];
   for(let i=0;i<cnt;i++){
     const pr=P[Math.max(i-1,0)], nx=P[Math.min(i+1,cnt-1)];
@@ -242,21 +319,29 @@ if(RIVER && RIVER.pts.length>1){
   }
   for(let pass=0;pass<3;pass++)
     for(let i=1;i<cnt-1;i++) ys[i]=(ys[i-1]+ys[i]*2+ys[i+1])*0.25;
-  const vp=[], vu=[], ti=[]; let travel=0;
+  // ثلاثة رؤوس عرضاً: الضفّتان بعمق صفر والوسط بالعمق الحقيقي — فيبقى الزبد على الحافّة
+  const vp=[], vu=[], vd=[], ti=[]; let travel=0;
   for(let i=0;i<cnt;i++){
     const pr=P[Math.max(i-1,0)], nx=P[Math.min(i+1,cnt-1)];
     let dx=nx.x-pr.x, dz=nx.z-pr.z; const dl=Math.hypot(dx,dz)||1; dx/=dl; dz/=dl;
     const sx=-dz*hw, sz=dx*hw;
     if(i>0) travel+=Math.hypot(P[i].x-P[i-1].x, P[i].z-P[i-1].z);
-    vp.push((P[i].x-sx)*SC, ys[i]*SC, (P[i].z-sz)*SC, (P[i].x+sx)*SC, ys[i]*SC, (P[i].z+sz)*SC);
-    vu.push(0, travel*SC/22, 1, travel*SC/22);
+    const dC=Math.max(0,(ys[i]-sampleSmooth(h,P[i].x,P[i].z))*SC);
+    vp.push((P[i].x-sx)*SC, ys[i]*SC, (P[i].z-sz)*SC,
+            P[i].x*SC,      ys[i]*SC, P[i].z*SC,
+            (P[i].x+sx)*SC, ys[i]*SC, (P[i].z+sz)*SC);
+    vu.push(0, travel*SC/22, 0.5, travel*SC/22, 1, travel*SC/22);
+    vd.push(0.05,0, dC,0, 0.05,0);
   }
-  for(let i=0;i<cnt-1;i++){ const a=i*2; ti.push(a,a+2,a+3, a,a+3,a+1); }
+  for(let i=0;i<cnt-1;i++){ const a=i*3;
+    ti.push(a,a+3,a+4, a,a+4,a+1);
+    ti.push(a+1,a+4,a+5, a+1,a+5,a+2); }
   const g=new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(vp,3));
   g.setAttribute('uv', new THREE.Float32BufferAttribute(vu,2));
+  g.setAttribute('uv2', new THREE.Float32BufferAttribute(vd,2));
   g.setIndex(ti); g.computeVertexNormals();
-  scene.add(new THREE.Mesh(g, waterMat));
+  const mesh=new THREE.Mesh(g, waterMat); mesh.renderOrder=2; scene.add(mesh);
 }
 
 /* ═══ خامات البناء ═══ */
@@ -280,7 +365,7 @@ const MAT={ stone:stdMat(BUILD.stone,0.93), plaster:stdMat(BUILD.plaster,0.90),
 
 /* ═══ الأشجار ═══ */
 const barkMat=new THREE.MeshStandardMaterial({map:SURF.bark.alb, normalMap:SURF.bark.nrm, roughness:0.9, metalness:0.0});
-barkMat.map.repeat.set(1,2.5);
+barkMat.map.repeat.set(1,1);
 /* الورقة ليست سطحاً صلباً: الضوء ينفذ من خلفها — نقرّب ذلك بإضاءة ملفوفة كما في شادر Unity */
 function translucent(mat, amount){
   mat.onBeforeCompile = sh => {
@@ -293,8 +378,8 @@ function translucent(mat, amount){
   };
   return mat;
 }
-const leafMat=translucent(new THREE.MeshStandardMaterial({map:leafTex, transparent:false, alphaTest:0.42, side:THREE.DoubleSide, roughness:0.88, metalness:0.0}), 0.46);
-const needleMat=translucent(new THREE.MeshStandardMaterial({map:needleTex, transparent:false, alphaTest:0.40, side:THREE.DoubleSide, roughness:0.90, metalness:0.0}), 0.34);
+const leafMat=translucent(new THREE.MeshStandardMaterial({map:leafTex, transparent:false, alphaTest:0.42, side:THREE.DoubleSide, roughness:0.88, metalness:0.0, vertexColors:true}), 0.46);
+const needleMat=translucent(new THREE.MeshStandardMaterial({map:needleTex, transparent:false, alphaTest:0.40, side:THREE.DoubleSide, roughness:0.90, metalness:0.0, vertexColors:true}), 0.34);
 const TREES=[];
 for(let v=0;v<3;v++) TREES.push({...buildBroadleaf(4110000+v*977, 11+v*2.6), conifer:false});
 for(let v=0;v<3;v++) TREES.push({...buildConifer(5220000+v*977, 14+v*3.1), conifer:true});
@@ -321,7 +406,9 @@ const treePool=[];
     const conifer = alt>0.34 || m<0.42;
     const pool=[0,1,2].map(q=>q+(conifer?3:0));
     const sc=0.78+rnd()*0.55;
-    treePool.push({x:wx, z:wz, y:groundY(wx,wz), v:pool[(rnd()*3)|0], s:sc, r:rnd()*Math.PI*2});
+    const warm=0.86+rnd()*0.30, cool=0.86+rnd()*0.26;
+    treePool.push({x:wx, z:wz, y:groundY(wx,wz), v:pool[(rnd()*3)|0], s:sc, r:rnd()*Math.PI*2,
+                   tr:warm*(0.92+rnd()*0.20), tg:cool, tb:0.80+rnd()*0.34});
   }
 }
 
@@ -348,12 +435,12 @@ const rockPool=[];
 }
 
 /* ═══ العشب ═══ */
-const grassMat=new THREE.MeshStandardMaterial({map:grassTex, alphaTest:0.35, side:THREE.DoubleSide, roughness:0.94, metalness:0.0});
+const grassMat=new THREE.MeshStandardMaterial({map:grassTex, alphaTest:0.35, side:THREE.DoubleSide, roughness:0.94, metalness:0.0, vertexColors:true});
 const bladeGeo=(()=>{
   const mb=new MB();
-  mb.card([0,0.22,0],[1,0,0],[0,1,0], 0.78, 0.50, 1, 0);
-  mb.card([0,0.22,0],[0,0,1],[0,1,0], 0.78, 0.50, 1, 0);
-  mb.card([0,0.22,0],[0.7,0,0.7],[0,1,0], 0.72, 0.46, 1, 0);
+  mb.card([0,0.30,0],[1,0,0],[0,1,0], 0.92, 0.66, 1, 0);
+  mb.card([0,0.30,0],[0,0,1],[0,1,0], 0.92, 0.66, 1, 0);
+  mb.card([0,0.28,0],[0.7,0,0.7],[0,1,0], 0.84, 0.60, 1, 0);
   return mb.geo(false);
 })();
 
@@ -399,9 +486,12 @@ const GATE_ANGLE = routes[0] ? routes[0].a : 0;
 /* ═══ إدارة النسخ حسب اللقطة ═══ */
 let live=[];
 function clearLive(){ for(const o of live){ scene.remove(o); o.geometry && o.dispose && 0; } live=[]; }
-function addInstanced(geo, mat, list, build, shadow){
+function addInstanced(geo, mat, list, build, shadow, tint){
   if(!list.length) return;
   const im=new THREE.InstancedMesh(geo, mat, list.length);
+  if(tint){ const col=new THREE.Color();
+    list.forEach((it,n)=>{ col.setRGB(it.tr||1, it.tg||1, it.tb||1); im.setColorAt(n, col); });
+    if(im.instanceColor) im.instanceColor.needsUpdate=true; }
   const m=new THREE.Matrix4(), q=new THREE.Quaternion(), p=new THREE.Vector3(), sc=new THREE.Vector3(), e=new THREE.Euler();
   list.forEach((it,n)=>{ build(it,p,e,sc); q.setFromEuler(e); m.compose(p,q,sc); im.setMatrixAt(n,m); });
   im.instanceMatrix.needsUpdate=true;
@@ -417,7 +507,7 @@ function populate(cx, cz, treeR, rockR, grassR, grassN){
     const list=treePool.filter(t=>t.v===v && near(t.x,t.z,treeR));
     const T=TREES[v];
     addInstanced(T.trunk, barkMat, list, (it,p,e,sc)=>{ p.set(it.x*SC,it.y*SC,it.z*SC); e.set(0,it.r,0); sc.set(it.s,it.s,it.s); }, true);
-    addInstanced(T.canopy, T.conifer?needleMat:leafMat, list, (it,p,e,sc)=>{ p.set(it.x*SC,it.y*SC,it.z*SC); e.set(0,it.r,0); sc.set(it.s,it.s,it.s); }, true);
+    addInstanced(T.canopy, T.conifer?needleMat:leafMat, list, (it,p,e,sc)=>{ p.set(it.x*SC,it.y*SC,it.z*SC); e.set(0,it.r,0); sc.set(it.s,it.s,it.s); }, true, true);
   }
   for(let v=0;v<ROCKS.length;v++){
     const list=rockPool.filter(r=>r.v===v && near(r.x,r.z,rockR));
@@ -437,10 +527,12 @@ function populate(cx, cz, treeR, rockR, grassR, grassN){
       if(roadD[k]<CORE*1.2) continue;
       const sl=slopeAt(i,j); if(sl>0.5) continue;
       const fert=clamp(MOIST[k]*1.5,0,1)*clamp(1-(sl/0.5),0,1)*clamp((fbm(wx*0.0075, wz*0.0075,3)-0.28)*2.4,0,1);
-      if(fert<=0.05 || rnd()>fert) continue;
-      list.push({x:wx, z:wz, y:groundY(wx,wz)-0.06, r:rnd()*Math.PI, s:0.78+rnd()*0.6});
+      if(fert<=0.03 || rnd()>fert*1.35) continue;
+      const g1=0.80+rnd()*0.42;
+      list.push({x:wx, z:wz, y:groundY(wx,wz)-0.06, r:rnd()*Math.PI, s:0.72+rnd()*0.55,
+                 tr:g1*(0.86+rnd()*0.26), tg:g1, tb:g1*(0.66+rnd()*0.34)});
     }
-    addInstanced(bladeGeo, grassMat, list, (it,p,e,sc)=>{ p.set(it.x*SC,it.y*SC,it.z*SC); e.set(0,it.r,0); sc.set(it.s,it.s*(0.8+it.s*0.3),it.s); }, false);
+    addInstanced(bladeGeo, grassMat, list, (it,p,e,sc)=>{ p.set(it.x*SC,it.y*SC,it.z*SC); e.set(0,it.r,0); sc.set(it.s,it.s*(0.8+it.s*0.3),it.s); }, false, true);
   }
 }
 
@@ -463,6 +555,8 @@ function look(target, dist, yawDeg, pitchDeg, lift, camLift){
   sun.shadow.camera.top=span; sun.shadow.camera.bottom=-span;
   sun.shadow.camera.far=span*4+900;
   sun.shadow.camera.updateProjectionMatrix();
+  waterUniforms.uSunDir.value.copy(sun.position).sub(t).normalize();
+  waterUniforms.uTime.value = 11.3;
 }
 const riverMid = RIVER ? RIVER.pts[Math.floor(RIVER.pts.length*0.62)] : {x:0,z:0};
 const roadMid  = routes[0] ? routes[0].path[Math.floor(routes[0].path.length*0.55)] : {x:0,z:0};
@@ -477,6 +571,8 @@ const GATE_R = 150;
 const gatePos = [Math.cos(GATE_ANGLE)*GATE_R*0.98, Math.sin(GATE_ANGLE)*GATE_R*0.98];
 const YAW_OUT = 90 - GA;          // الكاميرا خارج البوّابة تنظر إلى الداخل
 const SHOTS={
+  ground: ()=>{ populate(-260, 420, 420, 320, 150, 26000);
+                look([-260, 420], 34, 300, 5); scene.fog.density=0.00060; },
   // زوايا مؤطَّرة: منخفضة وقريبة عند البوّابة، علوية ثلاثية الأرباع للمجمّع
   hero:   ()=>{ populate(0,0, 700, 560, 330, 18000);
                 look(gatePos, 46, YAW_OUT, 1, 16, -3); scene.fog.density=0.00048; },
@@ -504,7 +600,7 @@ const SHOTS={
                 look([120,60], 1150, 208, 26); scene.fog.density=0.00030; },
 };
 let ready=false;
-function render(){ renderer.render(scene, camera); }
+function render(){ waterUniforms.fogDensity.value = scene.fog.density; renderer.render(scene, camera); }
 window.__d = {
   shot(name){ (SHOTS[name]||SHOTS.far)(); render(); render(); return true; },
   info(){ return { N, trees:treePool.length, rocks:rockPool.length,
