@@ -1,5 +1,7 @@
 using System.Collections.Generic;
+using Dawnkeep.Buildings;
 using Dawnkeep.CameraRig;
+using Dawnkeep.Rendering;
 using Dawnkeep.World;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -60,7 +62,10 @@ namespace Dawnkeep.EditorTools
                 EditorUtility.DisplayProgressBar("مملكة الرماد", "بناء أسطح الماء…", 0.88f);
                 CreateWater(settings, world);
 
-                EditorUtility.DisplayProgressBar("مملكة الرماد", "نثر الصخور…", 0.92f);
+                EditorUtility.DisplayProgressBar("مملكة الرماد", "بناء القلعة والقرية…", 0.90f);
+                BuildKingdom(settings, world);
+
+                EditorUtility.DisplayProgressBar("مملكة الرماد", "نثر الصخور…", 0.93f);
                 ScatterRocks(settings, world);
 
                 EditorUtility.DisplayProgressBar("مملكة الرماد", "إضاءة الفجر…", 0.96f);
@@ -473,6 +478,125 @@ namespace Dawnkeep.EditorTools
                     placed++;
                 }
             }
+        }
+
+        /// <summary>
+        /// القلعة على المصطبة والقرية على الطريق. كل قطعة تُبنى بخامتها فتصير
+        /// خمس شبكات فقط — لا مئات الكائنات.
+        /// </summary>
+        private static void BuildKingdom(WorldGenSettings settings, WorldData world)
+        {
+            float scale = settings.WorldScale;
+            float half = world.WorldSize * 0.5f;
+
+            // ارتفاع الأرض بإحداثيات المشهد
+            KingdomBuilder.GroundSampler ground = delegate (float x, float z)
+            {
+                return world.SampleSmooth(world.Height, x / scale, z / scale) * scale;
+            };
+
+            float gateAngle = world.Roads.Count > 0 ? RoadEntryAngle(world.Roads[0]) : 0f;
+            KingdomBuilder.Layout layout =
+                KingdomBuilder.DefaultLayout(settings.CastleRadius * scale, gateAngle);
+
+            KingdomBuilder.Parts parts = KingdomBuilder.BuildCastle(ground, layout, (uint)((settings.Seed * 7919) + 90210));
+
+            // القرية على أوّل الطريق خارج السور
+            TexRandom rng = new TexRandom((uint)((settings.Seed * 104729) + 17));
+            int placed = 0;
+            int target = Mathf.Max(0, settings.VillageHouses);
+
+            if (world.Roads.Count > 0)
+            {
+                Vector2[] road = world.Roads[0];
+                for (int i = 0; i < road.Length && placed < target; i++)
+                {
+                    if (i % 3 != 0)
+                    {
+                        continue;
+                    }
+
+                    float r = road[i].magnitude;
+                    if (r < settings.CastleRadius * 1.6f || r > settings.CastleRadius * 4.1f)
+                    {
+                        continue;
+                    }
+
+                    Vector2 next = road[Mathf.Min(i + 2, road.Length - 1)];
+                    Vector2 dir = next - road[i];
+                    if (dir.sqrMagnitude < 1e-5f)
+                    {
+                        continue;
+                    }
+
+                    dir.Normalize();
+
+                    for (int side = -1; side <= 1 && placed < target; side += 2)
+                    {
+                        float off = (26f + (rng.Next() * 16f)) * side;
+                        float hx = (road[i].x - (dir.y * off)) * scale;
+                        float hz = (road[i].y + (dir.x * off)) * scale;
+
+                        if (Mathf.Abs(hx) > (half * scale) - 40f || Mathf.Abs(hz) > (half * scale) - 40f)
+                        {
+                            continue;
+                        }
+
+                        float rot = Mathf.Atan2(dir.x, dir.y) + (side < 0 ? Mathf.PI : 0f);
+                        KingdomBuilder.BuildHouse(parts, hx, hz, ground(hx, hz), rot, ref rng, 8.5f, 6.5f, true);
+                        placed++;
+                    }
+                }
+            }
+
+            GameObject root = new GameObject("Kingdom");
+            AddKingdomPart(root, "Stone", parts.Stone, "Dawnkeep_Stone");
+            AddKingdomPart(root, "Plaster", parts.Plaster, "Dawnkeep_Plaster");
+            AddKingdomPart(root, "Timber", parts.Timber, "Dawnkeep_Timber");
+            AddKingdomPart(root, "Tile", parts.Tile, "Dawnkeep_Tile");
+            AddKingdomPart(root, "Thatch", parts.Thatch, "Dawnkeep_Thatch");
+        }
+
+        /// <summary>اتجاه دخول الطريق إلى القلعة — عنده تُبنى البوّابة.</summary>
+        private static float RoadEntryAngle(Vector2[] road)
+        {
+            for (int i = 0; i < road.Length; i++)
+            {
+                if (road[i].magnitude > 260f)
+                {
+                    return Mathf.Atan2(road[i].y, road[i].x);
+                }
+            }
+
+            return road.Length > 0 ? Mathf.Atan2(road[0].y, road[0].x) : 0f;
+        }
+
+        private static void AddKingdomPart(GameObject parent, string name, MeshBuilder builder, string materialName)
+        {
+            if (builder.VertexCount == 0)
+            {
+                return;
+            }
+
+            Mesh mesh = builder.ToMesh("Dawnkeep_" + name, false);
+            string path = DawnkeepAssetPaths.Meshes + "/Dawnkeep_Kingdom_" + name + ".asset";
+            Mesh saved = SaveMesh(mesh, path);
+
+            GameObject go = new GameObject(name);
+            go.transform.SetParent(parent.transform, false);
+            go.isStatic = true;
+
+            MeshFilter filter = go.AddComponent<MeshFilter>();
+            filter.sharedMesh = saved;
+
+            MeshRenderer renderer = go.AddComponent<MeshRenderer>();
+            renderer.sharedMaterial = AssetDatabase.LoadAssetAtPath<Material>(
+                DawnkeepAssetPaths.Materials + "/" + materialName + ".mat");
+            renderer.shadowCastingMode = ShadowCastingMode.On;
+            renderer.receiveShadows = true;
+
+            MeshCollider collider = go.AddComponent<MeshCollider>();
+            collider.sharedMesh = saved;
         }
 
         private static void CreateLighting()

@@ -51,6 +51,9 @@ namespace Dawnkeep.World
             Report(onProgress, "شقّ الطرق وتسويتها", 0.82f);
             RoadRouter.Route(settings, w);
 
+            Report(onProgress, "تسوية مصطبة القلعة", 0.88f);
+            w.CastleLevel = CastleTerrace.Level(w, 0f, 0f, settings.TerraceInner, settings.TerraceOuter);
+
             Report(onProgress, "حساب الرطوبة", 0.90f);
             ComputeMoisture(settings, w);
 

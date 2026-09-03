@@ -111,12 +111,12 @@ function leafCluster(size, seed, deep, light, needles){
   const cx0=size*0.5, cy0=size*0.48, k=size/256;
   if(needles){
     // رشّات إبر: كل رشّة ساق قصيرة تتفرّع منها إبر — الكثافة تأتي من عدد الرشّات لا من إبرة واحدة
-    const sprays=Math.round(58*k*k);
+    const sprays=Math.round(120*k*k);
     for(let c=0;c<sprays;c++){
       const a=rnd()*Math.PI*2, r=Math.pow(rnd(),0.62)*size*0.45;
       const sx=cx0+Math.cos(a)*r, sy=cy0+Math.sin(a)*r*0.90;
       const fall=1-Math.min(1,r/(size*0.52));
-      const dir=a+(rnd()-0.5)*0.8, stem=(0.10+rnd()*0.12)*size;
+      const dir=a+(rnd()-0.5)*0.8, stem=(0.065+rnd()*0.075)*size;
       const dx=Math.cos(dir), dy=Math.sin(dir);
       const m0=(0.32+rnd()*0.58)*(0.58+fall*0.42);
       const tint=[deep[0]+(light[0]-deep[0])*m0, deep[1]+(light[1]-deep[1])*m0, deep[2]+(light[2]-deep[2])*m0];
@@ -127,7 +127,7 @@ function leafCluster(size, seed, deep, light, needles){
         const t=0.12+0.88*nq/needlesPer;
         const bx=sx+dx*stem*t, by=sy+dy*stem*t;
         for(const side of [-1,1]){
-          const na=dir+side*(0.62+rnd()*0.55), nl=(0.030+rnd()*0.032)*size;
+          const na=dir+side*(0.62+rnd()*0.55), nl=(0.018+rnd()*0.020)*size;
           const ndx=Math.cos(na), ndy=Math.sin(na), st2=Math.ceil(nl*1.6);
           const m=m0*(0.82+rnd()*0.36);
           const c2=[deep[0]+(light[0]-deep[0])*m, deep[1]+(light[1]-deep[1])*m, deep[2]+(light[2]-deep[2])*m];
@@ -137,21 +137,21 @@ function leafCluster(size, seed, deep, light, needles){
       }
     }
   } else {
-    const leaves=Math.round(230*k*k);
+    const leaves=Math.round(1100*k*k);
     for(let c=0;c<leaves;c++){
       const a=rnd()*Math.PI*2, r=Math.pow(rnd(),0.58)*size*0.44;
       const cx=cx0+Math.cos(a)*r, cy=cy0+Math.sin(a)*r*0.88;
       const fall=1-Math.min(1,r/(size*0.50));
       const m=(0.34+rnd()*0.66)*(0.56+fall*0.44);
       const tint=[deep[0]+(light[0]-deep[0])*m, deep[1]+(light[1]-deep[1])*m, deep[2]+(light[2]-deep[2])*m];
-      const rad=(0.052+rnd()*0.062)*size, rot=rnd()*Math.PI*2, co=Math.cos(rot), si=Math.sin(rot);
+      const rad=(0.020+rnd()*0.026)*size, rot=rnd()*Math.PI*2, co=Math.cos(rot), si=Math.sin(rot);
       const R=Math.ceil(rad)+1;
       for(let dy=-R;dy<=R;dy++){ const yi=Math.round(cy)+dy; if(yi<0||yi>=size) continue;
         for(let dx=-R;dx<=R;dx++){ const xi=Math.round(cx)+dx; if(xi<0||xi>=size) continue;
           const lx=(dx*co+dy*si)/rad, ly=((-dx*si+dy*co)/rad)*1.75, d=lx*lx+ly*ly;
           if(d>1) continue;
           // عرق الورقة أغمق قليلاً فلا تبدو بقعة صمّاء
-          const vein=Math.abs(ly)<0.10 ? 0.82 : 1.0;
+          const vein=Math.abs(ly)<0.16 ? 0.80 : 1.0;
           fBlend(px, yi*size+xi, [tint[0]*vein,tint[1]*vein,tint[2]*vein], Math.min(1,(1-d)*3.0));
         } }
     }

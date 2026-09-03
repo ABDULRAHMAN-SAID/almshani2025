@@ -4,6 +4,7 @@ terGenerate(SEED);
 const N=TER.N, s=TER.step, h=TER.h;
 const routes = terRoutes(N, s, h, [0.35, 0.35+Math.PI*2/3, 0.35+Math.PI*4/3]);
 terGrade(N, s, h, routes);
+const CASTLE_LEVEL = terTerrace(N, s, h, 0, 0, 190, 330);   // مصطبة الحصن
 terAO(N, s, h);
 const ao=TER.ao, flow=TER.flow, rd=TER.rdist, lake=TER.lake;
 const RW = RIVER ? RIVER.w : 0;
@@ -62,7 +63,7 @@ renderer.setPixelRatio(1);
 renderer.setSize(innerWidth, innerHeight);
 renderer.outputEncoding=THREE.sRGBEncoding;
 renderer.toneMapping=THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure=1.02;
+renderer.toneMappingExposure=1.10;
 renderer.shadowMap.enabled=true;
 renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
@@ -74,7 +75,7 @@ scene.fog=new THREE.FogExp2(0x9db2c4, 0.00040);
 /* سماء متدرّجة */
 const sky=new THREE.Mesh(new THREE.SphereGeometry(4600, 24, 16), new THREE.ShaderMaterial({
   side:THREE.BackSide, depthWrite:false,
-  uniforms:{ top:{value:new THREE.Color(0x4d7bb5)}, mid:{value:new THREE.Color(0xa9c2d6)}, bot:{value:new THREE.Color(0xd8cdb6)} },
+  uniforms:{ top:{value:new THREE.Color(0x3f6fae)}, mid:{value:new THREE.Color(0xa8c0d4)}, bot:{value:new THREE.Color(0xe6cfa8)} },
   vertexShader:'varying vec3 vP; void main(){ vP=position; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
   fragmentShader:`varying vec3 vP; uniform vec3 top, mid, bot;
     void main(){ float t=normalize(vP).y;
@@ -83,14 +84,14 @@ const sky=new THREE.Mesh(new THREE.SphereGeometry(4600, 24, 16), new THREE.Shade
 }));
 scene.add(sky);
 
-const sun=new THREE.DirectionalLight(0xfff0d4, 1.55);
+const sun=new THREE.DirectionalLight(0xffe6be, 2.05);
 sun.position.set(-780, 900, 640);
 sun.castShadow=true;
-sun.shadow.mapSize.set(2048,2048);
+sun.shadow.mapSize.set(4096,4096);
 sun.shadow.camera.near=10; sun.shadow.camera.far=3400;
-sun.shadow.bias=-0.0006; sun.shadow.normalBias=1.4;
+sun.shadow.bias=-0.0004; sun.shadow.normalBias=0.9;
 scene.add(sun); scene.add(sun.target);
-scene.add(new THREE.HemisphereLight(0x8fb2d6, 0x4a4034, 0.55));
+scene.add(new THREE.HemisphereLight(0x8fb0d8, 0x5c4c38, 0.62));
 scene.add(new THREE.AmbientLight(0xffffff, 0.06));
 
 /* ═══ خامات الأرض ═══ */
@@ -102,10 +103,14 @@ function dataTex(arr, size, srgb){
   if(srgb) t.encoding=THREE.sRGBEncoding;
   t.needsUpdate=true; return t;
 }
+// خامات مرسومة: أعواد وحصى وشقوق فعلية بدل ضجيج سحابي مموّه
 const TSIZE=512, SURF={};
-for(const name of ['grass','soil','rock','gravel','bark']){
-  const R=RECIPES[name], f=bakeHeightField(R,TSIZE);
-  SURF[name]={ alb:dataTex(bakeAlbedo(R,f,TSIZE),TSIZE,true), nrm:dataTex(bakeNormal(f,TSIZE,R.nrm),TSIZE,false) };
+const DRAW={grass:[drawGrassGround,20260101,1.5], soil:[drawSoilGround,20260202,2.4],
+            rock:[drawRockGround,20260303,2.6], gravel:[drawGravelGround,20260404,2.4],
+            bark:[drawBarkTexture,20260505,2.2]};
+for(const name of Object.keys(DRAW)){
+  const [fn,sd,st]=DRAW[name], cv=fn(TSIZE, sd);
+  SURF[name]={ alb:dataTex(canvasToAlbedo(cv),TSIZE,true), nrm:dataTex(canvasToNormal(cv,st),TSIZE,false) };
 }
 const grassTex=dataTex(grassClump(256, 20260606, [0.204,0.259,0.145], [0.545,0.573,0.322]), 256, true);
 grassTex.wrapS=grassTex.wrapT=THREE.ClampToEdgeWrapping;
@@ -254,6 +259,25 @@ if(RIVER && RIVER.pts.length>1){
   scene.add(new THREE.Mesh(g, waterMat));
 }
 
+/* ═══ خامات البناء ═══ */
+const BUILD={};
+{
+  const defs={ stone:[drawStoneWall,7001,2.4], plaster:[drawPlaster,7003,2.0],
+               timber:[drawTimber,7004,2.0], thatch:[drawThatch,7006,1.8] };
+  for(const k2 of Object.keys(defs)){
+    const [fn,sd,st]=defs[k2], cv=fn(512, sd);
+    BUILD[k2]={ alb:dataTex(canvasToAlbedo(cv),512,true), nrm:dataTex(canvasToNormal(cv,st),512,false) };
+  }
+  const t1=drawRoofTile(512, 7002, [0.435,0.294,0.235]);
+  BUILD.tile={ alb:dataTex(canvasToAlbedo(t1),512,true), nrm:dataTex(canvasToNormal(t1,2.2),512,false) };
+  const t2=drawRoofTile(512, 7005, [0.235,0.318,0.408]);
+  BUILD.tileBlue={ alb:dataTex(canvasToAlbedo(t2),512,true), nrm:dataTex(canvasToNormal(t2,2.2),512,false) };
+}
+const stdMat=(t,rough)=>new THREE.MeshStandardMaterial({map:t.alb, normalMap:t.nrm, roughness:rough, metalness:0.0});
+const MAT={ stone:stdMat(BUILD.stone,0.93), plaster:stdMat(BUILD.plaster,0.90),
+            timber:stdMat(BUILD.timber,0.86), thatch:stdMat(BUILD.thatch,0.95),
+            tile:stdMat(BUILD.tile,0.78), tileBlue:stdMat(BUILD.tileBlue,0.62) };
+
 /* ═══ الأشجار ═══ */
 const barkMat=new THREE.MeshStandardMaterial({map:SURF.bark.alb, normalMap:SURF.bark.nrm, roughness:0.9, metalness:0.0});
 barkMat.map.repeat.set(1,2.5);
@@ -269,8 +293,8 @@ function translucent(mat, amount){
   };
   return mat;
 }
-const leafMat=translucent(new THREE.MeshStandardMaterial({map:leafTex, transparent:false, alphaTest:0.42, side:THREE.DoubleSide, roughness:0.88, metalness:0.0}), 0.30);
-const needleMat=translucent(new THREE.MeshStandardMaterial({map:needleTex, transparent:false, alphaTest:0.40, side:THREE.DoubleSide, roughness:0.90, metalness:0.0}), 0.22);
+const leafMat=translucent(new THREE.MeshStandardMaterial({map:leafTex, transparent:false, alphaTest:0.42, side:THREE.DoubleSide, roughness:0.88, metalness:0.0}), 0.46);
+const needleMat=translucent(new THREE.MeshStandardMaterial({map:needleTex, transparent:false, alphaTest:0.40, side:THREE.DoubleSide, roughness:0.90, metalness:0.0}), 0.34);
 const TREES=[];
 for(let v=0;v<3;v++) TREES.push({...buildBroadleaf(4110000+v*977, 11+v*2.6), conifer:false});
 for(let v=0;v<3;v++) TREES.push({...buildConifer(5220000+v*977, 14+v*3.1), conifer:true});
@@ -286,8 +310,8 @@ const treePool=[];
     const k=j*N+i;
     if(lake && lake[k]) continue;
     if(RW>0 && rd[k]<RW*1.35) continue;
-    if(roadD[k]<FEATH*0.8) continue;
-    if(wx*wx+wz*wz < 210*210) continue;
+    if(roadD[k]<62) continue;
+    if(wx*wx+wz*wz < 300*300) continue;
     const sl=slopeAt(i,j); if(sl>TMAXS) continue;
     const m=MOIST[k]; if(m<TMINM) continue;
     const clumpN=fbm(wx*0.0016+41, wz*0.0016-17, 4);
@@ -327,10 +351,50 @@ const rockPool=[];
 const grassMat=new THREE.MeshStandardMaterial({map:grassTex, alphaTest:0.35, side:THREE.DoubleSide, roughness:0.94, metalness:0.0});
 const bladeGeo=(()=>{
   const mb=new MB();
-  mb.card([0,0.29,0],[1,0,0],[0,1,0], 0.95, 0.62, 1, 0);
-  mb.card([0,0.29,0],[0,0,1],[0,1,0], 0.95, 0.62, 1, 0);
+  mb.card([0,0.22,0],[1,0,0],[0,1,0], 0.78, 0.50, 1, 0);
+  mb.card([0,0.22,0],[0,0,1],[0,1,0], 0.78, 0.50, 1, 0);
+  mb.card([0,0.22,0],[0.7,0,0.7],[0,1,0], 0.72, 0.46, 1, 0);
   return mb.geo(false);
 })();
+
+/* ═══ المملكة: قلعة على المصطبة وقرية على الطريق ═══ */
+const groundScene=(x,z)=>groundY(x/SC, z/SC)*SC;
+const GATE_ANGLE = routes[0] ? routes[0].a : 0;
+{
+  const rng=rngFrom(90210);
+  const K=buildKingdom(groundScene, rng, { radius: 150*SC, cx:0, cz:0, gateAngle: GATE_ANGLE });
+
+  // قرية على أوّل الطريق خارج السور
+  const road=routes[0] ? routes[0].path : [];
+  let placed=0;
+  for(let i=0;i<road.length && placed<16;i++){
+    const p=road[i];
+    const r=Math.hypot(p.x,p.z);
+    if(r < 240 || r > 620) continue;
+    if(i%3) continue;
+    for(const side of [-1,1]){
+      if(placed>=16) break;
+      const q=road[Math.min(i+2, road.length-1)];
+      let dx=q.x-p.x, dz=q.z-p.z; const dl=Math.hypot(dx,dz)||1; dx/=dl; dz/=dl;
+      const off=(26+rng()*16)*side;
+      const hx=(p.x - dz*off)*SC, hz=(p.z + dx*off)*SC;
+      if(Math.abs(hx)>WORLD*SC/2-40 || Math.abs(hz)>WORLD*SC/2-40) continue;
+      buildHouse(K, hx, hz, groundScene(hx,hz), Math.atan2(dx,dz)+(side<0?Math.PI:0), rng,
+                 {w:8.5, d:6.5, thatch:true});
+      placed++;
+    }
+  }
+
+  const kingdom=new THREE.Group();
+  const addPart=(mb, mat)=>{ if(!mb.p.length) return;
+    const m=new THREE.Mesh(mb.geo(false), mat); m.castShadow=true; m.receiveShadow=true; kingdom.add(m); };
+  addPart(K.stone, MAT.stone);
+  addPart(K.plaster, MAT.plaster);
+  addPart(K.timber, MAT.timber);
+  addPart(K.thatch, MAT.thatch);
+  addPart(K.tile, MAT.tile);
+  scene.add(kingdom);
+}
 
 /* ═══ إدارة النسخ حسب اللقطة ═══ */
 let live=[];
@@ -389,7 +453,10 @@ function look(target, dist, yawDeg, pitchDeg){
   camera.position.copy(t).add(off);
   camera.lookAt(t);
   sun.target.position.copy(t);
-  sun.position.copy(t).add(new THREE.Vector3(-620, 760, 520));
+  // الشمس مائلة على يسار الكاميرا: الضوء الزاحف هو ما يُظهر النتوء والملمس
+  const yawR=yaw + 2.30;
+  const dist2=1000;
+  sun.position.copy(t).add(new THREE.Vector3(Math.sin(yawR)*dist2, 420, Math.cos(yawR)*dist2));
   const span = Math.max(180, Math.min(1500, dist*1.5));
   sun.shadow.camera.left=-span; sun.shadow.camera.right=span;
   sun.shadow.camera.top=span; sun.shadow.camera.bottom=-span;
@@ -400,21 +467,33 @@ const riverMid = RIVER ? RIVER.pts[Math.floor(RIVER.pts.length*0.62)] : {x:0,z:0
 const roadMid  = routes[0] ? routes[0].path[Math.floor(routes[0].path.length*0.55)] : {x:0,z:0};
 const lakePt   = LAKE ? {x:LAKE.x, z:LAKE.z} : {x:0,z:0};
 
+const gateP = [Math.cos(GATE_ANGLE)*250, Math.sin(GATE_ANGLE)*250];
+const villP = routes[0] ? (()=>{ const r=routes[0].path.find(p=>Math.hypot(p.x,p.z)>380 && Math.hypot(p.x,p.z)<520);
+                                 return r?[r.x,r.z]:[400,0]; })() : [400,0];
+const GA = GATE_ANGLE*180/Math.PI;
+// موضع البوّابة بإحداثيات التوليد (القلعة نصف قطرها 150 وحدة توليد)
+const GATE_R = 150;
+const gateOut = [Math.cos(GATE_ANGLE)*GATE_R*1.65, Math.sin(GATE_ANGLE)*GATE_R*1.65];
+const YAW_OUT = 90 - GA;          // الكاميرا خارج البوّابة تنظر إلى الداخل
 const SHOTS={
-  far:   ()=>{ populate(0,0, 1700, 1700, 0, 0);
-               look([120,60], 1150, 208, 28); scene.fog.density=0.00030; },
-  valley:()=>{ populate(150,-260, 900, 700, 210, 9000);
-               look([150,-260], 330, 200, 20); scene.fog.density=0.00050; },
-  meadow:()=>{ populate(-260, 420, 620, 460, 190, 13000);
-               look([-260, 420], 78, 300, 8); scene.fog.density=0.00060; },
-  river: ()=>{ populate(riverMid.x, riverMid.z, 640, 470, 200, 13000);
-               look([riverMid.x, riverMid.z], 105, 250, 10); scene.fog.density=0.00060; },
-  road:  ()=>{ populate(roadMid.x, roadMid.z, 640, 470, 200, 13000);
-               look([roadMid.x, roadMid.z], 88, 40, 9); scene.fog.density=0.00060; },
-  lake:  ()=>{ populate(lakePt.x, lakePt.z, 950, 720, 220, 10000);
-               look([lakePt.x, lakePt.z], 360, 145, 10); scene.fog.density=0.00048; },
-  ridge: ()=>{ populate(-620, 760, 1100, 850, 0, 0);
-               look([-620, 760], 520, 150, 18); scene.fog.density=0.00040; },
+  far:    ()=>{ populate(0,0, 1700, 1700, 0, 0);
+                look([120,60], 1150, 208, 26); scene.fog.density=0.00030; },
+  castle: ()=>{ populate(0,0, 900, 700, 340, 15000);
+                look([0,0], 250, YAW_OUT, 15); scene.fog.density=0.00042; },
+  gate:   ()=>{ populate(0,0, 700, 560, 330, 17000);
+                look(gateOut, 78, YAW_OUT, 6); scene.fog.density=0.00050; },
+  keep:   ()=>{ populate(0,0, 700, 560, 330, 15000);
+                look([0,0], 130, YAW_OUT+40, 16); scene.fog.density=0.00046; },
+  village:()=>{ populate(villP[0], villP[1], 700, 520, 280, 17000);
+                look(villP, 95, YAW_OUT-70, 13); scene.fog.density=0.00050; },
+  valley: ()=>{ populate(150,-260, 900, 700, 220, 12000);
+                look([150,-260], 330, 200, 18); scene.fog.density=0.00050; },
+  meadow: ()=>{ populate(-260, 420, 620, 460, 200, 16000);
+                look([-260, 420], 70, 300, 6); scene.fog.density=0.00060; },
+  river:  ()=>{ populate(riverMid.x, riverMid.z, 640, 470, 210, 16000);
+                look([riverMid.x, riverMid.z], 95, 250, 8); scene.fog.density=0.00060; },
+  lake:   ()=>{ populate(lakePt.x, lakePt.z, 950, 720, 230, 13000);
+                look([lakePt.x, lakePt.z], 330, 145, 8); scene.fog.density=0.00048; },
 };
 let ready=false;
 function render(){ renderer.render(scene, camera); }

@@ -65,6 +65,9 @@ namespace Dawnkeep.World
 
         public float LakeRadius { get; set; }
 
+        /// <summary>منسوب مصطبة القلعة بعد التسوية.</summary>
+        public float CastleLevel { get; set; }
+
         public float MinHeight { get; set; }
 
         public float MaxHeight { get; set; }

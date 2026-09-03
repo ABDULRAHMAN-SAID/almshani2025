@@ -165,6 +165,172 @@ namespace Dawnkeep.Rendering
             }
         }
 
+        /// <summary>
+        /// صندوق بإحداثيات نسيج بمقياس العالم: تتساوى كثافة الخامة على كل وجه
+        /// مهما اختلفت الأبعاد، فلا تظهر مداميك بمترين على جدار ومداميك بسنتيمترات على آخر.
+        /// </summary>
+        public void AddBox(Vector3 center, Vector3 size, float rotY, float uvScale)
+        {
+            float co = Mathf.Cos(rotY);
+            float si = Mathf.Sin(rotY);
+            float hx = size.x * 0.5f;
+            float hy = size.y * 0.5f;
+            float hz = size.z * 0.5f;
+
+            Vector3[][] faces =
+            {
+                new[] { new Vector3(-hx, -hy, hz), new Vector3(hx, -hy, hz), new Vector3(hx, hy, hz), new Vector3(-hx, hy, hz) },
+                new[] { new Vector3(hx, -hy, -hz), new Vector3(-hx, -hy, -hz), new Vector3(-hx, hy, -hz), new Vector3(hx, hy, -hz) },
+                new[] { new Vector3(hx, -hy, hz), new Vector3(hx, -hy, -hz), new Vector3(hx, hy, -hz), new Vector3(hx, hy, hz) },
+                new[] { new Vector3(-hx, -hy, -hz), new Vector3(-hx, -hy, hz), new Vector3(-hx, hy, hz), new Vector3(-hx, hy, -hz) },
+                new[] { new Vector3(-hx, hy, hz), new Vector3(hx, hy, hz), new Vector3(hx, hy, -hz), new Vector3(-hx, hy, -hz) },
+                new[] { new Vector3(-hx, -hy, -hz), new Vector3(hx, -hy, -hz), new Vector3(hx, -hy, hz), new Vector3(-hx, -hy, hz) },
+            };
+
+            Vector3[] normals =
+            {
+                Vector3.forward, Vector3.back, Vector3.right, Vector3.left, Vector3.up, Vector3.down,
+            };
+
+            Vector2[] extents =
+            {
+                new Vector2(size.x, size.y), new Vector2(size.x, size.y),
+                new Vector2(size.z, size.y), new Vector2(size.z, size.y),
+                new Vector2(size.x, size.z), new Vector2(size.x, size.z),
+            };
+
+            for (int f = 0; f < faces.Length; f++)
+            {
+                Vector3 n = Rotate(normals[f], co, si);
+                int start = VertexCount;
+                Vector2 e = extents[f] * uvScale;
+                Vector2[] uv = { new Vector2(0f, 0f), new Vector2(e.x, 0f), new Vector2(e.x, e.y), new Vector2(0f, e.y) };
+
+                for (int i = 0; i < 4; i++)
+                {
+                    Vector3 p = Rotate(faces[f][i], co, si);
+                    AddVertex(center + p, n, uv[i], new Color(0f, 0.5f, 0.5f, 0f));
+                }
+
+                AddQuad(start, start + 1, start + 2, start + 3);
+            }
+        }
+
+        /// <summary>أسطوانة أو مخروط — أبراج وأسقف مخروطية وبراميل.</summary>
+        public void AddCylinder(Vector3 baseCenter, float radiusBottom, float radiusTop, float height,
+            int segments, float uvScale, bool capTop)
+        {
+            int start = VertexCount;
+            float circumference = Mathf.PI * (radiusBottom + radiusTop);
+
+            for (int ring = 0; ring < 2; ring++)
+            {
+                float y = baseCenter.y + (ring == 1 ? height : 0f);
+                float r = ring == 1 ? radiusTop : radiusBottom;
+
+                for (int i = 0; i <= segments; i++)
+                {
+                    float a = (float)i / segments * Mathf.PI * 2f;
+                    float ca = Mathf.Cos(a);
+                    float sa = Mathf.Sin(a);
+                    AddVertex(
+                        new Vector3(baseCenter.x + (ca * r), y, baseCenter.z + (sa * r)),
+                        new Vector3(ca, 0f, sa),
+                        new Vector2((float)i / segments * circumference * uvScale, (ring == 1 ? height : 0f) * uvScale),
+                        new Color(0f, 0.5f, 0.5f, 0f));
+                }
+            }
+
+            int stride = segments + 1;
+            for (int i = 0; i < segments; i++)
+            {
+                AddQuad(start + i, start + i + 1, start + stride + i + 1, start + stride + i);
+            }
+
+            if (capTop)
+            {
+                int capStart = VertexCount;
+                AddVertex(new Vector3(baseCenter.x, baseCenter.y + height, baseCenter.z), Vector3.up,
+                    Vector2.zero, new Color(0f, 0.5f, 0.5f, 0f));
+
+                for (int i = 0; i <= segments; i++)
+                {
+                    float a = (float)i / segments * Mathf.PI * 2f;
+                    AddVertex(
+                        new Vector3(baseCenter.x + (Mathf.Cos(a) * radiusTop), baseCenter.y + height,
+                            baseCenter.z + (Mathf.Sin(a) * radiusTop)),
+                        Vector3.up,
+                        new Vector2(Mathf.Cos(a) * radiusTop * uvScale, Mathf.Sin(a) * radiusTop * uvScale),
+                        new Color(0f, 0.5f, 0.5f, 0f));
+                }
+
+                for (int i = 0; i < segments; i++)
+                {
+                    AddTriangle(capStart, capStart + 1 + i, capStart + 2 + i);
+                }
+            }
+        }
+
+        /// <summary>سقف جملوني: منحدران يلتقيان عند جائز.</summary>
+        public void AddGableRoof(Vector3 eaveCenter, float width, float depth, float height,
+            float rotY, float uvScale, float overhang)
+        {
+            float co = Mathf.Cos(rotY);
+            float si = Mathf.Sin(rotY);
+            float hw = (width * 0.5f) + overhang;
+            float hd = (depth * 0.5f) + overhang;
+            float slope = Mathf.Sqrt((hw * hw) + (height * height));
+
+            Vector3 a = eaveCenter + Rotate(new Vector3(-hw, 0f, -hd), co, si);
+            Vector3 b = eaveCenter + Rotate(new Vector3(hw, 0f, -hd), co, si);
+            Vector3 cc = eaveCenter + Rotate(new Vector3(hw, 0f, hd), co, si);
+            Vector3 d = eaveCenter + Rotate(new Vector3(-hw, 0f, hd), co, si);
+            Vector3 r0 = eaveCenter + Rotate(new Vector3(0f, height, -hd), co, si);
+            Vector3 r1 = eaveCenter + Rotate(new Vector3(0f, height, hd), co, si);
+
+            Vector3 nL = Rotate(new Vector3(-height / slope, hw / slope, 0f), co, si);
+            Vector3 nR = Rotate(new Vector3(height / slope, hw / slope, 0f), co, si);
+
+            AddSlope(a, d, r1, r0, nL, depth * uvScale, slope * uvScale);
+            AddSlope(cc, b, r0, r1, nR, depth * uvScale, slope * uvScale);
+        }
+
+        /// <summary>واجهة مثلّثة تسدّ طرف الجملون.</summary>
+        public void AddGableEnd(Vector3 eaveCenter, float width, float height, float rotY, float z, float uvScale)
+        {
+            float co = Mathf.Cos(rotY);
+            float si = Mathf.Sin(rotY);
+            Vector3 n = Rotate(new Vector3(0f, 0f, Mathf.Sign(z)), co, si);
+
+            int start = VertexCount;
+            Vector2[] local = { new Vector2(-width * 0.5f, 0f), new Vector2(width * 0.5f, 0f), new Vector2(0f, height) };
+
+            for (int i = 0; i < 3; i++)
+            {
+                Vector3 p = Rotate(new Vector3(local[i].x, local[i].y, z), co, si);
+                AddVertex(eaveCenter + p, n,
+                    new Vector2((local[i].x + (width * 0.5f)) * uvScale, local[i].y * uvScale),
+                    new Color(0f, 0.5f, 0.5f, 0f));
+            }
+
+            AddTriangle(start, start + 1, start + 2);
+        }
+
+        private void AddSlope(Vector3 a, Vector3 b, Vector3 c, Vector3 d, Vector3 n, float uSpan, float vSpan)
+        {
+            int start = VertexCount;
+            AddVertex(a, n, new Vector2(0f, 0f), new Color(0f, 0.5f, 0.5f, 0f));
+            AddVertex(b, n, new Vector2(uSpan, 0f), new Color(0f, 0.5f, 0.5f, 0f));
+            AddVertex(c, n, new Vector2(uSpan, vSpan), new Color(0f, 0.5f, 0.5f, 0f));
+            AddVertex(d, n, new Vector2(0f, vSpan), new Color(0f, 0.5f, 0.5f, 0f));
+            AddQuad(start, start + 1, start + 2, start + 3);
+        }
+
+        private static Vector3 Rotate(Vector3 v, float cos, float sin)
+        {
+            return new Vector3((v.x * cos) - (v.z * sin), v.y, (v.x * sin) + (v.z * cos));
+        }
+
         public Mesh ToMesh(string name, bool recalculateNormals)
         {
             Mesh mesh = new Mesh();

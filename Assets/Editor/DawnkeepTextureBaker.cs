@@ -7,12 +7,34 @@ namespace Dawnkeep.EditorTools
 {
     /// <summary>
     /// يخبز كل خامات اللعبة برمجياً إلى ملفّات PNG داخل المشروع، ويضبط استيرادها.
+    /// الخامات **مرسومة** لا مولّدة بالضجيج: أعواد عشب وحصى وشقوق ومداميك حقيقية.
     /// كل بكسل هنا مولّد بالكود — لا صورة مأخوذة من لعبة أو مرجع خارجي.
     /// </summary>
     public static class DawnkeepTextureBaker
     {
         public const int GroundTextureSize = 512;
+        public const int BuildTextureSize = 512;
         public const int FoliageTextureSize = 256;
+
+        private struct GroundSurface
+        {
+            public string Name;
+            public System.Func<int, uint, TextureCanvas> Draw;
+            public uint Seed;
+            public float NormalStrength;
+        }
+
+        private static GroundSurface[] Surfaces()
+        {
+            return new[]
+            {
+                new GroundSurface { Name = "grass", Draw = DrawnMaterials.GrassGround, Seed = 20260101u, NormalStrength = 1.5f },
+                new GroundSurface { Name = "soil", Draw = DrawnMaterials.SoilGround, Seed = 20260202u, NormalStrength = 2.4f },
+                new GroundSurface { Name = "rock", Draw = DrawnMaterials.RockGround, Seed = 20260303u, NormalStrength = 2.6f },
+                new GroundSurface { Name = "gravel", Draw = DrawnMaterials.GravelGround, Seed = 20260404u, NormalStrength = 2.4f },
+                new GroundSurface { Name = "bark", Draw = DrawnMaterials.Bark, Seed = 20260505u, NormalStrength = 2.2f },
+            };
+        }
 
         [MenuItem("مملكة الرماد/3) خبز الخامات وطبقات الأرض", false, 3)]
         public static void BakeAll()
@@ -21,46 +43,32 @@ namespace Dawnkeep.EditorTools
 
             try
             {
-                EditorUtility.DisplayProgressBar("مملكة الرماد", "خبز خامات الأرض…", 0.05f);
+                GroundSurface[] surfaces = Surfaces();
+                for (int i = 0; i < surfaces.Length; i++)
+                {
+                    EditorUtility.DisplayProgressBar("مملكة الرماد",
+                        "رسم خامة الأرض: " + surfaces[i].Name, 0.05f + (0.35f * i / surfaces.Length));
+                    TextureCanvas c = surfaces[i].Draw(GroundTextureSize, surfaces[i].Seed);
+                    WriteCanvas(surfaces[i].Name, c, surfaces[i].NormalStrength);
+                }
 
-                BakeSurface(SurfaceLibrary.Grass(), GroundTextureSize);
-                EditorUtility.DisplayProgressBar("مملكة الرماد", "خبز خامات الأرض…", 0.20f);
-                BakeSurface(SurfaceLibrary.Soil(), GroundTextureSize);
-                EditorUtility.DisplayProgressBar("مملكة الرماد", "خبز خامات الأرض…", 0.35f);
-                BakeSurface(SurfaceLibrary.Rock(), GroundTextureSize);
-                EditorUtility.DisplayProgressBar("مملكة الرماد", "خبز خامات الأرض…", 0.50f);
-                BakeSurface(SurfaceLibrary.Gravel(), GroundTextureSize);
-                EditorUtility.DisplayProgressBar("مملكة الرماد", "خبز خامات الشجر…", 0.62f);
-                BakeSurface(SurfaceLibrary.Bark(), GroundTextureSize);
+                EditorUtility.DisplayProgressBar("مملكة الرماد", "رسم خامات البناء…", 0.45f);
+                WriteCanvas("stone", BuildingMaterials.StoneWall(BuildTextureSize, 7001u), 2.4f);
+                WriteCanvas("tile", BuildingMaterials.RoofTile(BuildTextureSize, 7002u, new Color(0.435f, 0.294f, 0.235f)), 2.2f);
+                WriteCanvas("tile_blue", BuildingMaterials.RoofTile(BuildTextureSize, 7005u, new Color(0.235f, 0.318f, 0.408f)), 2.2f);
+                WriteCanvas("plaster", BuildingMaterials.Plaster(BuildTextureSize, 7003u), 2.0f);
+                WriteCanvas("timber", BuildingMaterials.Timber(BuildTextureSize, 7004u), 2.0f);
+                WriteCanvas("thatch", BuildingMaterials.Thatch(BuildTextureSize, 7006u), 1.8f);
 
-                EditorUtility.DisplayProgressBar("مملكة الرماد", "خبز أوراق وعشب…", 0.75f);
-                BakeCutout(
-                    "grass_clump",
-                    FoliageTextureBaker.GrassClump(
-                        FoliageTextureSize,
-                        20260606u,
-                        new Color(0.204f, 0.259f, 0.145f),
-                        new Color(0.545f, 0.573f, 0.322f)));
+                EditorUtility.DisplayProgressBar("مملكة الرماد", "رسم أوراق وعشب…", 0.75f);
+                BakeCutout("grass_clump", FoliageTextureBaker.GrassClump(
+                    FoliageTextureSize, 20260606u, new Color(0.204f, 0.259f, 0.145f), new Color(0.545f, 0.573f, 0.322f)));
+                BakeCutout("leaf_cluster", FoliageTextureBaker.LeafCluster(
+                    FoliageTextureSize, 20260707u, new Color(0.129f, 0.208f, 0.114f), new Color(0.400f, 0.502f, 0.235f), false));
+                BakeCutout("needle_cluster", FoliageTextureBaker.LeafCluster(
+                    FoliageTextureSize, 20260808u, new Color(0.086f, 0.161f, 0.129f), new Color(0.271f, 0.376f, 0.243f), true));
 
-                BakeCutout(
-                    "leaf_cluster",
-                    FoliageTextureBaker.LeafCluster(
-                        FoliageTextureSize,
-                        20260707u,
-                        new Color(0.129f, 0.208f, 0.114f),
-                        new Color(0.400f, 0.502f, 0.235f),
-                        false));
-
-                BakeCutout(
-                    "needle_cluster",
-                    FoliageTextureBaker.LeafCluster(
-                        FoliageTextureSize,
-                        20260808u,
-                        new Color(0.086f, 0.161f, 0.129f),
-                        new Color(0.271f, 0.376f, 0.243f),
-                        true));
-
-                EditorUtility.DisplayProgressBar("مملكة الرماد", "بناء طبقات الأرض…", 0.90f);
+                EditorUtility.DisplayProgressBar("مملكة الرماد", "بناء طبقات الأرض…", 0.92f);
                 BuildTerrainLayers();
                 BuildMaterials();
             }
@@ -74,23 +82,19 @@ namespace Dawnkeep.EditorTools
             Debug.Log("مملكة الرماد: الخامات وطبقات الأرض جاهزة في " + DawnkeepAssetPaths.Generated);
         }
 
-        /// <summary>يخبز سطحاً واحداً: لون + نتوء، ويحفظهما PNG مستوردين بالإعداد الصحيح.</summary>
-        public static void BakeSurface(SurfaceRecipe recipe, int size)
+        private static void WriteCanvas(string name, TextureCanvas canvas, float normalStrength)
         {
-            float[] field = SurfaceBaker.BakeHeight(recipe, size);
-
-            Texture2D albedo = SurfaceBaker.BakeAlbedo(recipe, field, size);
-            WritePng(albedo, AlbedoPath(recipe.Name));
-            ConfigureAlbedo(AlbedoPath(recipe.Name));
+            Texture2D albedo = canvas.ToAlbedo(name + "_albedo");
+            WritePng(albedo, AlbedoPath(name));
+            ConfigureAlbedo(AlbedoPath(name));
             Object.DestroyImmediate(albedo);
 
-            Texture2D normal = SurfaceBaker.BakeNormal(field, size, recipe.NormalStrength);
-            WritePng(normal, NormalPath(recipe.Name));
-            ConfigureNormal(NormalPath(recipe.Name));
+            Texture2D normal = canvas.ToNormal(normalStrength);
+            WritePng(normal, NormalPath(name));
+            ConfigureNormal(NormalPath(name));
             Object.DestroyImmediate(normal);
         }
 
-        /// <summary>يخبز خامة شفّافة (عشب/أوراق).</summary>
         public static void BakeCutout(string name, Texture2D texture)
         {
             WritePng(texture, AlbedoPath(name));
@@ -205,7 +209,7 @@ namespace Dawnkeep.EditorTools
             return layers;
         }
 
-        /// <summary>خامات الشجر والصخر: لحاء بخريطة نتوء، وأوراق بشادر الريح.</summary>
+        /// <summary>خامات الشجر والصخر والبناء.</summary>
         public static void BuildMaterials()
         {
             Shader lit = Shader.Find("Universal Render Pipeline/Lit");
@@ -214,32 +218,16 @@ namespace Dawnkeep.EditorTools
                 lit = Shader.Find("Standard");
             }
 
+            MakeLit("Dawnkeep_Bark", lit, "bark", 0.08f, new Vector2(1f, 2.5f));
+            MakeLit("Dawnkeep_Rock", lit, "rock", 0.14f, new Vector2(1.6f, 1.6f));
+            MakeLit("Dawnkeep_Stone", lit, "stone", 0.10f, Vector2.one);
+            MakeLit("Dawnkeep_Plaster", lit, "plaster", 0.12f, Vector2.one);
+            MakeLit("Dawnkeep_Timber", lit, "timber", 0.16f, Vector2.one);
+            MakeLit("Dawnkeep_Tile", lit, "tile", 0.24f, Vector2.one);
+            MakeLit("Dawnkeep_TileBlue", lit, "tile_blue", 0.32f, Vector2.one);
+            MakeLit("Dawnkeep_Thatch", lit, "thatch", 0.06f, Vector2.one);
+
             Shader foliage = Shader.Find("Dawnkeep/Foliage");
-
-            Material bark = EnsureMaterial("Dawnkeep_Bark", lit);
-            if (bark != null)
-            {
-                bark.SetTexture("_BaseMap", AssetDatabase.LoadAssetAtPath<Texture2D>(AlbedoPath("bark")));
-                bark.SetTexture("_BumpMap", AssetDatabase.LoadAssetAtPath<Texture2D>(NormalPath("bark")));
-                bark.EnableKeyword("_NORMALMAP");
-                bark.SetFloat("_Smoothness", 0.08f);
-                bark.SetTextureScale("_BaseMap", new Vector2(1f, 2.5f));
-                bark.enableInstancing = true;
-                EditorUtility.SetDirty(bark);
-            }
-
-            Material rock = EnsureMaterial("Dawnkeep_Rock", lit);
-            if (rock != null)
-            {
-                rock.SetTexture("_BaseMap", AssetDatabase.LoadAssetAtPath<Texture2D>(AlbedoPath("rock")));
-                rock.SetTexture("_BumpMap", AssetDatabase.LoadAssetAtPath<Texture2D>(NormalPath("rock")));
-                rock.EnableKeyword("_NORMALMAP");
-                rock.SetFloat("_Smoothness", 0.14f);
-                rock.SetTextureScale("_BaseMap", new Vector2(1.6f, 1.6f));
-                rock.enableInstancing = true;
-                EditorUtility.SetDirty(rock);
-            }
-
             if (foliage != null)
             {
                 Material leaves = EnsureMaterial("Dawnkeep_Leaves", foliage);
@@ -264,6 +252,23 @@ namespace Dawnkeep.EditorTools
             {
                 Debug.LogWarning("مملكة الرماد: شادر Dawnkeep/Foliage غير مُصرَّف بعد — نفّذ الخطوة 1 (تثبيت URP) ثم أعد الخطوة 3.");
             }
+        }
+
+        private static void MakeLit(string name, Shader shader, string texture, float smoothness, Vector2 scale)
+        {
+            Material material = EnsureMaterial(name, shader);
+            if (material == null)
+            {
+                return;
+            }
+
+            material.SetTexture("_BaseMap", AssetDatabase.LoadAssetAtPath<Texture2D>(AlbedoPath(texture)));
+            material.SetTexture("_BumpMap", AssetDatabase.LoadAssetAtPath<Texture2D>(NormalPath(texture)));
+            material.EnableKeyword("_NORMALMAP");
+            material.SetFloat("_Smoothness", smoothness);
+            material.SetTextureScale("_BaseMap", scale);
+            material.enableInstancing = true;
+            EditorUtility.SetDirty(material);
         }
 
         public static Material EnsureMaterial(string name, Shader shader)

@@ -23,7 +23,7 @@ namespace Dawnkeep.Rendering
             MeshBuilder trunk = new MeshBuilder();
             MeshBuilder canopy = new MeshBuilder();
 
-            float baseRadius = height * 0.048f;
+            float baseRadius = height * 0.065f;
             float phase = (float)rng.NextDouble();
             Vector3 root = Vector3.zero;
             Vector3 lean = new Vector3(
@@ -35,7 +35,7 @@ namespace Dawnkeep.Rendering
             trunk.AddTube(root, top, baseRadius, baseRadius * 0.55f, 8, 1.4f, 0f, 0.16f, phase);
 
             float widest = 0f;
-            int mainBranches = 3 + rng.Next(0, 3);
+            int mainBranches = 4 + rng.Next(0, 3);
 
             for (int b = 0; b < mainBranches; b++)
             {
@@ -46,7 +46,7 @@ namespace Dawnkeep.Rendering
 
                 trunk.AddTube(top, tip, baseRadius * 0.5f, baseRadius * 0.22f, 6, 1.2f, 0.16f, 0.55f, phase);
 
-                int twigs = 2 + rng.Next(0, 3);
+                int twigs = 3 + rng.Next(0, 3);
                 for (int t = 0; t < twigs; t++)
                 {
                     float ta = a + (((float)rng.NextDouble() - 0.5f) * 1.7f);
@@ -85,7 +85,7 @@ namespace Dawnkeep.Rendering
             MeshBuilder trunk = new MeshBuilder();
             MeshBuilder canopy = new MeshBuilder();
 
-            float baseRadius = height * 0.040f;
+            float baseRadius = height * 0.052f;
             float phase = (float)rng.NextDouble();
             Vector3 root = Vector3.zero;
             Vector3 top = new Vector3(

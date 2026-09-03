@@ -101,6 +101,19 @@ namespace Dawnkeep.World
         [SerializeField] private float roadCoreWidth = 9f;
         [SerializeField] private float roadFeatherWidth = 26f;
 
+        [Header("موقع القلعة")]
+        [Tooltip("نصف قطر المصطبة المسوّاة تماماً (وحدات توليد).")]
+        [SerializeField] private float terraceInner = 190f;
+
+        [Tooltip("نصف قطر التلاشي إلى الأرض الطبيعية.")]
+        [SerializeField] private float terraceOuter = 330f;
+
+        [Tooltip("نصف قطر سور القلعة (وحدات توليد قبل ضربها في مقياس العالم).")]
+        [SerializeField] private float castleRadius = 150f;
+
+        [Tooltip("عدد بيوت القرية على الطريق خارج البوّابة.")]
+        [SerializeField] private int villageHouses = 16;
+
         [Header("الغطاء النباتي")]
         [Tooltip("أعلى ميل (0..1) تنبت عليه الأشجار.")]
         [Range(0f, 1f)]
@@ -169,6 +182,11 @@ namespace Dawnkeep.World
         public float RoadLakeCost { get { return roadLakeCost; } }
         public float RoadCoreWidth { get { return roadCoreWidth; } }
         public float RoadFeatherWidth { get { return roadFeatherWidth; } }
+
+        public float TerraceInner { get { return terraceInner; } }
+        public float TerraceOuter { get { return terraceOuter; } }
+        public float CastleRadius { get { return castleRadius; } }
+        public int VillageHouses { get { return villageHouses; } }
 
         public float TreeMaxSlope { get { return treeMaxSlope; } }
         public float TreeMinMoisture { get { return treeMinMoisture; } }

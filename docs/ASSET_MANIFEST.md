@@ -9,13 +9,21 @@
 
 ## خامات الأرض والأسطح
 
+جميعها **مرسومة** لا مولّدة بالضجيج: كل عود وكل حصاة وكل شقّ وكل مدماك مرسوم فعلاً
+على `TextureCanvas` بأدوات `TexturePainter`.
+
 | الأصل | المولِّد | الترخيص |
 |---|---|---|
-| `grass_albedo.png` + `grass_normal.png` | `SurfaceLibrary.Grass()` ← `SurfaceBaker` | أصلي — هذا المستودع |
-| `soil_albedo.png` + `soil_normal.png` | `SurfaceLibrary.Soil()` | أصلي |
-| `rock_albedo.png` + `rock_normal.png` | `SurfaceLibrary.Rock()` (ضجيج مطويّ ممطوط = طبقات صخرية) | أصلي |
-| `gravel_albedo.png` + `gravel_normal.png` | `SurfaceLibrary.Gravel()` | أصلي |
-| `bark_albedo.png` + `bark_normal.png` | `SurfaceLibrary.Bark()` | أصلي |
+| `grass_albedo/normal.png` | `DrawnMaterials.GrassGround` — 15 ألف عود مرسوم | أصلي — هذا المستودع |
+| `soil_albedo/normal.png` | `DrawnMaterials.SoilGround` — حصى وشقوق وجذور | أصلي |
+| `rock_albedo/normal.png` | `DrawnMaterials.RockGround` — طبقات وشقوق وأشنة | أصلي |
+| `gravel_albedo/normal.png` | `DrawnMaterials.GravelGround` — حصى متراكب | أصلي |
+| `bark_albedo/normal.png` | `DrawnMaterials.Bark` — أخاديد طولية وعقد | أصلي |
+| `stone_albedo/normal.png` | `BuildingMaterials.StoneWall` — مداميك ومونة | أصلي |
+| `tile_albedo/normal.png` · `tile_blue_*` | `BuildingMaterials.RoofTile` | أصلي |
+| `plaster_albedo/normal.png` | `BuildingMaterials.Plaster` | أصلي |
+| `timber_albedo/normal.png` | `BuildingMaterials.Timber` | أصلي |
+| `thatch_albedo/normal.png` | `BuildingMaterials.Thatch` | أصلي |
 
 ## خامات النبات الشفّافة
 
@@ -35,6 +43,7 @@
 | `Dawnkeep_LakeSurface` | `DawnkeepWorldSceneBuilder` من خلايا البحيرة | أصلي |
 | `Dawnkeep_RiverSurface` | `DawnkeepWorldSceneBuilder` من مضلّع النهر | أصلي |
 | `Dawnkeep_TerrainData` | `DawnkeepTerrainPainter` من حقول التوليد | أصلي |
+| `Dawnkeep_Kingdom_*` (5 شبكات) | `KingdomBuilder` — سور وأبراج وبوّابة وحصن وبيوت | أصلي |
 | `docs/world_preview_seed3.jpg` | خريطة تحليلية مولّدة بالكود لعالم البذرة 3 | أصلي |
 | `docs/renders/unity_preview_*.jpg` | لقطات معاينة مولّدة بالكود (Three.js بلا رأس) | أصلي |
 
@@ -49,7 +58,7 @@
 
 | المطلوب | البديل الحالي |
 |---|---|
-| مباني المملكة (قلعة، أبراج، مزارع، سوق) | لا شيء بعد — المرحلة التالية |
-| الشخصيات والأعداء | لا شيء بعد |
+| الشخصيات والأعداء | **لا شيء بعد** — أكبر فجوة متبقّية |
+| مزارع وحقول وأسواق | لا شيء بعد |
 | خطّ عربي مفتوح الترخيص للواجهة | لم يُضَف بعد (المرحلة التالية مع RTLTMPro) |
 | الصوت | نغمات مولّدة في النموذج المتصفّحي فقط |

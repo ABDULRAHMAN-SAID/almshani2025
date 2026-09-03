@@ -401,6 +401,28 @@ function terThermal(N, s, h, iters, talusAngle, rate){
   }
 }
 
+
+/* تسوية موقع القلعة: كل حصن يُقام على مصطبة مسوّاة، لا على نتوء متعرّج.
+   القرص الداخلي يستوي تماماً ثم يتلاشى إلى الأرض الطبيعية. */
+function terTerrace(N, s, h, cx, cz, rInner, rOuter){
+  let sum=0, n=0;
+  for(let j=1;j<N-1;j++){ const z=terWX(j);
+    for(let i=1;i<N-1;i++){ const x=terWX(i);
+      if(Math.hypot(x-cx,z-cz)<=rInner){ sum+=h[j*N+i]; n++; } } }
+  if(!n) return 0;
+  const level=sum/n;
+  for(let j=1;j<N-1;j++){ const z=terWX(j);
+    for(let i=1;i<N-1;i++){ const x=terWX(i);
+      const d=Math.hypot(x-cx,z-cz);
+      if(d>rOuter) continue;
+      let k=1;
+      if(d>rInner){ const t=(d-rInner)/(rOuter-rInner); k=1-(t*t*(3-2*t)); }
+      const idx=j*N+i;
+      h[idx]=h[idx]*(1-k)+level*k;
+    } }
+  return level;
+}
+
 /* ── التوليد الكامل ── */
 function terGenerate(seed){
   const N = TER.N = MOBILE ? 193 : 257;

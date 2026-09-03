@@ -84,16 +84,16 @@ function leafCards(mb, rnd, c, size, count, sway, phase){
 }
 function buildBroadleaf(seed, height){
   const rnd=rngFrom(seed), trunk=new MB(), can=new MB();
-  const br=height*0.048, phase=rnd();
+  const br=height*0.065, phase=rnd();
   const lean=[(rnd()-0.5)*height*0.10, 0, (rnd()-0.5)*height*0.10];
   const top=[lean[0], height*0.48, lean[2]];
   trunk.tube([0,0,0], top, br, br*0.55, 8, 1.4, 0, 0.16, phase);
-  const main=3+((rnd()*3)|0);
+  const main=4+((rnd()*3)|0);
   for(let b=0;b<main;b++){
     const a=b/main*Math.PI*2+rnd()*0.7, spread=height*(0.16+rnd()*0.12), rise=height*(0.20+rnd()*0.14);
     const tip=[top[0]+Math.cos(a)*spread, top[1]+rise, top[2]+Math.sin(a)*spread];
     trunk.tube(top, tip, br*0.5, br*0.22, 6, 1.2, 0.16, 0.55, phase);
-    const twigs=2+((rnd()*3)|0);
+    const twigs=3+((rnd()*3)|0);
     for(let t=0;t<twigs;t++){
       const ta=a+(rnd()-0.5)*1.7, tl=height*(0.09+rnd()*0.09);
       const tt=[tip[0]+Math.cos(ta)*tl, tip[1]+height*(0.05+rnd()*0.10), tip[2]+Math.sin(ta)*tl];
@@ -108,7 +108,7 @@ function buildBroadleaf(seed, height){
 }
 function buildConifer(seed, height){
   const rnd=rngFrom(seed), trunk=new MB(), can=new MB();
-  const br=height*0.040, phase=rnd();
+  const br=height*0.052, phase=rnd();
   const top=[(rnd()-0.5)*height*0.04, height, (rnd()-0.5)*height*0.04];
   trunk.tube([0,0,0], top, br, br*0.12, 8, 1.6, 0, 0.35, phase);
   const whorls=7+((rnd()*3)|0);

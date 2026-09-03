@@ -60,7 +60,7 @@ namespace Dawnkeep.Rendering
             if (needles)
             {
                 // رشّات إبر: ساق قصيرة تتفرّع منها إبر — الكثافة من عدد الرشّات
-                int sprays = Mathf.Max(8, Mathf.RoundToInt(58f * k * k));
+                int sprays = Mathf.Max(16, Mathf.RoundToInt(120f * k * k));
                 for (int c = 0; c < sprays; c++)
                 {
                     float a = Next(ref s) * Mathf.PI * 2f;
@@ -70,7 +70,7 @@ namespace Dawnkeep.Rendering
                     float fall = 1f - Mathf.Clamp01(r / (size * 0.52f));
 
                     float dirAngle = a + ((Next(ref s) - 0.5f) * 0.8f);
-                    float stem = (0.10f + (Next(ref s) * 0.12f)) * size;
+                    float stem = (0.065f + (Next(ref s) * 0.075f)) * size;
                     float dx = Mathf.Cos(dirAngle);
                     float dy = Mathf.Sin(dirAngle);
 
@@ -94,7 +94,7 @@ namespace Dawnkeep.Rendering
                         for (int side = -1; side <= 1; side += 2)
                         {
                             float na = dirAngle + (side * (0.62f + (Next(ref s) * 0.55f)));
-                            float nl = (0.030f + (Next(ref s) * 0.032f)) * size;
+                            float nl = (0.018f + (Next(ref s) * 0.020f)) * size;
                             float ndx = Mathf.Cos(na);
                             float ndy = Mathf.Sin(na);
                             int st2 = Mathf.CeilToInt(nl * 1.6f);
@@ -111,7 +111,7 @@ namespace Dawnkeep.Rendering
             }
             else
             {
-                int leaves = Mathf.Max(30, Mathf.RoundToInt(230f * k * k));
+                int leaves = Mathf.Max(120, Mathf.RoundToInt(1100f * k * k));
                 for (int c = 0; c < leaves; c++)
                 {
                     float a = Next(ref s) * Mathf.PI * 2f;
@@ -122,7 +122,7 @@ namespace Dawnkeep.Rendering
 
                     float m = (0.34f + (Next(ref s) * 0.66f)) * (0.56f + (fall * 0.44f));
                     Color tint = Color.Lerp(deep, light, m);
-                    float rad = (0.052f + (Next(ref s) * 0.062f)) * size;
+                    float rad = (0.020f + (Next(ref s) * 0.026f)) * size;
                     PaintLeaf(px, size, cx, cy, rad, Next(ref s) * Mathf.PI * 2f, tint);
                 }
             }
@@ -185,7 +185,7 @@ namespace Dawnkeep.Rendering
                     }
 
                     // عرق الورقة أغمق قليلاً فلا تبدو بقعة صمّاء
-                    float vein = Mathf.Abs(ly) < 0.10f ? 0.82f : 1f;
+                    float vein = Mathf.Abs(ly) < 0.16f ? 0.80f : 1f;
                     Color c = new Color(color.r * vein, color.g * vein, color.b * vein, 1f);
                     Blend(px, (yi * size) + xi, c, Mathf.Clamp01((1f - d) * 3.0f));
                 }
