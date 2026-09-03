@@ -1,0 +1,416 @@
+using System.Collections.Generic;
+using Dawnkeep.World;
+using UnityEditor;
+using UnityEngine;
+
+namespace Dawnkeep.EditorTools
+{
+    /// <summary>
+    /// يحوّل حقول التوليد إلى تضاريس Unity: ارتفاعات، خرائط طبقات، عشب، وأشجار.
+    /// كل قرار هنا مشتقّ من الفيزياء: الصخر حيث الميل حادّ، الحصى على ضفاف النهر
+    /// وممرّات الطرق، العشب حيث الرطوبة، والغابة حيث تجتمع الرطوبة مع الميل اللطيف.
+    /// </summary>
+    public static class DawnkeepTerrainPainter
+    {
+        public const int AlphamapResolution = 1024;
+        public const int DetailResolution = 1024;
+        public const int DetailPatch = 16;
+
+        public static TerrainData BuildTerrainData(WorldGenSettings settings, WorldData world, string assetPath)
+        {
+            TerrainData data = AssetDatabase.LoadAssetAtPath<TerrainData>(assetPath);
+            if (data == null)
+            {
+                data = new TerrainData();
+                AssetDatabase.CreateAsset(data, assetPath);
+            }
+
+            int res = world.Resolution;
+            float range = Mathf.Max(40f, world.MaxHeight - world.MinHeight);
+
+            data.heightmapResolution = res;
+            data.size = new Vector3(world.WorldSize, range, world.WorldSize);
+
+            EditorUtility.DisplayProgressBar("مملكة الرماد", "كتابة الارتفاعات…", 0.05f);
+            float[,] heights = new float[res, res];
+            for (int j = 0; j < res; j++)
+            {
+                for (int i = 0; i < res; i++)
+                {
+                    heights[j, i] = Mathf.Clamp01((world.Height[(j * res) + i] - world.MinHeight) / range);
+                }
+            }
+
+            data.SetHeights(0, 0, heights);
+
+            EditorUtility.DisplayProgressBar("مملكة الرماد", "رسم طبقات الأرض…", 0.35f);
+            PaintSplat(settings, world, data);
+
+            EditorUtility.DisplayProgressBar("مملكة الرماد", "زرع العشب…", 0.62f);
+            PaintDetails(settings, world, data);
+
+            EditorUtility.DisplayProgressBar("مملكة الرماد", "زرع الغابات…", 0.80f);
+            PlantTrees(settings, world, data);
+
+            data.wavingGrassStrength = 0.42f;
+            data.wavingGrassAmount = 0.32f;
+            data.wavingGrassSpeed = 0.38f;
+            data.wavingGrassTint = new Color(0.72f, 0.76f, 0.55f, 1f);
+
+            EditorUtility.SetDirty(data);
+            return data;
+        }
+
+        /// <summary>أوزان الطبقات الأربع لكل خلية: عشب، تربة، صخر، حصى.</summary>
+        private static void PaintSplat(WorldGenSettings settings, WorldData world, TerrainData data)
+        {
+            TerrainLayer[] layers = DawnkeepTextureBaker.BuildTerrainLayers();
+            data.terrainLayers = layers;
+            data.alphamapResolution = AlphamapResolution;
+
+            int res = AlphamapResolution;
+            int n = world.Resolution;
+            float[,,] map = new float[res, res, layers.Length];
+            float half = world.WorldSize * 0.5f;
+            float riverWidth = world.River.Length > 0 ? world.RiverWidth : 0f;
+            float range = Mathf.Max(1f, world.MaxHeight - world.MinHeight);
+
+            for (int y = 0; y < res; y++)
+            {
+                float wz = (((y + 0.5f) / res) * world.WorldSize) - half;
+
+                for (int x = 0; x < res; x++)
+                {
+                    float wx = (((x + 0.5f) / res) * world.WorldSize) - half;
+
+                    int i = Mathf.Clamp(Mathf.RoundToInt((wx + half) / world.Step), 0, n - 1);
+                    int j = Mathf.Clamp(Mathf.RoundToInt((wz + half) / world.Step), 0, n - 1);
+                    int k = (j * n) + i;
+
+                    float slope = world.SlopeAt(i, j);
+                    float moisture = world.Moisture[k];
+                    float altitude = (world.Height[k] - world.MinHeight) / range;
+                    float riverDist = world.RiverDistance[k];
+                    float roadDist = world.RoadDistance[k];
+
+                    // صخر مكشوف حيث لا تثبت التربة
+                    float rock = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.34f, 0.78f, slope));
+                    rock += Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.62f, 0.92f, altitude)) * 0.55f;
+
+                    // حصى: ضفاف النهر، قاع البحيرة، وممرّ الطريق المدكوك
+                    float gravel = 0f;
+                    if (riverWidth > 0f)
+                    {
+                        gravel += Mathf.Clamp01(1f - (riverDist / (riverWidth * 1.9f)));
+                    }
+
+                    if (roadDist < settings.RoadFeatherWidth)
+                    {
+                        gravel += Mathf.Clamp01(1f - (roadDist / settings.RoadFeatherWidth)) * 1.35f;
+                    }
+
+                    if (world.Lake[k] != 0)
+                    {
+                        gravel += 0.9f;
+                    }
+
+                    // تربة عارية حيث تجفّ الأرض أو يشتدّ الميل قليلاً
+                    float soil = Mathf.Clamp01((1f - moisture) * 1.25f) + Mathf.Clamp01((slope - 0.18f) * 1.4f);
+
+                    // عشب حيث الرطوبة والميل اللطيف
+                    float grass = Mathf.Clamp01(moisture * 1.65f) * Mathf.Clamp01(1f - (slope * 1.5f));
+
+                    rock = Mathf.Max(rock, 0f);
+                    gravel = Mathf.Max(gravel, 0f);
+                    soil = Mathf.Max(soil, 0.05f);
+                    grass = Mathf.Max(grass, 0f);
+
+                    float sum = grass + soil + rock + gravel;
+                    if (sum <= 1e-4f)
+                    {
+                        grass = 1f;
+                        sum = 1f;
+                    }
+
+                    map[y, x, 0] = grass / sum;
+                    map[y, x, 1] = soil / sum;
+                    map[y, x, 2] = rock / sum;
+                    map[y, x, 3] = gravel / sum;
+                }
+            }
+
+            data.SetAlphamaps(0, 0, map);
+        }
+
+        /// <summary>العشب: كثافة مشتقّة من وزن طبقة العشب، ممنوع في الماء والطريق والجرف.</summary>
+        private static void PaintDetails(WorldGenSettings settings, WorldData world, TerrainData data)
+        {
+            Texture2D clump = AssetDatabase.LoadAssetAtPath<Texture2D>(
+                DawnkeepTextureBaker.AlbedoPath("grass_clump"));
+
+            if (clump == null)
+            {
+                Debug.LogWarning("مملكة الرماد: خامة العشب غير موجودة — نفّذ الخطوة 3 أولاً.");
+                return;
+            }
+
+            DetailPrototype tall = new DetailPrototype();
+            tall.prototypeTexture = clump;
+            tall.renderMode = DetailRenderMode.Grass;
+            tall.usePrototypeMesh = false;
+            tall.minWidth = 1.6f;
+            tall.maxWidth = 3.2f;
+            tall.minHeight = 1.3f;
+            tall.maxHeight = 2.8f;
+            tall.noiseSpread = 0.4f;
+            tall.healthyColor = new Color(0.72f, 0.78f, 0.48f);
+            tall.dryColor = new Color(0.70f, 0.62f, 0.33f);
+
+            DetailPrototype low = new DetailPrototype();
+            low.prototypeTexture = clump;
+            low.renderMode = DetailRenderMode.Grass;
+            low.usePrototypeMesh = false;
+            low.minWidth = 1.1f;
+            low.maxWidth = 2.0f;
+            low.minHeight = 0.7f;
+            low.maxHeight = 1.4f;
+            low.noiseSpread = 0.8f;
+            low.healthyColor = new Color(0.62f, 0.66f, 0.40f);
+            low.dryColor = new Color(0.66f, 0.57f, 0.31f);
+
+            data.detailPrototypes = new DetailPrototype[] { tall, low };
+            data.SetDetailResolution(DetailResolution, DetailPatch);
+
+            int res = DetailResolution;
+            int n = world.Resolution;
+            float half = world.WorldSize * 0.5f;
+            float riverWidth = world.River.Length > 0 ? world.RiverWidth : 0f;
+            int[,] dense = new int[res, res];
+            int[,] sparse = new int[res, res];
+            int maxDensity = Mathf.Clamp(settings.GrassDensity, 1, 16);
+
+            for (int y = 0; y < res; y++)
+            {
+                float wz = (((y + 0.5f) / res) * world.WorldSize) - half;
+
+                for (int x = 0; x < res; x++)
+                {
+                    float wx = (((x + 0.5f) / res) * world.WorldSize) - half;
+
+                    int i = Mathf.Clamp(Mathf.RoundToInt((wx + half) / world.Step), 0, n - 1);
+                    int j = Mathf.Clamp(Mathf.RoundToInt((wz + half) / world.Step), 0, n - 1);
+                    int k = (j * n) + i;
+
+                    if (world.Lake[k] != 0)
+                    {
+                        continue;
+                    }
+
+                    if (riverWidth > 0f && world.RiverDistance[k] < riverWidth * 1.1f)
+                    {
+                        continue;
+                    }
+
+                    if (world.RoadDistance[k] < settings.RoadCoreWidth * 1.2f)
+                    {
+                        continue;
+                    }
+
+                    float slope = world.SlopeAt(i, j);
+                    if (slope > settings.GrassMaxSlope)
+                    {
+                        continue;
+                    }
+
+                    float moisture = world.Moisture[k];
+                    float fertility = Mathf.Clamp01(moisture * 1.5f) * Mathf.Clamp01(1f - (slope / settings.GrassMaxSlope));
+
+                    // بقع كثيفة تتخللها فجوات — لا سجّادة عشب واحدة
+                    float patch = ValueNoise.Fbm(wx * 0.0075, wz * 0.0075, 3);
+                    fertility *= Mathf.Clamp01((patch - 0.28f) * 2.4f);
+
+                    if (fertility <= 0.02f)
+                    {
+                        continue;
+                    }
+
+                    dense[y, x] = Mathf.RoundToInt(fertility * maxDensity);
+                    sparse[y, x] = Mathf.RoundToInt(fertility * maxDensity * 0.55f);
+                }
+            }
+
+            data.SetDetailLayer(0, 0, 0, dense);
+            data.SetDetailLayer(0, 0, 1, sparse);
+        }
+
+        /// <summary>الغابات: نقاط مرشّحة على شبكة مزحزحة، تُقبل بالرطوبة والميل وتُرفض عند الماء والطريق.</summary>
+        private static void PlantTrees(WorldGenSettings settings, WorldData world, TerrainData data)
+        {
+            List<TreePrototype> prototypes = new List<TreePrototype>();
+            List<bool> isConifer = new List<bool>();
+
+            for (int i = 0; i < DawnkeepPrefabBuilder.BroadleafVariants; i++)
+            {
+                GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+                    DawnkeepPrefabBuilder.TreePrefabPath(true, i));
+
+                if (prefab == null)
+                {
+                    continue;
+                }
+
+                TreePrototype proto = new TreePrototype();
+                proto.prefab = prefab;
+                proto.bendFactor = 0.4f;
+                prototypes.Add(proto);
+                isConifer.Add(false);
+            }
+
+            for (int i = 0; i < DawnkeepPrefabBuilder.ConiferVariants; i++)
+            {
+                GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+                    DawnkeepPrefabBuilder.TreePrefabPath(false, i));
+
+                if (prefab == null)
+                {
+                    continue;
+                }
+
+                TreePrototype proto = new TreePrototype();
+                proto.prefab = prefab;
+                proto.bendFactor = 0.25f;
+                prototypes.Add(proto);
+                isConifer.Add(true);
+            }
+
+            if (prototypes.Count == 0)
+            {
+                Debug.LogWarning("مملكة الرماد: لا توجد جاهزات أشجار — نفّذ الخطوة 4 أولاً.");
+                return;
+            }
+
+            data.treePrototypes = prototypes.ToArray();
+
+            int n = world.Resolution;
+            float half = world.WorldSize * 0.5f;
+            float range = Mathf.Max(1f, world.MaxHeight - world.MinHeight);
+            float riverWidth = world.River.Length > 0 ? world.RiverWidth : 0f;
+            System.Random rng = new System.Random(settings.Seed * 31 + 17);
+
+            int target = Mathf.Max(200, settings.TreeTarget);
+            int grid = Mathf.CeilToInt(Mathf.Sqrt(target * 3f));
+            float cell = world.WorldSize / grid;
+
+            List<TreeInstance> instances = new List<TreeInstance>(target);
+
+            for (int gy = 0; gy < grid; gy++)
+            {
+                for (int gx = 0; gx < grid; gx++)
+                {
+                    float wx = (gx + 0.15f + ((float)rng.NextDouble() * 0.7f)) * cell - half;
+                    float wz = (gy + 0.15f + ((float)rng.NextDouble() * 0.7f)) * cell - half;
+
+                    int i = Mathf.Clamp(Mathf.RoundToInt((wx + half) / world.Step), 0, n - 1);
+                    int j = Mathf.Clamp(Mathf.RoundToInt((wz + half) / world.Step), 0, n - 1);
+                    int k = (j * n) + i;
+
+                    if (world.Lake[k] != 0)
+                    {
+                        continue;
+                    }
+
+                    if (riverWidth > 0f && world.RiverDistance[k] < riverWidth * 1.35f)
+                    {
+                        continue;
+                    }
+
+                    if (world.RoadDistance[k] < settings.RoadFeatherWidth * 0.8f)
+                    {
+                        continue;
+                    }
+
+                    // ساحة القلعة تبقى مفتوحة
+                    if ((wx * wx) + (wz * wz) < 210f * 210f)
+                    {
+                        continue;
+                    }
+
+                    float slope = world.SlopeAt(i, j);
+                    if (slope > settings.TreeMaxSlope)
+                    {
+                        continue;
+                    }
+
+                    float moisture = world.Moisture[k];
+                    if (moisture < settings.TreeMinMoisture)
+                    {
+                        continue;
+                    }
+
+                    // تجمّع الغابة في بقع بدل توزّع متساوٍ ممل
+                    float clump = ValueNoise.Fbm(wx * 0.0016 + 41.0, wz * 0.0016 - 17.0, 4);
+                    float chance = Mathf.Clamp01((moisture - settings.TreeMinMoisture) * 2.2f)
+                                 * Mathf.Clamp01((clump - 0.34f) * 3.1f)
+                                 * Mathf.Clamp01(1f - (slope / settings.TreeMaxSlope));
+
+                    if (rng.NextDouble() > chance)
+                    {
+                        continue;
+                    }
+
+                    float altitude = (world.Height[k] - world.MinHeight) / range;
+                    bool wantConifer = altitude > 0.46f || moisture < 0.34f;
+
+                    int prototype = PickPrototype(isConifer, wantConifer, rng);
+                    if (prototype < 0)
+                    {
+                        continue;
+                    }
+
+                    TreeInstance instance = new TreeInstance();
+                    instance.position = new Vector3(
+                        (wx + half) / world.WorldSize,
+                        0f,
+                        (wz + half) / world.WorldSize);
+                    instance.prototypeIndex = prototype;
+
+                    float scale = 0.78f + ((float)rng.NextDouble() * 0.55f);
+                    instance.widthScale = scale * (0.92f + ((float)rng.NextDouble() * 0.18f));
+                    instance.heightScale = scale;
+                    instance.rotation = (float)rng.NextDouble() * Mathf.PI * 2f;
+                    instance.color = Color.white;
+                    instance.lightmapColor = Color.white;
+
+                    instances.Add(instance);
+
+                    if (instances.Count >= target)
+                    {
+                        gy = grid;
+                        break;
+                    }
+                }
+            }
+
+            data.SetTreeInstances(instances.ToArray(), true);
+        }
+
+        private static int PickPrototype(List<bool> isConifer, bool wantConifer, System.Random rng)
+        {
+            List<int> pool = new List<int>();
+            for (int i = 0; i < isConifer.Count; i++)
+            {
+                if (isConifer[i] == wantConifer)
+                {
+                    pool.Add(i);
+                }
+            }
+
+            if (pool.Count == 0)
+            {
+                return isConifer.Count > 0 ? rng.Next(0, isConifer.Count) : -1;
+            }
+
+            return pool[rng.Next(0, pool.Count)];
+        }
+    }
+}
