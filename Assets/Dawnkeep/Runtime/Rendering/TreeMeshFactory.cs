@@ -31,7 +31,7 @@ namespace Dawnkeep.Rendering
                 0f,
                 ((float)rng.NextDouble() - 0.5f) * height * 0.10f);
 
-            Vector3 top = new Vector3(lean.x, height * 0.52f, lean.z);
+            Vector3 top = new Vector3(lean.x, height * 0.48f, lean.z);
             trunk.AddTube(root, top, baseRadius, baseRadius * 0.55f, 8, 1.4f, 0f, 0.16f, phase);
 
             float widest = 0f;
@@ -57,7 +57,8 @@ namespace Dawnkeep.Rendering
                         Mathf.Sin(ta) * tl);
 
                     trunk.AddTube(tip, twigTip, baseRadius * 0.2f, baseRadius * 0.08f, 5, 1f, 0.55f, 0.9f, phase);
-                    AddLeafCards(canopy, rng, twigTip, height * (0.26f + ((float)rng.NextDouble() * 0.12f)), 3, 0.95f, phase);
+                    AddLeafCards(canopy, rng, twigTip, height * (0.30f + ((float)rng.NextDouble() * 0.14f)), 4, 0.95f, phase);
+                    AddLeafCards(canopy, rng, Vector3.Lerp(tip, twigTip, 0.5f), height * 0.26f, 2, 0.85f, phase);
 
                     float rr = new Vector2(twigTip.x, twigTip.z).magnitude;
                     if (rr > widest)
@@ -66,7 +67,7 @@ namespace Dawnkeep.Rendering
                     }
                 }
 
-                AddLeafCards(canopy, rng, tip, height * 0.30f, 2, 0.75f, phase);
+                AddLeafCards(canopy, rng, tip, height * 0.34f, 3, 0.75f, phase);
             }
 
             TreeMeshes result;
@@ -120,7 +121,8 @@ namespace Dawnkeep.Rendering
                         Mathf.Sin(ang) * radius);
 
                     trunk.AddTube(armRoot, armTip, baseRadius * 0.16f, baseRadius * 0.05f, 5, 1f, sway * 0.5f, sway, phase);
-                    AddLeafCards(canopy, rng, Vector3.Lerp(armRoot, armTip, 0.62f), radius * 1.5f, 2, sway, phase);
+                    AddLeafCards(canopy, rng, Vector3.Lerp(armRoot, armTip, 0.62f), radius * 1.6f, 3, sway, phase);
+                    AddLeafCards(canopy, rng, Vector3.Lerp(armRoot, armTip, 0.30f), radius * 1.1f, 1, sway * 0.8f, phase);
 
                     if (radius > widest)
                     {

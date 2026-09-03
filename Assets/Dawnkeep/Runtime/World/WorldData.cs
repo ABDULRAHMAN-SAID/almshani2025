@@ -100,6 +100,46 @@ namespace Dawnkeep.World
             return (a * (1f - tz)) + (b * tz);
         }
 
+        /// <summary>
+        /// قراءة ناعمة بمنحنى Catmull-Rom: تُستعمل لرفع دقّة شبكة التضاريس فوق دقّة
+        /// المحاكاة. القراءة الخطّية تعيد نفس السطح بوجوه مسطّحة، وهذه تنعّمه فعلاً.
+        /// </summary>
+        public float SampleSmooth(float[] field, float x, float z)
+        {
+            int n = Resolution;
+            float fx = Mathf.Clamp((x + (WorldSize * 0.5f)) / Step, 0f, n - 1.0001f);
+            float fz = Mathf.Clamp((z + (WorldSize * 0.5f)) / Step, 0f, n - 1.0001f);
+            int i = (int)fx;
+            int j = (int)fz;
+            float tx = fx - i;
+            float tz = fz - j;
+
+            float r0 = CubicRow(field, n, i, Mathf.Clamp(j - 1, 0, n - 1), tx);
+            float r1 = CubicRow(field, n, i, j, tx);
+            float r2 = CubicRow(field, n, i, Mathf.Clamp(j + 1, 0, n - 1), tx);
+            float r3 = CubicRow(field, n, i, Mathf.Clamp(j + 2, 0, n - 1), tx);
+            return Cubic(r0, r1, r2, r3, tz);
+        }
+
+        private static float CubicRow(float[] field, int n, int i, int j, float t)
+        {
+            int row = j * n;
+            float a = field[row + Mathf.Clamp(i - 1, 0, n - 1)];
+            float b = field[row + Mathf.Clamp(i, 0, n - 1)];
+            float c = field[row + Mathf.Clamp(i + 1, 0, n - 1)];
+            float d = field[row + Mathf.Clamp(i + 2, 0, n - 1)];
+            return Cubic(a, b, c, d, t);
+        }
+
+        private static float Cubic(float a, float b, float c, float d, float t)
+        {
+            float t2 = t * t;
+            return b
+                 + (0.5f * t * (c - a))
+                 + (t2 * (a - (2.5f * b) + (2f * c) - (0.5f * d)))
+                 + (t2 * t * ((0.5f * (d - a)) + (1.5f * (b - c))));
+        }
+
         /// <summary>ميل السطح عند عقدة، مُطبَّع بحيث 1 يساوي 45 درجة.</summary>
         public float SlopeAt(int i, int j)
         {

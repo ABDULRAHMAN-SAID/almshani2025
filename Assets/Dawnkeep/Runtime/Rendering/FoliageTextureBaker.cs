@@ -14,13 +14,13 @@ namespace Dawnkeep.Rendering
             Color[] px = NewTransparent(size);
             uint s = seed == 0u ? 1u : seed;
 
-            int blades = Mathf.Max(9, size / 12);
+            int blades = Mathf.Max(14, size / 7);
             for (int b = 0; b < blades; b++)
             {
                 float rootX = (0.10f + (Next(ref s) * 0.80f)) * size;
                 float height = (0.45f + (Next(ref s) * 0.50f)) * size;
                 float lean = (Next(ref s) - 0.5f) * 0.55f * size;
-                float halfWidth = (0.010f + (Next(ref s) * 0.014f)) * size;
+                float halfWidth = (0.013f + (Next(ref s) * 0.017f)) * size;
                 float shade = 0.72f + (Next(ref s) * 0.38f);
 
                 int steps = Mathf.CeilToInt(height * 1.5f);
@@ -44,36 +44,86 @@ namespace Dawnkeep.Rendering
             return Finish(px, size, "grass_clump");
         }
 
-        /// <summary>عنقود أوراق لِلَوحات الشجرة المتقاطعة.</summary>
+        /// <summary>
+        /// عنقود أوراق لِلَوحات الشجرة المتقاطعة. الكثافة مقصودة: بطاقة شفّافة
+        /// بنسبة تغطية دون النصف تبدو أعواداً لا تاجاً.
+        /// </summary>
         public static Texture2D LeafCluster(int size, uint seed, Color deep, Color light, bool needles)
         {
             Color[] px = NewTransparent(size);
             uint s = seed == 0u ? 1u : seed;
 
-            int clusters = needles ? Mathf.Max(40, size / 5) : Mathf.Max(26, size / 9);
-            float centerX = size * 0.5f;
-            float centerY = size * 0.46f;
+            float cx0 = size * 0.5f;
+            float cy0 = size * 0.48f;
+            float k = size / 256f;
 
-            for (int c = 0; c < clusters; c++)
+            if (needles)
+            {
+                // رشّات إبر: ساق قصيرة تتفرّع منها إبر — الكثافة من عدد الرشّات
+                int sprays = Mathf.Max(8, Mathf.RoundToInt(58f * k * k));
+                for (int c = 0; c < sprays; c++)
                 {
-                float a = Next(ref s) * Mathf.PI * 2f;
-                float r = Mathf.Sqrt(Next(ref s)) * size * (needles ? 0.46f : 0.42f);
-                float cx = centerX + (Mathf.Cos(a) * r);
-                float cy = centerY + (Mathf.Sin(a) * r * 0.86f);
+                    float a = Next(ref s) * Mathf.PI * 2f;
+                    float r = Mathf.Pow(Next(ref s), 0.62f) * size * 0.45f;
+                    float sx = cx0 + (Mathf.Cos(a) * r);
+                    float sy = cy0 + (Mathf.Sin(a) * r * 0.90f);
+                    float fall = 1f - Mathf.Clamp01(r / (size * 0.52f));
 
-                float fall = 1f - Mathf.Clamp01(r / (size * 0.5f));
-                Color tint = Color.Lerp(deep, light, (0.25f + (Next(ref s) * 0.75f)) * (0.45f + (fall * 0.55f)));
+                    float dirAngle = a + ((Next(ref s) - 0.5f) * 0.8f);
+                    float stem = (0.10f + (Next(ref s) * 0.12f)) * size;
+                    float dx = Mathf.Cos(dirAngle);
+                    float dy = Mathf.Sin(dirAngle);
 
-                if (needles)
-                {
-                    float len = (0.06f + (Next(ref s) * 0.10f)) * size;
-                    float ang = a + ((Next(ref s) - 0.5f) * 1.1f);
-                    PaintNeedle(px, size, cx, cy, ang, len, tint);
+                    float m0 = (0.32f + (Next(ref s) * 0.58f)) * (0.58f + (fall * 0.42f));
+                    Color tint = Color.Lerp(deep, light, m0);
+
+                    int steps = Mathf.CeilToInt(stem * 1.4f);
+                    for (int q = 0; q <= steps; q++)
+                    {
+                        float t = (float)q / steps;
+                        PaintColumn(px, size, sx + (dx * stem * t), sy + (dy * stem * t), 1.05f * k, tint);
+                    }
+
+                    const int NeedlesPerSpray = 16;
+                    for (int nq = 0; nq < NeedlesPerSpray; nq++)
+                    {
+                        float t = 0.12f + (0.88f * nq / NeedlesPerSpray);
+                        float bx = sx + (dx * stem * t);
+                        float by = sy + (dy * stem * t);
+
+                        for (int side = -1; side <= 1; side += 2)
+                        {
+                            float na = dirAngle + (side * (0.62f + (Next(ref s) * 0.55f)));
+                            float nl = (0.030f + (Next(ref s) * 0.032f)) * size;
+                            float ndx = Mathf.Cos(na);
+                            float ndy = Mathf.Sin(na);
+                            int st2 = Mathf.CeilToInt(nl * 1.6f);
+                            Color c2 = Color.Lerp(deep, light, m0 * (0.82f + (Next(ref s) * 0.36f)));
+
+                            for (int q = 0; q <= st2; q++)
+                            {
+                                float u = (float)q / st2;
+                                PaintColumn(px, size, bx + (ndx * nl * u), by + (ndy * nl * u), (0.95f - (0.45f * u)) * k, c2);
+                            }
+                        }
+                    }
                 }
-                else
+            }
+            else
+            {
+                int leaves = Mathf.Max(30, Mathf.RoundToInt(230f * k * k));
+                for (int c = 0; c < leaves; c++)
                 {
-                    float rad = (0.035f + (Next(ref s) * 0.055f)) * size;
-                    PaintLeaf(px, size, cx, cy, rad, (Next(ref s) - 0.5f) * 3.1f, tint);
+                    float a = Next(ref s) * Mathf.PI * 2f;
+                    float r = Mathf.Pow(Next(ref s), 0.58f) * size * 0.44f;
+                    float cx = cx0 + (Mathf.Cos(a) * r);
+                    float cy = cy0 + (Mathf.Sin(a) * r * 0.88f);
+                    float fall = 1f - Mathf.Clamp01(r / (size * 0.50f));
+
+                    float m = (0.34f + (Next(ref s) * 0.66f)) * (0.56f + (fall * 0.44f));
+                    Color tint = Color.Lerp(deep, light, m);
+                    float rad = (0.052f + (Next(ref s) * 0.062f)) * size;
+                    PaintLeaf(px, size, cx, cy, rad, Next(ref s) * Mathf.PI * 2f, tint);
                 }
             }
 
@@ -127,14 +177,17 @@ namespace Dawnkeep.Rendering
                     }
 
                     float lx = ((dx * cos) + (dy * sin)) / radius;
-                    float ly = (((-dx * sin) + (dy * cos)) / radius) * 1.9f;
+                    float ly = (((-dx * sin) + (dy * cos)) / radius) * 1.75f;
                     float d = (lx * lx) + (ly * ly);
                     if (d > 1f)
                     {
                         continue;
                     }
 
-                    Blend(px, (yi * size) + xi, color, Mathf.Clamp01((1f - d) * 2.2f));
+                    // عرق الورقة أغمق قليلاً فلا تبدو بقعة صمّاء
+                    float vein = Mathf.Abs(ly) < 0.10f ? 0.82f : 1f;
+                    Color c = new Color(color.r * vein, color.g * vein, color.b * vein, 1f);
+                    Blend(px, (yi * size) + xi, c, Mathf.Clamp01((1f - d) * 3.0f));
                 }
             }
         }

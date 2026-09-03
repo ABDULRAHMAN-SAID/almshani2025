@@ -13,17 +13,17 @@ namespace Dawnkeep.Rendering
             return new SurfaceRecipe
             {
                 Name = "grass",
-                BaseFrequency = 8,
+                BaseFrequency = 14,
                 Octaves = 6,
                 Seed = 20260101u,
                 Warp = 0.06f,
                 Ridged = false,
-                Contrast = 1.35f,
+                Contrast = 1.20f,
                 Low = new Color(0.169f, 0.243f, 0.106f),
                 High = new Color(0.435f, 0.545f, 0.239f),
                 Patch = new Color(0.573f, 0.529f, 0.290f),
-                PatchAmount = 0.34f,
-                PatchFrequency = 3,
+                PatchAmount = 0.24f,
+                PatchFrequency = 6,
                 NormalStrength = 1.1f,
                 Grain = 0.45f,
                 GrainFrequency = 96,
@@ -35,7 +35,7 @@ namespace Dawnkeep.Rendering
             return new SurfaceRecipe
             {
                 Name = "soil",
-                BaseFrequency = 6,
+                BaseFrequency = 10,
                 Octaves = 6,
                 Seed = 20260202u,
                 Warp = 0.12f,

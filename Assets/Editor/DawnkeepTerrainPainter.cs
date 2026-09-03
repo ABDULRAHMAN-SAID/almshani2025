@@ -16,6 +16,18 @@ namespace Dawnkeep.EditorTools
         public const int DetailResolution = 1024;
         public const int DetailPatch = 16;
 
+        /// <summary>Unity يشترط دقّة خريطة ارتفاع 2^n+1 — نأخذ أقرب قيمة صالحة.</summary>
+        private static int NearestPowerPlusOne(int wanted)
+        {
+            int p = 128;
+            while ((p * 2) + 1 <= wanted)
+            {
+                p *= 2;
+            }
+
+            return p + 1;
+        }
+
         public static TerrainData BuildTerrainData(WorldGenSettings settings, WorldData world, string assetPath)
         {
             TerrainData data = AssetDatabase.LoadAssetAtPath<TerrainData>(assetPath);
@@ -25,19 +37,36 @@ namespace Dawnkeep.EditorTools
                 AssetDatabase.CreateAsset(data, assetPath);
             }
 
-            int res = world.Resolution;
-            float range = Mathf.Max(40f, world.MaxHeight - world.MinHeight);
+            // شبكة التضاريس أدقّ من شبكة المحاكاة: تُرفَع بمنحنى Catmull-Rom ناعم
+            // ثم يُضاف نتوء دقيق — وإلا ظهرت الأرض عن قرب مضلّعات مسطّحة.
+            int res = NearestPowerPlusOne(settings.TerrainResolution);
+            float range = Mathf.Max(40f, (world.MaxHeight - world.MinHeight) + (settings.MicroRelief * 2f));
 
             data.heightmapResolution = res;
-            data.size = new Vector3(world.WorldSize, range, world.WorldSize);
+            float scale = settings.WorldScale;
+            data.size = new Vector3(world.WorldSize * scale, range * scale, world.WorldSize * scale);
 
             EditorUtility.DisplayProgressBar("مملكة الرماد", "كتابة الارتفاعات…", 0.05f);
             float[,] heights = new float[res, res];
+            float half = world.WorldSize * 0.5f;
+            float micro = settings.MicroRelief;
+
             for (int j = 0; j < res; j++)
             {
+                float wz = ((float)j / (res - 1) * world.WorldSize) - half;
+
                 for (int i = 0; i < res; i++)
                 {
-                    heights[j, i] = Mathf.Clamp01((world.Height[(j * res) + i] - world.MinHeight) / range);
+                    float wx = ((float)i / (res - 1) * world.WorldSize) - half;
+                    float y = world.SampleSmooth(world.Height, wx, wz);
+
+                    if (micro > 0f)
+                    {
+                        y += (Dawnkeep.World.ValueNoise.Fbm(wx * 0.042, wz * 0.042, 3) - 0.5f) * 2f * micro;
+                        y += (Dawnkeep.World.ValueNoise.Fbm((wx * 0.105) + 7.0, (wz * 0.105) - 3.0, 2) - 0.5f) * 2f * micro * 0.55f;
+                    }
+
+                    heights[j, i] = Mathf.Clamp01((y - world.MinHeight) / range);
                 }
             }
 
@@ -158,10 +187,12 @@ namespace Dawnkeep.EditorTools
             tall.prototypeTexture = clump;
             tall.renderMode = DetailRenderMode.Grass;
             tall.usePrototypeMesh = false;
-            tall.minWidth = 1.6f;
-            tall.maxWidth = 3.2f;
-            tall.minHeight = 1.3f;
-            tall.maxHeight = 2.8f;
+            Vector2 gw = settings.GrassWidth;
+            Vector2 gh = settings.GrassHeight;
+            tall.minWidth = gw.x;
+            tall.maxWidth = gw.y;
+            tall.minHeight = gh.x;
+            tall.maxHeight = gh.y;
             tall.noiseSpread = 0.4f;
             tall.healthyColor = new Color(0.72f, 0.78f, 0.48f);
             tall.dryColor = new Color(0.70f, 0.62f, 0.33f);
@@ -170,10 +201,10 @@ namespace Dawnkeep.EditorTools
             low.prototypeTexture = clump;
             low.renderMode = DetailRenderMode.Grass;
             low.usePrototypeMesh = false;
-            low.minWidth = 1.1f;
-            low.maxWidth = 2.0f;
-            low.minHeight = 0.7f;
-            low.maxHeight = 1.4f;
+            low.minWidth = gw.x * 0.7f;
+            low.maxWidth = gw.y * 0.7f;
+            low.minHeight = gh.x * 0.62f;
+            low.maxHeight = gh.y * 0.62f;
             low.noiseSpread = 0.8f;
             low.healthyColor = new Color(0.62f, 0.66f, 0.40f);
             low.dryColor = new Color(0.66f, 0.57f, 0.31f);

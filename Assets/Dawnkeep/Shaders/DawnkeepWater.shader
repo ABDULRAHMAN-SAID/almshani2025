@@ -4,8 +4,8 @@ Shader "Dawnkeep/Water"
 {
     Properties
     {
-        _ShallowColor ("لون الضحل", Color) = (0.30, 0.52, 0.50, 0.62)
-        _DeepColor ("لون العميق", Color) = (0.06, 0.16, 0.22, 0.94)
+        _ShallowColor ("لون الضحل", Color) = (0.22, 0.42, 0.44, 0.70)
+        _DeepColor ("لون العميق", Color) = (0.038, 0.115, 0.155, 0.96)
         _SpecColor ("لون البريق", Color) = (1, 0.97, 0.90, 1)
         _Smoothness ("نعومة السطح", Range(0.5, 1)) = 0.94
         _FresnelPower ("قوّة فرينل", Range(0.5, 8)) = 4.0

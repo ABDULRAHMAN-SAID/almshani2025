@@ -22,6 +22,16 @@ namespace Dawnkeep.World
         [Tooltip("طول ضلع العالم بالوحدات (متر).")]
         [SerializeField] private float worldSize = 3600f;
 
+        [Tooltip("دقّة شبكة تضاريس Unity (يجب أن تكون 2^n+1). أعلى من دقّة المحاكاة: تُرفَع بمنحنى ناعم فتختفي الوجوه المسطّحة.")]
+        [SerializeField] private int terrainResolution = 1025;
+
+        [Tooltip("نتوء دقيق يُضاف فوق السطح الناعم (متر) — يمنع مظهر البلاستيك الأملس عن قرب.")]
+        [SerializeField] private float microRelief = 0.55f;
+
+        [Tooltip("مقياس العالم: إحداثيات التوليد تُضرب فيه قبل بنائها في المشهد. 0.6 تعني خريطة 2160 متراً — عندها تبدو الشجرة شجرةً لا نقطة.")]
+        [Range(0.2f, 1.5f)]
+        [SerializeField] private float worldScale = 0.6f;
+
         [Tooltip("بعد هذا النصف قطر يبدأ طوق الجبال بالارتفاع.")]
         [SerializeField] private float edgeRadius = 1300f;
 
@@ -54,6 +64,16 @@ namespace Dawnkeep.World
         [Range(0f, 1f)]
         [SerializeField] private float evaporation = 0.016f;
         [SerializeField] private float gravity = 6f;
+
+        [Header("التعرية الحرارية (انهيار المنحدرات)")]
+        [Tooltip("عدد المرّات التي يُعاد فيها ترتيب المنحدرات فوق زاوية الاستقرار.")]
+        [SerializeField] private int thermalIterations = 55;
+
+        [Tooltip("زاوية استقرار الحطام كميل (0.72 ≈ 36 درجة). أعلى = جبال أحدّ.")]
+        [SerializeField] private float talusAngle = 0.72f;
+
+        [Range(0.05f, 1f)]
+        [SerializeField] private float thermalRate = 0.5f;
 
         [Header("البحيرة")]
         [Tooltip("أقل عمق غمر يُعدّ خلية بحيرة.")]
@@ -92,10 +112,17 @@ namespace Dawnkeep.World
         [Range(0f, 1f)]
         [SerializeField] private float grassMaxSlope = 0.5f;
         [SerializeField] private int grassDensity = 9;
+        [Tooltip("ارتفاع خصلة العشب بالمتر (أدنى/أعلى).")]
+        [SerializeField] private Vector2 grassHeight = new Vector2(0.45f, 1.05f);
+        [Tooltip("عرض خصلة العشب بالمتر (أدنى/أعلى).")]
+        [SerializeField] private Vector2 grassWidth = new Vector2(0.85f, 1.75f);
 
         public int Seed { get { return seed; } }
         public int Resolution { get { return Mathf.Clamp(resolution, 129, 1025); } }
         public float WorldSize { get { return worldSize; } }
+        public int TerrainResolution { get { return Mathf.Clamp(terrainResolution, 129, 2049); } }
+        public float MicroRelief { get { return microRelief; } }
+        public float WorldScale { get { return worldScale; } }
         public float EdgeRadius { get { return edgeRadius; } }
         public float KnollHeight { get { return knollHeight; } }
 
@@ -117,6 +144,10 @@ namespace Dawnkeep.World
         public float DepositSpeed { get { return depositSpeed; } }
         public float Evaporation { get { return evaporation; } }
         public float Gravity { get { return gravity; } }
+
+        public int ThermalIterations { get { return thermalIterations; } }
+        public float TalusAngle { get { return talusAngle; } }
+        public float ThermalRate { get { return thermalRate; } }
 
         public float LakeMinDepth { get { return lakeMinDepth; } }
         public int LakeMinCells { get { return lakeMinCells; } }
@@ -144,5 +175,7 @@ namespace Dawnkeep.World
         public int TreeTarget { get { return treeTarget; } }
         public float GrassMaxSlope { get { return grassMaxSlope; } }
         public int GrassDensity { get { return grassDensity; } }
+        public Vector2 GrassHeight { get { return grassHeight; } }
+        public Vector2 GrassWidth { get { return grassWidth; } }
     }
 }

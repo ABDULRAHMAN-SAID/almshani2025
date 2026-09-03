@@ -30,10 +30,16 @@ namespace Dawnkeep.World
                 Report(onProgress, "التعرية المائية", 0.08f + (t * 0.42f));
             });
 
-            Report(onProgress, "ملء المنخفضات", 0.52f);
+            Report(onProgress, "انهيار المنحدرات (تعرية حرارية)", 0.50f);
+            ThermalErosion.Apply(settings, w, delegate (float t)
+            {
+                Report(onProgress, "انهيار المنحدرات (تعرية حرارية)", 0.50f + (t * 0.06f));
+            });
+
+            Report(onProgress, "ملء المنخفضات", 0.57f);
             float[] filled = DrainageSolver.FillDepressions(w);
 
-            Report(onProgress, "حساب شبكة التصريف", 0.60f);
+            Report(onProgress, "حساب شبكة التصريف", 0.62f);
             DrainageSolver.Accumulate(w, filled);
 
             Report(onProgress, "استخراج البحيرة", 0.68f);

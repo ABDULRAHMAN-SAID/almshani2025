@@ -55,17 +55,17 @@ namespace Dawnkeep.EditorTools
             try
             {
                 TerrainData data = DawnkeepTerrainPainter.BuildTerrainData(settings, world, TerrainDataPath);
-                GameObject terrainObject = CreateTerrain(world, data);
+                GameObject terrainObject = CreateTerrain(settings, world, data);
 
                 EditorUtility.DisplayProgressBar("مملكة الرماد", "بناء أسطح الماء…", 0.88f);
                 CreateWater(settings, world);
 
                 EditorUtility.DisplayProgressBar("مملكة الرماد", "نثر الصخور…", 0.92f);
-                ScatterRocks(settings, world, terrainObject.transform.position.y);
+                ScatterRocks(settings, world);
 
                 EditorUtility.DisplayProgressBar("مملكة الرماد", "إضاءة الفجر…", 0.96f);
                 CreateLighting();
-                CreateCamera(world);
+                CreateCamera(settings, world);
 
                 GameObject volume = DawnkeepRenderPipelineSetup.CreateGlobalVolume();
                 if (volume == null)
@@ -114,22 +114,23 @@ namespace Dawnkeep.EditorTools
             return settings;
         }
 
-        private static GameObject CreateTerrain(WorldData world, TerrainData data)
+        private static GameObject CreateTerrain(WorldGenSettings settings, WorldData world, TerrainData data)
         {
+            float scale = settings.WorldScale;
             GameObject go = Terrain.CreateTerrainGameObject(data);
             go.name = "Dawnkeep Terrain";
             go.isStatic = true;
             go.transform.position = new Vector3(
-                -world.WorldSize * 0.5f,
-                world.MinHeight,
-                -world.WorldSize * 0.5f);
+                -world.WorldSize * 0.5f * scale,
+                world.MinHeight * scale,
+                -world.WorldSize * 0.5f * scale);
 
             Terrain terrain = go.GetComponent<Terrain>();
             terrain.heightmapPixelError = 3f;
-            terrain.basemapDistance = 900f;
-            terrain.detailObjectDistance = 190f;
+            terrain.basemapDistance = 600f;
+            terrain.detailObjectDistance = 150f;
             terrain.detailObjectDensity = 1f;
-            terrain.treeDistance = 1800f;
+            terrain.treeDistance = 1200f;
             terrain.treeBillboardDistance = 260f;
             terrain.treeCrossFadeLength = 40f;
             terrain.treeMaximumFullLODCount = 90;
@@ -163,7 +164,7 @@ namespace Dawnkeep.EditorTools
 
             if (world.HasLake)
             {
-                Mesh lake = BuildLakeMesh(world);
+                Mesh lake = BuildLakeMesh(settings, world);
                 if (lake != null)
                 {
                     AddWaterPiece(parent, "Lake Surface", SaveMesh(lake, LakeMeshPath), waterMaterial);
@@ -195,8 +196,9 @@ namespace Dawnkeep.EditorTools
             renderer.receiveShadows = false;
         }
 
-        private static Mesh BuildLakeMesh(WorldData world)
+        private static Mesh BuildLakeMesh(WorldGenSettings settings, WorldData world)
         {
+            float scale = settings.WorldScale;
             int n = world.Resolution;
             byte[] lake = world.Lake;
             float level = world.LakeLevel;
@@ -216,15 +218,18 @@ namespace Dawnkeep.EditorTools
                     int c = a + n + 1;
                     int d = a + n;
 
-                    if (lake[a] == 0 || lake[b] == 0 || lake[c] == 0 || lake[d] == 0)
+                    // يكفي أن يكون ركن واحد بحيرةً: بذلك يمتدّ السطح قليلاً تحت الشاطئ،
+                    // فتخفي الأرضُ حرفَ الشبكة ويصير خطّ الماء هو خطّ الكنتور الحقيقي
+                    // بدل حافّة مدرّجة بمقاس الخلية.
+                    if (lake[a] == 0 && lake[b] == 0 && lake[c] == 0 && lake[d] == 0)
                     {
                         continue;
                     }
 
-                    int va = GetVertex(map, vertices, normals, uvs, world, a, level);
-                    int vb = GetVertex(map, vertices, normals, uvs, world, b, level);
-                    int vc = GetVertex(map, vertices, normals, uvs, world, c, level);
-                    int vd = GetVertex(map, vertices, normals, uvs, world, d, level);
+                    int va = GetVertex(map, vertices, normals, uvs, world, a, level, scale);
+                    int vb = GetVertex(map, vertices, normals, uvs, world, b, level, scale);
+                    int vc = GetVertex(map, vertices, normals, uvs, world, c, level, scale);
+                    int vd = GetVertex(map, vertices, normals, uvs, world, d, level, scale);
 
                     triangles.Add(va);
                     triangles.Add(vd);
@@ -252,7 +257,7 @@ namespace Dawnkeep.EditorTools
         }
 
         private static int GetVertex(Dictionary<int, int> map, List<Vector3> vertices, List<Vector3> normals,
-            List<Vector2> uvs, WorldData world, int key, float level)
+            List<Vector2> uvs, WorldData world, int key, float level, float scale)
         {
             int index;
             if (map.TryGetValue(key, out index))
@@ -265,9 +270,9 @@ namespace Dawnkeep.EditorTools
             float z = world.NodeToWorld(key / n);
 
             index = vertices.Count;
-            vertices.Add(new Vector3(x, level, z));
+            vertices.Add(new Vector3(x * scale, level * scale, z * scale));
             normals.Add(Vector3.up);
-            uvs.Add(new Vector2(x / 40f, z / 40f));
+            uvs.Add(new Vector2(x * scale / 22f, z * scale / 22f));
             map[key] = index;
             return index;
         }
@@ -281,21 +286,36 @@ namespace Dawnkeep.EditorTools
                 return null;
             }
 
+            float scale = settings.WorldScale;
             float halfWidth = world.RiverWidth * 0.94f;
             float fill = settings.RiverCarveDepth * 0.52f;
 
+            // سطح النهر لا يعلو ضفّتيه أبداً — وإلا ظهر شريط ماء معلّقاً فوق الأرض
             float[] ys = new float[count];
             for (int i = 0; i < count; i++)
             {
-                ys[i] = world.Sample(world.Height, pts[i].x, pts[i].y) + fill;
+                Vector2 prev = pts[Mathf.Max(i - 1, 0)];
+                Vector2 next = pts[Mathf.Min(i + 1, count - 1)];
+                Vector2 dir = next - prev;
+                if (dir.sqrMagnitude < 1e-6f)
+                {
+                    dir = new Vector2(1f, 0f);
+                }
+
+                dir.Normalize();
+                Vector2 side = new Vector2(-dir.y, dir.x) * halfWidth;
+
+                float center = world.SampleSmooth(world.Height, pts[i].x, pts[i].y);
+                float bankA = world.SampleSmooth(world.Height, pts[i].x - side.x, pts[i].y - side.y);
+                float bankB = world.SampleSmooth(world.Height, pts[i].x + side.x, pts[i].y + side.y);
+                ys[i] = Mathf.Min(center + fill, Mathf.Min(bankA, bankB) - 0.6f);
             }
 
-            // الماء لا يصعد: افرض انحداراً غير متزايد باتجاه المصبّ
-            for (int i = 1; i < count; i++)
+            for (int pass = 0; pass < 3; pass++)
             {
-                if (ys[i] > ys[i - 1])
+                for (int i = 1; i < count - 1; i++)
                 {
-                    ys[i] = ys[i - 1];
+                    ys[i] = (ys[i - 1] + (ys[i] * 2f) + ys[i + 1]) * 0.25f;
                 }
             }
 
@@ -324,12 +344,12 @@ namespace Dawnkeep.EditorTools
                     travelled += Vector2.Distance(pts[i], pts[i - 1]);
                 }
 
-                vertices.Add(new Vector3(pts[i].x - side.x, ys[i], pts[i].y - side.y));
-                vertices.Add(new Vector3(pts[i].x + side.x, ys[i], pts[i].y + side.y));
+                vertices.Add(new Vector3((pts[i].x - side.x) * scale, ys[i] * scale, (pts[i].y - side.y) * scale));
+                vertices.Add(new Vector3((pts[i].x + side.x) * scale, ys[i] * scale, (pts[i].y + side.y) * scale));
                 normals.Add(Vector3.up);
                 normals.Add(Vector3.up);
-                uvs.Add(new Vector2(0f, travelled / 40f));
-                uvs.Add(new Vector2(1f, travelled / 40f));
+                uvs.Add(new Vector2(0f, travelled * scale / 22f));
+                uvs.Add(new Vector2(1f, travelled * scale / 22f));
             }
 
             for (int i = 0; i < count - 1; i++)
@@ -375,8 +395,9 @@ namespace Dawnkeep.EditorTools
         }
 
         /// <summary>الصخور تُنثر حيث ينكشف الصخر فعلاً: الميول الحادّة وضفاف النهر.</summary>
-        private static void ScatterRocks(WorldGenSettings settings, WorldData world, float terrainBaseY)
+        private static void ScatterRocks(WorldGenSettings settings, WorldData world)
         {
+            float scale = settings.WorldScale;
             List<GameObject> prefabs = new List<GameObject>();
             for (int i = 0; i < DawnkeepPrefabBuilder.RockVariants; i++)
             {
@@ -437,15 +458,17 @@ namespace Dawnkeep.EditorTools
                         continue;
                     }
 
-                    float y = world.Sample(world.Height, wx, wz) - (0.35f + ((float)rng.NextDouble() * 0.5f));
-                    instance.transform.position = new Vector3(wx, y, wz);
+                    float y = (world.SampleSmooth(world.Height, wx, wz) * scale)
+                            - (0.35f + ((float)rng.NextDouble() * 0.5f));
+                    instance.transform.position = new Vector3(wx * scale, y, wz * scale);
                     instance.transform.rotation = Quaternion.Euler(
                         ((float)rng.NextDouble() - 0.5f) * 18f,
                         (float)rng.NextDouble() * 360f,
                         ((float)rng.NextDouble() - 0.5f) * 18f);
 
-                    float scale = 0.7f + ((float)rng.NextDouble() * 1.1f);
-                    instance.transform.localScale = new Vector3(scale, scale * (0.8f + ((float)rng.NextDouble() * 0.5f)), scale);
+                    float rockScale = 0.7f + ((float)rng.NextDouble() * 1.1f);
+                    instance.transform.localScale = new Vector3(
+                        rockScale, rockScale * (0.8f + ((float)rng.NextDouble() * 0.5f)), rockScale);
                     instance.isStatic = true;
                     placed++;
                 }
@@ -498,7 +521,7 @@ namespace Dawnkeep.EditorTools
             // ضباب هوائي: البعيد يزرقّ ويبهت — منه يأتي إحساس المسافة
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.ExponentialSquared;
-            RenderSettings.fogDensity = 0.00062f;
+            RenderSettings.fogDensity = 0.00040f;
             RenderSettings.fogColor = new Color(0.66f, 0.72f, 0.79f);
 
             RenderSettings.reflectionIntensity = 0.85f;
@@ -506,8 +529,9 @@ namespace Dawnkeep.EditorTools
             RenderSettings.defaultReflectionResolution = 256;
         }
 
-        private static void CreateCamera(WorldData world)
+        private static void CreateCamera(WorldGenSettings settings, WorldData world)
         {
+            float scale = settings.WorldScale;
             GameObject cameraObject = new GameObject("Main Camera");
             cameraObject.tag = "MainCamera";
 
@@ -515,7 +539,7 @@ namespace Dawnkeep.EditorTools
             camera.clearFlags = CameraClearFlags.Skybox;
             camera.fieldOfView = 42f;
             camera.nearClipPlane = 1.2f;
-            camera.farClipPlane = 4200f;
+            camera.farClipPlane = 3000f;
             camera.allowHDR = true;
             camera.allowMSAA = true;
 
@@ -523,11 +547,11 @@ namespace Dawnkeep.EditorTools
             DawnkeepRenderPipelineSetup.ConfigureCamera(camera);
 
             RtsCameraRig rig = cameraObject.AddComponent<RtsCameraRig>();
-            rig.Configure(Vector3.zero, 300f, 35f, 42f, world.WorldSize * 0.42f);
+            rig.Configure(Vector3.zero, 240f, 35f, 42f, world.WorldSize * scale * 0.42f);
 
             Quaternion rotation = Quaternion.Euler(42f, 35f, 0f);
             cameraObject.transform.SetPositionAndRotation(
-                (Vector3.up * 40f) - (rotation * Vector3.forward * 300f),
+                (Vector3.up * 30f) - (rotation * Vector3.forward * 240f),
                 rotation);
         }
     }

@@ -173,7 +173,7 @@ namespace Dawnkeep.EditorTools
         public static TerrainLayer[] BuildTerrainLayers()
         {
             string[] names = { "grass", "soil", "rock", "gravel" };
-            float[] tiles = { 14f, 18f, 26f, 10f };
+            float[] tiles = { 26f, 30f, 34f, 14f };
             float[] smooth = { 0.10f, 0.14f, 0.22f, 0.28f };
             float[] normalScale = { 0.7f, 1.0f, 1.4f, 1.0f };
 
