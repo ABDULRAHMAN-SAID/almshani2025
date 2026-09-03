@@ -5,10 +5,12 @@ const { chromium } = require('playwright'); const path=require('path');
   const page = await browser.newPage({ viewport:{width:1100,height:640} });
   const errors=[]; page.on('pageerror',e=>errors.push(e.message));
   await page.goto('file://'+path.resolve(__dirname,'t3d.html'),{waitUntil:'commit',timeout:60000}).catch(()=>{});
+  const tap=async sel=>{ await page.waitForSelector(sel,{timeout:180000,state:'attached'});
+    await page.evaluate(q=>{ const e=document.querySelector(q); if(e) e.click(); }, sel); await page.waitForTimeout(250); };
   await page.waitForSelector('#ovBtn',{timeout:240000});
-  await page.click('#ovBtn'); await page.waitForTimeout(300);
-  await page.locator('#loStart').click(); await page.waitForTimeout(300);
-  await page.locator('#startBtn').click(); await page.waitForTimeout(200);
+  await tap('#ovBtn'); await page.waitForTimeout(300);
+  await tap('#loStart'); await page.waitForTimeout(300);
+  await tap('#startBtn'); await page.waitForTimeout(200);
   for(let i=0;i<40;i++){ await page.waitForTimeout(200); if((await page.evaluate(()=>window.__d.state())).st==='COMBAT') break; }
   await page.evaluate(()=>window.__d.spawnAll(0,-70,5)); await page.waitForTimeout(100);
   const b=await page.locator('#gl').boundingBox();

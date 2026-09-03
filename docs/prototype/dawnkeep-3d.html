@@ -800,6 +800,75 @@ const CLOTH = o => Object.assign({roughness:.9, metalness:0, flatShading:true}, 
 const SKIN  = o => Object.assign({roughness:.62, metalness:0, flatShading:true}, o||{});
 const STONE = o => Object.assign({roughness:.92, metalness:.02, flatShading:true, nrm:"stone", det:"stone", rp:1.6, ns:.9}, o||{});
 const WOOD  = o => Object.assign({roughness:.84, metalness:.02, flatShading:true, det:"wood", rp:1.4}, o||{});
+/* ═══ كنس مقطع بيضاوي متغيّر على منحنى: هذه هي الأداة التي تُخرج أجساماً عضوية
+   (جذع حصان، رقبة، رأس، أطراف) بلا أي صندوق. الإطار منقول بالتوازي فلا يلتفّ. ═══ */
+function sweepGeo(pts, prof, seg, rings, capA, capB){
+  const cv=new THREE.CatmullRomCurve3(pts.map(p=>new THREE.Vector3(p[0],p[1],p[2])), false, "catmullrom", .5);
+  const N=rings||Math.max(10, pts.length*7), S=seg||14;
+  const P=[], T=[], Nv=[], B=[];
+  for(let i=0;i<=N;i++){ const t=i/N; P.push(cv.getPointAt(t)); T.push(cv.getTangentAt(t).normalize()); }
+  const seed=Math.abs(T[0].y)>.85 ? new THREE.Vector3(1,0,0) : new THREE.Vector3(0,1,0);
+  Nv.push(new THREE.Vector3().crossVectors(T[0], seed).normalize());
+  for(let i=1;i<=N;i++){
+    const v=Nv[i-1].clone();
+    v.sub(T[i].clone().multiplyScalar(v.dot(T[i])));
+    Nv.push(v.lengthSq()>1e-8 ? v.normalize() : Nv[i-1].clone());
+  }
+  for(let i=0;i<=N;i++) B.push(new THREE.Vector3().crossVectors(T[i], Nv[i]).normalize());
+  const pos=[], idx=[];
+  for(let i=0;i<=N;i++){
+    const r=prof(i/N);
+    for(let j=0;j<S;j++){
+      const a=j/S*Math.PI*2, c=Math.cos(a), s=Math.sin(a);
+      pos.push(P[i].x + Nv[i].x*c*r[0] + B[i].x*s*r[1],
+               P[i].y + Nv[i].y*c*r[0] + B[i].y*s*r[1],
+               P[i].z + Nv[i].z*c*r[0] + B[i].z*s*r[1]);
+    }
+  }
+  for(let i=0;i<N;i++) for(let j=0;j<S;j++){
+    const a=i*S+j, b=i*S+(j+1)%S, c=(i+1)*S+j, d=(i+1)*S+(j+1)%S;
+    idx.push(a,c,b, b,c,d);
+  }
+  if(capA!==false){ const ci=pos.length/3; pos.push(P[0].x,P[0].y,P[0].z);
+    for(let j=0;j<S;j++) idx.push(ci, (j+1)%S, j); }
+  if(capB!==false){ const ci=pos.length/3; pos.push(P[N].x,P[N].y,P[N].z);
+    for(let j=0;j<S;j++) idx.push(ci, N*S+j, N*S+(j+1)%S); }
+  const g=new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.Float32BufferAttribute(pos,3));
+  g.setIndex(idx); g.computeVertexNormals();
+  return g;
+}
+/* مقطع متغيّر بمحطّات ناعمة: [t, نصف قطر أفقي, نصف قطر رأسي] */
+const profStops = stops => t => {
+  let i=1; while(i<stops.length-1 && t>stops[i][0]) i++;
+  const a=stops[i-1], b=stops[i];
+  const k=clamp((t-a[0])/((b[0]-a[0])||1),0,1), s=k*k*(3-2*k);
+  return [a[1]+(b[1]-a[1])*s, a[2]+(b[2]-a[2])*s];
+};
+const swept = (pts, stops, m, seg, rings, capA, capB) => {
+  const o=new THREE.Mesh(sweepGeo(pts, profStops(stops), seg, rings, capA, capB), m);
+  o.castShadow=true; o.receiveShadow=true; return o;
+};
+/* قماش مسدل: مقطع ثابت يُمدّ على طول المحور مع طيّات — للغطاء الملكي والأعلام */
+function drapeGeo(cs, zA, zB, rows, taper, fold){
+  const pos=[], idx=[], C=cs.length;
+  for(let i=0;i<=rows;i++){
+    const u=i/rows, z=zA+(zB-zA)*u, sx=1+(taper||0)*Math.sin(u*Math.PI);
+    for(let j=0;j<C;j++){
+      const hang=clamp((Math.abs(cs[j][0])-.22)/.2,0,1);          // الطيّات في الجزء المتدلّي فقط
+      const w=Math.sin(u*Math.PI*5+j*.7)*(fold||.012)*hang;
+      pos.push(cs[j][0]*sx + (cs[j][0]>0?w:-w), cs[j][1]+w*.5, z);
+    }
+  }
+  for(let i=0;i<rows;i++) for(let j=0;j<C-1;j++){
+    const a=i*C+j, b=a+1, c=(i+1)*C+j, d=c+1;
+    idx.push(a,c,b, b,c,d);
+  }
+  const g=new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.Float32BufferAttribute(pos,3));
+  g.setIndex(idx); g.computeVertexNormals();
+  return g;
+}
 function part(g, m, x,y,z, sx,sy,sz, rx,ry,rz){
   const o = new THREE.Mesh(g, m);
   if(sy===undefined) sy=sx;          // بُعد واحد = مقياس متساوٍ
@@ -2545,12 +2614,13 @@ function makeRig(o){
   const chest=part(RG.torso, arm?metal:(bare?skin2:cloth2), 0,.34,0, .67*bulk,.48,.53*bulk);
   torso.add(chest); root.userData.body=chest; root.userData.bodyMat=chest.material;
   if(arm){
-    torso.add(part(geo.cyl, accent, 0,.17,0, .35*bulk,.05,.27*bulk));                     // وشاح
-    torso.add(part(geo.sph, gold, 0,.42,.27*bulk, .045));                                  // شارة الصدر
+    torso.add(part(geo.cyl, accent, 0,.155,0, .295*bulk,.075,.235*bulk));                  // وشاح ملتصق بالخصر
+    torso.add(part(geo.sph, accent, 0,.16,.235*bulk, .05,.045,.03));                       // عقدة الوشاح أماماً
+    torso.add(part(geo.sph, gold, 0,.42,.245*bulk, .042));                                 // شارة الصدر
   }
   if(beast) for(let i=0;i<4;i++) torso.add(part(geo.cone8, boneM, 0,.5-i*.11,-.2*bulk, .04,.18,.04, -.9,0,0)); // أشواك الظهر
   for(const s of [-1,1]){
-    torso.add(part(RG.dome, arm?metal:(bare?skin2:cloth2), s*.33*bulk,.56,0, .17*bulk,.15,.17*bulk, 0,0,s*-.45));
+    torso.add(part(RG.dome, arm?metal:(bare?skin2:cloth2), s*.285*bulk,.575,0, .215*bulk,.175,.20*bulk, 0,0,s*-.34));
     if(beast||o.spikes) torso.add(part(geo.cone8, boneM, s*.37*bulk,.68,0, .05,.22,.05, 0,0,s*-.55));
   }
   torso.add(part(geo.cyl, skin, 0,.66,0, .085,.14,.085));                                     // رقبة
@@ -2586,7 +2656,7 @@ function makeRig(o){
     head.add(part(geo.cyl, metal, 0,-.02,.235*hs, .028,.22,.028));                                  // واقي الأنف
     for(const s of [-1,1]) head.add(part(RG.dome, metal, s*.19*hs,-.03,.06, .09,.14,.11, Math.PI/2,0,0)); // واقيات الخدّ
     if(o.plume) head.add(part(geo.sph, accent, 0,.46,-.16, .07,.15,.24, .55,0,0));
-    else head.add(part(geo.cone8, accent, 0,.5,0, .06,.16,.06));
+    else { head.add(part(geo.sph, metal, 0,.45,0, .055,.06,.055)); head.add(part(geo.sph, accent, 0,.505,0, .042)); }
   }
   if(o.hood) head.add(part(RG.hood, clothD, 0,.06,-.02, .95,.92,1));
   if(o.horns) for(const s of [-1,1]){ const hg=new THREE.Group(); hg.position.set(s*.17*hs,.09,-.02); hg.rotation.set(-.75,0,s*-1.0); head.add(hg);
@@ -2603,13 +2673,13 @@ function makeRig(o){
     sc=sc||1;
     const sh=N(side*.34*bulk, y, 0); torso.add(sh);
     const uL=.3*(beast?1.25:1)*sc;
-    sh.add(part(CAP, arm?metal:bodyM, 0,-uL*.55,0, .095*sc,uL,.095*sc));
+    sh.add(part(CAP, arm?metal:bodyM, 0,-uL*.55,0, .115*sc,uL,.115*sc));
     const el=N(0,-uL*1.15,0); sh.add(el);
     const fL=.3*(beast?1.2:1)*sc;
-    el.add(part(CAP, skin, 0,-fL*.5,0, .08*sc,fL,.08*sc));
-    if(arm) el.add(part(geo.cyl, metal2, 0,-fL*.55,0, .1*sc,fL*.55,.1*sc));                   // ساعد مدرّع
+    el.add(part(CAP, skin, 0,-fL*.5,0, .098*sc,fL,.098*sc));
+    if(arm) el.add(part(geo.cyl, metal2, 0,-fL*.5,0, .115*sc,fL*.6,.115*sc));                 // ساعد مدرّع
     const hand=N(0,-fL*1.08,0); el.add(hand);
-    hand.add(part(geo.sphLow, skin, 0,0,0, .09*sc,.08*sc,.1*sc));
+    hand.add(part(geo.sphLow, skin, 0,-.01*sc,0, .115*sc,.10*sc,.125*sc));
     if(beast||o.claws) for(let i=-1;i<=1;i++) hand.add(part(geo.cone8, boneM, i*.05*sc,-.02,.09*sc, .025,.14,.025, Math.PI/2,0,0));
     return {sh,el,hand};
   };
@@ -2622,9 +2692,9 @@ function makeRig(o){
   if(!o.robe){
     const mkLeg=(side)=>{
       const hp=N(side*.14*bulk,-.06,0); hips.add(hp);
-      hp.add(part(CAP, bare?skin:cloth2, 0,-.22,0, .115*bulk,.38,.115*bulk));
+      hp.add(part(CAP, bare?skin:cloth2, 0,-.22,0, .125*bulk,.40,.125*bulk));
       const kn=N(0,-.45,0); hp.add(kn);
-      kn.add(part(CAP, bare?skin:cloth2, 0,-.19,0, .095*bulk,.34,.095*bulk));
+      kn.add(part(CAP, bare?skin:cloth2, 0,-.19,0, .112*bulk,.36,.112*bulk));
       if(arm){ kn.add(part(geo.cyl, metal2, 0,-.2,.01, .105*bulk,.28,.105*bulk)); kn.add(part(geo.sph, metal, 0,.0,.06, .08,.07,.08)); }
       if(beast){ kn.add(part(geo.sph, skin2, 0,-.4,.05, .1,.07,.15));
         for(let i=-1;i<=1;i++) kn.add(part(geo.cone8, boneM, i*.06,-.4,.16, .03,.16,.03, Math.PI/2,0,0)); }
@@ -2753,54 +2823,99 @@ function poseRig(obj, t, moving, atk){
 /* ── حصان بمفاصل: جذع، رقبة ورأس وأذنان، عُرف وذيل، أربع أرجل بركبة وحافر، سرج وبطانية ── */
 function makeHorse(o){
   const root=new THREE.Group(), H={};
-  const coat=mat(o.coat||0x9A5230,{roughness:.7,flatShading:true}), coat2=mat(o.coat2||0x7A3E22,{roughness:.75,flatShading:true}), dark=mat(o.mane||0x151012,{roughness:.9,flatShading:true});
-  const hoof=mat(0x2A2420,{roughness:.6}), cloth=mat(o.cloth||0x1E3A6E,CLOTH()), leather=mat(0x4A3628,{roughness:.8}), gold=mat(0xE8C060,METAL({roughness:.3}));
+  const RS=MOBILE?10:14;
+  const coat =mat(o.coat ||0x8A4A28,{roughness:.72});
+  const coat2=mat(o.coat2||0x6E3A1E,{roughness:.76});
+  const dark =mat(o.mane ||0x1A1210,{roughness:.85});
+  const hoof =mat(0x2A2420,{roughness:.5,metalness:.15});
+  const cloth=mat(o.cloth||0x1E3A6E,{roughness:.9});
+  const gold =mat(0xE8C060,METAL({roughness:.3}));
+  const leather=mat(0x40301F,{roughness:.8});
   const N=(x,y,z)=>{const g=new THREE.Group(); g.position.set(x,y,z); return g;};
+
   const body=N(0,1.12,0); root.add(body); H.body=body;
-  body.add(part(CAP, coat, 0,0,0, .5,1.3,.64, Math.PI/2,0,0));
-  body.add(part(geo.sph, coat2, 0,.02,-.58, .3,.36,.32));
-  body.add(part(geo.sph, coat, 0,.06,.58, .28,.34,.3));
-  body.add(part(geo.sph, coat, 0,.3,.34, .2,.16,.24));   // الكاهل
-  const neck=N(0,.16,.6); body.add(neck); H.neck=neck; neck.rotation.x=.78;   // +x: الرقبة تصعد إلى الأمام (+z هو مقدّم الحصان)
-  neck.add(part(CAP, coat, 0,.33,0, .17,.7,.21));
-  neck.add(part(geo.box, dark, 0,.36,-.12, .07,.68,.15));
-  for(let i=0;i<4;i++) neck.add(part(geo.box, dark, 0,.12+i*.16,-.2, .06,.11,.1, .45,0,0));   // عُرف مسنّن
-  const head=N(0,.72,.03); neck.add(head); H.head=head; head.rotation.x=-1.02;
-  head.add(part(geo.rbox, coat, 0,.02,.1, .17,.21,.42));
-  head.add(part(geo.rbox, coat2, 0,-.04,.33, .14,.14,.13));
-  head.add(part(geo.box, mat(0xF2EEE6,{roughness:.8,flatShading:true}), 0,.05,.335, .07,.17,.03));
-  head.add(part(geo.cone8, cloth, 0,.24,-.04, .045,.24,.045));   // ريشة الرأس
+  /* الجذع: مقطع بيضاوي ينتفخ عند القفص ويضمر عند الردف — لا كبسولة ولا صندوق */
+  body.add(swept([[0,.06,.74],[0,.13,.40],[0,.09,.02],[0,.04,-.38],[0,-.04,-.78]],
+    [[0,.155,.185],[.18,.245,.295],[.45,.275,.325],[.72,.255,.305],[1,.175,.215]], coat, RS, 28));
+  // الكتف والفخذ: كنستان مائلتان تندمجان في الجذع فتظهر العضلة بلا كرة ملتصقة
   for(const s of [-1,1]){
-    head.add(part(geo.cone8, coat, s*.08,.2,-.06, .05,.2,.05, -.3,0,s*-.35));
-    const e=part(geo.sph, mat(0x1A1512,{roughness:.25}), s*.085,.07,.1, .032); e.castShadow=false; head.add(e);
+    body.add(swept([[s*.05,.12,.44],[s*.15,-.02,.47],[s*.19,-.20,.46]],
+      [[0,.15,.16],[.5,.125,.15],[1,.085,.105]], coat, 10, 10, false));
+    body.add(swept([[s*.05,.13,-.46],[s*.15,-.01,-.50],[s*.185,-.18,-.50]],
+      [[0,.17,.175],[.5,.14,.16],[1,.09,.11]], coat, 10, 10, false));
   }
-  head.add(part(geo.torus, leather, 0,.0,.2, .11,.11,.1, 0,0,0));
-  head.add(part(geo.torus, leather, 0,.02,-.02, .14,.14,.1, .3,0,0));
-  const tail=N(0,.16,-.72); body.add(tail); H.tail=tail; tail.rotation.x=.55;
-  tail.add(part(CAP, dark, 0,-.32,0, .09,.64,.09));
-  // غطاء الحصان الملكي: يغطي الظهر والردف، بحاشية ذهبية
-  body.add(part(geo.box, cloth, 0,.3,-.08, .72,.05,.96));                       // بطانية الظهر
+
+  /* الرقبة: تصعد من الكاهل إلى الأمام وتضمر — مع عُرف مسنّن على قمّتها */
+  const neck=N(0,.22,.62); body.add(neck); H.neck=neck;
+  neck.add(swept([[0,0,0],[0,.23,.07],[0,.45,.15],[0,.62,.25]],
+    [[0,.20,.235],[.5,.15,.18],[1,.10,.12]], coat, RS, 16));
+  neck.add(swept([[0,.05,-.075],[0,.27,-.025],[0,.48,.055],[0,.635,.165]],
+    [[0,.021,.055],[.5,.019,.062],[1,.014,.042]], dark, 8, 16, false, false));  // العُرف على القمّة
+
+  /* الرأس: وتد يضمر إلى خطم، بفكّ منتفخ وأنف — لا مكعّب */
+  const head=N(0,.62,.25); neck.add(head); H.head=head; head.rotation.x=-.34;
+  head.add(swept([[0,0,0],[0,-.03,.15],[0,-.08,.30],[0,-.115,.43]],
+    [[0,.135,.155],[.28,.125,.145],[.62,.088,.10],[1,.072,.078]], coat, RS, 16));
+  head.add(part(geo.sph, coat2, 0,-.055,.16, .135,.115,.13));                   // الفكّ
+  head.add(part(geo.sph, coat2, 0,-.125,.455, .075,.062,.05));                  // الخطم
+  for(const s of [-1,1]) head.add(part(geo.sph, dark, s*.032,-.135,.475, .022,.018,.016)); // منخران
+  head.add(part(geo.sph, mat(0xF0EAE0,{roughness:.8}), 0,-.045,.335, .042,.11,.055));   // الغُرّة ملتصقة بالوجه
   for(const s of [-1,1]){
-    body.add(part(geo.box, cloth, s*.36,-.02,-.12, .05,.62,.88, 0,0,s*.06));      // جناح جانبي
-    body.add(part(geo.box, gold,  s*.37,-.32,-.12, .06,.06,.9, 0,0,s*.06));       // حاشية ذهبية
+    head.add(swept([[s*.075,.10,-.02],[s*.10,.20,-.06],[s*.105,.27,-.085]], [[0,.045,.05],[1,.008,.012]], coat, 8, 8)); // أذن
+    const e=part(geo.sph, mat(0x120C0A,{roughness:.2,metalness:.1}), s*.105,.005,.13, .034,.032,.028); e.castShadow=false; head.add(e);
+    head.add(part(geo.sph, coat2, s*.095,.022,.125, .038,.036,.032));            // حَجاج العين
   }
-  body.add(part(geo.box, leather, 0,.36,-.04, .36,.1,.5));                        // السرج
-  body.add(part(RG.strap, leather, 0,.02,.42, .5,.55,.5));                        // حزام الصدر رفيع
-  body.add(part(RG.strap, leather, 0,.0,-.02, .52,.58,.52));                      // حزام البطن
-  body.add(part(geo.box, leather, 0,.34,-.04, .3,.06,.6));                        // مقعد السرج
-  if(o.shield){ body.add(part(RG.shield, mat(0xC8D2DE,METAL({roughness:.3})), -.5,.02,-.14, .62,.62,.62, 0,0,Math.PI/2));
-    body.add(part(geo.torus, mat(0xE0463A,CLOTH()), -.56,.02,-.14, .14,.14,.4, 0,Math.PI/2,0)); }   // ترس معلّق على الجنب الأيسر
-  body.add(part(geo.sph, leather, 0,.43,.2, .07,.07,.07));
-  body.add(part(geo.sph, gold, 0,.46,.2, .035));
-  for(const s of [-1,1]) body.add(part(geo.box, leather, s*.3,.06,-.02, .04,.5,.06));
+  head.add(swept([[0,.075,-.01],[0,.015,.10],[0,-.045,.185]], [[0,.02,.055],[1,.014,.038]], dark, 8, 10, false, false)); // خُصلة الناصية
+  for(const [y,z,r] of [[-.05,.20,.14],[.0,.02,.175]]) head.add(part(geo.torus, leather, 0,y,z, r,r,.055, .25,0,0)); // رسن
+
+  /* الذيل: يسدل ثم ينحني */
+  const tail=N(0,.10,-.78); body.add(tail); H.tail=tail;
+  tail.add(swept([[0,0,0],[0,-.12,-.13],[0,-.34,-.17],[0,-.56,-.09]],
+    [[0,.065,.075],[.4,.08,.09],[1,.022,.026]], dark, 9, 16));
+
+  /* الأرجل: فخذ ثم وظيف يضمر، بمفصل وحافر — مقاطع متغيّرة لا أعواد */
   H.legs=[];
-  for(const [sx,sz] of [[-1,.46],[1,.46],[-1,-.46],[1,-.46]]){
-    const hip=N(sx*.27,-.3,sz); body.add(hip);
-    hip.add(part(CAP, coat, 0,-.22,0, .15,.48,.15));
-    const knee=N(0,-.45,0); hip.add(knee);
-    knee.add(part(CAP, coat2, 0,-.2,0, .11,.42,.11));
-    knee.add(part(geo.cyl, hoof, 0,-.44,0, .12,.1,.12));
-    H.legs.push({hip,knee,front:sz>0,side:sx});
+  for(const [sx,sz,front] of [[-1,.50,true],[1,.50,true],[-1,-.52,false],[1,-.52,false]]){
+    const hip=N(sx*.185,-.28,sz); body.add(hip);
+    hip.add(swept([[0,.06,front?-.01:.01],[0,-.14,front?.02:-.02],[0,-.345,0]],
+      [[0,.105,.115],[.45,.078,.086],[1,.052,.056]], coat, 11, 14, false));
+    const knee=N(0,-.35,0); hip.add(knee);
+    knee.add(swept([[0,.01,0],[0,-.18,front?-.01:.01],[0,-.375,.012]],
+      [[0,.052,.056],[.35,.037,.04],[.8,.032,.035],[1,.040,.042]], coat2, 11, 16, false, false));
+    knee.add(swept([[0,-.375,.012],[0,-.405,.014],[0,-.44,.018]],
+      [[0,.040,.042],[.5,.05,.05],[1,.056,.054]], hoof, 11, 6, false));          // حافر
+    H.legs.push({hip,knee,front,side:sx});
+  }
+
+  /* حزام الصدر والبطن: حلقتان رقيقتان تلتفّان على الجذع */
+  body.add(part(geo.torus, leather, 0,.05,.44, .265,.315,.05, .12,0,0));
+  body.add(part(geo.torus, leather, 0,.04,.02, .285,.335,.045, 0,0,0));
+
+  /* السرج: وسادة منحنية بقربوس ومؤخّرة ورِكاب */
+  body.add(part(geo.sph, leather, 0,.29,.06, .235,.065,.32));
+  body.add(part(geo.sph, leather, 0,.34,.28, .10,.08,.08));
+  body.add(part(geo.sph, leather, 0,.35,-.19, .145,.09,.075));
+  body.add(part(geo.sph, gold, 0,.385,.29, .032));
+  for(const s of [-1,1]){
+    body.add(swept([[s*.225,.27,.06],[s*.265,.06,.06],[s*.275,-.12,.06]], [[0,.018,.045],[1,.016,.04]], leather, 6, 8, false, false));
+    body.add(part(geo.torus, mat(0xB0B6BE,METAL({roughness:.35})), s*.275,-.175,.06, .05,.05,.018, 0,Math.PI/2,0));
+  }
+
+  /* الغطاء الملكي: قماش مسدل بمقطع حقيقي وطيّات وحاشية ذهبية — لا صندوقان */
+  {
+    const cs=[[-.215,-.26],[-.245,-.12],[-.262,.02],[-.238,.15],[-.168,.245],[-.082,.295],[0,.305],[.082,.295],[.168,.245],[.238,.15],[.262,.02],[.245,-.12],[.215,-.26]];
+    const cm=cloth.clone(); cm.side=THREE.DoubleSide;
+    const dr=new THREE.Mesh(drapeGeo(cs, .18, -.50, 16, .012, .008), cm);
+    dr.castShadow=true; dr.receiveShadow=true; body.add(dr);
+    const gm=gold.clone(); gm.side=THREE.DoubleSide;   // حاشية: شريط رقيق على الحرف السفلي لكل جانب
+    for(const s of [-1,1]){
+      const tr=new THREE.Mesh(drapeGeo([[s*.215,-.26],[s*.222,-.222]], .18, -.50, 16, .012, .008), gm);
+      tr.castShadow=false; body.add(tr);
+    }
+  }
+  if(o.shield){
+    const sh=part(RG.shield, mat(0xC8D2DE,METAL({roughness:.32})), -.35,.02,-.16, .52,.52,.52, 0,0,Math.PI/2);
+    body.add(sh); body.add(part(geo.torus, mat(0xC0402E,CLOTH()), -.40,.02,-.16, .13,.13,.32, 0,Math.PI/2,0));
   }
   root.traverse(m=>{ if(m.isMesh) m.receiveShadow=true; });
   root.userData.horse=H;
@@ -2815,8 +2930,9 @@ function poseHorse(obj,t,moving){
     L.hip.rotation.x=a*.8; L.knee.rotation.x=Math.max(0,(L.front?-a:a))*.95; }
   const bob=moving?Math.abs(Math.sin(t*f))*.07:0;
   H.body.position.y=1.12+bob; H.body.rotation.x=moving?Math.sin(t*f)*.05:0;
-  H.neck.rotation.x=.78+(moving?Math.sin(t*f+.6)*.09:Math.sin(t*1.1)*.05);
-  H.tail.rotation.x=.55+Math.sin(t*(moving?9:1.8))*.25; H.tail.rotation.z=Math.sin(t*2.3)*.2;
+  H.neck.rotation.x=(moving?-.06+Math.sin(t*f+.6)*.07:Math.sin(t*1.1)*.045);
+  H.head.rotation.x=-.34+(moving?Math.sin(t*f+1.1)*.06:Math.sin(t*.9)*.04);
+  H.tail.rotation.x=Math.sin(t*(moving?9:1.8))*.22; H.tail.rotation.z=Math.sin(t*2.3)*.18;
   const rd=obj.userData.rider; if(rd) rd.position.y=obj.userData.riderY+bob*obj.userData.k;
 }
 /* القائد المتوَّج راكباً — يُعاد بناؤه لكل سلاح */
@@ -2827,7 +2943,7 @@ function mkHero(wid){
   if(wid==="bow") o.bow=true; else { o.weapon = wid==="spear"?"spear":"sword"; }
   const rider=makeRig(o); rider.userData.rig.mounted=true; if(wid==="bow") rider.userData.rig.bowPose=true;
   const horse=makeHorse({h:hgt*1.02, coat:0x9A5230, coat2:0x7A3E22, cloth:0x2450B8, shield:true});
-  rider.position.set(0,.66*k,-.03*k);
+  rider.position.set(0,.545*k,-.02*k);
   const root=new THREE.Group(); root.add(horse); root.add(rider);
   root.userData.rig=rider.userData.rig; root.userData.horse=horse.userData.horse; root.userData.rider=rider;
   root.userData.riderY=.66*k; root.userData.k=k; root.userData.weaponId=wid||"sword";
