@@ -98,53 +98,66 @@ namespace Dawnkeep.EditorTools
         public static ScriptableObject EnsureVolumeProfile()
         {
 #if DAWNKEEP_URP
+            // المجلّد يُحدَّث في كل مرّة لا يُتخطّى إن وُجد — وإلا بقيت المشاريع
+            // القائمة على تدرّج لوني قديم مهما عدّلنا الأرقام هنا.
             VolumeProfile profile = AssetDatabase.LoadAssetAtPath<VolumeProfile>(VolumeProfilePath);
-            if (profile != null)
+            if (profile == null)
             {
-                return profile;
+                profile = ScriptableObject.CreateInstance<VolumeProfile>();
+                profile.name = "Dawnkeep_PostProcess";
+                AssetDatabase.CreateAsset(profile, VolumeProfilePath);
             }
-
-            profile = ScriptableObject.CreateInstance<VolumeProfile>();
-            profile.name = "Dawnkeep_PostProcess";
-            AssetDatabase.CreateAsset(profile, VolumeProfilePath);
+            else
+            {
+                for (int i = profile.components.Count - 1; i >= 0; i--)
+                {
+                    VolumeComponent stale = profile.components[i];
+                    profile.components.RemoveAt(i);
+                    Object.DestroyImmediate(stale, true);
+                }
+            }
 
             Tonemapping tonemapping = profile.Add<Tonemapping>(true);
             tonemapping.mode.overrideState = true;
             tonemapping.mode.value = TonemappingMode.ACES;
 
+            // الخامات المرسومة رمادية بطبعها، والتعيين النغمي يغسل السطوع إلى الأبيض.
+            // رفع التباين والإشباع هنا هو ما يعيد للمشهد لونه وهويّته.
             ColorAdjustments color = profile.Add<ColorAdjustments>(true);
             color.postExposure.overrideState = true;
-            color.postExposure.value = 0.35f;
+            color.postExposure.value = 0.18f;
             color.contrast.overrideState = true;
-            color.contrast.value = 14f;
+            color.contrast.value = 20f;
             color.saturation.overrideState = true;
-            color.saturation.value = 8f;
+            color.saturation.value = 28f;
 
             WhiteBalance balance = profile.Add<WhiteBalance>(true);
             balance.temperature.overrideState = true;
-            balance.temperature.value = 12f;
+            balance.temperature.value = 15f;
             balance.tint.overrideState = true;
-            balance.tint.value = -4f;
+            balance.tint.value = -5f;
 
             Bloom bloom = profile.Add<Bloom>(true);
             bloom.threshold.overrideState = true;
-            bloom.threshold.value = 1.05f;
+            bloom.threshold.value = 1.15f;
             bloom.intensity.overrideState = true;
-            bloom.intensity.value = 0.55f;
+            bloom.intensity.value = 0.42f;
             bloom.scatter.overrideState = true;
-            bloom.scatter.value = 0.62f;
+            bloom.scatter.value = 0.66f;
 
             Vignette vignette = profile.Add<Vignette>(true);
             vignette.intensity.overrideState = true;
-            vignette.intensity.value = 0.24f;
+            vignette.intensity.value = 0.26f;
             vignette.smoothness.overrideState = true;
             vignette.smoothness.value = 0.45f;
 
+            // فصل دافئ/بارد: الظلّ يأخذ لون السماء والإضاءة تأخذ لون الشمس.
+            // بدون هذا الفصل تصير الظلال رمادية ميّتة مهما جوّدنا الخامات.
             ShadowsMidtonesHighlights smh = profile.Add<ShadowsMidtonesHighlights>(true);
             smh.shadows.overrideState = true;
-            smh.shadows.value = new Vector4(0.94f, 0.97f, 1.06f, 0f);
+            smh.shadows.value = new Vector4(0.855f, 0.910f, 1.115f, 0f);
             smh.highlights.overrideState = true;
-            smh.highlights.value = new Vector4(1.05f, 1.02f, 0.95f, 0f);
+            smh.highlights.value = new Vector4(1.085f, 1.020f, 0.900f, 0f);
 
             // كل مكوّن يُحفظ كأصل فرعي داخل الملفّ وإلا ضاع عند إعادة التحميل
             for (int i = 0; i < profile.components.Count; i++)

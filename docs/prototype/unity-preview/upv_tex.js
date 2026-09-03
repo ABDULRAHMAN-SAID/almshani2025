@@ -173,15 +173,17 @@ function drawRockGround(size, seed){
   const c=new TexCanvas(size), rng=texRng(seed), k=size/512;
   const P=[[0.396,0.384,0.361],[0.463,0.447,0.416],[0.325,0.325,0.322],
            [0.494,0.467,0.427],[0.361,0.365,0.369],[0.435,0.412,0.376]];
-  texFacets(c, Math.round(3*k), seed, P, 5.0*k, 0.34, 4.2, 1.0, 0.30);        // ألواح كبيرة
-  texFacets(c, Math.round(8*k), seed+7717, P, 2.6*k, 0.26, 2.4, 0.52, 0.22);   // تكسير ثانوي
-  texFacets(c, Math.round(19*k), seed+3313, P, 1.5*k, 0.18, 1.2, 0.24, 0.16);  // حبيبات
+  // البلاطة 12.5 متراً على 512 نقطة ≈ 41 نقطة/متر. ثلاثة ألواح في البلاطة تعني
+  // لوحاً بعرض أربعة أمتار — يُقرأ طيناً متشقّقاً لا صخراً. المفاصل الحقيقية 20–60 سم.
+  texFacets(c, Math.round(14*k), seed, P, 2.0*k, 0.30, 3.0, 1.0, 0.26);        // ألواح
+  texFacets(c, Math.round(31*k), seed+7717, P, 1.2*k, 0.22, 1.7, 0.50, 0.19);  // تكسير ثانوي
+  texFacets(c, Math.round(64*k), seed+3313, P, 0.8*k, 0.14, 0.9, 0.22, 0.14);  // حبيبات
   // شقوق قليلة عميقة لا شبكة
-  for(let i=0;i<Math.round(4*k*k);i++)
-    texCrack(c, rng()*size, rng()*size, rng()*6.28, (60+rng()*170)*k, 1.1+rng()*0.9, rng);
+  for(let i=0;i<Math.round(9*k*k);i++)
+    texCrack(c, rng()*size, rng()*size, rng()*6.28, (22+rng()*62)*k, 1.0+rng()*0.8, rng);
   // شظايا متناثرة
-  for(let i=0;i<Math.round(140*k*k);i++){
-    const r=(1.8+rng()*5)*k, tone=0.78+rng()*0.44;
+  for(let i=0;i<Math.round(420*k*k);i++){
+    const r=(0.8+rng()*2.2)*k, tone=0.78+rng()*0.44;
     texPebble(c, rng()*size, rng()*size, r, r*(0.5+rng()*0.5), rng()*3.14,
       [0.502*tone,0.494*tone,0.478*tone], rng);
   }
@@ -410,13 +412,13 @@ function drawCliffRock(size, seed){
   const P=[[0.376,0.380,0.388],[0.290,0.302,0.322],[0.455,0.451,0.443],
            [0.333,0.345,0.365],[0.243,0.255,0.278],[0.420,0.408,0.388]];
   // ألواح أكبر وأطول: وجه الجرف مكسور إلى كتل ضخمة
-  texFacets(c, Math.round(2*k), seed, P, 7.0*k, 0.46, 6.0, 1.0, 0.34);        // كتل ضخمة
-  texFacets(c, Math.round(5*k), seed+4411, P, 3.6*k, 0.32, 3.2, 0.50, 0.24);   // تكسير ثانوي
-  texFacets(c, Math.round(13*k), seed+8823, P, 1.8*k, 0.20, 1.6, 0.26, 0.18);  // حبيبات
-  for(let i=0;i<Math.round(6*k*k);i++)
-    texCrack(c, rng()*size, rng()*size, (rng()<0.7? (rng()-0.5)*0.35 : rng()*6.28), (90+rng()*230)*k, 1.4+rng()*1.0, rng);
-  for(let i=0;i<Math.round(180*k*k);i++){
-    const r=(2.2+rng()*7)*k, tone=0.70+rng()*0.5;
+  texFacets(c, Math.round(10*k), seed, P, 2.6*k, 0.42, 4.4, 1.0, 0.30);        // كتل
+  texFacets(c, Math.round(24*k), seed+4411, P, 1.5*k, 0.28, 2.4, 0.50, 0.22);  // تكسير ثانوي
+  texFacets(c, Math.round(52*k), seed+8823, P, 0.9*k, 0.16, 1.2, 0.24, 0.16);  // حبيبات
+  for(let i=0;i<Math.round(14*k*k);i++)
+    texCrack(c, rng()*size, rng()*size, (rng()<0.7? (rng()-0.5)*0.35 : rng()*6.28), (30+rng()*78)*k, 1.2+rng()*0.9, rng);
+  for(let i=0;i<Math.round(520*k*k);i++){
+    const r=(1.0+rng()*3.0)*k, tone=0.70+rng()*0.5;
     texPebble(c, rng()*size, rng()*size, r, r*(0.42+rng()*0.5), rng()*3.14,
       [0.435*tone,0.443*tone,0.455*tone], rng);
   }

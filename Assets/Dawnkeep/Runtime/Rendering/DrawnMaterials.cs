@@ -140,21 +140,24 @@ namespace Dawnkeep.Rendering
             TexRandom rng = new TexRandom(seed);
             float k = size / 512f;
 
-            TexturePainter.Facets(c, Mathf.RoundToInt(3f * k), seed, RockPlates, 5.0f * k, 0.34f, 4.2f, 1.0f, 0.30f);
-            TexturePainter.Facets(c, Mathf.RoundToInt(8f * k), seed + 7717u, RockPlates, 2.6f * k, 0.26f, 2.4f, 0.52f, 0.22f);
-            TexturePainter.Facets(c, Mathf.RoundToInt(19f * k), seed + 3313u, RockPlates, 1.5f * k, 0.18f, 1.2f, 0.24f, 0.16f);
+            // البلاطة 12.5 متراً على 512 نقطة ≈ 41 نقطة/متر. ثلاثة ألواح في البلاطة
+            // تعني لوحاً بعرض أربعة أمتار — يُقرأ طيناً متشقّقاً لا صخراً.
+            // مفاصل الصخر الحقيقية بعرض 20–60 سم.
+            TexturePainter.Facets(c, Mathf.RoundToInt(14f * k), seed, RockPlates, 2.0f * k, 0.30f, 3.0f, 1.0f, 0.26f);
+            TexturePainter.Facets(c, Mathf.RoundToInt(31f * k), seed + 7717u, RockPlates, 1.2f * k, 0.22f, 1.7f, 0.50f, 0.19f);
+            TexturePainter.Facets(c, Mathf.RoundToInt(64f * k), seed + 3313u, RockPlates, 0.8f * k, 0.14f, 0.9f, 0.22f, 0.14f);
 
-            int cracks = Mathf.RoundToInt(4f * k * k);
+            int cracks = Mathf.RoundToInt(9f * k * k);
             for (int i = 0; i < cracks; i++)
             {
                 TexturePainter.Crack(c, rng.Next() * size, rng.Next() * size, rng.Next() * 6.28f,
-                    (60f + (rng.Next() * 170f)) * k, 1.1f + (rng.Next() * 0.9f), ref rng, 2);
+                    (22f + (rng.Next() * 62f)) * k, 1.0f + (rng.Next() * 0.8f), ref rng, 2);
             }
 
-            int chips = Mathf.RoundToInt(140f * k * k);
+            int chips = Mathf.RoundToInt(420f * k * k);
             for (int i = 0; i < chips; i++)
             {
-                float r = (1.8f + (rng.Next() * 5f)) * k;
+                float r = (0.8f + (rng.Next() * 2.2f)) * k;
                 float tone = 0.78f + (rng.Next() * 0.44f);
                 TexturePainter.Pebble(c, rng.Next() * size, rng.Next() * size, r, r * (0.5f + (rng.Next() * 0.5f)),
                     rng.Next() * 3.14f, new Color(0.502f * tone, 0.494f * tone, 0.478f * tone), ref rng);
@@ -203,22 +206,22 @@ namespace Dawnkeep.Rendering
             TexRandom rng = new TexRandom(seed);
             float k = size / 512f;
 
-            TexturePainter.Facets(c, Mathf.RoundToInt(2f * k), seed, CliffPlates, 7.0f * k, 0.46f, 6.0f, 1.0f, 0.34f);
-            TexturePainter.Facets(c, Mathf.RoundToInt(5f * k), seed + 4411u, CliffPlates, 3.6f * k, 0.32f, 3.2f, 0.50f, 0.24f);
-            TexturePainter.Facets(c, Mathf.RoundToInt(13f * k), seed + 8823u, CliffPlates, 1.8f * k, 0.20f, 1.6f, 0.26f, 0.18f);
+            TexturePainter.Facets(c, Mathf.RoundToInt(10f * k), seed, CliffPlates, 2.6f * k, 0.42f, 4.4f, 1.0f, 0.30f);
+            TexturePainter.Facets(c, Mathf.RoundToInt(24f * k), seed + 4411u, CliffPlates, 1.5f * k, 0.28f, 2.4f, 0.50f, 0.22f);
+            TexturePainter.Facets(c, Mathf.RoundToInt(52f * k), seed + 8823u, CliffPlates, 0.9f * k, 0.16f, 1.2f, 0.24f, 0.16f);
 
-            int cracks = Mathf.RoundToInt(6f * k * k);
+            int cracks = Mathf.RoundToInt(14f * k * k);
             for (int i = 0; i < cracks; i++)
             {
                 float ang = rng.Next() < 0.7f ? (rng.Next() - 0.5f) * 0.35f : rng.Next() * 6.28f;
                 TexturePainter.Crack(c, rng.Next() * size, rng.Next() * size, ang,
-                    (90f + (rng.Next() * 230f)) * k, 1.4f + rng.Next(), ref rng, 2);
+                    (30f + (rng.Next() * 78f)) * k, 1.2f + (rng.Next() * 0.9f), ref rng, 2);
             }
 
-            int chips = Mathf.RoundToInt(180f * k * k);
+            int chips = Mathf.RoundToInt(520f * k * k);
             for (int i = 0; i < chips; i++)
             {
-                float r = (2.2f + (rng.Next() * 7f)) * k;
+                float r = (1.0f + (rng.Next() * 3.0f)) * k;
                 float tone = 0.70f + (rng.Next() * 0.5f);
                 TexturePainter.Pebble(c, rng.Next() * size, rng.Next() * size, r, r * (0.42f + (rng.Next() * 0.5f)),
                     rng.Next() * 3.14f, new Color(0.435f * tone, 0.443f * tone, 0.455f * tone), ref rng);

@@ -91,38 +91,79 @@ function splatAt(i,j){
 const renderer=new THREE.WebGLRenderer({antialias:true, powerPreference:'high-performance'});
 renderer.setPixelRatio(1);
 renderer.setSize(innerWidth, innerHeight);
-renderer.outputEncoding=THREE.sRGBEncoding;
-renderer.toneMapping=THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure=1.22;
+// المشهد يُصيَّر خطّياً إلى هدف عالي المدى، ثم تتولّى تمريرة التدرّج اللوني
+// التعريضَ والتباينَ والإشباعَ والتعيينَ النغمي والترميزَ إلى sRGB دفعةً واحدة.
+// التعيين النغمي المباشر على ألوان ساطعة يغسلها إلى الأبيض — وهذا سبب «شحوب» المشهد.
+renderer.outputEncoding=THREE.LinearEncoding;
+renderer.toneMapping=THREE.NoToneMapping;
 renderer.shadowMap.enabled=true;
 renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
 
 const scene=new THREE.Scene();
 const camera=new THREE.PerspectiveCamera(42, innerWidth/innerHeight, 1.2, 6000);
-scene.fog=new THREE.FogExp2(0xc6d5e4, 0.00062);
+scene.fog=new THREE.FogExp2(0xb9a68d, 0.00028);
 
-/* سماء متدرّجة */
-const sky=new THREE.Mesh(new THREE.SphereGeometry(4600, 24, 16), new THREE.ShaderMaterial({
-  side:THREE.BackSide, depthWrite:false,
-  uniforms:{ top:{value:new THREE.Color(0x2f63b4)}, mid:{value:new THREE.Color(0xc6d5e4)}, bot:{value:new THREE.Color(0xf2e2c2)} },
+/* ═══ سماء الفجر: تدرّج + قرص شمس متوهّج + سحب ═══
+   السماء المتدرّجة وحدها فارغة، والفراغ هو ما يجعل اللقطة تبدو «بلا جوّ». */
+const skyUniforms={
+  uZenith:{value:new THREE.Color(0.055,0.184,0.478)},
+  uHorizon:{value:new THREE.Color(0.639,0.671,0.686)},
+  uGround:{value:new THREE.Color(0.353,0.310,0.259)},
+  uSunCol:{value:new THREE.Color(1.00,0.784,0.529)},
+  uSunDir:{value:new THREE.Vector3(-0.6,0.35,0.7)},
+  uCloud:{value:0.86}
+};
+const sky=new THREE.Mesh(new THREE.SphereGeometry(4600, 32, 20), new THREE.ShaderMaterial({
+  side:THREE.BackSide, depthWrite:false, uniforms:skyUniforms,
   vertexShader:'varying vec3 vP; void main(){ vP=position; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
-  fragmentShader:`varying vec3 vP; uniform vec3 top, mid, bot;
-    void main(){ float t=normalize(vP).y;
-      vec3 c = t>0.0 ? mix(mid, top, pow(t,0.62)) : mix(mid, bot, pow(-t,0.5));
-      gl_FragColor=vec4(c,1.0); }`
+  fragmentShader:`varying vec3 vP;
+    uniform vec3 uZenith, uHorizon, uGround, uSunCol, uSunDir;
+    uniform float uCloud;
+    float sh2(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7)))*43758.5453); }
+    float sn2(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f);
+      return mix(mix(sh2(i), sh2(i+vec2(1.0,0.0)), f.x),
+                 mix(sh2(i+vec2(0.0,1.0)), sh2(i+vec2(1.0,1.0)), f.x), f.y); }
+    float sfbm(vec2 p){ float a=0.5, s=0.0;
+      for(int i=0;i<5;i++){ s+=sn2(p)*a; a*=0.5; p=p*2.07+vec2(17.3,9.1); } return s; }
+    void main(){
+      vec3 d = normalize(vP);
+      float t = d.y;
+      vec3 c = t>0.0 ? mix(uHorizon, uZenith, pow(t, 0.40))
+                     : mix(uHorizon, uGround, pow(-t, 0.45));
+      // انتثار أمامي حول الشمس: منه يأتي دفء الأفق
+      vec3 sd3 = normalize(uSunDir);
+      float sd = max(0.0, dot(d, sd3));
+      c += uSunCol * pow(sd, 42.0) * 0.85;
+      c += uSunCol * pow(sd, 6.0) * 0.22;
+      c += uSunCol * pow(sd, 2.2) * 0.070 * smoothstep(-0.10, 0.34, t);
+      // سحب مسقطة على مستوى أفقي فتتقارب عند الأفق كما تفعل حقيقةً
+      if(t > 0.006){
+        vec2 uv = d.xz / max(t, 0.006) * 0.34;
+        float f = sfbm(uv * 0.62 + vec2(11.0, 7.0));
+        float cov = smoothstep(0.46, 0.80, f);
+        float edge = smoothstep(0.44, 0.98, f);
+        float lit = pow(sd * 0.5 + 0.5, 2.6);
+        vec3 cloudCol = mix(vec3(0.396,0.427,0.510), vec3(1.02,0.941,0.859), lit*0.50 + edge*0.50);
+        float fade = smoothstep(0.006, 0.10, t);
+        c = mix(c, cloudCol, cov * fade * uCloud);
+      }
+      gl_FragColor = vec4(c, 1.0);
+    }`
 }));
 scene.add(sky);
 
-const sun=new THREE.DirectionalLight(0xffe0b0, 2.75);
+const sun=new THREE.DirectionalLight(0xffc98a, 3.30);
 sun.position.set(-950, 680, 780);
 sun.castShadow=true;
 sun.shadow.mapSize.set(4096,4096);
 sun.shadow.camera.near=10; sun.shadow.camera.far=3400;
 sun.shadow.bias=-0.0004; sun.shadow.normalBias=0.9;
 scene.add(sun); scene.add(sun.target);
-scene.add(new THREE.HemisphereLight(0x9dbde8, 0x6d6152, 0.86));
-scene.add(new THREE.AmbientLight(0xfff0dc, 0.15));
+// الفرق بين ضوء الشمس الدافئ وضوء السماء البارد هو ما يعطي الظلال لوناً.
+// إضاءة محيطية بيضاء قويّة تُلغي هذا الفرق فتصير الظلال رمادية ميّتة.
+scene.add(new THREE.HemisphereLight(0x6f93d6, 0x4e4438, 0.62));
+scene.add(new THREE.AmbientLight(0x5d719e, 0.10));
 
 /* ═══ خامات الأرض ═══ */
 function dataTex(arr, size, srgb){
@@ -145,9 +186,9 @@ for(const name of Object.keys(DRAW)){
 }
 const grassTex=dataTex(grassClump(256, 20260606, [0.204,0.259,0.145], [0.545,0.573,0.322]), 256, true);
 grassTex.wrapS=grassTex.wrapT=THREE.ClampToEdgeWrapping;
-const leafTex=dataTex(leafCluster(256, 20260707, [0.129,0.208,0.114], [0.400,0.502,0.235], false), 256, true);
+const leafTex=dataTex(leafCluster(256, 20260707, [0.098,0.169,0.094], [0.286,0.400,0.192], false), 256, true);
 leafTex.wrapS=leafTex.wrapT=THREE.ClampToEdgeWrapping;
-const needleTex=dataTex(leafCluster(256, 20260808, [0.086,0.161,0.129], [0.271,0.376,0.243], true), 256, true);
+const needleTex=dataTex(leafCluster(256, 20260808, [0.071,0.133,0.110], [0.204,0.298,0.192], true), 256, true);
 needleTex.wrapS=needleTex.wrapT=THREE.ClampToEdgeWrapping;
 
 /* خريطة الطبقات + الانحجاب */
@@ -251,15 +292,18 @@ terMat.onBeforeCompile = sh => {
     .replace('#include <map_fragment>', `#include <map_fragment>
       dkWeights();
       vec3 dkN3 = normalize(vWN);
-      vec3 dkCol = dkFlat(uT0, vWP.xz, 26.0)*dkW1.r
-                 + dkFlat(uT1, vWP.xz, 30.0)*dkW1.g
-                 + dkTri(uT2, vWP, dkN3, 34.0)*dkW1.b
-                 + dkFlat(uT3, vWP.xz, 14.0)*dkW1.a
-                 + dkTri(uT4, vWP, dkN3, 30.0)*dkW2.r
-                 + dkTri(uT5, vWP, dkN3, 18.0)*dkW2.g
-                 + dkTri(uT6, vWP, dkN3, 22.0)*dkW2.b;
+      vec3 dkCol = dkFlat(uT0, vWP.xz, 10.0)*dkW1.r
+                 + dkFlat(uT1, vWP.xz, 12.0)*dkW1.g
+                 + dkTri(uT2, vWP, dkN3, 12.5)*dkW1.b
+                 + dkFlat(uT3, vWP.xz, 6.5)*dkW1.a
+                 + dkTri(uT4, vWP, dkN3, 13.0)*dkW2.r
+                 + dkTri(uT5, vWP, dkN3, 8.0)*dkW2.g
+                 + dkTri(uT6, vWP, dkN3, 11.0)*dkW2.b;
       dkCol *= mix(1.0, texture2D(uAO, vSUv).r, uAOAmt);
-      dkCol *= texture2D(uMacro, vSUv).rgb * 1.10;
+      dkCol *= texture2D(uMacro, vSUv).rgb * 0.94;
+      // إشباع لون الأرض قبل الإضاءة: الخامات المرسومة رمادية بطبعها
+      float dkLum = dot(dkCol, vec3(0.2126,0.7152,0.0722));
+      dkCol = mix(vec3(dkLum), dkCol, 1.26);
       // تدرّج ارتفاعي: الوادي دافئ مخضرّ، السفح ترابي، القمّة رمادية باردة
       float dkAlt = clamp((vWP.y - uLow)/max(uSpan,1.0), 0.0, 1.0);
       dkCol *= mix(vec3(1.07,1.035,0.905), vec3(0.855,0.925,1.075),
@@ -273,13 +317,13 @@ terMat.onBeforeCompile = sh => {
     .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
       dkWeights();
       vec3 dkNw = normalize(vWN);
-      vec3 dkN = (texture2D(uN0, vWP.xz/26.0).xyz*2.0-1.0)*dkW1.r
-               + (texture2D(uN1, vWP.xz/30.0).xyz*2.0-1.0)*dkW1.g
-               + (dkTri(uN2, vWP, dkNw, 34.0)*2.0-1.0)*dkW1.b
-               + (texture2D(uN3, vWP.xz/14.0).xyz*2.0-1.0)*dkW1.a
-               + (dkTri(uN4, vWP, dkNw, 30.0)*2.0-1.0)*dkW2.r
-               + (dkTri(uN5, vWP, dkNw, 18.0)*2.0-1.0)*dkW2.g
-               + (dkTri(uN6, vWP, dkNw, 22.0)*2.0-1.0)*dkW2.b;
+      vec3 dkN = (texture2D(uN0, vWP.xz/10.0).xyz*2.0-1.0)*dkW1.r
+               + (texture2D(uN1, vWP.xz/12.0).xyz*2.0-1.0)*dkW1.g
+               + (dkTri(uN2, vWP, dkNw, 12.5)*2.0-1.0)*dkW1.b
+               + (texture2D(uN3, vWP.xz/6.5).xyz*2.0-1.0)*dkW1.a
+               + (dkTri(uN4, vWP, dkNw, 13.0)*2.0-1.0)*dkW2.r
+               + (dkTri(uN5, vWP, dkNw, 8.0)*2.0-1.0)*dkW2.g
+               + (dkTri(uN6, vWP, dkNw, 11.0)*2.0-1.0)*dkW2.b;
       // الإسقاط على المستوى المماسّ يمنع انقلاب المُسوّي على الجروف شبه العمودية
       vec3 dkPert = vec3(dkN.x, 0.0, dkN.y)*0.70;
       dkPert -= normal * dot(dkPert, normal);
@@ -298,7 +342,7 @@ const waterUniforms={
   uSky:{value:new THREE.Color(0.58,0.72,0.88)},
   uSunDir:{value:new THREE.Vector3(0.4,0.6,0.5)},
   uSunCol:{value:new THREE.Color(1.0,0.94,0.82)},
-  fogColor:{value:new THREE.Color(0xc6d5e4)},
+  fogColor:{value:new THREE.Color(0xb9a68d)},
   fogDensity:{value:0.0004}
 };
 const waterMat=new THREE.ShaderMaterial({
@@ -502,9 +546,9 @@ const treePool=[];
 
 /* ═══ الصخور ═══ */
 const rockMat=new THREE.MeshStandardMaterial({map:SURF.rock.alb, normalMap:SURF.rock.nrm, roughness:0.93, metalness:0.02});
-rockMat.map.repeat.set(1.6,1.6);
+rockMat.map.repeat.set(4.0,4.0); rockMat.normalMap.repeat.set(4.0,4.0);
 const cliffMat=new THREE.MeshStandardMaterial({map:SURF.cliff.alb, normalMap:SURF.cliff.nrm, roughness:0.95, metalness:0.02, vertexColors:true});
-cliffMat.map.repeat.set(1.4,1.4);
+cliffMat.map.repeat.set(6.0,6.0); cliffMat.normalMap.repeat.set(6.0,6.0);
 const ROCKS=[buildBoulder(6330000,1.4), buildBoulder(6330613,2.2), buildOutcrop(6331226,6.1), buildOutcrop(6331839,7.7)];
 const rockPool=[], cliffPool=[];
 {
@@ -533,13 +577,13 @@ const rockPool=[], cliffPool=[];
     const i=Math.min(N-1,Math.max(0,Math.round((wx+WORLD/2)/s))), j=Math.min(N-1,Math.max(0,Math.round((wz+WORLD/2)/s)));
     const k=j*N+i;
     const sl=slopeAt(i,j), alt=(h[k]-lo)/span;
-    const chance=clamp((sl-0.55)*1.5,0,1)*clamp((alt-0.20)/0.35,0,1);
+    const chance=clamp((sl-0.46)*1.6,0,1)*clamp((alt-0.16)/0.32,0,1);
     if(rnd()>chance*0.85) continue;
-    if(cliffPool.length>=4200) break;
+    if(cliffPool.length>=6400) break;
     const big=rnd()<0.50;
     cliffPool.push({x:wx, z:wz, y:groundY(wx,wz)-(0.4+rnd()*1.1),
                     v:big?(2+((rnd()*2)|0)):((rnd()*2)|0),
-                    s:(big? 5.4+rnd()*8.2 : 2.2+rnd()*3.4),
+                    s:(big? 2.9+rnd()*4.3 : 1.3+rnd()*2.1),
                     sy:0.7+rnd()*0.9, r:rnd()*Math.PI*2,
                     tx:(rnd()-0.5)*0.5, tz:(rnd()-0.5)*0.5,
                     tr:0.82+rnd()*0.30, tg:0.85+rnd()*0.28, tb:0.90+rnd()*0.28});
@@ -689,41 +733,153 @@ const gatePos = [Math.cos(GATE_ANGLE)*GATE_R*0.98, Math.sin(GATE_ANGLE)*GATE_R*0
 const YAW_OUT = 90 - GA;          // الكاميرا خارج البوّابة تنظر إلى الداخل
 const SHOTS={
   mountain: ()=>{ populate(-560, 700, 1500, 1400, 260, 16000);
-                  look([-560, 700], 620, 152, 7, 60); scene.fog.density=0.00040; },
+                  look([-560, 700], 620, 152, 7, 60); scene.fog.density=0.00018; },
   peaks:    ()=>{ populate(-300, 1050, 1400, 1300, 0, 0);
-                  look([-300, 1050], 760, 150, 8, 150); scene.fog.density=0.00036; },
+                  look([-300, 1050], 760, 150, 8, 150); scene.fog.density=0.00016; },
   ridge:    ()=>{ populate(-420, 880, 1600, 1500, 240, 14000);
-                  look([-420, 880], 980, 168, 12, 90); scene.fog.density=0.00042; },
+                  look([-420, 880], 980, 168, 12, 90); scene.fog.density=0.00018; },
   ground: ()=>{ populate(-260, 420, 520, 420, 190, 30000);
-                look([-260, 420], 92, 300, 21, 6); scene.fog.density=0.00060; },
+                look([-260, 420], 92, 300, 21, 6); scene.fog.density=0.00026; },
   // زوايا مؤطَّرة: منخفضة وقريبة عند البوّابة، علوية ثلاثية الأرباع للمجمّع
   hero:   ()=>{ populate(0,0, 700, 560, 330, 18000);
-                look(gatePos, 46, YAW_OUT, 1, 16, -3); scene.fog.density=0.00074; },
+                look(gatePos, 46, YAW_OUT, 1, 16, -3); scene.fog.density=0.00033; },
   aerial: ()=>{ populate(0,0, 1000, 800, 340, 15000);
-                look([0,0], 265, YAW_OUT+28, 24, 8); scene.fog.density=0.00066; },
+                look([0,0], 265, YAW_OUT+28, 24, 8); scene.fog.density=0.00029; },
   tower:  ()=>{ populate(0,0, 600, 480, 300, 16000);
                 look([Math.cos(GATE_ANGLE+0.62)*GATE_R*0.95, Math.sin(GATE_ANGLE+0.62)*GATE_R*0.95],
-                     34, (GATE_ANGLE+0.62)*180/Math.PI*-1+90, 4, 14, -2); scene.fog.density=0.00078; },
+                     34, (GATE_ANGLE+0.62)*180/Math.PI*-1+90, 4, 14, -2); scene.fog.density=0.00034; },
   through:()=>{ populate(0,0, 700, 560, 320, 16000);
                 look([Math.cos(GATE_ANGLE)*GATE_R*0.45, Math.sin(GATE_ANGLE)*GATE_R*0.45],
-                     46, YAW_OUT+180, 3, 5, 0); scene.fog.density=0.00078; },
+                     46, YAW_OUT+180, 3, 5, 0); scene.fog.density=0.00034; },
   gate:   ()=>{ populate(0,0, 700, 560, 330, 17000);
-                look(gatePos, 52, YAW_OUT, 5); scene.fog.density=0.00078; },
+                look(gatePos, 52, YAW_OUT, 5); scene.fog.density=0.00034; },
   castle: ()=>{ populate(0,0, 900, 700, 340, 15000);
-                look([0,0], 250, YAW_OUT, 15); scene.fog.density=0.00068; },
+                look([0,0], 250, YAW_OUT, 15); scene.fog.density=0.00030; },
   keep:   ()=>{ populate(0,0, 700, 560, 330, 15000);
-                look([0,0], 130, YAW_OUT+40, 16); scene.fog.density=0.00072; },
+                look([0,0], 130, YAW_OUT+40, 16); scene.fog.density=0.00032; },
   village:()=>{ populate(villP[0], villP[1], 700, 520, 280, 17000);
-                look(villP, 95, YAW_OUT-70, 13); scene.fog.density=0.00078; },
+                look(villP, 95, YAW_OUT-70, 13); scene.fog.density=0.00034; },
   valley: ()=>{ populate(150,-260, 900, 700, 220, 12000);
-                look([150,-260], 330, 200, 18); scene.fog.density=0.00078; },
+                look([150,-260], 330, 200, 18); scene.fog.density=0.00034; },
   lake:   ()=>{ populate(lakePt.x, lakePt.z, 950, 720, 230, 13000);
-                look([lakePt.x, lakePt.z], 330, 145, 8); scene.fog.density=0.00074; },
+                look([lakePt.x, lakePt.z], 330, 145, 8); scene.fog.density=0.00033; },
   far:    ()=>{ populate(0,0, 1700, 1700, 0, 0);
-                look([120,60], 1150, 208, 26); scene.fog.density=0.00058; },
+                look([120,60], 1150, 208, 26); scene.fog.density=0.00026; },
 };
 let ready=false;
-function render(){ waterUniforms.fogDensity.value = scene.fog.density; renderer.render(scene, camera); }
+/* ═══ تمريرة التدرّج اللوني: هي ما يصنع «الجوّ» ═══
+   المشهد يُصيَّر خطّياً إلى هدف عالي المدى، ثم تُطبَّق دفعةً واحدة:
+   تعريض ← فصل دافئ/بارد بين الإضاءة والظلّ ← تباين ← إشباع ← توهّج ←
+   تعيين نغمي ACES ← تعتيم الأطراف ← ترميز sRGB.
+   بدونها تُغسل الألوان الساطعة إلى الأبيض ويصير المشهد شاحباً بلا هوية. */
+const GRADE={
+  exposure: 1.06,
+  shadowTint: new THREE.Color(0.835, 0.898, 1.130),   // الظلّ يأخذ لون السماء
+  highTint:   new THREE.Color(1.085, 1.020, 0.900),   // الإضاءة تأخذ لون الشمس
+  contrast: 1.15,
+  saturation: 1.30,
+  bloomThreshold: 1.05,
+  bloomIntensity: 0.42,
+  vignette: 0.26
+};
+const RTOPT={ minFilter:THREE.LinearFilter, magFilter:THREE.LinearFilter,
+              format:THREE.RGBAFormat, type:THREE.HalfFloatType,
+              encoding:THREE.LinearEncoding, depthBuffer:true, stencilBuffer:false };
+const RW_=innerWidth, RH_=innerHeight, BW_=Math.max(2,RW_>>1), BH_=Math.max(2,RH_>>1);
+const rtScene=new THREE.WebGLRenderTarget(RW_, RH_, RTOPT);
+const rtBloomA=new THREE.WebGLRenderTarget(BW_, BH_, Object.assign({}, RTOPT, {depthBuffer:false}));
+const rtBloomB=new THREE.WebGLRenderTarget(BW_, BH_, Object.assign({}, RTOPT, {depthBuffer:false}));
+
+const fsScene=new THREE.Scene(), fsCam=new THREE.Camera();
+const fsQuad=new THREE.Mesh(new THREE.PlaneBufferGeometry(2,2), null);
+fsQuad.frustumCulled=false; fsScene.add(fsQuad);
+const FS_VERT='varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position.xy,0.0,1.0); }';
+
+// استخلاص المناطق الساطعة وحدها — التوهّج على كل شيء يعيد الغسل الأبيض
+const brightMat=new THREE.ShaderMaterial({
+  uniforms:{ tSrc:{value:null}, uThreshold:{value:GRADE.bloomThreshold} },
+  vertexShader:FS_VERT,
+  fragmentShader:`varying vec2 vUv; uniform sampler2D tSrc; uniform float uThreshold;
+    void main(){ vec3 c=texture2D(tSrc, vUv).rgb;
+      float l=dot(c, vec3(0.2126,0.7152,0.0722));
+      float k=max(0.0, l-uThreshold)/max(l, 1e-4);
+      gl_FragColor=vec4(c*k, 1.0); }`
+});
+const blurMat=new THREE.ShaderMaterial({
+  uniforms:{ tSrc:{value:null}, uDir:{value:new THREE.Vector2(1,0)},
+             uTexel:{value:new THREE.Vector2(1/BW_, 1/BH_)} },
+  vertexShader:FS_VERT,
+  fragmentShader:`varying vec2 vUv; uniform sampler2D tSrc; uniform vec2 uDir, uTexel;
+    void main(){
+      vec2 o=uDir*uTexel;
+      vec3 c = texture2D(tSrc, vUv).rgb*0.2270270270;
+      c += (texture2D(tSrc, vUv+o*1.3846153846).rgb + texture2D(tSrc, vUv-o*1.3846153846).rgb)*0.3162162162;
+      c += (texture2D(tSrc, vUv+o*3.2307692308).rgb + texture2D(tSrc, vUv-o*3.2307692308).rgb)*0.0702702703;
+      gl_FragColor=vec4(c,1.0); }`
+});
+const gradeMat=new THREE.ShaderMaterial({
+  uniforms:{
+    tScene:{value:rtScene.texture}, tBloom:{value:rtBloomA.texture},
+    uExposure:{value:GRADE.exposure},
+    uShadowTint:{value:GRADE.shadowTint}, uHighTint:{value:GRADE.highTint},
+    uContrast:{value:GRADE.contrast}, uSat:{value:GRADE.saturation},
+    uBloom:{value:GRADE.bloomIntensity}, uVignette:{value:GRADE.vignette}
+  },
+  vertexShader:FS_VERT,
+  fragmentShader:`varying vec2 vUv;
+    uniform sampler2D tScene, tBloom;
+    uniform vec3 uShadowTint, uHighTint;
+    uniform float uExposure, uContrast, uSat, uBloom, uVignette;
+    // ACES بصيغة Narkowicz المقرّبة
+    vec3 aces(vec3 x){
+      const float a=2.51, b=0.03, c=2.43, d=0.59, e=0.14;
+      return clamp((x*(a*x+b))/(x*(c*x+d)+e), 0.0, 1.0);
+    }
+    void main(){
+      vec3 col = texture2D(tScene, vUv).rgb;
+      col += texture2D(tBloom, vUv).rgb * uBloom;
+      col *= uExposure;
+      // فصل دافئ/بارد: الظلّ يميل إلى الأزرق والإضاءة إلى الذهب
+      float l = dot(col, vec3(0.2126,0.7152,0.0722));
+      col *= mix(uShadowTint, uHighTint, smoothstep(0.02, 0.55, l));
+      // تباين حول محور متوسّط ثم إشباع
+      col = max(vec3(0.0), (col - 0.18) * uContrast + 0.18);
+      float g = dot(col, vec3(0.2126,0.7152,0.0722));
+      col = max(vec3(0.0), mix(vec3(g), col, uSat));
+      col = aces(col);
+      // تعتيم الأطراف: يجمع العين على قلب اللقطة
+      vec2 q = vUv - 0.5;
+      col *= 1.0 - uVignette * dot(q,q) * 2.2;
+      gl_FragColor = vec4(pow(max(col, 0.0), vec3(1.0/2.2)), 1.0);
+    }`
+});
+
+function blit(mat, target){
+  fsQuad.material=mat;
+  renderer.setRenderTarget(target);
+  renderer.render(fsScene, fsCam);
+}
+
+function render(){
+  waterUniforms.fogDensity.value = scene.fog.density;
+  // اتجاه الشمس يغذّي توهّج السماء فيتّفق الأفق مع مصدر الضوء
+  skyUniforms.uSunDir.value.copy(sun.position).sub(sun.target.position).normalize();
+  renderer.setRenderTarget(rtScene);
+  renderer.clear();
+  renderer.render(scene, camera);
+
+  brightMat.uniforms.tSrc.value = rtScene.texture;
+  blit(brightMat, rtBloomA);
+  blurMat.uniforms.tSrc.value = rtBloomA.texture;
+  blurMat.uniforms.uDir.value.set(1,0);
+  blit(blurMat, rtBloomB);
+  blurMat.uniforms.tSrc.value = rtBloomB.texture;
+  blurMat.uniforms.uDir.value.set(0,1);
+  blit(blurMat, rtBloomA);
+
+  gradeMat.uniforms.tBloom.value = rtBloomA.texture;
+  blit(gradeMat, null);
+}
 window.__d = {
   setAO(v){ if(terShaderRef) terShaderRef.uniforms.uAOAmt.value=v; render(); return true; },
   setNrm(v){ if(terShaderRef) terShaderRef.uniforms.uNrmAmt.value=v; render(); return true; },

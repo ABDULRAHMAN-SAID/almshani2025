@@ -511,7 +511,7 @@ namespace Dawnkeep.EditorTools
             float half = world.WorldSize * 0.5f;
             float range = Mathf.Max(1f, world.MaxHeight - world.MinHeight);
             int placed = 0;
-            const int Limit = 2400;
+            const int Limit = 3600;
 
             int grid = 210;
             float cell = world.WorldSize / grid;
@@ -529,8 +529,8 @@ namespace Dawnkeep.EditorTools
 
                     float slope = world.SlopeAt(i, j);
                     float altitude = (world.Height[k] - world.MinHeight) / range;
-                    float chance = Mathf.Clamp01((slope - 0.55f) * 1.5f)
-                                 * Mathf.Clamp01((altitude - 0.20f) / 0.35f);
+                    float chance = Mathf.Clamp01((slope - 0.46f) * 1.6f)
+                                 * Mathf.Clamp01((altitude - 0.16f) / 0.32f);
 
                     if (rng.NextDouble() > chance * 0.85f)
                     {
@@ -557,9 +557,11 @@ namespace Dawnkeep.EditorTools
                         (float)rng.NextDouble() * 360f,
                         ((float)rng.NextDouble() - 0.5f) * 28f);
 
+                    // كتلة مكبَّرة 13 مرّة تجعل كل شقّ في البلاطة أخدوداً بعرض مترين.
+                    // نتوءات أصغر وأكثر تُقرأ صخراً؛ الكبيرة جداً تُقرأ عجيناً.
                     float outcropScale = big
-                        ? 5.4f + ((float)rng.NextDouble() * 8.2f)
-                        : 2.2f + ((float)rng.NextDouble() * 3.4f);
+                        ? 2.9f + ((float)rng.NextDouble() * 4.3f)
+                        : 1.3f + ((float)rng.NextDouble() * 2.1f);
                     instance.transform.localScale = new Vector3(
                         outcropScale, outcropScale * (0.7f + ((float)rng.NextDouble() * 0.9f)), outcropScale);
                     instance.isStatic = true;
@@ -692,15 +694,15 @@ namespace Dawnkeep.EditorTools
             GameObject sunObject = new GameObject("Sun");
             Light sun = sunObject.AddComponent<Light>();
             sun.type = LightType.Directional;
-            sun.color = new Color(1f, 0.878f, 0.690f);
-            // شمس منخفضة قويّة: الضوء الزاحف هو ما ينمذج أضلاع الجبل بالظلّ.
-            // الشمس العالية الخافتة تُسطّح الجبل فيصير جداراً بنّياً بلا شكل.
-            sun.intensity = 1.90f;
+            // ضوء فجر: شمس ذهبية منخفضة قويّة. الضوء الزاحف هو ما ينمذج أضلاع
+            // الجبل بالظلّ، والشمس العالية البيضاء تُسطّحه فيصير جداراً بلا شكل.
+            sun.color = new Color(1f, 0.788f, 0.541f);
+            sun.intensity = 2.15f;
             sun.shadows = LightShadows.Soft;
             sun.shadowStrength = 0.88f;
             sun.shadowBias = 0.04f;
             sun.shadowNormalBias = 0.30f;
-            sunObject.transform.rotation = Quaternion.Euler(27f, -52f, 0f);
+            sunObject.transform.rotation = Quaternion.Euler(21f, -52f, 0f);
 
             Material sky = AssetDatabase.LoadAssetAtPath<Material>(SkyboxPath);
             if (sky == null)
@@ -716,29 +718,30 @@ namespace Dawnkeep.EditorTools
 
             if (sky != null)
             {
-                sky.SetFloat("_SunSize", 0.035f);
-                sky.SetFloat("_AtmosphereThickness", 1.15f);
-                sky.SetColor("_SkyTint", new Color(0.55f, 0.66f, 0.82f));
-                sky.SetColor("_GroundColor", new Color(0.36f, 0.33f, 0.29f));
-                sky.SetFloat("_Exposure", 1.25f);
+                sky.SetFloat("_SunSize", 0.045f);
+                sky.SetFloat("_SunSizeConvergence", 4f);
+                sky.SetFloat("_AtmosphereThickness", 1.42f);
+                sky.SetColor("_SkyTint", new Color(0.36f, 0.51f, 0.78f));
+                sky.SetColor("_GroundColor", new Color(0.31f, 0.27f, 0.22f));
+                sky.SetFloat("_Exposure", 1.05f);
                 EditorUtility.SetDirty(sky);
                 RenderSettings.skybox = sky;
             }
 
             RenderSettings.sun = sun;
             RenderSettings.ambientMode = AmbientMode.Trilight;
-            // سماء زرقاء أنقى وأرض أدفأ: الفرق بينهما هو ما يفصل الوجه المضاء
-            // عن الوجه الظليل حين لا تصله الشمس مباشرة.
-            RenderSettings.ambientSkyColor = new Color(0.435f, 0.565f, 0.745f);
-            RenderSettings.ambientEquatorColor = new Color(0.412f, 0.416f, 0.400f);
-            RenderSettings.ambientGroundColor = new Color(0.212f, 0.196f, 0.169f);
-            RenderSettings.ambientIntensity = 0.82f;
+            // الفرق بين ضوء الشمس الدافئ وضوء السماء البارد هو ما يعطي الظلال
+            // لوناً. إضاءة محيطية بيضاء قويّة تُلغي هذا الفرق فتصير الظلال رمادية ميّتة.
+            RenderSettings.ambientSkyColor = new Color(0.337f, 0.482f, 0.749f);
+            RenderSettings.ambientEquatorColor = new Color(0.376f, 0.392f, 0.404f);
+            RenderSettings.ambientGroundColor = new Color(0.196f, 0.176f, 0.145f);
+            RenderSettings.ambientIntensity = 0.68f;
 
             // ضباب هوائي: البعيد يزرقّ ويبهت — منه يأتي إحساس المسافة
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.ExponentialSquared;
             RenderSettings.fogDensity = 0.00040f;
-            RenderSettings.fogColor = new Color(0.776f, 0.835f, 0.894f);
+            RenderSettings.fogColor = new Color(0.804f, 0.718f, 0.612f);
 
             RenderSettings.reflectionIntensity = 0.85f;
             RenderSettings.defaultReflectionMode = DefaultReflectionMode.Skybox;

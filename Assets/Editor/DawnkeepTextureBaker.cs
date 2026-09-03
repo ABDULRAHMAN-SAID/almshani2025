@@ -67,9 +67,9 @@ namespace Dawnkeep.EditorTools
                 BakeCutout("grass_clump", FoliageTextureBaker.GrassClump(
                     FoliageTextureSize, 20260606u, new Color(0.204f, 0.259f, 0.145f), new Color(0.545f, 0.573f, 0.322f)));
                 BakeCutout("leaf_cluster", FoliageTextureBaker.LeafCluster(
-                    FoliageTextureSize, 20260707u, new Color(0.129f, 0.208f, 0.114f), new Color(0.400f, 0.502f, 0.235f), false));
+                    FoliageTextureSize, 20260707u, new Color(0.098f, 0.169f, 0.094f), new Color(0.286f, 0.400f, 0.192f), false));
                 BakeCutout("needle_cluster", FoliageTextureBaker.LeafCluster(
-                    FoliageTextureSize, 20260808u, new Color(0.086f, 0.161f, 0.129f), new Color(0.271f, 0.376f, 0.243f), true));
+                    FoliageTextureSize, 20260808u, new Color(0.071f, 0.133f, 0.110f), new Color(0.204f, 0.298f, 0.192f), true));
 
                 EditorUtility.DisplayProgressBar("مملكة الرماد", "بناء طبقات الأرض…", 0.92f);
                 BuildTerrainLayers();
@@ -182,7 +182,10 @@ namespace Dawnkeep.EditorTools
             // سبع طبقات: عشب، تربة، صخر، حصى، جرف، حطام سفح، ثلج قمم.
             // الثلاث الأخيرة هي ما يجعل الجبل جبلاً لا كتلة طينية واحدة.
             string[] names = { "grass", "soil", "rock", "gravel", "cliff", "scree", "snow" };
-            float[] tiles = { 26f, 30f, 34f, 14f, 30f, 18f, 22f };
+            // مقياس البلاطة 34 متراً كان يجعل كل شقّ مرسوم أخدوداً بعرض مترين على
+            // مسافة اللعب. التصغير إلى نحو الثلث يعيد كثافة النقاط الصحيحة، وتفاوت
+            // المقاسات بين الطبقات السبع يكسر اصطفاف التكرار.
+            float[] tiles = { 10f, 12f, 12.5f, 6.5f, 13f, 8f, 11f };
             float[] smooth = { 0.10f, 0.14f, 0.22f, 0.28f, 0.20f, 0.24f, 0.42f };
             float[] normalScale = { 0.7f, 1.0f, 1.4f, 1.0f, 1.6f, 1.2f, 0.6f };
 
@@ -224,7 +227,11 @@ namespace Dawnkeep.EditorTools
             }
 
             MakeLit("Dawnkeep_Bark", lit, "bark", 0.08f, new Vector2(1f, 2.5f));
-            MakeLit("Dawnkeep_Rock", lit, "rock", 0.14f, new Vector2(1.6f, 1.6f));
+            // النتوءات تُكبَّر حتى 13 مرّة في المشهد: بلاطة واحدة عليها تصير
+            // شبكة شقوق عملاقة، فترتفع التكرارية حتى يُقرأ الحجم صحيحاً.
+            MakeLit("Dawnkeep_Rock", lit, "rock", 0.14f, new Vector2(3.2f, 3.2f));
+            MakeLit("Dawnkeep_Cliff", lit, "cliff", 0.12f, new Vector2(4.4f, 4.4f));
+            MakeLit("Dawnkeep_Scree", lit, "scree", 0.16f, new Vector2(3.0f, 3.0f));
             MakeLit("Dawnkeep_Stone", lit, "stone", 0.10f, Vector2.one);
             MakeLit("Dawnkeep_Plaster", lit, "plaster", 0.12f, Vector2.one);
             MakeLit("Dawnkeep_Timber", lit, "timber", 0.16f, Vector2.one);
