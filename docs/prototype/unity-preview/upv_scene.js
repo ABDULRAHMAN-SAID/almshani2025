@@ -158,7 +158,10 @@ sun.position.set(-950, 680, 780);
 sun.castShadow=true;
 sun.shadow.mapSize.set(4096,4096);
 sun.shadow.camera.near=10; sun.shadow.camera.far=3400;
-sun.shadow.bias=-0.0004; sun.shadow.normalBias=0.9;
+// normalBias بوحدات العالم: 0.9 تدفع نقطة الاستعلام تسعين سنتيمتراً على طول
+// المُسوّي، فيُمحى ظلّ التلامس عند قاعدة كل جدار وبرج وشجرة — وهو الظلّ الذي
+// يُجلس الجسم على الأرض. الرقم الصحيح كسر من ذلك.
+sun.shadow.bias=-0.0012; sun.shadow.normalBias=0.50;
 scene.add(sun); scene.add(sun.target);
 // الفرق بين ضوء الشمس الدافئ وضوء السماء البارد هو ما يعطي الظلال لوناً.
 // إضاءة محيطية بيضاء قويّة تُلغي هذا الفرق فتصير الظلال رمادية ميّتة.
@@ -716,11 +719,15 @@ function look(target, dist, yawDeg, pitchDeg, lift, camLift){
   if(camLift) camera.position.y += camLift;
   camera.lookAt(t);
   sun.target.position.copy(t);
-  // الشمس أمام الكاميرا بميل يسار: تضيء الوجه المواجه ويبقى الظلّ يرسم الأضلاع.
-  // خلف الكاميرا تماماً يُسطّح المشهد، وخلف الهدف يجعل الجبل كتلة سوداء.
-  const yawR=yaw + 0.95;
-  const dist2=1000;
-  sun.position.copy(t).add(new THREE.Vector3(Math.sin(yawR)*dist2, 540, Math.cos(yawR)*dist2));
+  // زاوية الشمس بالنسبة للكاميرا: 54° تجعلها خلف الكاميرا تقريباً فتقع الظلال
+  // **خلف** الأجسام مختفيةً عن النظر — والمشهد يبدو مسطّحاً بلا ظلال أصلاً.
+  // 83° إضاءة جانبية: الظلال تمتدّ عرض الكادر فتُقرأ، والضوء يبقى زاحفاً على
+  // أضلاع الجبل. و132° (ما كان قبلاً) يجعل الجبل كتلة سوداء.
+  // شمس عالمية ثابتة لا تدور مع الكاميرا: العالم فيه شمس واحدة، واللاعب يدير
+  // كاميرته حولها. ربطُها بالكاميرا يجعل الظلال تتحرّك مع النظر — وهو خطأ فادح
+  // في لعبة استراتيجية يدور فيها المشهد.
+  const dist2=1400;
+  sun.position.copy(t).add(new THREE.Vector3(Math.sin(SUN_AZ)*dist2, SUN_H, Math.cos(SUN_AZ)*dist2));
   applyFog(dist);
   const span = Math.max(180, Math.min(1500, dist*1.5));
   sun.shadow.camera.left=-span; sun.shadow.camera.right=span;
@@ -737,6 +744,16 @@ const lakePt   = LAKE ? {x:LAKE.x, z:LAKE.z} : {x:0,z:0};
 const gateP = [Math.cos(GATE_ANGLE)*250, Math.sin(GATE_ANGLE)*250];
 const villP = routes[0] ? (()=>{ const r=routes[0].path.find(p=>Math.hypot(p.x,p.z)>380 && Math.hypot(p.x,p.z)<520);
                                  return r?[r.x,r.z]:[400,0]; })() : [400,0];
+// زاوية الشمس بالنسبة للكاميرا هي كل شيء في الظلال:
+//   0°   خلف الكاميرا تماماً → الظلّ يقع خلف الجسم فلا يُرى، والمشهد يبدو مسطّحاً.
+//   83°  جانبية → الظلّ ما زال أغلبه محجوباً وراء الجدران.
+//   135° أمامية بميل → الظلّ يمتدّ نحو الناظر فيُقرأ كاملاً، والجسم يبقى مضاءً.
+//   180° خلف الهدف → الجبل كتلة سوداء.
+// الارتفاع 430 على بُعد 1000 ≈ 23°: ظلال طويلة تنمذج الأرض.
+// سمت الشمس اختير بالقياس لا بالتخمين: مُسحت ستّ زوايا عالمية على لقطتَي
+// الجبال والقلعة، و149° وحدها تخدم الاثنين — جدار الجبل مضاء وأضلاعه تُقرأ،
+// والقلعة تُلقي ظلالاً طويلة عبر العشب. الارتفاع 620 على بُعد 1400 ≈ 24°.
+let SUN_AZ=2.60, SUN_H=620, LAST_SHOT='far';
 const GA = GATE_ANGLE*180/Math.PI;
 // موضع البوّابة بإحداثيات التوليد (القلعة نصف قطرها 150 وحدة توليد)
 const GATE_R = 150;
@@ -798,6 +815,11 @@ const RTOPT={ minFilter:THREE.LinearFilter, magFilter:THREE.LinearFilter,
               encoding:THREE.LinearEncoding, depthBuffer:true, stencilBuffer:false };
 const RW_=innerWidth, RH_=innerHeight, BW_=Math.max(2,RW_>>1), BH_=Math.max(2,RH_>>1);
 const rtScene=new THREE.WebGLRenderTarget(RW_, RH_, RTOPT);
+// عمق المشهد: منه يُحسب الانحجاب المحيطي — وهو ما يُجلس الأجسام على الأرض
+rtScene.depthTexture=new THREE.DepthTexture(RW_, RH_);
+rtScene.depthTexture.type=THREE.UnsignedIntType;
+const rtAO=new THREE.WebGLRenderTarget(RW_, RH_, Object.assign({}, RTOPT, {depthBuffer:false, type:THREE.UnsignedByteType}));
+const rtAOB=new THREE.WebGLRenderTarget(RW_, RH_, Object.assign({}, RTOPT, {depthBuffer:false, type:THREE.UnsignedByteType}));
 const rtBloomA=new THREE.WebGLRenderTarget(BW_, BH_, Object.assign({}, RTOPT, {depthBuffer:false}));
 const rtBloomB=new THREE.WebGLRenderTarget(BW_, BH_, Object.assign({}, RTOPT, {depthBuffer:false}));
 
@@ -828,9 +850,88 @@ const blurMat=new THREE.ShaderMaterial({
       c += (texture2D(tSrc, vUv+o*3.2307692308).rgb + texture2D(tSrc, vUv-o*3.2307692308).rgb)*0.0702702703;
       gl_FragColor=vec4(c,1.0); }`
 });
+/* ═══ الانحجاب المحيطي في الفضاء الشاشي ═══
+   الظلّ المُسقَط وحده لا يكفي: الجدار والشجرة والبرج تبدو **ملصوقة** على الأرض
+   لأن لا شيء يعتم عند خطّ التلامس. هذا يقرأ عمق المشهد، ويعيد بناء الموضع
+   والمُسوّي منه، ثم يعدّ كم عيّنة في نصف الكرة حول كل نقطة يحجبها ما هو أقرب. */
+const AO_KERNEL=(()=>{
+  const k=[]; let sd=1;
+  const rnd=()=>{ sd=(sd*1664525+1013904223)>>>0; return (sd>>>8)/16777216; };
+  for(let i=0;i<14;i++){
+    let x,y,z,l;
+    do { x=rnd()*2-1; y=rnd()*2-1; z=rnd(); l=Math.hypot(x,y,z); } while(l<1e-3||l>1);
+    // كثافة أعلى قرب المركز: التفاصيل القريبة أهمّ
+    const scale=0.32+0.68*Math.pow(i/14,2);
+    k.push(new THREE.Vector3(x/l*scale, y/l*scale, z/l*scale));
+  }
+  return k;
+})();
+const aoMat=new THREE.ShaderMaterial({
+  extensions:{ derivatives:true },
+  uniforms:{
+    tDepth:{value:rtScene.depthTexture},
+    uProj:{value:new THREE.Matrix4()}, uProjInv:{value:new THREE.Matrix4()},
+    uRes:{value:new THREE.Vector2(RW_, RH_)},
+    uKernel:{value:AO_KERNEL},
+    uRadius:{value:2.6}, uBias:{value:0.045}, uIntensity:{value:1.0}
+  },
+  vertexShader:FS_VERT,
+  fragmentShader:`varying vec2 vUv;
+    uniform sampler2D tDepth;
+    uniform mat4 uProj, uProjInv;
+    uniform vec2 uRes;
+    uniform vec3 uKernel[14];
+    uniform float uRadius, uBias, uIntensity;
+    vec3 viewPos(vec2 uv, float d){
+      vec4 c = uProjInv * vec4(uv*2.0-1.0, d*2.0-1.0, 1.0);
+      return c.xyz / c.w;
+    }
+    float hash12(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7)))*43758.5453); }
+    void main(){
+      float d = texture2D(tDepth, vUv).x;
+      if(d >= 0.99999){ gl_FragColor = vec4(1.0); return; }   // السماء لا تُحجب
+      vec3 P = viewPos(vUv, d);
+      vec3 N = normalize(cross(dFdx(P), dFdy(P)));
+      float ang = hash12(vUv*uRes)*6.28318530718;
+      float ca = cos(ang), sa = sin(ang);
+      float occ = 0.0;
+      for(int i=0;i<14;i++){
+        vec3 k = uKernel[i];
+        vec3 kr = vec3(k.x*ca - k.y*sa, k.x*sa + k.y*ca, k.z);
+        if(dot(kr, N) < 0.0) kr = -kr;              // اقلبها إلى نصف الكرة حول المُسوّي
+        vec3 sp = P + kr*uRadius;
+        vec4 cp = uProj * vec4(sp, 1.0);
+        vec2 suv = (cp.xy/cp.w)*0.5 + 0.5;
+        if(suv.x < 0.0 || suv.x > 1.0 || suv.y < 0.0 || suv.y > 1.0) continue;
+        float sd = texture2D(tDepth, suv).x;
+        if(sd >= 0.99999) continue;
+        vec3 sampleP = viewPos(suv, sd);
+        // في فضاء العرض z سالب للأمام: أكبر يعني أقرب إلى الكاميرا فيحجب
+        if(sampleP.z - sp.z > uBias){
+          // فحص المدى: سطح بعيد جداً خلف الحافّة لا يُحسب حاجباً
+          occ += smoothstep(0.0, 1.0, uRadius / max(0.001, abs(P.z - sampleP.z)));
+        }
+      }
+      float ao = 1.0 - (occ/14.0)*uIntensity;
+      gl_FragColor = vec4(vec3(clamp(ao, 0.0, 1.0)), 1.0);
+    }`
+});
+const aoBlurMat=new THREE.ShaderMaterial({
+  uniforms:{ tSrc:{value:null}, uTexel:{value:new THREE.Vector2(1/RW_, 1/RH_)}, uDir:{value:new THREE.Vector2(1,0)} },
+  vertexShader:FS_VERT,
+  fragmentShader:`varying vec2 vUv; uniform sampler2D tSrc; uniform vec2 uTexel, uDir;
+    void main(){
+      vec2 o = uDir*uTexel;
+      float a = texture2D(tSrc, vUv).r * 0.2270270270;
+      a += (texture2D(tSrc, vUv+o*1.3846153846).r + texture2D(tSrc, vUv-o*1.3846153846).r)*0.3162162162;
+      a += (texture2D(tSrc, vUv+o*3.2307692308).r + texture2D(tSrc, vUv-o*3.2307692308).r)*0.0702702703;
+      gl_FragColor = vec4(vec3(a), 1.0);
+    }`
+});
 const gradeMat=new THREE.ShaderMaterial({
   uniforms:{
-    tScene:{value:rtScene.texture}, tBloom:{value:rtBloomA.texture},
+    tScene:{value:rtScene.texture}, tBloom:{value:rtBloomA.texture}, tAO:{value:rtAOB.texture},
+    uAOStrength:{value:0.88},
     uExposure:{value:GRADE.exposure},
     uShadowTint:{value:GRADE.shadowTint}, uHighTint:{value:GRADE.highTint},
     uContrast:{value:GRADE.contrast}, uSat:{value:GRADE.saturation},
@@ -838,7 +939,8 @@ const gradeMat=new THREE.ShaderMaterial({
   },
   vertexShader:FS_VERT,
   fragmentShader:`varying vec2 vUv;
-    uniform sampler2D tScene, tBloom;
+    uniform sampler2D tScene, tBloom, tAO;
+    uniform float uAOStrength;
     uniform vec3 uShadowTint, uHighTint;
     uniform float uExposure, uContrast, uSat, uBloom, uVignette;
     // ACES بصيغة Narkowicz المقرّبة
@@ -848,6 +950,8 @@ const gradeMat=new THREE.ShaderMaterial({
     }
     void main(){
       vec3 col = texture2D(tScene, vUv).rgb;
+      // الانحجاب يُطبَّق قبل التوهّج: الأركان والتقاءات الأرض تعتم فتُقرأ المجسّمات
+      col *= mix(1.0, texture2D(tAO, vUv).r, uAOStrength);
       col += texture2D(tBloom, vUv).rgb * uBloom;
       col *= uExposure;
       // فصل دافئ/بارد: الظلّ يميل إلى الأزرق والإضاءة إلى الذهب
@@ -878,6 +982,17 @@ function render(){
   renderer.clear();
   renderer.render(scene, camera);
 
+  aoMat.uniforms.uProj.value.copy(camera.projectionMatrix);
+  aoMat.uniforms.uProjInv.value.copy(camera.projectionMatrixInverse);
+  blit(aoMat, rtAO);
+  aoBlurMat.uniforms.tSrc.value = rtAO.texture;
+  aoBlurMat.uniforms.uDir.value.set(1,0);
+  blit(aoBlurMat, rtAOB);
+  aoBlurMat.uniforms.tSrc.value = rtAOB.texture;
+  aoBlurMat.uniforms.uDir.value.set(0,1);
+  blit(aoBlurMat, rtAO);
+  gradeMat.uniforms.tAO.value = rtAO.texture;
+
   brightMat.uniforms.tSrc.value = rtScene.texture;
   blit(brightMat, rtBloomA);
   blurMat.uniforms.tSrc.value = rtBloomA.texture;
@@ -891,9 +1006,22 @@ function render(){
   blit(gradeMat, null);
 }
 window.__d = {
+  shadows(on){ sun.castShadow=!!on; render(); return true; },
+  terShadow(on){ terrain.castShadow=!!on; render(); return true; },
+  sunAz(rad){ SUN_AZ=rad; SHOTS[LAST_SHOT](); render(); return true; },
+  sunH(v){ SUN_H=v; SHOTS[LAST_SHOT](); render(); return true; },
+  setBias(b, nb){ sun.shadow.bias=b; sun.shadow.normalBias=nb;
+                  if(sun.shadow.map){ sun.shadow.map.dispose(); sun.shadow.map=null; }
+                  render(); return true; },
+  dbg(){ const c=sun.shadow.camera; return { cast:sun.castShadow,
+    L:c.left, R:c.right, T:c.top, B:c.bottom, near:c.near, far:c.far,
+    map:sun.shadow.mapSize.x, bias:sun.shadow.bias, nb:sun.shadow.normalBias,
+    sunPos:[Math.round(sun.position.x),Math.round(sun.position.y),Math.round(sun.position.z)],
+    tgt:[Math.round(sun.target.position.x),Math.round(sun.target.position.y),Math.round(sun.target.position.z)],
+    smEnabled: renderer.shadowMap.enabled }; },
   setAO(v){ if(terShaderRef) terShaderRef.uniforms.uAOAmt.value=v; render(); return true; },
   setNrm(v){ if(terShaderRef) terShaderRef.uniforms.uNrmAmt.value=v; render(); return true; },
-  shot(name){ (SHOTS[name]||SHOTS.far)(); render(); render(); return true; },
+  shot(name){ LAST_SHOT=SHOTS[name]?name:'far'; SHOTS[LAST_SHOT](); render(); render(); return true; },
   info(){ return { N, basin: BOWL_AT ? [Math.round(BOWL_AT[0]), Math.round(BOWL_AT[1])] : null,
                    trees:treePool.length, rocks:rockPool.length, cliffs:cliffPool.length,
                    lake: LAKE?{r:Math.round(LAKE.r), level:+LAKE.level.toFixed(1)}:null,

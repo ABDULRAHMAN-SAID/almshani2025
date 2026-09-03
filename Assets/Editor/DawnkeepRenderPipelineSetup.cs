@@ -83,6 +83,8 @@ namespace Dawnkeep.EditorTools
             pipeline.colorGradingMode = ColorGradingMode.HighDynamicRange;
             pipeline.colorGradingLutSize = 32;
 
+            EnsureAmbientOcclusion(rendererData);
+
             EditorUtility.SetDirty(rendererData);
             EditorUtility.SetDirty(pipeline);
 
@@ -92,6 +94,105 @@ namespace Dawnkeep.EditorTools
 #else
             return null;
 #endif
+        }
+
+        /// <summary>
+        /// انحجاب محيطي في الفضاء الشاشي.
+        ///
+        /// الظلّ المُسقَط وحده لا يكفي: الجدار والشجرة والبرج تبدو **ملصوقة** على
+        /// الأرض لأن لا شيء يعتم عند خطّ التلامس. هذا يعتم الأركان والتقاءات
+        /// الأرض بالمجسّمات فتجلس الأجسام على الأرض بدل أن تطفو عليها.
+        ///
+        /// يُضاف كميزة على مُصيِّر URP بالانعكاس: نوع `ScreenSpaceAmbientOcclusion`
+        /// وإعداداته ليسا في واجهة عامّة ثابتة عبر إصدارات URP، فالانعكاس أضمن من
+        /// الارتباط بنوع قد لا يوجد فيفشل التصريف كلّه.
+        /// </summary>
+        private static void EnsureAmbientOcclusion(ScriptableRendererData rendererData)
+        {
+            if (rendererData == null)
+            {
+                return;
+            }
+
+            System.Type aoType = null;
+            System.Reflection.Assembly[] assemblies = System.AppDomain.CurrentDomain.GetAssemblies();
+            for (int i = 0; i < assemblies.Length && aoType == null; i++)
+            {
+                aoType = assemblies[i].GetType("UnityEngine.Rendering.Universal.ScreenSpaceAmbientOcclusion");
+            }
+
+            if (aoType == null)
+            {
+                Debug.LogWarning("مملكة الرماد: ميزة الانحجاب المحيطي غير متوفّرة في إصدار URP هذا — "
+                    + "أضِفها يدوياً من Dawnkeep_Renderer ← Add Renderer Feature ← Screen Space Ambient Occlusion.");
+                return;
+            }
+
+            for (int i = 0; i < rendererData.rendererFeatures.Count; i++)
+            {
+                ScriptableRendererFeature existing = rendererData.rendererFeatures[i];
+                if (existing != null && aoType.IsInstanceOfType(existing))
+                {
+                    ConfigureAmbientOcclusion(existing);
+                    return;
+                }
+            }
+
+            ScriptableRendererFeature feature = (ScriptableRendererFeature)ScriptableObject.CreateInstance(aoType);
+            feature.name = "Dawnkeep_SSAO";
+            ConfigureAmbientOcclusion(feature);
+
+            rendererData.rendererFeatures.Add(feature);
+            AssetDatabase.AddObjectToAsset(feature, rendererData);
+            feature.hideFlags = HideFlags.HideInHierarchy;
+            EditorUtility.SetDirty(rendererData);
+        }
+
+        private static void ConfigureAmbientOcclusion(ScriptableRendererFeature feature)
+        {
+            SerializedObject so = new SerializedObject(feature);
+
+            SetIfPresent(so, "m_Settings.Intensity", 1.15f);
+            SetIfPresent(so, "m_Settings.Radius", 0.55f);
+            SetIfPresent(so, "m_Settings.Falloff", 120f);
+            SetIfPresent(so, "m_Settings.Downsample", 0f);
+            SetIfPresent(so, "m_Settings.SampleCount", 8f);
+
+            SerializedProperty active = so.FindProperty("m_Active");
+            if (active != null)
+            {
+                active.boolValue = true;
+            }
+
+            so.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(feature);
+        }
+
+        /// <summary>يضبط الحقل إن وُجد بهذا الاسم — أسماء إعدادات SSAO تتغيّر بين إصدارات URP.</summary>
+        private static void SetIfPresent(SerializedObject so, string path, float value)
+        {
+            SerializedProperty p = so.FindProperty(path);
+            if (p == null)
+            {
+                return;
+            }
+
+            if (p.propertyType == SerializedPropertyType.Float)
+            {
+                p.floatValue = value;
+            }
+            else if (p.propertyType == SerializedPropertyType.Integer)
+            {
+                p.intValue = Mathf.RoundToInt(value);
+            }
+            else if (p.propertyType == SerializedPropertyType.Enum)
+            {
+                p.enumValueIndex = Mathf.Clamp(Mathf.RoundToInt(value), 0, p.enumNames.Length - 1);
+            }
+            else if (p.propertyType == SerializedPropertyType.Boolean)
+            {
+                p.boolValue = value > 0.5f;
+            }
         }
 
         /// <summary>ملفّ المعالجة اللاحقة: منه يأتي الفرق الأكبر في «الإحساس» بالصورة.</summary>

@@ -699,10 +699,17 @@ namespace Dawnkeep.EditorTools
             sun.color = new Color(1f, 0.788f, 0.541f);
             sun.intensity = 2.15f;
             sun.shadows = LightShadows.Soft;
-            sun.shadowStrength = 0.88f;
-            sun.shadowBias = 0.04f;
-            sun.shadowNormalBias = 0.30f;
-            sunObject.transform.rotation = Quaternion.Euler(21f, -52f, 0f);
+            sun.shadowStrength = 1f;
+            sun.shadowBias = 0.06f;
+            sun.shadowNormalBias = 0.40f;
+
+            // سمت الشمس اختير بالقياس لا بالتخمين: مُسحت ستّ زوايا عالمية على
+            // لقطتَي الجبال والقلعة، وسمت 149° وحده يخدم الاثنين — جدار الجبل
+            // مضاء وأضلاعه تُقرأ، والقلعة تُلقي ظلالاً طويلة عبر العشب.
+            // الشمس عند سمت 149° تعني ضوءاً يسير نحو 329°، وهو دوران الضوء هنا.
+            // وهي **شمس عالمية ثابتة لا تدور مع الكاميرا**: العالم فيه شمس واحدة
+            // واللاعب يدير كاميرته حولها.
+            sunObject.transform.rotation = Quaternion.Euler(24f, 329f, 0f);
 
             Material sky = AssetDatabase.LoadAssetAtPath<Material>(SkyboxPath);
             if (sky == null)
