@@ -55,6 +55,7 @@ namespace Dawnkeep.Combat
         private Dawnkeep.Building.BuildingDirector _buildings;
         private Dawnkeep.Economy.Treasury _treasury;
         private Dawnkeep.Building.Keep _keep;
+        private WaveDirector _waves;
         private bool _ready;
 
         public int LiveCount { get; private set; }
@@ -94,6 +95,7 @@ namespace Dawnkeep.Combat
             _buildings = Dawnkeep.Building.BuildingDirector.Instance;
             _treasury = Dawnkeep.Economy.Treasury.Instance;
             _keep = Dawnkeep.Building.Keep.Instance;
+            _waves = FindAnyObjectByType<WaveDirector>();
 
             // تسجيل الحامية الموضوعة في المشهد مرّة واحدة عند الإقلاع.
             // البحث في المشهد مسموح هنا وحده — وممنوع داخل حلقة الإطار (§1).
@@ -320,7 +322,18 @@ namespace Dawnkeep.Combat
                     horde++;
                 }
 
+                UnitDefinition def = unit.Definition;
                 TickUnit(i, unit, dt, now);
+
+                // سمات §12: تُقرأ بعد الحركة، فالقفزة والانفجار يقعان على
+                // الموضع الذي انتهت إليه الوحدة لا على موضعٍ ترَكَته.
+                //
+                // ووحدةٌ بلا تعريف واردة (مجمَّعةٌ لم تُهيَّأ بعد)، وحافرٌ لم
+                // يخرج من الأرض لا يجري سماته — وإلّا انفجر تحت الرمل.
+                if (def != null && def.Traits != UnitTrait.None && !Underground(def, unit, now))
+                {
+                    TickTrait(unit, def, now);
+                }
             }
 
             Champion = champion;
@@ -329,6 +342,288 @@ namespace Dawnkeep.Combat
             LiveHorde = horde;
             SweepDead();
         }
+
+        /// <summary>
+        /// ضرر الوحدة بعد سماتها (§12). «يستفيد من الظلام» في الرامي المحجوب
+        /// **يُقاس بالنور المخزَّن** لا بحسابٍ جديد: القياس جرى في نبضة
+        /// المحاكاة، وإعادتُه عند كل ضربة استعلامٌ زائد على كل سهم.
+        /// </summary>
+        private static float Strength(Unit unit, UnitDefinition def)
+        {
+            float damage = unit.Damage;
+            if (!def.Has(UnitTrait.DarkFavoured))
+            {
+                return damage;
+            }
+
+            // النور المخزَّن هو قضم الدرع: واحدٌ في قلب الدائرة وصفرٌ خارجها
+            float lit = Mathf.Clamp01(unit.LightLevel);
+            return damage * Mathf.Lerp(1f + def.TraitPower, 1f, lit);
+        }
+
+        // ── سمات §12 ────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// يجري سمة الوحدة إن كان لها سمة. فرعٌ لكل سمة لا شجرةُ قرار: لا
+        /// يشترك المفجّر والكاهن في شيءٍ إلّا أنّهما عدوّان.
+        /// </summary>
+        private void TickTrait(Unit unit, UnitDefinition def, float now)
+        {
+            if (def.Has(UnitTrait.Suicide))
+            {
+                TickSuicide(unit, def, now);
+            }
+
+            if (def.Has(UnitTrait.Leap))
+            {
+                TickLeap(unit, def, now);
+            }
+
+            if (def.Has(UnitTrait.SummonAtHalf))
+            {
+                TickSummon(unit, def, now);
+            }
+
+            if (def.Has(UnitTrait.Support))
+            {
+                TickSupport(unit, def, now);
+            }
+        }
+
+        /// <summary>
+        /// المفجّر (§12): يركض إلى الجدار ثمّ ينفجر بعد **إنذار**. والإنذار
+        /// شرطٌ لا زينة: انفجارٌ بلا إنذار عقابٌ على القرب لا على الخطأ،
+        /// ولا سبيل إلى تفاديه.
+        /// </summary>
+        private void TickSuicide(Unit unit, UnitDefinition def, float now)
+        {
+            if (unit.TraitSpent)
+            {
+                return;
+            }
+
+            // الإنذار يبدأ حين يبلغ هدفه: بدؤه من بعيد يجعله ينفجر في الطريق
+            if (unit.TraitAt <= 0f)
+            {
+                if (!NearTarget(unit, def))
+                {
+                    return;
+                }
+
+                unit.TraitAt = now + Mathf.Max(0.2f, def.TraitSeconds);
+                return;
+            }
+
+            if (now < unit.TraitAt)
+            {
+                return;
+            }
+
+            unit.TraitSpent = true;
+            Detonate(unit, def);
+            unit.TakeDamage(unit.MaxHealth * 10f);      // يفنى بانفجاره
+        }
+
+        private void Detonate(Unit unit, UnitDefinition def)
+        {
+            Vector3 centre = unit.Body.position;
+            float radius = Mathf.Max(1f, def.TraitRange);
+
+            // الجدار أوّلاً: هو ما جاء له (§12)
+            if (_buildings != null)
+            {
+                System.Collections.Generic.IReadOnlyList<Dawnkeep.Building.Building> all =
+                    _buildings.Buildings;
+
+                for (int i = 0; i < all.Count; i++)
+                {
+                    Dawnkeep.Building.Building building = all[i];
+                    if (building == null || !building.Alive)
+                    {
+                        continue;
+                    }
+
+                    Vector3 delta = building.Body.position - centre;
+                    delta.y = 0f;
+                    if (delta.sqrMagnitude <= radius * radius)
+                    {
+                        building.TakeDamage(def.TraitPower);
+                    }
+                }
+            }
+
+            int found = QueryFaction(centre, radius, Faction.Kingdom, _traitScan);
+            for (int i = 0; i < found; i++)
+            {
+                if (_traitScan[i] != null && _traitScan[i].Alive)
+                {
+                    _traitScan[i].TakeDamage(def.TraitPower);
+                }
+            }
+        }
+
+        /// <summary>
+        /// كلب المستنقع (§12): يقفز إلى الرماة **إن لم يوقفه الحرّاس**.
+        /// فالشرط أن يكون خالياً من مشتبكٍ به — وإلّا صار الحرّاس بلا معنى.
+        /// </summary>
+        private void TickLeap(Unit unit, UnitDefinition def, float now)
+        {
+            // لا تُقرأ `TraitSpent` هنا: القفزة تتكرّر على مهلتها، و`TraitSpent`
+            // رايةُ «مرّةً واحدة» للانفجار والاستدعاء. قراءتها هنا تُسكِت قفزَ
+            // وحدةٍ تجمع القفزَ إلى إحداهما.
+            if (now < unit.TraitNext)
+            {
+                return;
+            }
+
+            unit.TraitNext = now + Mathf.Max(1f, def.TraitSeconds);
+
+            // مشتبكٌ به: مقاتلٌ مملكيّ في مدى ضربه — الحرّاس أوقفوه
+            if (QueryFaction(unit.Body.position, def.AttackRange + 1.2f,
+                Faction.Kingdom, _traitScan) > 0)
+            {
+                return;
+            }
+
+            Unit prey = null;
+            float bestSqr = def.TraitRange * def.TraitRange;
+            int found = QueryFaction(unit.Body.position, def.TraitRange,
+                Faction.Kingdom, _traitScan);
+
+            for (int i = 0; i < found; i++)
+            {
+                Unit other = _traitScan[i];
+                if (other == null || !other.Alive || other.Definition == null
+                    || !other.Definition.Ranged)
+                {
+                    continue;
+                }
+
+                Vector3 delta = other.Body.position - unit.Body.position;
+                delta.y = 0f;
+                float sqr = delta.sqrMagnitude;
+                if (sqr < bestSqr)
+                {
+                    bestSqr = sqr;
+                    prey = other;
+                }
+            }
+
+            if (prey == null)
+            {
+                return;
+            }
+
+            // القفزة نقلةٌ إلى جوار الرامي لا اختراقٌ له: الوقوف في موضعه
+            // يجعل الاثنين في نقطةٍ واحدة فتتنازعهما دفعةُ التباعد.
+            Vector3 to = prey.Body.position;
+            Vector3 away = (unit.Body.position - to);
+            away.y = 0f;
+            if (away.sqrMagnitude < 0.01f)
+            {
+                away = Vector3.forward;
+            }
+
+            to += away.normalized * (def.AttackRange * 0.8f);
+            to.y = Ground(to.x, to.z, unit.Body.position.y);
+
+            unit.Body.position = to;
+            unit.Target = prey;
+            unit.NextThink = now + def.RetargetInterval;
+        }
+
+        /// <summary>فارس القبر (§12): يستدعي عند نصف صحّته، مرّةً واحدة.</summary>
+        private void TickSummon(Unit unit, UnitDefinition def, float now)
+        {
+            if (unit.TraitSpent || def.TraitSpawn == null)
+            {
+                return;
+            }
+
+            if (unit.Health > unit.MaxHealth * 0.5f)
+            {
+                return;
+            }
+
+            unit.TraitSpent = true;
+
+            // المولّد ملتقَطٌ في `Start`: البحث في المشهد داخل حلقة الإطار
+            // ممنوع (§1)، وإن ندر — فارسُ قبرٍ واحد يكفي لِيُكلِّف بحثاً كاملاً.
+            if (_waves != null)
+            {
+                _waves.SummonAt(def.TraitSpawn, unit.Body.position, 2.2f,
+                    Mathf.Max(1, Mathf.RoundToInt(def.TraitPower)), 0);
+            }
+        }
+
+        /// <summary>
+        /// كاهن الكسوف (§12): «يبقى خلف الموجة ويقوّي الحلفاء». والتقوية
+        /// راية حشدٍ على من حوله — الآليّة نفسها التي يستعملها البطل، فلا
+        /// نظامَ ثانٍ لأثرٍ واحد.
+        /// </summary>
+        private void TickSupport(Unit unit, UnitDefinition def, float now)
+        {
+            if (now < unit.TraitNext)
+            {
+                return;
+            }
+
+            unit.TraitNext = now + Mathf.Max(0.5f, def.TraitSeconds);
+
+            int found = QueryFaction(unit.Body.position, def.TraitRange,
+                Faction.Horde, _traitScan);
+
+            for (int i = 0; i < found; i++)
+            {
+                Unit ally = _traitScan[i];
+                if (ally != null && ally.Alive && ally != unit)
+                {
+                    ally.ApplyRally(def.TraitPower, def.TraitPower * 0.5f,
+                        def.TraitSeconds * 1.4f);
+                }
+            }
+        }
+
+        /// <summary>
+        /// هل ما يزال الحافر تحت الأرض؟ يقرؤه موضعان: الحركة والسمات، فلا
+        /// يتحرّك ولا ينفجر ولا يستدعي قبل أن يخرج (§12: تنّين الصدع).
+        /// </summary>
+        private static bool Underground(UnitDefinition def, Unit unit, float now)
+        {
+            return def.Has(UnitTrait.Burrow) && now < unit.TraitAt;
+        }
+
+        /// <summary>هل بلغ المفجّر هدفه؟ جدارٌ أو مقاتلٌ في مدى ضربه.</summary>
+        private bool NearTarget(Unit unit, UnitDefinition def)
+        {
+            if (unit.StructureTarget != null)
+            {
+                Vector3 delta = unit.StructureTarget.Body.position - unit.Body.position;
+                delta.y = 0f;
+                if (delta.sqrMagnitude <= (def.AttackRange + StructureReach)
+                    * (def.AttackRange + StructureReach))
+                {
+                    return true;
+                }
+            }
+
+            return QueryFaction(unit.Body.position, def.AttackRange + 1f,
+                Faction.Kingdom, _traitScan) > 0;
+        }
+
+        private static float Ground(float x, float z, float fallback)
+        {
+            Terrain terrain = Terrain.activeTerrain;
+            if (terrain == null)
+            {
+                return fallback;
+            }
+
+            return terrain.SampleHeight(new Vector3(x, 0f, z)) + terrain.transform.position.y;
+        }
+
+        /// <summary>مصفوفة السمات — مخصَّصة مرّةً لا في كل نداء.</summary>
+        private readonly Unit[] _traitScan = new Unit[48];
 
         /// <summary>
         /// هل يُقاس زمن اختيار الهدف الآن؟ يرفعه `PerformanceProbe` وحده.
@@ -411,6 +706,22 @@ namespace Dawnkeep.Combat
 
                     _treasury.AddBounty(bounty);
                 }
+
+                // حامل الطاعون (§12): يترك منطقة سمٍّ عند موته. هنا لأنّ هذا
+                // هو الموضع الوحيد الذي يُنفَّذ **مرّةً لكل قتيل** — وسحابةٌ
+                // تُترك في كل إطارٍ من إطارات جثّته تملأ الساحة.
+                if (unit.Definition != null && unit.Definition.Has(UnitTrait.DeathCloud))
+                {
+                    HazardField hazards = HazardField.Instance;
+                    if (hazards != null)
+                    {
+                        hazards.Place(unit.Body.position,
+                            unit.Definition.TraitRange,
+                            unit.Definition.TraitPower,
+                            unit.Definition.TraitSeconds,
+                            Faction.Kingdom, hazards.PoisonTint);
+                    }
+                }
             }
 
             unit.DeadFor += dt;
@@ -480,6 +791,14 @@ namespace Dawnkeep.Combat
         {
             UnitDefinition def = unit.Definition;
             if (def == null)
+            {
+                return;
+            }
+
+            // تنّين الصدع (§12): يظهر داخل الحلقة الخارجية **مع تحذير مسبق**.
+            // والتحذير هو ظهورُه ساكناً ثوانيَ قبل أن يتحرّك: علامةٌ لا تحمل
+            // شكل ما سيخرج ليست تحذيراً، وشكلُه واقفاً يحمله.
+            if (Underground(def, unit, now))
             {
                 return;
             }
@@ -742,6 +1061,19 @@ namespace Dawnkeep.Combat
                     continue;
                 }
 
+                // الطائر يتجاهل الجدران ويستهدف الأبراج أو الاقتصاد (§12).
+                // تجاهلُه لها هنا لا في الحركة: لا تصادم في هذا البناء أصلاً،
+                // فالجدار يوقفه بأن يكون هدفاً — ومن لا يستهدفه يمرّ فوقه.
+                if (candidate.Definition != null && def.Has(UnitTrait.Flying))
+                {
+                    Dawnkeep.Building.BuildingRole role = candidate.Definition.Role;
+                    if (role != Dawnkeep.Building.BuildingRole.Tower
+                        && role != Dawnkeep.Building.BuildingRole.Economy)
+                    {
+                        continue;
+                    }
+                }
+
                 Vector3 delta = candidate.Body.position - position;
                 delta.y = 0f;
 
@@ -808,7 +1140,7 @@ namespace Dawnkeep.Combat
             {
                 if (unit.Animator.AttackLandedThisFrame)
                 {
-                    structure.TakeDamage(unit.Damage);
+                    structure.TakeDamage(Strength(unit, def));
                 }
 
                 return;
@@ -818,7 +1150,7 @@ namespace Dawnkeep.Combat
             {
                 if (unit.Animator.AttackLandedThisFrame && _keep != null)
                 {
-                    _keep.TakeDamage(unit.Damage);
+                    _keep.TakeDamage(Strength(unit, def));
                 }
 
                 return;
@@ -831,14 +1163,14 @@ namespace Dawnkeep.Combat
 
             if (!def.Ranged && unit.Animator.AttackLandedThisFrame)
             {
-                target.TakeDamage(unit.Damage);
+                target.TakeDamageFrom(Strength(unit, def), 0f, unit.Body.position);
                 return;
             }
 
             if (def.Ranged && unit.Animator.ShotReleasedThisFrame && _projectiles != null)
             {
                 Vector3 from = unit.Body.position + (Vector3.up * 1.35f);
-                _projectiles.Fire(from, target, unit.Damage, def.ProjectileSpeed);
+                _projectiles.Fire(from, target, Strength(unit, def), def.ProjectileSpeed);
             }
         }
 

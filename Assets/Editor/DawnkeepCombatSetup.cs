@@ -51,10 +51,12 @@ namespace Dawnkeep.EditorTools
                 CharacterMeshFactory.Kind.Hero, new Color(0.741f, 0.153f, 0.169f),
                 health: 520f, armour: 0.35f, speed: 4.1f, damage: 38f,
                 range: 2.4f, interval: 0.85f, ranged: false, sight: 30f, retarget: 0.35f,
-                targetClass: TargetClass.Nearest);
+                targetClass: TargetClass.Nearest, bulk: 1.15f);
 
-            // المهاجمون: نفس الأشكال بألوان راية أخرى — أصالة الشكل محفوظة
-            // والتمييز باللون، وهو أوضح ما يُقرأ على بُعد كاميرا الاستراتيجية.
+            // المهاجمون: خمسة قوالبَ أصليّة تتمايز **بالحجم ثمّ باللون**.
+            // والحجم أوّلاً لأنّه ما يُقرأ أوّلاً: على بُعد كاميرا الاستراتيجية
+            // وفي ليلةٍ ظلماء، يُرى الظلّ قبل أن تُرى راية اللون. وخمسة عشر
+            // عدوّاً بحجمٍ واحد سربٌ واحدٌ في عين اللاعب مهما لُوِّن.
             UnitDefinition raider = MakeUnit("Unit_Raider", "مُغِير", "Raider", Faction.Horde,
                 CharacterMeshFactory.Kind.Swordsman, new Color(0.243f, 0.271f, 0.318f),
                 health: 110f, armour: 0.10f, speed: 3.6f, damage: 12f,
@@ -65,13 +67,13 @@ namespace Dawnkeep.EditorTools
                 CharacterMeshFactory.Kind.Spearman, new Color(0.318f, 0.271f, 0.243f),
                 health: 260f, armour: 0.34f, speed: 2.4f, damage: 22f,
                 range: 2.6f, interval: 1.45f, ranged: false, sight: 22f, retarget: 0.7f,
-                targetClass: TargetClass.Nearest, darkArmour: 0.22f, bounty: 14);
+                targetClass: TargetClass.Nearest, darkArmour: 0.22f, bounty: 14, bulk: 1.2f);
 
             UnitDefinition nightArcher = MakeUnit("Unit_NightArcher", "رامي الليل", "Night Archer", Faction.Horde,
                 CharacterMeshFactory.Kind.Archer, new Color(0.353f, 0.239f, 0.416f),
                 health: 80f, armour: 0.05f, speed: 3.2f, damage: 16f,
                 range: 15f, interval: 1.75f, ranged: true, sight: 24f, retarget: 0.6f,
-                targetClass: TargetClass.Ranged, darkArmour: 0.15f, bounty: 9);
+                targetClass: TargetClass.Ranged, darkArmour: 0.15f, bounty: 9, bulk: 1.05f);
 
             // وحدتا §11: الأولى تذوب في النور، والثانية تُطفئه.
             // درع ظلام عالٍ وصحّة زهيدة: خارج النور تصمد، وداخله تتساقط —
@@ -80,7 +82,7 @@ namespace Dawnkeep.EditorTools
                 CharacterMeshFactory.Kind.Swordsman, new Color(0.286f, 0.243f, 0.376f),
                 health: 55f, armour: 0.02f, speed: 4.7f, damage: 9f,
                 range: 1.8f, interval: 0.85f, ranged: false, sight: 26f, retarget: 0.45f,
-                targetClass: TargetClass.Nearest, darkArmour: 0.62f, bounty: 4);
+                targetClass: TargetClass.Nearest, darkArmour: 0.62f, bounty: 4, bulk: 0.72f);
 
             // يمرّ بالمقاتلين إلى المنارة فيُطفئها ثماني ثوانٍ (§11). ضربه لا
             // يجرح أحداً: خطره أنّه يسلب المنطقة، فيوجب على اللاعب فكّ خطّه.
@@ -88,7 +90,104 @@ namespace Dawnkeep.EditorTools
                 CharacterMeshFactory.Kind.Spearman, new Color(0.208f, 0.196f, 0.271f),
                 health: 165f, armour: 0.16f, speed: 3.5f, damage: 6f,
                 range: 3.4f, interval: 1.60f, ranged: false, sight: 40f, retarget: 0.8f,
-                targetClass: TargetClass.Beacon, darkArmour: 0.30f, bounty: 12);
+                targetClass: TargetClass.Beacon, darkArmour: 0.30f, bounty: 12, bulk: 1.05f);
+
+            // ══ بقيّة أعداء §12 ═══════════════════════════════════════════
+            //
+            // §12 تعدّ خمسة عشر، والخمسة الأولى بُنيت مع القتال. وهؤلاء
+            // العشرة يكملونها — ولكلٍّ **سلوكٌ يفرض ردّاً مختلفاً**، لا أرقامٌ
+            // أثقل: عدوٌّ يختلف عن سابقه بالصحّة وحدها ليس عدوّاً جديداً.
+
+            UnitDefinition sapper = MakeUnit("Unit_Sapper", "مفجّر", "Sapper Imp", Faction.Horde,
+                CharacterMeshFactory.Kind.Villager, new Color(0.400f, 0.286f, 0.204f),
+                health: 62f, armour: 0.04f, speed: 5.1f, damage: 4f,
+                range: 2.0f, interval: 1.4f, ranged: false, sight: 30f, retarget: 0.45f,
+                targetClass: TargetClass.Structure, darkArmour: 0.10f, bounty: 8, bulk: 0.7f);
+
+            Trait(sapper, UnitTrait.Suicide, range: 7f, power: 190f, seconds: 1.1f);
+
+            UnitDefinition hound = MakeUnit("Unit_MireHound", "كلب المستنقع", "Mire Hound",
+                Faction.Horde, CharacterMeshFactory.Kind.Swordsman,
+                new Color(0.263f, 0.310f, 0.239f),
+                health: 96f, armour: 0.08f, speed: 4.9f, damage: 17f,
+                range: 1.8f, interval: 0.95f, ranged: false, sight: 30f, retarget: 0.45f,
+                targetClass: TargetClass.Ranged, darkArmour: 0.24f, bounty: 9, bulk: 0.88f);
+
+            Trait(hound, UnitTrait.Leap, range: 18f, power: 0f, seconds: 4.5f);
+
+            UnitDefinition plague = MakeUnit("Unit_Plague", "حامل الطاعون", "Plague Carrier",
+                Faction.Horde, CharacterMeshFactory.Kind.Villager,
+                new Color(0.318f, 0.376f, 0.263f),
+                health: 130f, armour: 0.10f, speed: 3.0f, damage: 11f,
+                range: 2.0f, interval: 1.5f, ranged: false, sight: 24f, retarget: 0.6f,
+                targetClass: TargetClass.Nearest, darkArmour: 0.26f, bounty: 11);
+
+            Trait(plague, UnitTrait.DeathCloud, range: 6.5f, power: 13f, seconds: 8f);
+
+            UnitDefinition troll = MakeUnit("Unit_SiegeTroll", "ترول الحصار", "Siege Troll",
+                Faction.Horde, CharacterMeshFactory.Kind.Spearman,
+                new Color(0.361f, 0.322f, 0.259f),
+                health: 620f, armour: 0.40f, speed: 1.7f, damage: 96f,
+                range: 3.6f, interval: 2.3f, ranged: false, sight: 26f, retarget: 0.9f,
+                targetClass: TargetClass.Structure, darkArmour: 0.24f, bounty: 30, bulk: 1.85f);
+
+            UnitDefinition catapult = MakeUnit("Unit_BoneCatapult", "منجنيق العظام",
+                "Bone Catapult", Faction.Horde, CharacterMeshFactory.Kind.Archer,
+                new Color(0.451f, 0.427f, 0.376f),
+                health: 210f, armour: 0.14f, speed: 1.4f, damage: 74f,
+                range: 44f, interval: 4.2f, ranged: true, sight: 52f, retarget: 1f,
+                targetClass: TargetClass.Structure, darkArmour: 0.12f, bounty: 26, bulk: 1.55f);
+
+            UnitDefinition veiled = MakeUnit("Unit_VeiledArcher", "الرامي المحجوب",
+                "Veiled Archer", Faction.Horde, CharacterMeshFactory.Kind.Archer,
+                new Color(0.251f, 0.212f, 0.290f),
+                health: 88f, armour: 0.06f, speed: 3.3f, damage: 14f,
+                range: 17f, interval: 1.6f, ranged: true, sight: 26f, retarget: 0.6f,
+                targetClass: TargetClass.Ranged, darkArmour: 0.34f, bounty: 12, bulk: 0.92f);
+
+            Trait(veiled, UnitTrait.DarkFavoured, range: 0f, power: 0.65f, seconds: 0f);
+
+            UnitDefinition priest = MakeUnit("Unit_EclipsePriest", "كاهن الكسوف",
+                "Eclipse Priest", Faction.Horde, CharacterMeshFactory.Kind.Villager,
+                new Color(0.290f, 0.239f, 0.376f),
+                health: 145f, armour: 0.10f, speed: 2.6f, damage: 8f,
+                range: 3.0f, interval: 2.0f, ranged: false, sight: 30f, retarget: 0.9f,
+                targetClass: TargetClass.Nearest, darkArmour: 0.38f, bounty: 18, bulk: 1.15f);
+
+            Trait(priest, UnitTrait.Support, range: 14f, power: 0.22f, seconds: 3.5f);
+
+            UnitDefinition wretch = MakeUnit("Unit_WingedWretch", "الوطواط المجنّح",
+                "Winged Wretch", Faction.Horde, CharacterMeshFactory.Kind.Archer,
+                new Color(0.216f, 0.196f, 0.243f),
+                health: 74f, armour: 0.04f, speed: 6.2f, damage: 13f,
+                range: 2.2f, interval: 0.9f, ranged: false, sight: 34f, retarget: 0.4f,
+                targetClass: TargetClass.Structure, darkArmour: 0.28f, bounty: 13, bulk: 0.8f);
+
+            Trait(wretch, UnitTrait.Flying, range: 0f, power: 0f, seconds: 0f);
+
+            UnitDefinition knight = MakeUnit("Unit_GraveKnight", "فارس القبر", "Grave Knight",
+                Faction.Horde, CharacterMeshFactory.Kind.Swordsman,
+                new Color(0.290f, 0.271f, 0.310f),
+                health: 420f, armour: 0.36f, speed: 2.8f, damage: 42f,
+                range: 2.4f, interval: 1.25f, ranged: false, sight: 28f, retarget: 0.6f,
+                targetClass: TargetClass.Nearest, darkArmour: 0.30f, bounty: 34, bulk: 1.4f);
+
+            Trait(knight, UnitTrait.SummonAtHalf, range: 0f, power: 2f, seconds: 0f,
+                spawn: duskling);
+
+            UnitDefinition wyrm = MakeUnit("Unit_RiftWyrm", "تنّين الصدع", "Rift Wyrm",
+                Faction.Horde, CharacterMeshFactory.Kind.Spearman,
+                new Color(0.204f, 0.243f, 0.310f),
+                health: 340f, armour: 0.26f, speed: 3.4f, damage: 38f,
+                range: 2.8f, interval: 1.3f, ranged: false, sight: 30f, retarget: 0.5f,
+                targetClass: TargetClass.Nearest, darkArmour: 0.32f, bounty: 32, bulk: 1.6f);
+
+            // نصف القطر هو حلقة ظهوره حول القلب، والثواني تحذيرُه قبل حركته
+            Trait(wyrm, UnitTrait.Burrow, range: 62f, power: 0f, seconds: 1.6f);
+
+            // الغاشم المدرَّع (§12): «درع أمامي، ضعيف من الخلف». السمة تُضاف
+            // إليه الآن — كان درعُه دائريّاً، فالالتفافُ حوله لم يكن يجدي.
+            Trait(brute, UnitTrait.FrontShield, range: 0f, power: 0.30f, seconds: 0f);
 
             // ── بيانات توليد §14: ثمن التهديد، وأوّل ليلة يجوز فيها، وصنفه،
             // وحدّا سربه. الأثمان **نسبية** لا مطلقة: المُغير واحد، وما فوقه
@@ -102,6 +201,19 @@ namespace Dawnkeep.EditorTools
             // تشرح النور. §14: «لا يظهر عدو قبل تعليمه في الحملة».
             Threat(duskling, cost: 1, taughtOn: 3, group: ThreatClass.Swarm, min: 6, max: 34);
             Threat(lampEater, cost: 3, taughtOn: 2, group: ThreatClass.Saboteur, min: 1, max: 6);
+
+            // العشرة الباقون: تُعلَّم واحدةً بعد أخرى فلا تنهال دفعةً واحدة.
+            // و§14 تمنع ظهور عدوٍّ قبل تعليمه، فالليالي هي الجدول.
+            Threat(hound, cost: 2, taughtOn: 4, group: ThreatClass.Melee, min: 3, max: 14);
+            Threat(sapper, cost: 2, taughtOn: 5, group: ThreatClass.Saboteur, min: 2, max: 10);
+            Threat(veiled, cost: 3, taughtOn: 6, group: ThreatClass.Ranged, min: 3, max: 12);
+            Threat(plague, cost: 3, taughtOn: 7, group: ThreatClass.Swarm, min: 4, max: 16);
+            Threat(wretch, cost: 3, taughtOn: 8, group: ThreatClass.Swarm, min: 4, max: 18);
+            Threat(priest, cost: 5, taughtOn: 9, group: ThreatClass.Saboteur, min: 1, max: 5);
+            Threat(troll, cost: 8, taughtOn: 11, group: ThreatClass.Armoured, min: 1, max: 8);
+            Threat(catapult, cost: 7, taughtOn: 12, group: ThreatClass.Ranged, min: 1, max: 6);
+            Threat(knight, cost: 9, taughtOn: 13, group: ThreatClass.Armoured, min: 1, max: 6);
+            Threat(wyrm, cost: 8, taughtOn: 14, group: ThreatClass.Melee, min: 1, max: 6);
 
             WaveDefinition wave = MakeWave("Wave_01", "الموجة الأولى", "First Wave", 10f, new[]
             {
@@ -134,7 +246,12 @@ namespace Dawnkeep.EditorTools
             AssetDatabase.Refresh();
 
             WireScene(new[] { wave, wave2, wave3 },
-                new[] { raider, brute, nightArcher, duskling, lampEater },
+                new[]
+                {
+                    raider, brute, nightArcher, duskling, lampEater,
+                    sapper, hound, plague, troll, catapult,
+                    veiled, priest, wretch, knight, wyrm,
+                },
                 generation, levels,
                 spearman, swordsman, archer, hero);
 
@@ -231,6 +348,25 @@ namespace Dawnkeep.EditorTools
             EditorSceneManager.SaveScene(scene);
 
             Debug.Log("مملكة الرماد: أُسنِد تعريف قتالي إلى " + assigned + " من الحامية.");
+        }
+
+        /// <summary>يضبط سمة سلوكٍ (§12) على تعريف وحدة.</summary>
+        private static void Trait(UnitDefinition def, UnitTrait trait,
+            float range, float power, float seconds, UnitDefinition spawn = null)
+        {
+            // الرايات تُضمّ ولا تُستبدل: وحدةٌ تطير وتستدعي لها راياتان
+            UnitTrait had = def.Traits;
+            SetPrivate(def, "traits", had | trait);
+            SetPrivate(def, "traitRange", range);
+            SetPrivate(def, "traitPower", power);
+            SetPrivate(def, "traitSeconds", seconds);
+
+            if (spawn != null)
+            {
+                SetPrivate(def, "traitSpawn", spawn);
+            }
+
+            EditorUtility.SetDirty(def);
         }
 
         /// <summary>يضبط بيانات توليد §14 على تعريف مهاجم.</summary>
@@ -493,7 +629,8 @@ namespace Dawnkeep.EditorTools
             Faction faction,
             CharacterMeshFactory.Kind kind, Color livery, float health, float armour, float speed,
             float damage, float range, float interval, bool ranged, float sight, float retarget,
-            TargetClass targetClass, float darkArmour = 0f, int bounty = 6)
+            TargetClass targetClass, float darkArmour = 0f, int bounty = 6,
+            float bulk = 1f)
         {
             string path = CombatFolder + "/" + assetName + ".asset";
             UnitDefinition def = AssetDatabase.LoadAssetAtPath<UnitDefinition>(path);
@@ -524,6 +661,11 @@ namespace Dawnkeep.EditorTools
             SetPrivate(def, "ranged", ranged);
             SetPrivate(def, "sightRange", sight);
             SetPrivate(def, "retargetInterval", retarget);
+            SetPrivate(def, "bodyScale", bulk);
+
+            // التباعد يتبع الحجم: نصف قطرٍ ثابتٌ يجعل المُغِيرين يقفون داخل
+            // جسد ترول الحصار، والترولَين يقفان متباعدين بلا سبب (§12).
+            SetPrivate(def, "separationRadius", 1.1f * bulk);
 
             EditorUtility.SetDirty(def);
             return def;

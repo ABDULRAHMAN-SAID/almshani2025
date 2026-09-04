@@ -255,6 +255,9 @@ namespace Dawnkeep.Combat
             DamageTakenScale = 1f;
             PackFactor = 1f;
             PackResistance = 0f;
+            TraitAt = 0f;
+            TraitSpent = false;
+            TraitNext = 0f;
         }
 
         /// <summary>
@@ -273,6 +276,9 @@ namespace Dawnkeep.Combat
             DamageTakenScale = 1f;
             PackFactor = 1f;
             PackResistance = 0f;
+            TraitAt = 0f;
+            TraitSpent = false;
+            TraitNext = 0f;
             _health = MaxHealth;
             Alive = true;
             DeadFor = 0f;
@@ -357,6 +363,18 @@ namespace Dawnkeep.Combat
         /// <summary>مقاومةٌ تُضاف من التراصّ. تُضبط مع `PackFactor`.</summary>
         public float PackResistance { get; set; }
 
+        /// <summary>
+        /// لحظة انطلاق سمة الوحدة (انفجارٌ أو قفزةٌ أو استدعاء)، أو صفرٌ إن
+        /// لم تُنذَر بعد. **حالةٌ لا سلوك**: التنفيذ في `CombatDirector`.
+        /// </summary>
+        public float TraitAt { get; set; }
+
+        /// <summary>هل استُهلكت السمة التي تقع مرّةً واحدة؟</summary>
+        public bool TraitSpent { get; set; }
+
+        /// <summary>لحظة السمة المتكرّرة التالية (دعمُ الكاهن مثلاً).</summary>
+        public float TraitNext { get; set; }
+
         /// <summary>ضرر الضربة بعد مضاعف الصعوبة.</summary>
         public float Damage
         {
@@ -379,6 +397,9 @@ namespace Dawnkeep.Combat
             DamageTakenScale = 1f;
             PackFactor = 1f;
             PackResistance = 0f;
+            TraitAt = 0f;
+            TraitSpent = false;
+            TraitNext = 0f;
             if (_transform == null)
             {
                 Awake();
@@ -413,7 +434,28 @@ namespace Dawnkeep.Combat
 
             gameObject.SetActive(true);
             ApplyLivery(def != null ? def.Livery : Color.white);
+            ApplyBulk(def != null ? def.BodyScale : 1f);
         }
+
+        /// <summary>
+        /// حجم الجسد من التعريف (§12). يُضبَط عند الخروج من المجمّع لا مرّةً
+        /// في القالب: الجسد الواحد يُعاد استعماله لترولٍ ثمّ لمُغير، فحجمٌ
+        /// بقي من صاحبه السابق يُخرج مُغيراً بحجم الترول.
+        /// </summary>
+        private void ApplyBulk(float scale)
+        {
+            float size = Mathf.Max(0.1f, scale);
+            if (Mathf.Approximately(_bulk, size))
+            {
+                return;
+            }
+
+            _bulk = size;
+            _transform.localScale = new Vector3(size, size, size);
+        }
+
+        /// <summary>صفرٌ لا واحد: أوّل خروجٍ يضبط الحجم مهما كان حجم القالب.</summary>
+        private float _bulk;
 
         /// <summary>الضرر بعد الدرع. يعيد true إن قتلت هذه الضربة الوحدة.</summary>
         public bool TakeDamage(float amount)
@@ -426,6 +468,36 @@ namespace Dawnkeep.Combat
         /// على **مجموع** الدرعين — العاديّ ودرع الظلام — فمسلّةٌ تخترق نصف
         /// الدرع تنفع على المدرَّع في الظلام كما تنفع عليه في النور.
         /// </summary>
+        /// <summary>
+        /// ضررٌ من موضعٍ معلوم — للدرع الأماميّ (§12: الغاشم المدرَّع).
+        /// الاتّجاه لا يُقرأ إلّا لمن له درعٌ أماميّ، فلا يُدفع ثمنه لغيره.
+        /// </summary>
+        public bool TakeDamageFrom(float amount, float armourPierce, Vector3 origin)
+        {
+            if (definition == null || !definition.Has(UnitTrait.FrontShield))
+            {
+                return TakeDamage(amount, armourPierce);
+            }
+
+            Vector3 delta = origin - _transform.position;
+            delta.y = 0f;
+
+            Vector3 facing = _transform.forward;
+            facing.y = 0f;
+
+            // من الأمام: الدرع يعمل. من الخلف: لا شيء يقيه.
+            // والحدّ عند تسعين درجة لكل جانب — نصفُ دائرةٍ أمامه.
+            bool fromFront = delta.sqrMagnitude < 0.0001f
+                || Vector3.Dot(delta.normalized, facing.normalized) > 0f;
+
+            _shieldFacing = fromFront;
+            bool killed = TakeDamage(amount, armourPierce);
+            _shieldFacing = false;
+            return killed;
+        }
+
+        private bool _shieldFacing;
+
         public bool TakeDamage(float amount, float armourPierce)
         {
             if (!Alive)
@@ -446,6 +518,13 @@ namespace Dawnkeep.Combat
             if (Time.time < _rallyUntil)
             {
                 armour += _rallyResistance;
+            }
+
+            // الدرع الأماميّ (§12): يُضاف حين تأتي الضربة من أمامه وحدها.
+            // و`traitPower` هو ما يضيفه — رقمٌ في الأصل لا في الكود (§1).
+            if (_shieldFacing && definition != null)
+            {
+                armour += definition.TraitPower;
             }
 
             // بركات §15 على المملكة وحدها، والتراصّ معها بالقاعدة نفسها

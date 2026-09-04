@@ -105,7 +105,10 @@ namespace Dawnkeep.UI
                     continue;
                 }
 
-                Vector3 head = unit.Body.position + (Vector3.up * heightAboveHead);
+                // الارتفاع يتبع حجم الجسد (§12): ارتفاعٌ ثابت يدفن شريط
+                // ترول الحصار في صدره ويرفع شريط وليد الغَسَق فوق رأسه.
+                Vector3 head = unit.Body.position
+                    + (Vector3.up * (heightAboveHead * unit.Definition.BodyScale));
                 if ((head - eye).sqrMagnitude > maxSqr)
                 {
                     continue;

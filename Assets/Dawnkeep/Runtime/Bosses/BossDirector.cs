@@ -83,6 +83,14 @@ namespace Dawnkeep.Bosses
             _bosses.Add(boss);
             Remember(boss);
 
+            // تسخين البيوض **عند دخول الزعيم** لا عند أوّل وضعة (§31): أوّل
+            // وضعةٍ تقع في ذروة الاشتباك، وتوليدُ ستّ بيضاتٍ فيها قفزةُ إطار.
+            // ولا تُسخَّن عند الإقلاع: زعيمٌ لا يبيض قد لا يخرج أصلاً.
+            if (boss.Definition != null && boss.Definition.EggCount > 0)
+            {
+                Prewarm(boss.Definition.EggCount);
+            }
+
             if (intro != null && boss.Definition != null)
             {
                 intro.Play(boss);
@@ -646,6 +654,41 @@ namespace Dawnkeep.Bosses
         }
 
 
+        /// <summary>
+        /// يبلغ بمجمّع البيوض عدداً مطلوباً. يُنادى عند دخول الزعيم وحده،
+        /// فالتوليد خارج حلقة الاشتباك (§31).
+        /// </summary>
+        private void Prewarm(int count)
+        {
+            if (eggPrefab == null)
+            {
+                return;
+            }
+
+            while (_eggs.Count < count)
+            {
+                BossEgg egg = MakeEgg();
+                if (egg == null)
+                {
+                    return;
+                }
+            }
+        }
+
+        private BossEgg MakeEgg()
+        {
+            GameObject go = Instantiate(eggPrefab, _root);
+            BossEgg egg = go.GetComponent<BossEgg>();
+            if (egg == null)
+            {
+                egg = go.AddComponent<BossEgg>();
+            }
+
+            egg.gameObject.SetActive(false);
+            _eggs.Add(egg);
+            return egg;
+        }
+
         private BossEgg TakeEgg()
         {
             for (int i = 0; i < _eggs.Count; i++)
@@ -656,20 +699,9 @@ namespace Dawnkeep.Bosses
                 }
             }
 
-            if (eggPrefab == null)
-            {
-                return null;
-            }
-
-            GameObject go = Instantiate(eggPrefab, _root);
-            BossEgg egg = go.GetComponent<BossEgg>();
-            if (egg == null)
-            {
-                egg = go.AddComponent<BossEgg>();
-            }
-
-            _eggs.Add(egg);
-            return egg;
+            // المجمّع مسخَّنٌ عند دخول الزعيم؛ وهذا احتياطُ نموٍّ إن زاد
+            // العدد المطلوب عمّا سُخِّن (زعيمان يبيضان معاً).
+            return eggPrefab != null ? MakeEgg() : null;
         }
 
 

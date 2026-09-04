@@ -514,9 +514,23 @@ namespace Dawnkeep.Combat
             float tierHealth = generation != null ? generation.HealthAtTier(tier) : 1f;
             float tierDamage = generation != null ? generation.DamageAtTier(tier) : 1f;
 
-            unit.Spawn(def, position, yaw, path,
+            // تنّين الصدع (§12): يحفر فيظهر **داخل الحلقة** لا على حافّتها.
+            // والمسار يُترك فارغاً: من ظهر في الداخل لا طريق له يقطعه.
+            Vector3[] walk = path;
+            if (def.Has(UnitTrait.Burrow))
+            {
+                position = Burrow(def, position);
+                walk = null;
+            }
+
+            unit.Spawn(def, position, yaw, walk,
                 profile.HealthScale * tierHealth,
                 profile.DamageScale * tierDamage);
+
+            if (def.Has(UnitTrait.Burrow))
+            {
+                unit.TraitAt = Time.time + Mathf.Max(0.5f, def.TraitSeconds);
+            }
 
             // الزعيم يُسجَّل عند قائده (§13). الفحص بـ`as` على **التعريف** لا
             // بـ`GetComponent` على كل وحدة: الأخير يُدفع ثمنه في كل صيحة من
@@ -578,6 +592,26 @@ namespace Dawnkeep.Combat
                     director.Register(unit);
                 }
             }
+        }
+
+        /// <summary>
+        /// موضع الظهور لمن يحفر: على حلقةٍ حول قلب الحصن بنصف قطرٍ من
+        /// `TraitRange`. حول القلب لا حول اللاعب: ظهورٌ خلف ظهره مباشرةً
+        /// غدرٌ لا تحدٍّ، وظهورٌ في الحلقة الخارجية هو ما تصفه §12.
+        /// </summary>
+        private Vector3 Burrow(UnitDefinition def, Vector3 fallback)
+        {
+            Dawnkeep.Building.Keep keep = Dawnkeep.Building.Keep.Instance;
+            Vector3 centre = keep != null ? keep.transform.position : Vector3.zero;
+
+            float angle = (float)_rng.NextDouble() * Mathf.PI * 2f;
+            float radius = Mathf.Max(4f, def.TraitRange);
+
+            Vector3 place = centre + new Vector3(
+                Mathf.Cos(angle) * radius, 0f, Mathf.Sin(angle) * radius);
+
+            place.y = GroundHeight(place.x, place.z, fallback.y);
+            return place;
         }
 
         /// <summary>هل يتّسع المكان لعدوٍّ آخر؟ (§31)</summary>

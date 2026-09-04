@@ -64,8 +64,29 @@ namespace Dawnkeep.Combat
         [Tooltip("أبعد ما يبحث فيه عن هدف بالمتر.")]
         [SerializeField] private float sightRange = 26f;
 
+        [Tooltip("حجم الجسد. خمسة عشر عدوّاً بحجمٍ واحد لا يُفرَّق بينها في "
+            + "حشدٍ ليليّ مهما اختلفت ألوانها — والظلّ يُقرأ قبل اللون (§12).")]
+        [Range(0.6f, 2.2f)]
+        [SerializeField] private float bodyScale = 1f;
+
         [Tooltip("فضّة يضيفها قتله إلى المكافأة المعلّقة، تُصرف عند الفجر (§10).")]
         [SerializeField] private int bounty = 6;
+
+        [Header("السلوك (§12)")]
+        [Tooltip("سماتُ سلوكٍ تُضاف إلى القتال. تُقرأ في `CombatDirector`.")]
+        [SerializeField] private UnitTrait traits = UnitTrait.None;
+
+        [Tooltip("رقمٌ يخدم السمة الجارية: نصف قطر الانفجار، أو مدى القفزة…")]
+        [SerializeField] private float traitRange = 6f;
+
+        [Tooltip("رقمٌ ثانٍ: ضرر الانفجار، أو ما يضيفه الدعم، أو عدد المستدعَين.")]
+        [SerializeField] private float traitPower = 40f;
+
+        [Tooltip("ثوانِ الإنذار قبل السمة — أو فترتُها إن كانت متكرّرة.")]
+        [SerializeField] private float traitSeconds = 1.1f;
+
+        [Tooltip("ما يُستدعى إن كانت السمة تستدعي.")]
+        [SerializeField] private UnitDefinition traitSpawn;
 
         [Header("توليد الموجات (§14)")]
 
@@ -136,8 +157,30 @@ namespace Dawnkeep.Combat
 
         public float SightRange { get { return sightRange; } }
 
+        /// <summary>
+        /// حجم جسده. الظلّ هو ما يُقرأ أوّلاً في ليلةٍ فيها تسعون وحدة، فحجمٌ
+        /// واحدٌ للجميع يجعل ترول الحصار ومُغِيراً شيئاً واحداً حتى يضرب.
+        /// </summary>
+        public float BodyScale { get { return Mathf.Max(0.1f, bodyScale); } }
+
         /// <summary>مكافأة قتله بالفضّة (§10: تُحسب عند نهاية الموجة لا تتساقط).</summary>
         public int Bounty { get { return bounty; } }
+
+        public UnitTrait Traits { get { return traits; } }
+
+        /// <summary>هل فيه هذه السمة؟ دالّة لا مقارنة: الراية تُختبر ببتّها.</summary>
+        public bool Has(UnitTrait trait)
+        {
+            return (traits & trait) != 0;
+        }
+
+        public float TraitRange { get { return traitRange; } }
+
+        public float TraitPower { get { return traitPower; } }
+
+        public float TraitSeconds { get { return traitSeconds; } }
+
+        public UnitDefinition TraitSpawn { get { return traitSpawn; } }
 
         /// <summary>ثمنه من ميزانية §14. صفر يعني «لا يُولَّد» لا «مجّاني».</summary>
         public int ThreatCost { get { return threatCost; } }

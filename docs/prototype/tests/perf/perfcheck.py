@@ -182,34 +182,43 @@ check('وقياس زمن الهدف مطفأ في اللعب العادي',
 print()
 print('── تخصيصٌ في حلقة إطار (§31: صفر بايت) ───')
 
-HOT = ('Update', 'LateUpdate', 'FixedUpdate', 'TickUnit', 'TickBosses', 'TickEggs',
-       'ResolveHits', 'FindTarget', 'FindStructure', 'TickTower', 'TickWorkshop',
-       'Sample', 'TickChain', 'TickPacked', 'Drag', 'ReadTouch', 'ReadStick')
+# الجذور: ما ينادِيه المحرّك كل إطار. وما دونها يُستخرَج بالمشي على
+# النداءات — القائمةُ المكتوبة باليد تنسى، وقد نسيت: `TickSummon` دخلت
+# مسار الإطار وفيها بحثٌ في المشهد، والفحص ساكت لأنّ اسمها ليس فيها.
+# الجذور: ما ينادِيه المحرّك كل إطار، ومعها مداخلُ تُنادى من كائنٍ آخر في
+# الإطار (`_projectiles.ResolveHits`) فلا يبلغها المشي داخل الملفّ.
+ROOTS = ('Update', 'LateUpdate', 'FixedUpdate')
+SEEDS = ('ResolveHits', 'Sample', 'TickChain', 'TickPacked', 'Drag',
+         'ReadTouch', 'ReadStick', 'ArmourCutAt', 'NearestLit')
+
+# ثمّ يُمشى من كلٍّ منها إلى ما تنادِيه **داخل ملفّها**. القائمة المكتوبة
+# باليد تنسى، وقد نسيت: `TickSummon` دخلت مسار الإطار وفيها بحثٌ في المشهد،
+# والفحص ساكتٌ لأنّ اسمها لم يكن فيها.
 
 # `new` المسموح: أنواع القيمة لا تخصّص على الكومة
 VALUE_TYPES = ('Vector2', 'Vector3', 'Vector4', 'Quaternion', 'Color', 'Color32',
                'Rect', 'Bounds', 'Matrix4x4', 'Ray', 'RaycastHit')
 
-def bodies(source):
-    """أجسام الدوالّ الساخنة، بموازنة الأقواس لا بتعبيرٍ نمطيّ."""
-    out = []
-    for m in re.finditer(r'\b(?:private|public|protected|internal)[^\n;]*?\b(\w+)\s*\([^)]*\)\s*\n\s*\{',
-                         source):
-        name = m.group(1)
-        if name not in HOT:
-            continue
-        i = source.index('{', m.end() - 1)
-        depth, j = 0, i
-        while j < len(source):
-            if source[j] == '{':
-                depth += 1
-            elif source[j] == '}':
-                depth -= 1
-                if depth == 0:
-                    break
-            j += 1
-        out.append((name, source[i:j]))
-    return out
+# بحثٌ في المشهد: ممنوع داخل حلقة الإطار (§1 في CLAUDE.md)
+SCENE_SEARCH = (r'\bGameObject\.Find\w*\(', r'\bFindObjectsByType\s*<',
+                r'\bFindAnyObjectByType\s*<', r'\bFindFirstObjectByType\s*<',
+                r'\bFindObjectOfType\s*<', r'\bGetComponent\w*\s*<')
+
+DECL = re.compile(
+    r'\b(?:private|public|protected|internal)[^\n;=]*?\b(\w+)\s*\([^)]*\)\s*(?:\n\s*)?\{')
+
+def block(source, brace):
+    """جسم الدالّة بموازنة الأقواس — لا بتعبيرٍ نمطيّ يقف عند أوّل قوسٍ داخليّ."""
+    depth, j = 0, brace
+    while j < len(source):
+        if source[j] == '{':
+            depth += 1
+        elif source[j] == '}':
+            depth -= 1
+            if depth == 0:
+                break
+        j += 1
+    return source[brace:j]
 
 FILES = {}
 for base, _, files in os.walk(os.path.join(ROOT, 'Assets/Dawnkeep/Runtime')):
@@ -218,30 +227,101 @@ for base, _, files in os.walk(os.path.join(ROOT, 'Assets/Dawnkeep/Runtime')):
             path = os.path.join(base, f)
             FILES[os.path.relpath(path, ROOT)] = io.open(path, encoding='utf-8').read()
 
-offences = []
+# فهرس الدوالّ: الملفّ ← الاسم ← الجسم
+DEFS = {}
 for path, text in sorted(FILES.items()):
-    for name, body in bodies(text):
-        code = '\n'.join(l for l in body.split('\n')
-                         if not l.strip().startswith('//') and not l.strip().startswith('///'))
+    here = {}
+    for m in DECL.finditer(text):
+        here[m.group(1)] = block(text, text.index('{', m.end() - 1))
+    DEFS[path] = here
 
-        for m in re.finditer(r'\bnew\s+([A-Za-z_][\w<>\[\], ]*)', code):
-            kind = m.group(1).split('(')[0].split('[')[0].split('<')[0].strip()
-            if kind in VALUE_TYPES:
-                continue
-            offences.append((path, name, 'new ' + kind))
+def strip(body):
+    return '\n'.join(l for l in body.split('\n')
+                     if not l.strip().startswith('//'))
 
-        if re.search(r'\.(Select|Where|OrderBy|ToList|ToArray|Any|First|Sum)\(', code):
-            offences.append((path, name, 'LINQ'))
+# نداءٌ غير مُسنَد: `Foo(` لا `x.Foo(` ولا `new Foo(` — فالمسنَد إلى كائنٍ
+# آخر صنفٌ آخر، ومتابعتُه بالاسم وحده تجرّ كل متشابهات الأسماء في المشروع.
+CALL = re.compile(r'(?<![.\w])(?<!new )([A-Z]\w+)\s*\(')
 
-        # نصٌّ يُبنى بالجمع داخل حلقةٍ ساخنة
-        if re.search(r'"\s*\+|\+\s*"', code):
-            offences.append((path, name, 'بناء نصّ'))
+hot, queue, seen = {}, [], set()
+for path, here in DEFS.items():
+    for name in here:
+        if name in ROOTS or name in SEEDS:
+            queue.append((path, name))
+
+while queue:
+    path, name = queue.pop()
+    if (path, name) in seen:
+        continue
+    seen.add((path, name))
+    body = DEFS[path].get(name)
+    if body is None:
+        continue
+    hot[(path, name)] = body
+    for c in CALL.findall(strip(body)):
+        if c in DEFS[path] and (path, c) not in seen:
+            queue.append((path, c))
+
+# ── استثناءات، مكتوبةً بأسبابها ────────────────────────────────────
+# لا تُحذف الحالة من الفحص بل تُنقل إلى هنا بسببها، وتُطبع في التقرير.
+# استثناءٌ مكتوب يُراجَع؛ واسمٌ ناقصٌ من قائمةٍ يدويّة لا يُراجَع أبداً.
+EXCUSED = {
+    ('BossDirector', 'MakeEgg'):
+        'احتياط نموّ المجمّع: المجمّع يُسخَّن عند دخول الزعيم، وهذا لزعيمين يبيضان معاً',
+    ('BattleHud', 'UpdateKeep'):
+        'مشروطٌ بتغيّر مرتبة الحصن — أربع مرّات في الجولة كلّها (§10)',
+    ('MainMenu', 'Update'):
+        'شاشة القائمة: لا حشد ولا مقذوفات، والبحث مرّةً واحدة عند انطفاء الشعار',
+    ('MainMenu', 'Refresh'):
+        'يُنادى عند فتح القائمة وبعد كل تغيّر، لا كل إطار',
+    ('MainMenu', 'Digits'):
+        'نصّ القائمة، من `Refresh` وحدها',
+    ('PauseMenu', 'Digits'):
+        'لوحة الإيقاف: الزمن موقوف والمشهد ساكن',
+    ('PerformanceProbe', 'Finish'):
+        'مرّةً واحدة عند نهاية القياس، بعد آخر إطارٍ يُحتسب',
+}
+
+offences, excused = [], []
+for (path, name), body in sorted(hot.items()):
+    code = strip(body)
+
+    for m in re.finditer(r'\bnew\s+([A-Za-z_][\w<>\[\], ]*)', code):
+        kind = m.group(1).split('(')[0].split('[')[0].split('<')[0].strip()
+        if kind in VALUE_TYPES:
+            continue
+        offences.append((path, name, 'new ' + kind))
+
+    if re.search(r'\.(Select|Where|OrderBy|ToList|ToArray|Any|First|Sum)\(', code):
+        offences.append((path, name, 'LINQ'))
+
+    # نصٌّ يُبنى بالجمع داخل حلقةٍ ساخنة
+    if re.search(r'"\s*\+|\+\s*"', code):
+        offences.append((path, name, 'بناء نصّ'))
+
+    for pattern in SCENE_SEARCH:
+        if re.search(pattern, code):
+            offences.append((path, name, 'بحثٌ في المشهد'))
+            break
+
+# الفرز: ما له سببٌ مكتوب يُطبع سبباً، وما لا سبب له يُطبع خطأً
+kept = []
+for path, name, why in offences:
+    key = (os.path.basename(path)[:-3], name)
+    if key in EXCUSED:
+        excused.append((key, why))
+    else:
+        kept.append((path, name, why))
+offences = kept
+
+for (cls, name), why in sorted(set(excused)):
+    print(f'      · {cls}.{name}() — {why}  ({EXCUSED[(cls, name)]})')
 
 for path, name, why in offences:
     print(f'      ✗ {os.path.basename(path)[:-3]}.{name}() — {why}')
 
-check('لا تخصيص في الدوالّ التي تُنادى كل إطار', not offences,
-      f'  ({len(offences)} موضعاً)' if offences else '  (فُحصت '
-      + str(sum(len(bodies(t)) for t in FILES.values())) + ' دالّة ساخنة)')
+check('لا تخصيص ولا بحثَ مشهدٍ فيما يُنادى كل إطار', not offences,
+      f'  ({len(offences)} موضعاً)' if offences
+      else f'  (مُشِيَ من {len(ROOTS)} جذوراً إلى {len(hot)} دالّة)')
 
 sys.exit(0 if ok else 1)
