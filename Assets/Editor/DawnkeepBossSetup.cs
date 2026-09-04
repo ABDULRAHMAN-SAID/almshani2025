@@ -49,7 +49,7 @@ namespace Dawnkeep.EditorTools
 
             BuildPrefabs();
             GameObject egg = BuildEgg();
-            GameObject pool = BuildPool();
+            GameObject hazard = BuildHazard();
 
             UnitDefinition gloom = Load<UnitDefinition>(
                 DawnkeepCombatSetup.CombatFolder + "/Unit_Duskling.asset");
@@ -68,7 +68,7 @@ namespace Dawnkeep.EditorTools
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
 
-            WireScene(bosses, egg, pool);
+            WireScene(bosses, egg, hazard);
             Debug.Log("مملكة الرماد: الزعماء الأربعة جاهزون في " + BossFolder);
         }
 
@@ -142,23 +142,24 @@ namespace Dawnkeep.EditorTools
         }
 
         /// <summary>
-        /// بركة السمّ: قرص بنصف قطر **واحد** يتّسع بالمقياس. شبكةٌ لكل نصف
-        /// قطر تعني شبكةً جديدة كل ستّ ثوانٍ، وهو ما تمنعه §1.
+        /// قرص الخطر: نصف قطرٍ **واحد** يتّسع بالمقياس، ولونه من `MaterialProperty
+        /// Block` عند الوضع. شبكةٌ لكل نصف قطر تعني شبكةً جديدة كل ستّ ثوانٍ،
+        /// وشبكةٌ لكل لون تعني نسختين لشيءٍ واحد — وكلاهما ممنوع (§1).
         /// </summary>
-        private static GameObject BuildPool()
+        private static GameObject BuildHazard()
         {
-            string path = DawnkeepAssetPaths.Prefabs + "/Dawnkeep_PoisonPool.prefab";
+            string path = DawnkeepAssetPaths.Prefabs + "/Dawnkeep_Hazard.prefab";
 
             MeshBuilder mb = new MeshBuilder();
-            mb.SetTint(0.322f, 0.451f, 0.278f);
+            mb.SetTint(1f, 1f, 1f);
             mb.AddCylinder(new Vector3(0f, 0f, 0f), 1f, 0.94f, 0.035f, 24, 1f, true);
 
-            Mesh mesh = SaveMesh(mb.ToMesh("Dawnkeep_PoisonPool", true), "PoisonPool");
+            Mesh mesh = SaveMesh(mb.ToMesh("Dawnkeep_Hazard", true), "Hazard");
 
-            GameObject root = new GameObject("Dawnkeep_PoisonPool");
+            GameObject root = new GameObject("Dawnkeep_Hazard");
             AddPiece(root, "Surface", mesh,
-                Load<Material>(DawnkeepAssetPaths.Materials + "/Dawnkeep_FolkBody.mat"));
-            root.AddComponent<PoisonPool>();
+                Load<Material>(DawnkeepAssetPaths.Materials + "/Dawnkeep_FolkCloth.mat"));
+            root.AddComponent<Hazard>();
 
             GameObject saved = PrefabUtility.SaveAsPrefabAsset(root, path);
             Object.DestroyImmediate(root);
@@ -306,7 +307,7 @@ namespace Dawnkeep.EditorTools
 
         // ── الربط بالمشهد ───────────────────────────────────────────────────
 
-        private static void WireScene(BossDefinition[] bosses, GameObject egg, GameObject pool)
+        private static void WireScene(BossDefinition[] bosses, GameObject egg, GameObject hazard)
         {
             Scene scene = SceneManager.GetActiveScene();
             if (!scene.IsValid())
@@ -337,7 +338,14 @@ namespace Dawnkeep.EditorTools
 
             intro.Configure(Object.FindAnyObjectByType<RtsCameraRig>(),
                 Object.FindAnyObjectByType<BattleHud>());
-            director.Configure(waves, egg, pool, intro);
+            HazardField hazards = battle.GetComponent<HazardField>();
+            if (hazards == null)
+            {
+                hazards = battle.AddComponent<HazardField>();
+            }
+
+            hazards.Configure(hazard);
+            director.Configure(waves, egg, intro);
 
             // الزعماء يُضافون إلى كتالوج التوليد لا إلى الموجات المصمَّمة:
             // §14 تُخرجهم كل خمس وعشر، ووضعُهم في موجةٍ بعينها يجعل ظهورهم

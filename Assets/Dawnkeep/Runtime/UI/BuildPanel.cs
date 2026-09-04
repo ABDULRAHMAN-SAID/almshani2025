@@ -238,13 +238,16 @@ namespace Dawnkeep.UI
         {
             _cards[index].SetActive(true);
 
-            bool affordable = _treasury == null || _treasury.CanAfford(def.Cost);
+            // الثمن المعروض هو المخصوم نفسه: بطاقةٌ تقول مئةً وتخصم خمسةً
+            // وثمانين تُقرأ عطباً لا بركة.
+            int price = BuildingDirector.CostOf(def);
+            bool affordable = _treasury == null || _treasury.CanAfford(price);
             _cardBack[index].color = panelColor;
 
             _name[index].text = Loc.Shape(def.DisplayName);
             _name[index].color = goldColor;
 
-            _cost[index].text = Loc.Format(LocKeys.BuildCost, Digits(def.Cost));
+            _cost[index].text = Loc.Format(LocKeys.BuildCost, Digits(price));
             _cost[index].color = affordable ? inkColor : denyColor;
 
             _summary[index].text = Loc.Shape(def.Summary);
@@ -258,7 +261,9 @@ namespace Dawnkeep.UI
             _cardBack[index].color = new Color(panelColor.r + 0.06f, panelColor.g + 0.03f,
                 panelColor.b + 0.02f, panelColor.a);
 
-            float fraction = _treasury != null ? _treasury.SellFraction : 0.7f;
+            // النسبة **بعد** بركات §15: عرض الرقم الخام يجعل اللوحة تقول
+            // سبعين ويعود اللاعب بخمسةٍ وثمانين.
+            float fraction = _treasury != null ? _treasury.RefundFraction : 0.7f;
             int back = Mathf.RoundToInt(current.TotalPaid * fraction);
 
             _name[index].text = Loc.Text(LocKeys.BuildSell);

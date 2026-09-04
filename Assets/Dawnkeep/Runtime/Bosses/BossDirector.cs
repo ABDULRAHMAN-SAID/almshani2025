@@ -28,9 +28,6 @@ namespace Dawnkeep.Bosses
         [Tooltip("جاهزة البيضة المجمَّعة. تُملأ من باني المشهد.")]
         [SerializeField] private GameObject eggPrefab;
 
-        [Tooltip("جاهزة بركة السمّ المجمَّعة.")]
-        [SerializeField] private GameObject poolPrefab;
-
         [Tooltip("قائد الموجات — منه يستدعي الزعيم حاشيته من مجمّعاتها.")]
         [SerializeField] private WaveDirector waves;
 
@@ -39,7 +36,6 @@ namespace Dawnkeep.Bosses
 
         private readonly List<Boss> _bosses = new List<Boss>(4);
         private readonly List<BossEgg> _eggs = new List<BossEgg>(16);
-        private readonly List<PoisonPool> _pools = new List<PoisonPool>(12);
         private readonly List<Keeping> _marked = new List<Keeping>(4);
 
         private readonly Unit[] _scan = new Unit[64];
@@ -54,11 +50,10 @@ namespace Dawnkeep.Bosses
         /// <summary>الزعماء في الساحة — للواجهة ولشريط صحّتهم.</summary>
         public IReadOnlyList<Boss> Bosses { get { return _bosses; } }
 
-        public void Configure(WaveDirector director, GameObject egg, GameObject pool, BossIntro shot)
+        public void Configure(WaveDirector director, GameObject egg, BossIntro shot)
         {
             waves = director != null ? director : waves;
             eggPrefab = egg != null ? egg : eggPrefab;
-            poolPrefab = pool != null ? pool : poolPrefab;
             intro = shot != null ? shot : intro;
         }
 
@@ -121,7 +116,6 @@ namespace Dawnkeep.Bosses
 
             TickBosses(now, dt);
             TickEggs(now);
-            TickPools(now, dt);
         }
 
         private void TickBosses(float now, float dt)
@@ -172,6 +166,14 @@ namespace Dawnkeep.Bosses
             if (boss.Definition.Kind == BossKind.EaterOfDawn && _light != null)
             {
                 _light.RadiusMultiplier = 1f;
+            }
+
+            // إعادة اختيار البركة تُكسب بقتل زعيم (§15: «من اللعب وليس
+            // إعلاناً»). واحدةٌ للمرحلة: الثاني لا يزيدها لأنّها لا تُخزَّن.
+            Dawnkeep.Boons.BoonDealer dealer = Dawnkeep.Boons.BoonDealer.Instance;
+            if (dealer != null)
+            {
+                dealer.EarnReroll();
             }
 
             // العلامة تُرفع بموت واضعتها وحدها: مسحُها عند موت أيّ زعيم يُطفئ
@@ -358,17 +360,20 @@ namespace Dawnkeep.Bosses
             }
         }
 
+        /// <summary>
+        /// بركة السمّ من **حقل الأخطار المشترك** لا من مجمّعٍ خاصّ: هي ونارُ
+        /// «حجر الجمر» (§15) شيءٌ واحد بلونين وضحيّتين.
+        /// </summary>
         private void SpawnPool(Vector3 at, BossDefinition def)
         {
-            PoisonPool pool = TakePool();
-            if (pool == null)
+            HazardField hazards = HazardField.Instance;
+            if (hazards == null)
             {
                 return;
             }
 
-            Vector3 place = at;
-            place.y = Ground(place.x, place.z, at.y) + 0.06f;
-            pool.Place(place, def.PoolRadius, def.PoolDamage, def.PoolSeconds);
+            hazards.Place(at, def.PoolRadius, def.PoolDamage, def.PoolSeconds,
+                Faction.Kingdom, hazards.PoisonTint);
         }
 
         private void LayEggs(Boss boss, BossDefinition def)
@@ -580,38 +585,6 @@ namespace Dawnkeep.Bosses
             egg.Retire();
         }
 
-        private void TickPools(float now, float dt)
-        {
-            if (_combat == null)
-            {
-                return;
-            }
-
-            for (int i = 0; i < _pools.Count; i++)
-            {
-                PoisonPool pool = _pools[i];
-                if (pool == null || !pool.Active)
-                {
-                    continue;
-                }
-
-                if (now >= pool.ExpiresAt)
-                {
-                    pool.Retire();
-                    continue;
-                }
-
-                int found = _combat.QueryFaction(pool.Position, pool.Radius, Faction.Kingdom, _scan);
-                for (int u = 0; u < found; u++)
-                {
-                    Unit unit = _scan[u];
-                    if (unit != null && unit.Alive)
-                    {
-                        unit.TakeDamage(pool.DamagePerSecond * dt);
-                    }
-                }
-            }
-        }
 
         /// <summary>
         /// يضرب أقرب بيضة إلى نقطة. تستدعيها اللمسة والقدرات: البيضة ليست
@@ -676,31 +649,6 @@ namespace Dawnkeep.Bosses
             return egg;
         }
 
-        private PoisonPool TakePool()
-        {
-            for (int i = 0; i < _pools.Count; i++)
-            {
-                if (_pools[i] != null && !_pools[i].Active)
-                {
-                    return _pools[i];
-                }
-            }
-
-            if (poolPrefab == null)
-            {
-                return null;
-            }
-
-            GameObject go = Instantiate(poolPrefab, _root);
-            PoisonPool pool = go.GetComponent<PoisonPool>();
-            if (pool == null)
-            {
-                pool = go.AddComponent<PoisonPool>();
-            }
-
-            _pools.Add(pool);
-            return pool;
-        }
 
         /// <summary>اتّجاه الزعيم نحو أقرب هدف مملكيّ، أو نحو ما يواجهه.</summary>
         private Vector3 Heading(Boss boss)

@@ -312,21 +312,46 @@ namespace Dawnkeep.Hero
                 return;
             }
 
-            _nextAttack = now + definition.AttackInterval;
-            _attackSlowUntil = now + (definition.AttackInterval * 0.5f);
+            _nextAttack = now + AttackInterval;
+            _attackSlowUntil = now + (AttackInterval * 0.5f);
 
             if (_animator != null)
             {
                 _animator.Shoot();
             }
 
-            float damage = definition.Damage;
-            if (Roll() < definition.CritChance)
+            float damage = definition.Damage
+                * Dawnkeep.Boons.BoonBook.Stat(Dawnkeep.Boons.BoonStat.HeroDamage);
+
+            float crit = definition.CritChance
+                * Dawnkeep.Boons.BoonBook.Stat(Dawnkeep.Boons.BoonStat.HeroCrit);
+
+            // «يقظة الفجر» (§15): أوّل ضربة على عدوٍّ كامل الصحّة حرِجة دائماً.
+            // شرطُ الصحّة الكاملة هو ما يمنعها من أن تصير حرِجاً دائماً على كل
+            // ضربة — وهي حينها ليست بركةً بل مضاعفَ ضررٍ مقنَّعاً.
+            bool opener = Dawnkeep.Boons.BoonBook.Flagged(Dawnkeep.Boons.BoonFlag.FirstLight)
+                && _target.Health >= _target.MaxHealth - 0.01f;
+
+            if (opener || Roll() < crit)
             {
                 damage *= definition.CritMultiplier;
             }
 
             Strike(_target, damage);
+        }
+
+        /// <summary>
+        /// فترة ضرب البطل بعد بركات §15. البركة تحرّك **السرعة**، والفترة
+        /// مقلوبها — فالقسمة لا الضرب، وضربُها يبطئ ما وُعد بتسريعه.
+        /// </summary>
+        private float AttackInterval
+        {
+            get
+            {
+                float speed = Mathf.Max(0.1f,
+                    Dawnkeep.Boons.BoonBook.Stat(Dawnkeep.Boons.BoonStat.HeroAttackSpeed));
+                return definition.AttackInterval / speed;
+            }
         }
 
         /// <summary>
@@ -347,8 +372,8 @@ namespace Dawnkeep.Hero
                 return;
             }
 
-            _nextAttack = now + definition.AttackInterval;
-            _attackSlowUntil = now + (definition.AttackInterval * 0.5f);
+            _nextAttack = now + AttackInterval;
+            _attackSlowUntil = now + (AttackInterval * 0.5f);
 
             if (_animator != null)
             {
@@ -448,7 +473,7 @@ namespace Dawnkeep.Hero
                 return false;
             }
 
-            _volleyReady = Time.time + definition.VolleyCooldown;
+            _volleyReady = Time.time + Cooldown(true);
 
             Vector3 me = _transform.position;
             int found = _combat.QueryFaction(me, definition.WeaponRange, Faction.Horde, _scan);
@@ -500,7 +525,7 @@ namespace Dawnkeep.Hero
                 return false;
             }
 
-            _rallyReady = Time.time + definition.RallyCooldown;
+            _rallyReady = Time.time + Cooldown(false);
             _bannerUntil = Time.time + definition.RallySeconds;
 
             EnsureBanner();
@@ -677,9 +702,14 @@ namespace Dawnkeep.Hero
 
         // ── أدوات ───────────────────────────────────────────────────────────
 
+        /// <summary>
+        /// مهلة القدرة بعد بركات §15. المضاعف أقلُّ من واحد يعني «أسرع»،
+        /// فيُضرب في المهلة مباشرة لا يُقسم عليها.
+        /// </summary>
         private float Cooldown(bool volley)
         {
-            return volley ? definition.VolleyCooldown : definition.RallyCooldown;
+            float raw = volley ? definition.VolleyCooldown : definition.RallyCooldown;
+            return raw * Dawnkeep.Boons.BoonBook.Stat(Dawnkeep.Boons.BoonStat.HeroCooldown);
         }
 
         private static float Readiness(float readyAt, float cooldown)

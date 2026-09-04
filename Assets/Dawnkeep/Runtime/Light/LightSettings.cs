@@ -69,13 +69,45 @@ namespace Dawnkeep.Light
         /// كما يقول §11. الرقم الوحيد المستحدث هو `zoneArmourCut` وهو في الأصل
         /// لا في الكود.
         /// </summary>
-        public float ZoneArmourCut { get { return zoneArmourCut; } }
+        public float ZoneArmourCut
+        {
+            get
+            {
+                return zoneArmourCut
+                    * Dawnkeep.Boons.BoonBook.Stat(Dawnkeep.Boons.BoonStat.BeaconArmourCut);
+            }
+        }
 
-        public float ArmourCutPerCharge { get { return armourCutPerCharge; } }
+        public float ArmourCutPerCharge
+        {
+            get
+            {
+                return armourCutPerCharge
+                    * Dawnkeep.Boons.BoonBook.Stat(Dawnkeep.Boons.BoonStat.BeaconArmourCut);
+            }
+        }
 
-        public float RangeBonusPerCharge { get { return rangeBonusPerCharge; } }
+        public float RangeBonusPerCharge
+        {
+            get
+            {
+                return rangeBonusPerCharge
+                    * Dawnkeep.Boons.BoonBook.Stat(Dawnkeep.Boons.BoonStat.LightRangeBonus);
+            }
+        }
 
-        public float SnuffSeconds { get { return snuffSeconds; } }
+        /// <summary>
+        /// مدّة إطفاء المنارة. بركة §15 تخفضها — والمضاعف أقلّ من واحد يعني
+        /// «تعود أسرع»، فيُضرب في المدّة لا يُقسم عليها.
+        /// </summary>
+        public float SnuffSeconds
+        {
+            get
+            {
+                return snuffSeconds
+                    * Dawnkeep.Boons.BoonBook.Stat(Dawnkeep.Boons.BoonStat.SnuffSeconds);
+            }
+        }
 
         public float EdgeSoftness { get { return edgeSoftness; } }
 
@@ -89,6 +121,8 @@ namespace Dawnkeep.Light
             float scale = difficulty != null
                 ? Mathf.Max(0.1f, difficulty.Active.LightScale)
                 : 1f;
+
+            scale *= Dawnkeep.Boons.BoonBook.Stat(Dawnkeep.Boons.BoonStat.BeaconRadius);
 
             return baseRadius * (1f + (radiusPerCharge * Mathf.Max(0, charges))) * scale;
         }

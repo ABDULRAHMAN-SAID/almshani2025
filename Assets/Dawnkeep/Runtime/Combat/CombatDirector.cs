@@ -140,6 +140,47 @@ namespace Dawnkeep.Combat
         /// **يملك المنادي مخزنه**: مخزنٌ مشترك هنا يعني أنّ استعلاماً متداخلاً
         /// (انفجارٌ يستدعي سلسلةً) يمسح نتيجة سابقه تحت قدميه.
         /// </summary>
+        /// <summary>
+        /// يَعُدّ من في الدائرة من فصيلٍ بعينه، بلا مصفوفة نتائج. العدّ وحده
+        /// حين يكفي العددُ: تمريرُ مصفوفةٍ لكل جنديّ في كل نوبةٍ يخصّص أو
+        /// يحجز بلا حاجة.
+        /// </summary>
+        public int CountFaction(Vector3 centre, float radius, Faction faction, int cap)
+        {
+            if (!_ready || cap <= 0)
+            {
+                return 0;
+            }
+
+            int found = _hash.Query(centre, radius, _neighbours);
+            float radiusSqr = radius * radius;
+            int count = 0;
+
+            for (int n = 0; n < found && count < cap; n++)
+            {
+                int j = _neighbours[n];
+                if (j >= _units.Count)
+                {
+                    continue;
+                }
+
+                Unit unit = _units[j];
+                if (unit == null || !unit.Alive || unit.Faction != faction)
+                {
+                    continue;
+                }
+
+                Vector3 delta = unit.Body.position - centre;
+                delta.y = 0f;
+                if (delta.sqrMagnitude <= radiusSqr)
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
         public int QueryFaction(Vector3 centre, float radius, Faction faction, Unit[] results)
         {
             if (results == null || !_ready)
@@ -271,7 +312,18 @@ namespace Dawnkeep.Combat
 
                 if (_treasury != null && unit.Definition != null)
                 {
-                    _treasury.AddBounty(unit.Definition.Bounty);
+                    // «وقود الظلام» (§15): القتلُ في الظلام يزيد المكافأة.
+                    // القراءة من `LightLevel` المحفوظة على الوحدة لا من الحقل
+                    // الآن: القتيل قد سقط خارج النور ثمّ أُشعلت منارةٌ فوقه،
+                    // وما كُسب يُحسب حيث وقع لا حيث صار.
+                    int bounty = unit.Definition.Bounty;
+                    if (Dawnkeep.Boons.BoonBook.Flagged(Dawnkeep.Boons.BoonFlag.DarkTithe))
+                    {
+                        bounty = Mathf.RoundToInt(bounty
+                            * Mathf.Lerp(DarkTitheBonus, 1f, Mathf.Clamp01(unit.LightLevel)));
+                    }
+
+                    _treasury.AddBounty(bounty);
                 }
             }
 
@@ -300,6 +352,43 @@ namespace Dawnkeep.Combat
                 _units.RemoveAt(i);
             }
         }
+
+        /// <summary>
+        /// «الصفوف المتراصّة» (§15): المتقاربون يقاومون أكثر ويتحرّكون أبطأ.
+        /// المكافأة تتوقّف عند الجار الثالث: بلا سقفٍ يصير الحلّ كومةً واحدة،
+        /// وهو أسوأ ما يمكن أن تعلّمه بركةٌ لدفاعٍ يُقرأ (§3).
+        /// </summary>
+        private void TickPacked(Unit unit, UnitDefinition def)
+        {
+            if (def.Faction != Faction.Kingdom
+                || !Dawnkeep.Boons.BoonBook.Flagged(Dawnkeep.Boons.BoonFlag.PackedRanks))
+            {
+                unit.PackFactor = 1f;
+                unit.PackResistance = 0f;
+                return;
+            }
+
+            // ‏−1 لأنّ الوحدة نفسها في الدائرة. والسقف PackCap+1 يشمله.
+            int near = CountFaction(unit.Body.position, PackRadius, Faction.Kingdom, PackCap + 1) - 1;
+            if (near <= 0)
+            {
+                unit.PackFactor = 1f;
+                unit.PackResistance = 0f;
+                return;
+            }
+
+            int counted = Mathf.Min(near, PackCap);
+            unit.PackResistance = PackResistancePer * counted;
+            unit.PackFactor = 1f - (PackSlowPer * counted);
+        }
+
+        /// <summary>ما تبلغه مكافأة القتل في الظلام الكامل مع «وقود الظلام».</summary>
+        private const float DarkTitheBonus = 1.6f;
+
+        private const float PackRadius = 3.2f;
+        private const int PackCap = 3;
+        private const float PackResistancePer = 0.05f;
+        private const float PackSlowPer = 0.06f;
 
         private void TickUnit(int index, Unit unit, float dt, float now)
         {
@@ -334,6 +423,11 @@ namespace Dawnkeep.Combat
                     && unit.Faction == Faction.Horde
                     ? FindStructure(unit, def)
                     : null;
+
+                // «الصفوف المتراصّة» (§15): تُحسب على نوبة التفكير لا في كل
+                // إطار — عدُّ الجيران ستّين مرّة في الثانية لكل جنديّ يقتل
+                // الإطار مقابل رقمٍ لا يتغيّر بين نبضةٍ وأخرى.
+                TickPacked(unit, def);
 
                 unit.NextThink = now + def.RetargetInterval;
             }
@@ -426,7 +520,15 @@ namespace Dawnkeep.Combat
 
             // الإبطاء يضرب السرعة هنا لا في التعريف: التعريف أصلٌ مشترك بين
             // كل نسخ الوحدة، وتعديله يبطئ الجيش كلّه.
-            float speed = desired.sqrMagnitude > 0.0001f ? def.MoveSpeed * unit.SpeedMultiplier : 0f;
+            // بركات §15 على المملكة وحدها: مضاعفها على المهاجم يجعل البركة
+            // تعمل لصالح من هي عليه.
+            float boonSpeed = def.Faction == Faction.Kingdom
+                ? Dawnkeep.Boons.BoonBook.Stat(Dawnkeep.Boons.BoonStat.ArmyMoveSpeed)
+                : 1f;
+
+            float speed = desired.sqrMagnitude > 0.0001f
+                ? def.MoveSpeed * unit.SpeedMultiplier * boonSpeed * unit.PackFactor
+                : 0f;
             if (speed > 0f)
             {
                 desired.y = 0f;
@@ -464,7 +566,13 @@ namespace Dawnkeep.Combat
                 && inRange && now >= unit.NextAttack)
             {
                 // راية الحشد تسرّع الضرب: الفترة تُقسَم على الزيادة (§8)
-                unit.NextAttack = now + (def.AttackInterval / (1f + unit.RallyAttackSpeed));
+                float boonRate = def.Faction == Faction.Kingdom
+                    ? Mathf.Max(0.1f,
+                        Dawnkeep.Boons.BoonBook.Stat(Dawnkeep.Boons.BoonStat.ArmyAttackSpeed))
+                    : 1f;
+
+                unit.NextAttack = now
+                    + (def.AttackInterval / ((1f + unit.RallyAttackSpeed) * boonRate));
                 if (unit.Animator != null)
                 {
                     if (def.Ranged)

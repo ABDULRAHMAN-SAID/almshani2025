@@ -253,6 +253,8 @@ namespace Dawnkeep.Combat
             HealthScale = 1f;
             DamageScale = 1f;
             DamageTakenScale = 1f;
+            PackFactor = 1f;
+            PackResistance = 0f;
         }
 
         /// <summary>
@@ -269,6 +271,8 @@ namespace Dawnkeep.Combat
             HealthScale = 1f;
             DamageScale = 1f;
             DamageTakenScale = 1f;
+            PackFactor = 1f;
+            PackResistance = 0f;
             _health = MaxHealth;
             Alive = true;
             DeadFor = 0f;
@@ -314,8 +318,44 @@ namespace Dawnkeep.Combat
         /// <summary>سقف الصحّة بعد مضاعف الصعوبة — تقرؤه أشرطة الصحّة والفرق.</summary>
         public float MaxHealth
         {
-            get { return (definition != null ? definition.MaxHealth : 1f) * Mathf.Max(0.01f, HealthScale); }
+            get
+            {
+                if (definition == null)
+                {
+                    return Mathf.Max(0.01f, HealthScale);
+                }
+
+                return definition.MaxHealth * Mathf.Max(0.01f, HealthScale) * HealthBoon;
+            }
         }
+
+        /// <summary>
+        /// بركة الصحّة (§15) — للمملكة وحدها، وللبطل بركته لا بركة الجند.
+        /// </summary>
+        private float HealthBoon
+        {
+            get
+            {
+                if (definition.Faction != Faction.Kingdom)
+                {
+                    return 1f;
+                }
+
+                return definition.Champion
+                    ? Dawnkeep.Boons.BoonBook.Stat(Dawnkeep.Boons.BoonStat.HeroHealth)
+                    : Dawnkeep.Boons.BoonBook.Stat(Dawnkeep.Boons.BoonStat.ArmyHealth);
+            }
+        }
+
+        /// <summary>
+        /// معامل سرعة «الصفوف المتراصّة» (§15). يضبطه القائد على نوبة التفكير
+        /// لا في كل إطار: عدُّ الجيران ستّين مرّةً في الثانية لكل جنديّ يقتل
+        /// الإطار مقابل رقمٍ لا يتغيّر بين نبضةٍ وأخرى.
+        /// </summary>
+        public float PackFactor { get; set; }
+
+        /// <summary>مقاومةٌ تُضاف من التراصّ. تُضبط مع `PackFactor`.</summary>
+        public float PackResistance { get; set; }
 
         /// <summary>ضرر الضربة بعد مضاعف الصعوبة.</summary>
         public float Damage
@@ -337,6 +377,8 @@ namespace Dawnkeep.Combat
             HealthScale = Mathf.Max(0.01f, healthScale);
             DamageScale = Mathf.Max(0f, damageScale);
             DamageTakenScale = 1f;
+            PackFactor = 1f;
+            PackResistance = 0f;
             if (_transform == null)
             {
                 Awake();
@@ -404,6 +446,13 @@ namespace Dawnkeep.Combat
             if (Time.time < _rallyUntil)
             {
                 armour += _rallyResistance;
+            }
+
+            // بركات §15 على المملكة وحدها، والتراصّ معها بالقاعدة نفسها
+            if (definition != null && definition.Faction == Faction.Kingdom)
+            {
+                armour += Dawnkeep.Boons.BoonBook.Stat(Dawnkeep.Boons.BoonStat.ArmyResistance) - 1f;
+                armour += PackResistance;
             }
 
             armour = Mathf.Clamp(armour, 0f, 0.9f) * (1f - Mathf.Clamp01(armourPierce));

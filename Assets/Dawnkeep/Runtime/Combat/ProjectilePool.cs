@@ -188,6 +188,20 @@ namespace Dawnkeep.Combat
 
             Vector3 centre = target.Body.position;
 
+            // «حجر الجمر» (§15): القذيفة المنفجرة تترك ناراً في موضعها. النار
+            // على القذائف المنفجرة وحدها — سهمٌ يشعل النار ليس «حجر جمر».
+            if (effect.BlastRadius > 0f
+                && Dawnkeep.Boons.BoonBook.Flagged(Dawnkeep.Boons.BoonFlag.BurningStones))
+            {
+                HazardField hazards = HazardField.Instance;
+                if (hazards != null)
+                {
+                    hazards.Place(centre, effect.BlastRadius * BurnSpread,
+                        damage * BurnDamageShare, BurnSeconds,
+                        target.Faction, hazards.FireTint);
+                }
+            }
+
             if (effect.BlastRadius > 0f)
             {
                 int found = _combat.QueryFaction(centre, effect.BlastRadius, target.Faction, _splash);
@@ -229,6 +243,13 @@ namespace Dawnkeep.Combat
 
         /// <summary>أبعد ما تقفز إليه السلسلة بالمتر.</summary>
         private const float ChainReach = 9f;
+
+        /// <summary>نار «حجر الجمر»: اتّساعها نسبةً إلى الانفجار، وضررُها ومدّتها.</summary>
+        private const float BurnSpread = 0.85f;
+
+        private const float BurnDamageShare = 0.32f;
+
+        private const float BurnSeconds = 4.5f;
 
         private void Update()
         {

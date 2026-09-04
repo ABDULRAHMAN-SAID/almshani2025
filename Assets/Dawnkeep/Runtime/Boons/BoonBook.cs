@@ -1,0 +1,144 @@
+using System.Collections.Generic;
+using UnityEngine;
+
+namespace Dawnkeep.Boons
+{
+    /// <summary>
+    /// ما اختاره اللاعب هذه الجولة، مجموعاً في جدولٍ يُقرأ بضربةٍ واحدة.
+    ///
+    /// **المضاعفات تُضرب لا تُجمع**: بركتان بـ+18% تعطيان 1.39 لا 1.36؛ الفرق
+    /// صغير على اثنتين وكبير على ستّ، والضرب هو ما يجعل التكديس يتناقص من
+    /// نفسه بلا سقفٍ مكتوب.
+    ///
+    /// **لا `Update` فيه**: هو مخزنٌ يُقرأ، والقراءة `Dictionary` واحدة —
+    /// أرخص من تمرير مرجعٍ إلى كل نظام.
+    /// </summary>
+    [DisallowMultipleComponent]
+    public class BoonBook : MonoBehaviour
+    {
+        public static BoonBook Instance { get; private set; }
+
+        private readonly Dictionary<BoonStat, float> _stats = new Dictionary<BoonStat, float>(24);
+        private readonly HashSet<BoonFlag> _flags = new HashSet<BoonFlag>();
+        private readonly List<BoonDefinition> _taken = new List<BoonDefinition>(8);
+
+        /// <summary>يُرفع كلّما أُخذت بركة — تُعيد الواجهة رسم ما تعرضه.</summary>
+        public event System.Action Changed;
+
+        /// <summary>ما أُخذ هذه الجولة، بترتيب أخذه.</summary>
+        public IReadOnlyList<BoonDefinition> Taken { get { return _taken; } }
+
+        private void Awake()
+        {
+            Instance = this;
+        }
+
+        private void OnDestroy()
+        {
+            if (Instance == this)
+            {
+                Instance = null;
+            }
+        }
+
+        /// <summary>
+        /// مضاعف رقمٍ بعينه. واحدٌ إن لم تمسّه بركة — فالمستدعي يضرب دائماً
+        /// ولا يفحص، ولا يحتاج فرعاً في حلقة إطار.
+        /// </summary>
+        public float Of(BoonStat stat)
+        {
+            float value;
+            return _stats.TryGetValue(stat, out value) ? value : 1f;
+        }
+
+        /// <summary>مضاعفٌ ساكن يعمل ولو لم يكن ثمّة كتاب في المشهد.</summary>
+        public static float Stat(BoonStat stat)
+        {
+            BoonBook book = Instance;
+            return book != null ? book.Of(stat) : 1f;
+        }
+
+        public bool Has(BoonFlag flag)
+        {
+            return _flags.Contains(flag);
+        }
+
+        public static bool Flagged(BoonFlag flag)
+        {
+            BoonBook book = Instance;
+            return book != null && book.Has(flag);
+        }
+
+        /// <summary>كم بركةً من فئةٍ أُخذت — يقرؤه المُوزِّع ليوازن العرض.</summary>
+        public int CountOf(BoonCategory category)
+        {
+            int count = 0;
+            for (int i = 0; i < _taken.Count; i++)
+            {
+                if (_taken[i] != null && _taken[i].Category == category)
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
+        public bool Contains(BoonDefinition boon)
+        {
+            return boon != null && _taken.Contains(boon);
+        }
+
+        public void Take(BoonDefinition boon)
+        {
+            if (boon == null || _taken.Contains(boon))
+            {
+                return;
+            }
+
+            _taken.Add(boon);
+
+            BoonDefinition.Change[] changes = boon.Changes;
+            for (int i = 0; i < changes.Length; i++)
+            {
+                if (changes[i].Stat == BoonStat.None)
+                {
+                    continue;
+                }
+
+                float current;
+                if (!_stats.TryGetValue(changes[i].Stat, out current))
+                {
+                    current = 1f;
+                }
+
+                _stats[changes[i].Stat] = current * changes[i].Multiplier;
+            }
+
+            if (boon.Flag != BoonFlag.None)
+            {
+                _flags.Add(boon.Flag);
+            }
+
+            Raise();
+        }
+
+        /// <summary>يمحو الجولة. تُستدعى عند إعادة المرحلة (§5).</summary>
+        public void Clear()
+        {
+            _stats.Clear();
+            _flags.Clear();
+            _taken.Clear();
+            Raise();
+        }
+
+        private void Raise()
+        {
+            System.Action handler = Changed;
+            if (handler != null)
+            {
+                handler();
+            }
+        }
+    }
+}

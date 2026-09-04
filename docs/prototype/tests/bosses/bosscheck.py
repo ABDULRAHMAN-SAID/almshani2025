@@ -206,12 +206,20 @@ for kind, arabic in (('BellRam', 'كبش الجرس'), ('MireMatron', 'أمّ ا
     branch = 'case BossKind.' + kind + ':' in DIR
     check(f'{arabic}: له فرعه في الحلقة', branch)
 
-check('لا `Update` في `Boss` ولا في البيضة ولا في البركة (§1)',
+# بركة السمّ انتقلت إلى `HazardField` المشترك مع نار §15: شيءٌ واحد
+# بلونين وضحيّتين، ومجمّعان له يعنيان علّةً تُصلَح في أحدهما وتبقى في الآخر.
+check('لا `Update` في `Boss` ولا في البيضة ولا في قرص الخطر (§1)',
       'void Update' not in read('Assets/Dawnkeep/Runtime/Bosses/Boss.cs')
       and 'void Update' not in read('Assets/Dawnkeep/Runtime/Bosses/BossEgg.cs')
-      and 'void Update' not in read('Assets/Dawnkeep/Runtime/Bosses/PoisonPool.cs'))
+      and 'void Update' not in read('Assets/Dawnkeep/Runtime/Combat/Hazard.cs'))
 
-check('البيضة والبركة مجمَّعتان لا مُنشأتين في مسار اللعب (§1)',
-      'TakeEgg()' in DIR and 'TakePool()' in DIR and 'Retire()' in DIR)
+HAZ = read('Assets/Dawnkeep/Runtime/Combat/HazardField.cs')
+check('البيضة مجمَّعة، والسمّ من حقل الأخطار المشترك (§1)',
+      'TakeEgg()' in DIR and 'HazardField.Instance' in DIR
+      and 'private Hazard Take()' in HAZ and 'Retire()' in HAZ)
+
+check('حقل الأخطار يخدم السمّ (§13) والنار (§15) معاً — لا مجمّعان',
+      'PoisonTint' in HAZ and 'FireTint' in HAZ
+      and 'HazardField.Instance' in read('Assets/Dawnkeep/Runtime/Combat/ProjectilePool.cs'))
 
 sys.exit(0 if ok else 1)

@@ -405,6 +405,15 @@ namespace Dawnkeep.Combat
             // ما بقي منها، والزرّ «ابدأ الآن» يقصّها.
             _phase = WavePhase.Respite;
             WavesCleared++;
+
+            // بركة الليلة (§15): تُعرض في الاستراحة لا في الاشتباك، ولوحتُها
+            // توقف الزمن — فالمهلة أدناه لا تجري تحت الاختيار.
+            Dawnkeep.Boons.BoonDealer dealer = Dawnkeep.Boons.BoonDealer.Instance;
+            if (dealer != null)
+            {
+                dealer.OpenFor(WavesCleared);
+            }
+
             _nextEvent = Time.time + betweenWaves;
             while (Time.time < _nextEvent)
             {

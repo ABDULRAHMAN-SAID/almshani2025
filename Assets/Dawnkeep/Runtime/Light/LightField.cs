@@ -100,6 +100,8 @@ namespace Dawnkeep.Light
 
         private void Update()
         {
+            TickChain();
+
             // حدّة الحواف: واضحة أثناء التخطيط، ناعمة في القتال (§11)
             bool planning = waves == null || waves.CanHasten || waves.Phase == WavePhase.Idle;
             float sharp = planning ? 1f : 0f;
@@ -143,6 +145,94 @@ namespace Dawnkeep.Light
         /// مضاعفاً بل منطقة واحدة أوسع. ومرورٌ واحد يخدم كل الاستعلامات، فلا
         /// تُمشَّط المنارات أربع مرّات لكل وحدة في كل إطار.
         /// </summary>
+        /// <summary>
+        /// «سلسلة القناديل» (§15): تداخل دائرتَي منارة يجرح جرحاً مستمرّاً
+        /// ضعيفاً. تُحسب على نبضةٍ لا في كل إطار — الجرح المستمرّ يُقاس بالزمن
+        /// المنقضي، فحسابُه أربع مرّاتٍ في الثانية يعطي الرقم نفسه بربع الثمن.
+        ///
+        /// والعدسة تُختصر إلى **نقطة منتصف** بين المنارتين بنصف قطرٍ من
+        /// تداخلهما: حسابُ شكل العدسة الحقيقيّ لكل زوجٍ في كل نبضة ثمنٌ لا
+        /// يشتري فرقاً يُرى على كاميرا الاستراتيجية.
+        /// </summary>
+        private void TickChain()
+        {
+            if (!Dawnkeep.Boons.BoonBook.Flagged(Dawnkeep.Boons.BoonFlag.LanternChain))
+            {
+                return;
+            }
+
+            float now = Time.time;
+            if (now < _nextChain)
+            {
+                return;
+            }
+
+            float span = Mathf.Max(ChainPeriod, now - _lastChain);
+            _lastChain = now;
+            _nextChain = now + ChainPeriod;
+
+            Dawnkeep.Combat.CombatDirector combat = Dawnkeep.Combat.CombatDirector.Instance;
+            if (combat == null)
+            {
+                return;
+            }
+
+            for (int a = 0; a < _beacons.Count; a++)
+            {
+                Beacon first = _beacons[a];
+                if (first == null || !first.IsLit)
+                {
+                    continue;
+                }
+
+                float radiusA = first.Radius * Multiplier;
+
+                for (int b = a + 1; b < _beacons.Count; b++)
+                {
+                    Beacon second = _beacons[b];
+                    if (second == null || !second.IsLit)
+                    {
+                        continue;
+                    }
+
+                    float radiusB = second.Radius * Multiplier;
+                    Vector3 delta = second.Position - first.Position;
+                    delta.y = 0f;
+
+                    float distance = delta.magnitude;
+                    float overlap = radiusA + radiusB - distance;
+                    if (overlap <= 0.5f || distance < 0.01f)
+                    {
+                        continue;
+                    }
+
+                    Vector3 centre = first.Position + (delta * (radiusA / (radiusA + radiusB)));
+                    float reach = Mathf.Min(overlap * 0.5f, Mathf.Min(radiusA, radiusB));
+
+                    int found = combat.QueryFaction(centre, reach,
+                        Dawnkeep.Combat.Faction.Horde, _chainScan);
+
+                    for (int i = 0; i < found; i++)
+                    {
+                        Dawnkeep.Combat.Unit unit = _chainScan[i];
+                        if (unit != null && unit.Alive)
+                        {
+                            unit.TakeDamage(ChainDamagePerSecond * span);
+                        }
+                    }
+                }
+            }
+        }
+
+        /// <summary>نبضة السلسلة بالثواني، وجرحُها في الثانية.</summary>
+        private const float ChainPeriod = 0.25f;
+
+        private const float ChainDamagePerSecond = 9f;
+
+        private float _nextChain;
+        private float _lastChain;
+        private readonly Dawnkeep.Combat.Unit[] _chainScan = new Dawnkeep.Combat.Unit[48];
+
         /// <summary>المضاعف مقصوصاً — صفرٌ أو سالبٌ يعني قسمة على صفر أدناه.</summary>
         private float Multiplier
         {

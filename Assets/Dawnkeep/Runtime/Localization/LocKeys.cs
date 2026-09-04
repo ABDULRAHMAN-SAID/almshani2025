@@ -119,5 +119,17 @@ namespace Dawnkeep.Localization
         public const string DifficultyNormal = "difficulty.normal";
         public const string DifficultyVeteran = "difficulty.veteran";
         public const string DifficultyNightmare = "difficulty.nightmare";
+
+        // بركات الجولة (§15)
+        public const string BoonTitle = "boon.title";
+        public const string BoonReroll = "boon.reroll";
+        public const string BoonHero = "boon.hero";
+        public const string BoonArmy = "boon.army";
+        public const string BoonTowers = "boon.towers";
+        public const string BoonEconomy = "boon.economy";
+        public const string BoonLight = "boon.light";
+        public const string BoonTaken = "boon.taken";
+        public const string TabBoons = "pause.tab.boons";
+        public const string BoonRow = "boon.row";
     }
 }

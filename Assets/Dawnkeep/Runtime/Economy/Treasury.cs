@@ -84,10 +84,23 @@ namespace Dawnkeep.Economy
             return true;
         }
 
+        /// <summary>
+        /// نسبة البيع بعد بركات §15. مقصوصة عند واحد: بركةٌ تعيد أكثر ممّا
+        /// دُفع تجعل البيع والشراء دورةً تطبع الفضّة.
+        /// </summary>
+        public float RefundFraction
+        {
+            get
+            {
+                return Mathf.Clamp01(sellFraction
+                    * Dawnkeep.Boons.BoonBook.Stat(Dawnkeep.Boons.BoonStat.SellRefund));
+            }
+        }
+
         /// <summary>يعيد للخزينة نسبة البيع من إجمالي ما دُفع في المبنى.</summary>
         public int Refund(int totalPaid)
         {
-            int back = Mathf.RoundToInt(totalPaid * sellFraction);
+            int back = Mathf.RoundToInt(totalPaid * RefundFraction);
             _silver += back;
             Raise();
             return back;
@@ -101,7 +114,8 @@ namespace Dawnkeep.Economy
                 return;
             }
 
-            _pendingBounty += amount;
+            _pendingBounty += Mathf.RoundToInt(amount
+                * Dawnkeep.Boons.BoonBook.Stat(Dawnkeep.Boons.BoonStat.KillBounty));
             Raise();
         }
 
@@ -111,8 +125,16 @@ namespace Dawnkeep.Economy
         /// </summary>
         public int PayDawn(int waveNumber, int buildingIncome)
         {
-            int income = waveIncomeBase + (waveIncomePerWave * Mathf.Max(0, waveNumber));
-            int total = income + buildingIncome + _pendingBounty;
+            // بركات §15 تُضرب في كل مصدرٍ على حدة لا في المجموع: بركة المزارع
+            // يجب أن تكافئ من بنى مزارع، لا من قتل كثيراً.
+            int income = Mathf.RoundToInt((waveIncomeBase
+                + (waveIncomePerWave * Mathf.Max(0, waveNumber)))
+                * Dawnkeep.Boons.BoonBook.Stat(Dawnkeep.Boons.BoonStat.WaveIncome));
+
+            int fromBuildings = Mathf.RoundToInt(buildingIncome
+                * Dawnkeep.Boons.BoonBook.Stat(Dawnkeep.Boons.BoonStat.BuildingIncome));
+
+            int total = income + fromBuildings + _pendingBounty;
 
             _pendingBounty = 0;
             _silver += total;

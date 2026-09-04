@@ -23,7 +23,11 @@ namespace Dawnkeep.UI
     [DisallowMultipleComponent]
     public class PauseMenu : MonoBehaviour
     {
-        private const int TabCount = 4;
+        /// <summary>
+        /// خمسة تبويبات: موجة الليلة، وقوّاتي، والأبراج، وبركاتي، والإعدادات.
+        /// **الإعدادات آخرها دائماً** — `ShowTab` يميّزها بموضعها لا باسمها.
+        /// </summary>
+        private const int TabCount = 5;
         private const int MaxRows = 9;
 
         [SerializeField] private TMP_FontAsset font;
@@ -161,6 +165,7 @@ namespace Dawnkeep.UI
                 case 0: written = FillWave(); break;
                 case 1: written = FillForces(); break;
                 case 2: written = FillTowers(); break;
+                case 3: written = FillBoons(); break;
                 default: return;      // الإعدادات أزرار لا صفوف
             }
 
@@ -233,6 +238,36 @@ namespace Dawnkeep.UI
 
                 _rows[row++].text = Loc.Format(LocKeys.WavePreviewRow,
                     entries[i].Unit.DisplayName, Digits(entries[i].Count));
+            }
+
+            return row;
+        }
+
+        /// <summary>
+        /// ما أُخذ من البركات هذه الجولة (§15). يُقرأ من `BoonBook` لا من
+        /// المُوزِّع: المُوزِّع يعرف ما عُرض، والكتاب يعرف ما صار في اليد.
+        /// </summary>
+        private int FillBoons()
+        {
+            Dawnkeep.Boons.BoonBook book = Dawnkeep.Boons.BoonBook.Instance;
+            if (book == null)
+            {
+                return 0;
+            }
+
+            System.Collections.Generic.IReadOnlyList<Dawnkeep.Boons.BoonDefinition> taken =
+                book.Taken;
+
+            int row = 0;
+            for (int i = 0; i < taken.Count && row < MaxRows; i++)
+            {
+                if (taken[i] == null)
+                {
+                    continue;
+                }
+
+                _rows[row++].text = Loc.Format(LocKeys.BoonRow,
+                    taken[i].DisplayName, taken[i].Summary);
             }
 
             return row;
@@ -449,15 +484,21 @@ namespace Dawnkeep.UI
 
             _tabHead = new Image[TabCount];
 
-            string[] keys = { LocKeys.TabWave, LocKeys.TabForces, LocKeys.TabTowers, LocKeys.TabSettings };
+            string[] keys =
+            {
+                LocKeys.TabWave, LocKeys.TabForces, LocKeys.TabTowers,
+                LocKeys.TabBoons, LocKeys.TabSettings,
+            };
             for (int i = 0; i < TabCount; i++)
             {
-                // أوّل تبويب يميناً: ترتيب القراءة العربي
-                float x = -14f - (i * 218f);
+                // أوّل تبويب يميناً: ترتيب القراءة العربي. العرض ١٧٠ لا ٢١٠
+                // بعد التبويب الخامس: خمسةٌ بالعرض القديم تبلغ ١٠٩٦ بكسلاً
+                // على لوحةٍ عرضها ٩٠٠، فيخرج آخرها من إطارها.
+                float x = -14f - (i * 176f);
                 int captured = i;
 
                 RectTransform head = MakeRect("Tab_" + i, panel,
-                    new Vector2(1f, 1f), new Vector2(x, -78f), new Vector2(210f, 54f));
+                    new Vector2(1f, 1f), new Vector2(x, -78f), new Vector2(170f, 54f));
 
                 Image face = head.gameObject.AddComponent<Image>();
                 face.color = dimColor;
@@ -468,8 +509,8 @@ namespace Dawnkeep.UI
                 button.targetGraphic = face;
                 button.onClick.AddListener(delegate { ShowTab(captured); });
 
-                Label("Caption", head, keys[i], 24f, inkColor,
-                    new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(202f, 40f),
+                Label("Caption", head, keys[i], 21f, inkColor,
+                    new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(162f, 40f),
                     TextAlignmentOptions.Midline);
             }
 

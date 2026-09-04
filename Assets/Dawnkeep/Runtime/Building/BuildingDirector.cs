@@ -194,6 +194,9 @@ namespace Dawnkeep.Building
             _treasury.PayDawn(_waves.WaveNumber, DawnIncome);
         }
 
+        /// <summary>ما يبطئه «حجر الجمر» من إطلاق القاذف (§15).</summary>
+        private const float BurningStonesRate = 0.78f;
+
         /// <summary>برج يرمي: يبحث عن هدف في مداه ويُطلق على فترته.</summary>
         private void TickTower(Building building, float now)
         {
@@ -209,10 +212,24 @@ namespace Dawnkeep.Building
                 return;
             }
 
-            building.NextShot = now + (1f / Mathf.Max(0.05f, def.ShotsPerSecond));
+            // بركات §15 على البرج: سرعة الإطلاق والضرر. و«حجر الجمر» يبطئ
+            // القاذف عمداً — الثمن جزءٌ من البركة لا أثرٌ جانبيّ.
+            float rate = Mathf.Max(0.1f,
+                Dawnkeep.Boons.BoonBook.Stat(Dawnkeep.Boons.BoonStat.TowerFireRate));
+
+            if (Dawnkeep.Boons.BoonBook.Flagged(Dawnkeep.Boons.BoonFlag.BurningStones)
+                && def.Effect == ProjectileEffect.Splash)
+            {
+                rate *= BurningStonesRate;
+            }
+
+            building.NextShot = now + (1f / Mathf.Max(0.05f, def.ShotsPerSecond * rate));
+
+            float damage = def.Damage
+                * Dawnkeep.Boons.BoonBook.Stat(Dawnkeep.Boons.BoonStat.TowerDamage);
 
             Vector3 muzzle = building.Body.position + (Vector3.up * muzzleHeight);
-            _projectiles.Fire(muzzle, target, def.Damage, 46f, def.Effect);
+            _projectiles.Fire(muzzle, target, damage, 46f, def.Effect);
         }
 
         /// <summary>
@@ -246,6 +263,16 @@ namespace Dawnkeep.Building
                     continue;
                 }
 
+                // «الحصاد الأخير» (§15): المزارع تنتج أكثر ولا تُصلَح. ثمنها
+                // هنا لا في مصلحٍ آخر — الورشة هي الإصلاح كلّه في هذا البناء،
+                // فاستثناؤها منها هو الثمن الذي وعدت به البركة.
+                if (other.Definition != null
+                    && other.Definition.Role == BuildingRole.Economy
+                    && Dawnkeep.Boons.BoonBook.Flagged(Dawnkeep.Boons.BoonFlag.FinalHarvest))
+                {
+                    continue;
+                }
+
                 Vector3 delta = other.Body.position - centre;
                 delta.y = 0f;
                 if (delta.sqrMagnitude > rangeSqr)
@@ -271,7 +298,11 @@ namespace Dawnkeep.Building
             IReadOnlyList<Unit> units = _combat.Units;
             Vector3 position = building.Body.position;
 
-            float rangeSqr = def.Range * def.Range;
+            // مدى البرج بعد بركة §15 وبعد زيادة النور (§11) معاً
+            float reach = def.Range
+                * Dawnkeep.Boons.BoonBook.Stat(Dawnkeep.Boons.BoonStat.TowerRange);
+
+            float rangeSqr = reach * reach;
             float minSqr = def.MinimumRange * def.MinimumRange;
 
             Unit best = null;
@@ -314,6 +345,22 @@ namespace Dawnkeep.Building
         // ── البناء والبيع ───────────────────────────────────────────────────
 
         /// <summary>
+        /// ثمن مبنىً بعد بركات §15. **مكانٌ واحد للحساب**: الثمن يُقرأ في
+        /// الخصم وفي `Raise` وفي بطاقة اللوحة، ولو حُسب في كلٍّ على حدة لَبيع
+        /// المبنى يوماً بأكثر ممّا دُفع فيه.
+        /// </summary>
+        public static int CostOf(BuildingDefinition definition)
+        {
+            if (definition == null)
+            {
+                return 0;
+            }
+
+            return Mathf.Max(0, Mathf.RoundToInt(definition.Cost
+                * Dawnkeep.Boons.BoonBook.Stat(Dawnkeep.Boons.BoonStat.BuildCost)));
+        }
+
+        /// <summary>
         /// يقيم مبنى على عقدة خالية بعد خصم ثمنه. يعيد null إن لم تكفِ الفضّة
         /// أو كانت العقدة مشغولة أو لا تقبل هذا الصنف.
         /// </summary>
@@ -334,7 +381,8 @@ namespace Dawnkeep.Building
                 _treasury = Treasury.Instance;
             }
 
-            if (_treasury == null || !_treasury.Spend(definition.Cost))
+            int price = CostOf(definition);
+            if (_treasury == null || !_treasury.Spend(price))
             {
                 return null;
             }
@@ -347,7 +395,7 @@ namespace Dawnkeep.Building
 
             Building building = go.AddComponent<Building>();
 
-            building.Raise(definition, node, definition.Cost, NextSeed());
+            building.Raise(definition, node, price, NextSeed());
             node.Attach(building);
             _buildings.Add(building);
 
@@ -369,12 +417,13 @@ namespace Dawnkeep.Building
                 _treasury = Treasury.Instance;
             }
 
-            if (_treasury == null || !_treasury.Spend(into.Cost))
+            int price = CostOf(into);
+            if (_treasury == null || !_treasury.Spend(price))
             {
                 return false;
             }
 
-            building.UpgradeTo(into, into.Cost, NextSeed());
+            building.UpgradeTo(into, price, NextSeed());
             SpawnGuards(building, into);
             EnsureBeacon(building, into);
             return true;

@@ -165,6 +165,18 @@ namespace Dawnkeep.EditorTools
                 DawnkeepLocale.Row(LocKeys.DifficultyNormal, "قياسي", "Normal"),
                 DawnkeepLocale.Row(LocKeys.DifficultyVeteran, "مخضرم", "Veteran"),
                 DawnkeepLocale.Row(LocKeys.DifficultyNightmare, "كابوس", "Nightmare"),
+
+                // بركات الجولة (§15)
+                DawnkeepLocale.Row(LocKeys.BoonTitle, "اختر بركةً لليلة", "Choose a boon"),
+                DawnkeepLocale.Row(LocKeys.BoonReroll, "اسحب ثلاثاً غيرها", "Draw three others"),
+                DawnkeepLocale.Row(LocKeys.BoonHero, "القائد", "Commander"),
+                DawnkeepLocale.Row(LocKeys.BoonArmy, "الجند", "Army"),
+                DawnkeepLocale.Row(LocKeys.BoonTowers, "الأبراج", "Towers"),
+                DawnkeepLocale.Row(LocKeys.BoonEconomy, "الاقتصاد", "Economy"),
+                DawnkeepLocale.Row(LocKeys.BoonLight, "النور", "Light"),
+                DawnkeepLocale.Row(LocKeys.BoonTaken, "لم تُؤخذ بركة بعد", "No boons taken yet"),
+                DawnkeepLocale.Row(LocKeys.TabBoons, "بركاتي", "My boons"),
+                DawnkeepLocale.Row(LocKeys.BoonRow, "{0} — {1}", "{0} — {1}"),
             };
         }
 
