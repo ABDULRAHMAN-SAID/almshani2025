@@ -69,7 +69,8 @@ namespace Dawnkeep.EditorTools
                 return;
             }
 
-            Require<StageOutcome>(battle);
+            // النتيجة تقرأ عدد الموجات من مقابض §10، فيبقى الفحص واللعبة على رقم واحد
+            SetPrivate(Require<StageOutcome>(battle), "balance", DawnkeepBuildSetup.Balance);
 
             bool wired = WireHero(definition);
             WirePanels();

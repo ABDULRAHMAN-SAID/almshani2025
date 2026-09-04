@@ -27,6 +27,9 @@ namespace Dawnkeep.Flow
     {
         public static StageOutcome Instance { get; private set; }
 
+        [Tooltip("مقابض توازن §10. يُملأ من باني الأصول؛ فارغاً يُستعمل العدد أدناه.")]
+        [SerializeField] private Economy.BalanceSettings balance;
+
         [Tooltip("عدد الموجات التي تُنهي المرحلة بالنجاة (§5: عشر).")]
         [SerializeField] private int wavesToSurvive = 10;
 
@@ -42,7 +45,10 @@ namespace Dawnkeep.Flow
 
         public StageResult Result { get { return _result; } }
 
-        public int WavesToSurvive { get { return wavesToSurvive; } }
+        public int WavesToSurvive
+        {
+            get { return balance != null ? balance.WavesToSurvive : wavesToSurvive; }
+        }
 
         /// <summary>الموجات التي نجا منها فعلاً — تعرضها شاشة النتيجة.</summary>
         public int WavesCleared { get; private set; }
@@ -93,7 +99,7 @@ namespace Dawnkeep.Flow
             // نفاد المحتوى فيتجمّد رقمها، ولا يتحقّق شرط الفوز أبداً.
             WavesCleared = _waves.WavesCleared;
 
-            if (WavesCleared >= wavesToSurvive)
+            if (WavesCleared >= WavesToSurvive)
             {
                 Resolve(StageResult.Victory);
             }

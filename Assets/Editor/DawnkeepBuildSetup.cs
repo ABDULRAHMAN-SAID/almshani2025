@@ -29,6 +29,32 @@ namespace Dawnkeep.EditorTools
     public static class DawnkeepBuildSetup
     {
         public const string BuildFolder = DawnkeepAssetPaths.Settings + "/Buildings";
+        private const string BalancePath = DawnkeepAssetPaths.Settings + "/BalanceSettings.asset";
+
+        /// <summary>مقابض §10 — تُقرأ مرّة عند البناء ويقرؤها الفحص أيضاً.</summary>
+        private static Dawnkeep.Economy.BalanceSettings _balance;
+
+        /// <summary>يقرؤها باني البطل أيضاً ليربط عدد الموجات بالنتيجة.</summary>
+        public static Dawnkeep.Economy.BalanceSettings Balance
+        {
+            get
+            {
+                if (_balance != null)
+                {
+                    return _balance;
+                }
+
+                _balance = AssetDatabase.LoadAssetAtPath<Dawnkeep.Economy.BalanceSettings>(BalancePath);
+                if (_balance == null)
+                {
+                    _balance = ScriptableObject.CreateInstance<Dawnkeep.Economy.BalanceSettings>();
+                    AssetDatabase.CreateAsset(_balance, BalancePath);
+                    AssetDatabase.SaveAssets();
+                }
+
+                return _balance;
+            }
+        }
 
         /// <summary>أمتار لكل وحدة مدى في §10.</summary>
         private const float RangeUnit = 6f;
@@ -204,6 +230,11 @@ namespace Dawnkeep.EditorTools
                 upgrades: new[] { wall2 });
 
             // ترتيب الكتالوج هو ترتيب البطاقات: الأرخص أوّلاً في كل نوع عقدة
+            ScaleUpgradeCosts(catalogue: new[]
+            {
+                cottage, farm, watchtower, barracks, camp, obelisk, bombard, workshop, beacon, wall,
+            });
+
             catalogue.Add(cottage);
             catalogue.Add(farm);
             catalogue.Add(watchtower);
@@ -416,11 +447,44 @@ namespace Dawnkeep.EditorTools
             Rows.Add(DawnkeepLocale.Row(key, name, translated[0]));
             Rows.Add(DawnkeepLocale.Row(key + ".summary", summary, translated[1]));
             SetPrivate(def, "role", role);
+            // ثمن الترقية يُضرب بمقبض §10: التعريف الجذر يبقى بثمنه، وما
+            // يُرقّى إليه يغلظ. الجذور هي ما يظهر في الكتالوج.
             SetPrivate(def, "cost", cost);
             SetPrivate(def, "maxHealth", health);
             SetPrivate(def, "shape", shape);
             SetPrivate(def, "nodes", nodes);
             SetPrivate(def, "upgrades", upgrades ?? new BuildingDefinition[0]);
+        }
+
+        /// <summary>
+        /// يضرب ثمن كل تعريف **ليس جذراً** بمقبض §10. الجذور تبقى بثمنها:
+        /// تغليظ أوّل مبنى يوقف اللعبة عند بدايتها، والمقصود إبطاء التراكم لا
+        /// منع الانطلاق.
+        /// </summary>
+        private static void ScaleUpgradeCosts(BuildingDefinition[] catalogue)
+        {
+            float scale = Balance.UpgradeCostScale;
+            if (scale <= 1.0001f)
+            {
+                return;
+            }
+
+            HashSet<BuildingDefinition> roots = new HashSet<BuildingDefinition>(catalogue);
+            string[] guids = AssetDatabase.FindAssets("t:BuildingDefinition", new[] { BuildFolder });
+
+            for (int i = 0; i < guids.Length; i++)
+            {
+                BuildingDefinition def = AssetDatabase.LoadAssetAtPath<BuildingDefinition>(
+                    AssetDatabase.GUIDToAssetPath(guids[i]));
+
+                if (def == null || roots.Contains(def))
+                {
+                    continue;
+                }
+
+                SetPrivate(def, "cost", Mathf.RoundToInt(def.Cost * scale));
+                EditorUtility.SetDirty(def);
+            }
         }
 
         private static BuildingDefinition Make(string assetName)
@@ -555,7 +619,10 @@ namespace Dawnkeep.EditorTools
             int outer = 0;
             int gate = 0;
 
-            for (int i = 0; i < kinds.Length; i++)
+            // ميزانية العقد من مقبض §10: ما زاد عنها لا يُوضع أصلاً
+            int budget = Mathf.Clamp(Balance.NodeBudget, 1, kinds.Length);
+
+            for (int i = 0; i < budget; i++)
             {
                 float radius;
                 float angle;
@@ -586,8 +653,18 @@ namespace Dawnkeep.EditorTools
                 Point(root, i, kinds[i], radius, angle, tiers[i]);
             }
 
+            // العقد الزائدة عن الميزانية تُهدم إن كانت من تشغيل سابق
+            for (int i = budget; i < kinds.Length; i++)
+            {
+                Transform stale = root.transform.Find("Node_" + kinds[i] + "_" + i);
+                if (stale != null)
+                {
+                    Object.DestroyImmediate(stale.gameObject);
+                }
+            }
+
             EditorUtility.SetDirty(root);
-            return kinds.Length;
+            return budget;
         }
 
         /// <summary>قلب الحصن على مركز القلعة — صحّته شرط الخسارة (§5).</summary>
