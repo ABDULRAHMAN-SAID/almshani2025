@@ -645,9 +645,13 @@ const GATE_ANGLE = routes[0] ? routes[0].a : 0;
 /* ═══ إدارة النسخ حسب اللقطة ═══ */
 let live=[];
 function clearLive(){ for(const o of live){ scene.remove(o); o.geometry && o.dispose && 0; } live=[]; }
-function addInstanced(geo, mat, list, build, shadow, tint){
+function addInstanced(geo, mat, list, build, shadow, tint, animAttr){
   if(!list.length) return;
   const im=new THREE.InstancedMesh(geo, mat, list.length);
+  if(animAttr){
+    // النسخ تتشارك الشبكة، والسمة تُضاف على نسخة منها لكل مادّة
+    const g=geo.clone(); g.setAttribute('aAnim', animAttr); im.geometry=g;
+  }
   if(tint){ const col=new THREE.Color();
     list.forEach((it,n)=>{ col.setRGB(it.tr||1, it.tg||1, it.tb||1); im.setColorAt(n, col); });
     if(im.instanceColor) im.instanceColor.needsUpdate=true; }
@@ -686,8 +690,15 @@ function populate(cx, cz, treeR, rockR, grassR, grassN){
         const k=(isHorse?HORSE_S:HUMAN_H)*it.s;
         p.set(it.x*SC, it.y*SC, it.z*SC); e.set(0, it.r, 0); sc.set(k,k,k);
       };
-      addInstanced(FOLK[key].body,  bodyMat,  list, place, true, false);
-      addInstanced(FOLK[key].cloth, clothMat, list, place, true, true);
+      const anim=new Float32Array(list.length*4);
+      list.forEach((it,n)=>{
+        anim[n*4]   = it.phase!==undefined ? it.phase : 0;
+        anim[n*4+1] = it.walk!==undefined ? it.walk : 0;
+        anim[n*4+2] = 1; anim[n*4+3] = 0;
+      });
+      const attr=new THREE.InstancedBufferAttribute(anim, 4);
+      addInstanced(FOLK[key].body,  bodyMat,  list, place, true, false, attr);
+      addInstanced(FOLK[key].cloth, clothMat, list, place, true, true, attr);
     }
   }
   if(grassR>0){
@@ -773,15 +784,126 @@ const GA = GATE_ANGLE*180/Math.PI;
 const GATE_R = 150;
 const gatePos = [Math.cos(GATE_ANGLE)*GATE_R*0.98, Math.sin(GATE_ANGLE)*GATE_R*0.98];
 const YAW_OUT = 90 - GA;          // الكاميرا خارج البوّابة تنظر إلى الداخل
+/* ═══ تحريك في المُظلِّل ═══
+   لا هيكل عظمي ولا مقاطع تحريك: كل رأس يحمل رقم مفصله، والوضعية تُحسب
+   **تحليلياً** من الزمن في مُظلِّل الرؤوس. دورة المشي جيبيّة أصلاً فتُكتب
+   بدالّة، والنتيجة أنّ مئة جندي يكلّفون المعالج صفراً — وهذا هو المطلوب في
+   استراتيجية جوّال. ولكل نسخة **طور** خاصّ فلا يمشون كلّهم بخطوة واحدة.
+
+   محاور المفاصل ثابتة لكل الأصناف لأنّها تُبنى بنفس النِّسَب، فتكفي جدولٌ
+   واحد في المُظلِّل. والسلسلة عمقها ثلاثة: ساعد ← عضد ← صدر. */
+const ANIM_PIVOT = LIMB_PIVOT.map(p=>new THREE.Vector3(p[0],p[1],p[2]));
+const ANIM_UNIFORMS = {
+  uTime:{value:0},
+  uPivot:{value:ANIM_PIVOT},
+  uParent:{value:LIMB_PARENT.slice()}
+};
+const ANIM_CHUNK = `
+  attribute vec2 uv2;            // ‏three لا يُعلن uv2 إلا مع خريطة انحجاب — نعلنها نحن
+  attribute vec4 aAnim;          // (طور، سرعة المشي، وزن الوقوف، احتياطي)
+  uniform float uTime;
+
+  // المحاور والآباء بفروع لا بمصفوفات: فهرسة مصفوفة uniform بقيمة **محسوبة**
+  // ممنوعة في GLSL ES 1.00، وتُفشل تصريف المُظلِّل كلّه فتختفي الشخصيات.
+  vec3 dkPivot(int i){
+    if(i == 1)  return vec3( 0.000, 0.520, 0.000);
+    if(i == 2)  return vec3( 0.000, 0.830, 0.000);
+    if(i == 3)  return vec3(-0.112, 0.780, 0.000);
+    if(i == 4)  return vec3(-0.123, 0.640, 0.100);
+    if(i == 5)  return vec3( 0.112, 0.780, 0.000);
+    if(i == 6)  return vec3( 0.114, 0.640, 0.045);
+    if(i == 7)  return vec3(-0.055, 0.500, 0.000);
+    if(i == 8)  return vec3(-0.055, 0.265, 0.012);
+    if(i == 9)  return vec3( 0.055, 0.500, 0.000);
+    if(i == 10) return vec3( 0.055, 0.265, 0.012);
+    if(i == 11) return vec3( 0.000, 0.830,-0.058);
+    return vec3(0.0);
+  }
+  int dkParent(int i){
+    if(i == 2)  return 1;
+    if(i == 3)  return 1;
+    if(i == 4)  return 3;
+    if(i == 5)  return 1;
+    if(i == 6)  return 5;
+    if(i == 8)  return 7;
+    if(i == 10) return 9;
+    if(i == 11) return 1;
+    return -1;
+  }
+
+  vec3 dkLimbEuler(int limb, float t, float walk){
+    float sn = sin(t);
+    // الركبة تنثني إلى الخلف فقط: نصف موجة موجبة لا موجة كاملة
+    float kneeL = max(0.0, sin(t + 2.30));
+    float kneeR = max(0.0, sin(t + 2.30 + 3.14159265));
+    float breathe = sin(uTime*1.25)*0.5 + 0.5;
+
+    if(limb == 1)  return vec3(0.045*walk + 0.012*breathe, 0.11*sn*walk, 0.0);
+    if(limb == 2)  return vec3(-0.02*walk, -0.07*sn*walk, 0.0);
+    if(limb == 3)  return vec3(-0.62*sn*walk, 0.0,  0.06*walk);
+    if(limb == 4)  return vec3(-0.34*max(0.0,-sn)*walk - 0.18*walk, 0.0, 0.0);
+    if(limb == 5)  return vec3( 0.62*sn*walk, 0.0, -0.06*walk);
+    if(limb == 6)  return vec3(-0.34*max(0.0, sn)*walk - 0.18*walk, 0.0, 0.0);
+    if(limb == 7)  return vec3( 0.78*sn*walk, 0.0, 0.0);
+    if(limb == 8)  return vec3(-0.95*kneeL*walk, 0.0, 0.0);
+    if(limb == 9)  return vec3(-0.78*sn*walk, 0.0, 0.0);
+    if(limb == 10) return vec3(-0.95*kneeR*walk, 0.0, 0.0);
+    if(limb == 11) return vec3(0.22*walk + 0.05*sn*walk, 0.0, 0.0);
+    return vec3(0.0);
+  }
+
+  vec3 dkRotEuler(vec3 p, vec3 e){
+    float sx=sin(e.x), cx=cos(e.x);
+    p = vec3(p.x, p.y*cx - p.z*sx, p.y*sx + p.z*cx);
+    float sy=sin(e.y), cy=cos(e.y);
+    p = vec3(p.x*cy + p.z*sy, p.y, -p.x*sy + p.z*cy);
+    float sz=sin(e.z), cz=cos(e.z);
+    return vec3(p.x*cz - p.y*sz, p.x*sz + p.y*cz, p.z);
+  }
+
+  vec3 dkPose(vec3 pos, float limbF){
+    int limb = int(limbF + 0.5);
+    float walk = clamp(aAnim.y, 0.0, 1.0);
+    float t = uTime * mix(1.35, 5.6, walk) + aAnim.x;
+
+    // السلسلة: المفصل ثم أبوه ثم جدّه — عمقها ثلاثة (ساعد ← عضد ← صدر)
+    int cur = limb;
+    for(int step=0; step<3; step++){
+      if(cur < 0) break;
+      pos = dkRotEuler(pos - dkPivot(cur), dkLimbEuler(cur, t, walk)) + dkPivot(cur);
+      cur = dkParent(cur);
+    }
+
+    // ارتداد الجسم: خطوتان في الدورة الواحدة، وميل بطيء عند الوقوف
+    pos.y += walk * 0.022 * abs(cos(t));
+    pos = dkRotEuler(pos, vec3(0.0, (1.0-walk)*0.035*sin(uTime*0.42 + aAnim.x), 0.0));
+    return pos;
+  }
+`;
+/* يُركّب التحريك على مادّة معيارية: نعيد كتابة موضع الرأس ومُسوّيه قبل الإسقاط */
+function animate(mat){
+  mat.onBeforeCompile = sh => {
+    sh.uniforms.uTime = ANIM_UNIFORMS.uTime;
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\n' + ANIM_CHUNK)
+      .replace('#include <begin_vertex>',
+        '#include <begin_vertex>\n  transformed = dkPose(transformed, uv2.x);')
+      .replace('#include <beginnormal_vertex>',
+        '#include <beginnormal_vertex>\n  objectNormal = normalize(dkPose(objectNormal + position, uv2.x) - dkPose(position, uv2.x));');
+  };
+  mat.customProgramCacheKey = () => 'dkAnim';
+  return mat;
+}
+
 /* ═══ أهل المملكة: بطل وجنود وقرويّون وخيل ═══
    نُصبح الشبكة الواحدة لكل صنف، ويُصبغ القماش بلون النسخة عبر instanceColor:
    القميص والعباءة والجُلّ بيضاء في الشبكة، فتأخذ لون الرايات لكل فصيلة. */
 // مادّتان: البدن لا يُصبغ بلون النسخة، والقماش يُصبغ. لو كانت واحدة لصبغ لونُ
 // الراية الجلدَ والفولاذ معه فيصير الجندي كتلة قرمزية بلا ملامح.
-const bodyMat=new THREE.MeshStandardMaterial({
-  color:0xffffff, roughness:0.68, metalness:0.16, vertexColors:true, side:THREE.DoubleSide });
-const clothMat=new THREE.MeshStandardMaterial({
-  color:0xffffff, roughness:0.86, metalness:0.0, vertexColors:true, side:THREE.DoubleSide });
+const bodyMat=animate(new THREE.MeshStandardMaterial({
+  color:0xffffff, roughness:0.68, metalness:0.16, vertexColors:true, side:THREE.DoubleSide }));
+const clothMat=animate(new THREE.MeshStandardMaterial({
+  color:0xffffff, roughness:0.86, metalness:0.0, vertexColors:true, side:THREE.DoubleSide }));
 const HUMAN_H = 3.05;                 // وحدة توليد ≈ 0.6 متر لعب ← الجندي 1.83 م
 const HORSE_S = 3.20;
 
@@ -808,12 +930,15 @@ const LIVERY = {
   folk:   [[0.643,0.573,0.451],[0.514,0.455,0.353],[0.427,0.482,0.400],[0.596,0.514,0.404]]
 };
 
-const folkPool=[];       // {x,z,r,v,s,tr,tg,tb}
+const folkPool=[];       // {x,z,r,v,s,tr,tg,tb,phase,walk}
+let MARCH_AT=null;       // موضع أول جندي زاحف واتّجاهه — منه تُوجَّه لقطة المشي
 {
   const rnd=rngFrom(SEED*7717+31);
-  const put=(v, x, z, rot, liv, scale)=>{
+  const put=(v, x, z, rot, liv, scale, walk)=>{
     folkPool.push({ v, x, z, r:rot, s:(scale||1)*(0.96+rnd()*0.09),
-                    y:groundY(x,z), tr:liv[0], tg:liv[1], tb:liv[2] });
+                    y:groundY(x,z), tr:liv[0], tg:liv[1], tb:liv[2],
+                    // طور خاصّ لكل نسخة: بدونه يمشي الجيش كلّه بخطوة واحدة
+                    phase: rnd()*6.2832, walk: walk||0 });
   };
   const ringR = 150;                              // نصف قطر سور القلعة بوحدات التوليد
   const gA = GATE_ANGLE;
@@ -846,17 +971,41 @@ const folkPool=[];       // {x,z,r,v,s,tr,tg,tb}
   for(const side of [-1,1]){
     const x=hx + ux*44 + px*side*30, z=hz + uz*44 + pz*side*30;
     folkPool.push({ v:'horse', x, z, r:-gA+Math.PI/2, s:1, y:groundY(x,z),
-                    tr:LIVERY.hero[0], tg:LIVERY.hero[1], tb:LIVERY.hero[2] });
+                    tr:LIVERY.hero[0], tg:LIVERY.hero[1], tb:LIVERY.hero[2],
+                    phase:rnd()*6.2832, walk:0 });
     // الفارس يجلس على السرج: 0.82 من وحدة بناء الحصان مضروبةً في مقياسه
     folkPool.push({ v:'sword2', x, z, r:-gA+Math.PI/2, s:0.98,
                     y:groundY(x,z)+0.82*HORSE_S/SC*SC,
-                    tr:LIVERY.hero[0], tg:LIVERY.hero[1], tb:LIVERY.hero[2] });
+                    tr:LIVERY.hero[0], tg:LIVERY.hero[1], tb:LIVERY.hero[2],
+                    phase:rnd()*6.2832, walk:0 });
   }
 
   // ٤) حرس على أبراج السور: أربعة موزّعة حول الطوق
   for(let i=0;i<4;i++){
     const a=gA + Math.PI*0.5 + i*Math.PI*0.42;
     put('sword', Math.cos(a)*(ringR+6), Math.sin(a)*(ringR+6), -a+Math.PI/2, LIVERY.guard);
+  }
+
+  // ٤ب) رتل زاحف على الطريق: هؤلاء **يمشون** (walk=1) فتظهر دورة المشي
+  if(routes[0]){
+    const path=routes[0].path;
+    let placed=0;
+    for(let i=0;i<path.length-1 && placed<18;i++){
+      const q=path[i], rr=Math.hypot(q.x,q.z);
+      if(rr < ringR+150 || rr > ringR+560) continue;
+      if(villP && Math.hypot(q.x-villP[0], q.z-villP[1]) < 95) continue;   // لا نضعهم داخل القرية
+      const nx=path[i+1].x-q.x, nz=path[i+1].z-q.z, nl=Math.hypot(nx,nz)||1;
+      const heading=Math.atan2(nz/nl, nx/nl);
+      for(const lane of [-1,1]){
+        const ox=-nz/nl*lane*7.5, oz=nx/nl*lane*7.5;
+        put((placed%3===2)?'archer':((placed%2)?'spear':'spear2'),
+            q.x+ox, q.z+oz, -heading+Math.PI/2,
+            (placed%3===2)?LIVERY.archer:LIVERY.guard, 1, 1);
+        if(!MARCH_AT) MARCH_AT={ p:[q.x, q.z], heading };
+        placed++;
+      }
+      i += 2;
+    }
   }
 
   // ٥) قرويّون حول القرية وعلى الطريق
@@ -872,11 +1021,16 @@ const folkPool=[];       // {x,z,r,v,s,tr,tg,tb}
       const a=rnd()*Math.PI*2, r=26+rnd()*30;
       const x=villP[0]+Math.cos(a)*r, z=villP[1]+Math.sin(a)*r;
       folkPool.push({ v:'horseplain', x, z, r:rnd()*Math.PI*2, s:0.95+rnd()*0.08,
-                      y:groundY(x,z), tr:1, tg:1, tb:1 });
+                      y:groundY(x,z), tr:1, tg:1, tb:1, phase:rnd()*6.2832, walk:0 });
     }
   }
 }
 
+/* لقطة الرتل: تُوجَّه إلى أوّل جندي زاحف فعلاً لا إلى تخمين على الطريق.
+   `look` تقيس السمت من محور +Z نحو +X، واتّجاه الطريق يُقاس من +X — فالتحويل
+   هو 90 ناقص الاتّجاه، ثم 90 أخرى لننظر إلى الرتل من جانبه لا من خلفه. */
+const marchP = MARCH_AT ? MARCH_AT.p : [gatePos[0]*1.9, gatePos[1]*1.9];
+const MARCH_YAW = MARCH_AT ? (180 - (MARCH_AT.heading*180/Math.PI)) : 90;
 const SHOTS={
   mountain: ()=>{ populate(-560, 700, 1500, 1400, 260, 16000);
                   look([-560, 700], 620, 152, 7, 60); },
@@ -897,6 +1051,12 @@ const SHOTS={
   through:()=>{ populate(0,0, 700, 560, 320, 16000);
                 look([Math.cos(GATE_ANGLE)*GATE_R*0.45, Math.sin(GATE_ANGLE)*GATE_R*0.45],
                      46, YAW_OUT+180, 3, 5, 0); },
+  march:  ()=>{ populate(marchP[0], marchP[1], 660, 540, 240, 15000);
+                look(marchP, 58, MARCH_YAW, 15, 4, 1.5); },
+  // لقطة الخطوة: قريبة ومن جهة الشمس. سمت الشمس 149° عالمياً، و`look` تقيس
+  // من +Z نحو +X، فوضع الكاميرا بين الشمس والهدف يكون عند 90−149 = −59.
+  stride: ()=>{ populate(marchP[0], marchP[1], 520, 420, 190, 13000);
+                look(marchP, 23, -59, 11, 2, 0.8); },
   army:   ()=>{ populate(gatePos[0], gatePos[1], 700, 560, 260, 16000);
                 look([Math.cos(GATE_ANGLE)*(150+62), Math.sin(GATE_ANGLE)*(150+62)], 92, YAW_OUT+18, 12, 4); },
   hero2:  ()=>{ populate(gatePos[0], gatePos[1], 620, 480, 200, 14000);
@@ -1141,10 +1301,13 @@ window.__d = {
     sunPos:[Math.round(sun.position.x),Math.round(sun.position.y),Math.round(sun.position.z)],
     tgt:[Math.round(sun.target.position.x),Math.round(sun.target.position.y),Math.round(sun.target.position.z)],
     smEnabled: renderer.shadowMap.enabled }; },
+  setTime(t){ ANIM_UNIFORMS.uTime.value=t; render(); return true; },
   setAO(v){ if(terShaderRef) terShaderRef.uniforms.uAOAmt.value=v; render(); return true; },
   setNrm(v){ if(terShaderRef) terShaderRef.uniforms.uNrmAmt.value=v; render(); return true; },
   shot(name){ LAST_SHOT=SHOTS[name]?name:'far'; SHOTS[LAST_SHOT](); render(); render(); return true; },
-  info(){ return { N, basin: BOWL_AT ? [Math.round(BOWL_AT[0]), Math.round(BOWL_AT[1])] : null,
+  info(){ return { march: MARCH_AT? [Math.round(marchP[0]),Math.round(marchP[1]),Math.round(MARCH_YAW)] : null,
+                   walkers: folkPool.filter(f=>f.walk>0).length, folk: folkPool.length,
+                   N, basin: BOWL_AT ? [Math.round(BOWL_AT[0]), Math.round(BOWL_AT[1])] : null,
                    trees:treePool.length, rocks:rockPool.length, cliffs:cliffPool.length,
                    lake: LAKE?{r:Math.round(LAKE.r), level:+LAKE.level.toFixed(1)}:null,
                    river: RIVER?{pts:RIVER.pts.length, w:+RIVER.w.toFixed(1)}:null,

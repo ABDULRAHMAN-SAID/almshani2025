@@ -8,6 +8,29 @@
 
    الشخصية تُبنى بارتفاع 1.0 ثم تُقاس عند الوضع، فتُضبط الأحجام في مكان واحد. */
 
+/* ═══ أرقام المفاصل ═══
+   كل رأس يحمل رقم مفصله، والمُظلِّل يدير المفصل حول محوره فتتحرّك الشخصية على
+   بطاقة الرسم. المفاصل الكرويّة تُسنَد إلى الطرف **الأب** فتبقى ثابتة وتغطّي
+   الفجوة عند دوران الابن — بهذا لا تتمزّق الشبكة عند الكتف والركبة. */
+const LIMB = {
+  ROOT:0, CHEST:1, HEAD:2,
+  ARM_LU:3, ARM_LL:4, ARM_RU:5, ARM_RL:6,
+  LEG_LU:7, LEG_LL:8, LEG_RU:9, LEG_RL:10,
+  CAPE:11
+};
+/* محاور الدوران بوحدات البناء (ارتفاع الشخصية 1.0) — واحدة لكل الأصناف
+   لأنّها تُبنى بنفس النِّسَب، فتكفي جدولٌ ثابت في المُظلِّل. */
+const LIMB_PIVOT = [
+  [0,0,0], [0,0.52,0], [0,0.83,0],
+  [-0.112,0.780,0], [-0.123,0.640,0.100],
+  [ 0.112,0.780,0], [ 0.114,0.640,0.045],
+  [-0.055,0.500,0], [-0.055,0.265,0.012],
+  [ 0.055,0.500,0], [ 0.055,0.265,0.012],
+  [0,0.830,-0.058]
+];
+/* الأب لكل مفصل: الساعد يتبع العضد، والعضد يتبع الصدر. -1 = لا أب. */
+const LIMB_PARENT = [-1, -1, 1, 1, 3, 1, 5, -1, 7, -1, 9, 1];
+
 const CH = {
   skin:[0.741,0.549,0.404], skinDark:[0.639,0.451,0.322],
   leather:[0.361,0.239,0.157], leatherDark:[0.259,0.169,0.110],
@@ -97,8 +120,9 @@ function chHelm(M, cy, r, style, crestColor){
 }
 
 /* درع: قرص أو طُرس (كايت) بحافّة معدنية وصُرّة وسط */
-function chShield(B, C, cx, cy, cz, rot, r, kite){
+function chShield(B, C, cx, cy, cz, rot, r, kite, limb){
   const M=B;
+  if(limb!==undefined) C.setLimb(limb);
   const ca=Math.cos(rot), sa=Math.sin(rot);
   // الدرع رأسي والمِنشور يعمل على مستوى XZ، فيُبنى يدوياً كقرص سميك
   const SEG=kite?9:16;
@@ -205,24 +229,36 @@ function buildHuman(seed, kind){
   // ── الساقان: حذاء ثم ساق ثم فخذ
   for(const side of [-1,1]){
     const hx=side*stanceW;
+    const up = side<0 ? LIMB.LEG_LU : LIMB.LEG_RU;
+    const lo = side<0 ? LIMB.LEG_LL : LIMB.LEG_RL;
     B.setColor(CH.leatherDark[0], CH.leatherDark[1], CH.leatherDark[2]);
+    B.setLimb(lo);
     B.tube([hx,0.030,0.012], [hx,0.030,0.075], 0.036, 0.026, 6, 1, 0,0,0);
     B.tube([hx,0.0,0.0], [hx,0.055,0.0], 0.040, 0.034, 6, 1, 0,0,0);
     B.setColor(civ?0.318:CH.leather[0]*0.80, civ?0.267:CH.leather[1]*0.78, civ?0.208:CH.leather[2]*0.76);
-    chLimb(B, [hx,0.055,0.0], [hx,0.265,0.012], [hx*1.06,hipY,0.0], 0.034, 0.040, 0.056, 6);
+    B.tube([hx,0.055,0.0], [hx,0.265,0.012], 0.034, 0.040, 6, 1, 0,0,0);   // الساق
+    B.setLimb(up);
+    // كرة الركبة تُسنَد إلى الفخذ (الأب) فتبقى تغطّي الفجوة عند ثني الركبة
+    B.blob([hx,0.265,0.012], [0.045,0.045,0.045], 4, 6, 0, 7);
+    B.tube([hx,0.265,0.012], [hx*1.06,hipY,0.0], 0.040, 0.056, 6, 1, 0,0,0);
   }
+  B.setLimb(LIMB.ROOT);
   B.setColor(civ?0.416:CH.leather[0], civ?0.345:CH.leather[1], civ?0.263:CH.leather[2]);
   B.blob([0,hipY,0], [0.098,0.062,0.070], 5, 11, 0.03, seed+3);
 
   // ── الجذع: قميص القماش ثم درع الصدر
+  C.setLimb(LIMB.CHEST);
   chTorso(C, hipY-0.02, shY, 0.092, 0.118, 0.068);
   if(armour){
+    B.setLimb(LIMB.CHEST);
     B.setColor(CH.steelDark[0], CH.steelDark[1], CH.steelDark[2]);
     chTorso(B, hipY+0.10, shY-0.005, 0.100, 0.124, 0.074);
     B.setColor(CH.steel[0], CH.steel[1], CH.steel[2]);
-    for(const side of [-1,1])          // منكبان بارزان: أهمّ ما في الصورة الظلّية
+    // المنكب يُسنَد إلى الصدر فيغطّي فجوة الكتف عند تأرجح الذراع
+    for(const side of [-1,1])
       B.blob([side*0.128, shY-0.030, 0], [0.058,0.046,0.062], 5, 11, 0.04, seed+side*17);
   }
+  B.setLimb(LIMB.CHEST);
   B.setColor(CH.leatherDark[0], CH.leatherDark[1], CH.leatherDark[2]);
   chTorso(B, hipY+0.055, hipY+0.088, 0.100, 0.104, 0.076);
 
@@ -231,34 +267,53 @@ function buildHuman(seed, kind){
   for(const side of [-1,1]){
     const sx=side*0.112;
     const bend = side<0 ? 0.10 : 0.045;
-    chLimb(C, [sx, shY-0.035, 0], [sx*1.10, shY-0.175, bend], [sx*1.02, shY-0.300, bend*1.9], armR, armR*0.88, armR*0.80, 6);
+    const up = side<0 ? LIMB.ARM_LU : LIMB.ARM_RU;
+    const lo = side<0 ? LIMB.ARM_LL : LIMB.ARM_RL;
+    C.setLimb(up);
+    C.tube([sx, shY-0.035, 0], [sx*1.10, shY-0.175, bend], armR, armR*0.88, 6, 1, 0,0,0);
+    C.blob([sx*1.10, shY-0.175, bend], [armR*0.99, armR*0.99, armR*0.99], 4, 6, 0, 7);  // المرفق على العضد
+    C.setLimb(lo);
+    C.tube([sx*1.10, shY-0.175, bend], [sx*1.02, shY-0.300, bend*1.9], armR*0.88, armR*0.80, 6, 1, 0,0,0);
+    B.setLimb(lo);
     B.setColor(CH.skin[0], CH.skin[1], CH.skin[2]);
     B.blob([sx*1.02, shY-0.318, bend*2.0], [0.030,0.034,0.030], 4, 8, 0.05, seed+side*29);
   }
 
   // ── العنق والرأس
+  B.setLimb(LIMB.CHEST);
   B.setColor(CH.skinDark[0], CH.skinDark[1], CH.skinDark[2]);
   B.tube([0,shY-0.010,0], [0,shY+0.042,0], 0.030, 0.027, 6, 1, 0,0,0);
+  B.setLimb(LIMB.HEAD);
   B.setColor(CH.skin[0], CH.skin[1], CH.skin[2]);
   B.blob([0,headY,0.004], [headR*0.92, headR*1.06, headR*0.94], 6, 11, 0.03, seed+41);
   if(civ){
     B.setColor(0.216,0.169,0.129);
     B.blob([0,headY+0.020,-0.004], [headR*0.95, headR*0.80, headR*0.97], 5, 11, 0.05, seed+53);
+    C.setLimb(LIMB.HEAD);
     C.lathe(0, headY+headR*0.55, 0, [[headR*1.5,0],[headR*1.35,0.012],[headR*0.9,0.030],[0,0.050]], 10, 1.4, false);
   }
 
   // ── العتاد بحسب الصنف
   if(kind==='spear' || kind==='spear2'){
+    B.setLimb(LIMB.HEAD);
     chHelm(B, headY+headR*0.55, headR, 'conical', null);
+    B.setLimb(LIMB.ARM_LL);            // الرمح في القبضة اليسرى فيتأرجح معها
     chSpear(B, -0.128, shY-0.31, 0.10, 1.42, 0.055);
-    chShield(B, C, 0.150, shY-0.20, 0.028, 0.35, 0.115, false);
+    B.setLimb(LIMB.ARM_RL);
+    chShield(B, C, 0.150, shY-0.20, 0.028, 0.35, 0.115, false, LIMB.ARM_RL);
   } else if(kind==='sword' || kind==='sword2'){
+    B.setLimb(LIMB.HEAD);
     chHelm(B, headY+headR*0.55, headR, 'kettle', null);
+    B.setLimb(LIMB.ARM_RL);
     chSword(B, 0.152, shY-0.30, 0.10, 0.36, 0.30, false);
-    chShield(B, C, -0.152, shY-0.19, 0.030, -0.42, 0.135, true);
+    B.setLimb(LIMB.ARM_LL);
+    chShield(B, C, -0.152, shY-0.19, 0.030, -0.42, 0.135, true, LIMB.ARM_LL);
   } else if(kind==='archer'){
+    C.setLimb(LIMB.HEAD);
     C.blob([0,headY+0.016,-0.006], [headR*1.12, headR*1.02, headR*1.14], 5, 11, 0.06, seed+61);
+    B.setLimb(LIMB.ARM_LL);
     chBow(B, -0.136, shY-0.16, 0.10);
+    B.setLimb(LIMB.CHEST);
     B.setColor(CH.leather[0], CH.leather[1], CH.leather[2]);
     B.tube([0.075, shY-0.02, -0.075], [0.115, shY-0.30, -0.045], 0.030, 0.026, 6, 1, 0,0,0);
     B.setColor(0.86,0.84,0.78);
@@ -267,7 +322,9 @@ function buildHuman(seed, kind){
       B.tube([0.075+ox, shY+0.02, -0.075], [0.075+ox, shY+0.075, -0.082], 0.004, 0.004, 3, 1, 0,0,0);
     }
   } else if(hero){
+    B.setLimb(LIMB.HEAD);
     chHelm(B, headY+headR*0.55, headR*1.04, 'great', null);
+    C.setLimb(LIMB.HEAD);
     C.setColor(1,1,1);
     // العُرف من القماش فيأخذ لون الراية
     { const top=headY+headR*0.55+headR*1.02;
@@ -275,11 +332,15 @@ function buildHuman(seed, kind){
         const t=i/8, y=top+Math.sin(t*Math.PI)*headR*0.30, z=(t-0.5)*headR*1.7;
         C.tube([0,y,z], [0, top+Math.sin(t*Math.PI)*headR*0.62, z-headR*0.12], 0.0075, 0.003, 4, 1, 0, 0.5, i*0.4);
       } }
+    C.setLimb(LIMB.CAPE);
     chCape(C, shY+0.02, 0.115, 0.128, 0.235, -0.058, seed+71);
+    B.setLimb(LIMB.CHEST);
     B.setColor(CH.gold[0], CH.gold[1], CH.gold[2]);
     chTorso(B, shY-0.055, shY-0.030, 0.106, 0.130, 0.080);
+    B.setLimb(LIMB.ARM_RL);
     chSword(B, 0.160, shY-0.24, 0.09, 0.46, -0.28, true);
-    chShield(B, C, -0.160, shY-0.20, 0.030, -0.40, 0.145, true);
+    B.setLimb(LIMB.ARM_LL);
+    chShield(B, C, -0.160, shY-0.20, 0.030, -0.40, 0.145, true, LIMB.ARM_LL);
   }
   return { body:B, cloth:C };
 }

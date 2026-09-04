@@ -118,6 +118,8 @@ namespace Dawnkeep.EditorTools
             AddPiece(root, "Body", bodyMesh, bodyMaterial);
             AddPiece(root, "Cloth", clothMesh, clothMaterial);
 
+            root.AddComponent<Dawnkeep.Characters.CharacterAnimator>();
+
             CapsuleCollider collider = root.AddComponent<CapsuleCollider>();
             collider.radius = 0.16f;
             collider.height = 1f;

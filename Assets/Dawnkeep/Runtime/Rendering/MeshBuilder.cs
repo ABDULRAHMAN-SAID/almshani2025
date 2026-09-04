@@ -49,11 +49,32 @@ namespace Dawnkeep.Rendering
             _tintSet = false;
         }
 
+        private float _limb = -1f;
+
+        /// <summary>
+        /// رقم المفصل: يُكتب في TEXCOORD1.x فيعرف المُظلِّل أيّ مفصل يدير هذا
+        /// الرأس. بهذا تتحرّك الشخصية كلّها على بطاقة الرسم بلا هيكل عظمي.
+        /// </summary>
+        public void SetLimb(float limb)
+        {
+            _limb = limb;
+        }
+
+        public void ClearLimb()
+        {
+            _limb = -1f;
+        }
+
         public void AddVertex(Vector3 position, Vector3 normal, Vector2 uv, Vector2 uv2, Color color)
         {
             if (_tintSet)
             {
                 color = new Color(color.r * Tint.r, color.g * Tint.g, color.b * Tint.b, color.a);
+            }
+
+            if (_limb >= 0f)
+            {
+                uv2.x = _limb;
             }
 
             _vertices.Add(position);

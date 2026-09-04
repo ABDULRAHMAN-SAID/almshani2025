@@ -20,6 +20,29 @@ namespace Dawnkeep.Rendering
     /// </summary>
     public static class CharacterMeshFactory
     {
+        /// <summary>
+        /// أرقام المفاصل. كل رأس يحمل رقم مفصله في TEXCOORD1.x، والمُظلِّل يدير
+        /// المفصل حول محوره فتتحرّك الشخصية على بطاقة الرسم بلا هيكل عظمي.
+        ///
+        /// المفاصل الكرويّة تُسنَد إلى الطرف **الأب** فتبقى ثابتة وتغطّي الفجوة
+        /// عند دوران الابن — بهذا لا تتمزّق الشبكة عند الكتف والركبة.
+        /// </summary>
+        public static class Limb
+        {
+            public const float Root = 0f;
+            public const float Chest = 1f;
+            public const float Head = 2f;
+            public const float ArmLeftUpper = 3f;
+            public const float ArmLeftLower = 4f;
+            public const float ArmRightUpper = 5f;
+            public const float ArmRightLower = 6f;
+            public const float LegLeftUpper = 7f;
+            public const float LegLeftLower = 8f;
+            public const float LegRightUpper = 9f;
+            public const float LegRightLower = 10f;
+            public const float Cape = 11f;
+        }
+
         public enum Kind
         {
             Hero,
@@ -73,15 +96,6 @@ namespace Dawnkeep.Rendering
             return parts;
         }
 
-        /// <summary>مفصل ثم عظم: أنبوبان بينهما كتلة كرويّة فلا تنكسر الحافّة عند الركبة والمرفق.</summary>
-        private static void Limb(MeshBuilder mb, Vector3 a, Vector3 b, Vector3 c,
-            float r0, float r1, float r2, int sides)
-        {
-            mb.AddTube(a, b, r0, r1, sides, 1f, 0f, 0f, 0f);
-            mb.AddDeformedSphere(b, new Vector3(r1 * 1.12f, r1 * 1.12f, r1 * 1.12f), 4, sides, 0f, 7u);
-            mb.AddTube(b, c, r1, r2, sides, 1f, 0f, 0f, 0f);
-        }
-
         /// <summary>جذع: مقطع بيضويّ يُكنس من الحوض إلى المنكبين فيتّسع عند الصدر.</summary>
         private static void Torso(MeshBuilder mb, float hipY, float shoulderY,
             float hipWidth, float chestWidth, float depth)
@@ -125,6 +139,10 @@ namespace Dawnkeep.Rendering
             for (int s = -1; s <= 1; s += 2)
             {
                 float hx = s * stance;
+                float upper = s < 0 ? Limb.LegLeftUpper : Limb.LegRightUpper;
+                float lower = s < 0 ? Limb.LegLeftLower : Limb.LegRightLower;
+
+                body.SetLimb(lower);
                 body.SetTint(LeatherDark.r, LeatherDark.g, LeatherDark.b);
                 body.AddTube(new Vector3(hx, 0.030f, 0.012f), new Vector3(hx, 0.030f, 0.075f), 0.036f, 0.026f, 6, 1f, 0f, 0f, 0f);
                 body.AddTube(new Vector3(hx, 0f, 0f), new Vector3(hx, 0.055f, 0f), 0.040f, 0.034f, 6, 1f, 0f, 0f, 0f);
@@ -133,10 +151,15 @@ namespace Dawnkeep.Rendering
                     ? new Color(0.318f, 0.267f, 0.208f)
                     : new Color(Leather.r * 0.80f, Leather.g * 0.78f, Leather.b * 0.76f);
                 body.SetTint(trouser.r, trouser.g, trouser.b);
-                Limb(body, new Vector3(hx, 0.055f, 0f), new Vector3(hx, 0.265f, 0.012f),
-                    new Vector3(hx * 1.06f, HipY, 0f), 0.034f, 0.040f, 0.056f, 6);
+                body.AddTube(new Vector3(hx, 0.055f, 0f), new Vector3(hx, 0.265f, 0.012f), 0.034f, 0.040f, 6, 1f, 0f, 0f, 0f);
+
+                // كرة الركبة تُسنَد إلى الفخذ (الأب) فتغطّي الفجوة عند الثني
+                body.SetLimb(upper);
+                body.AddDeformedSphere(new Vector3(hx, 0.265f, 0.012f), new Vector3(0.045f, 0.045f, 0.045f), 4, 6, 0f, 7u);
+                body.AddTube(new Vector3(hx, 0.265f, 0.012f), new Vector3(hx * 1.06f, HipY, 0f), 0.040f, 0.056f, 6, 1f, 0f, 0f, 0f);
             }
 
+            body.SetLimb(Limb.Root);
             Color hips = civilian ? new Color(0.416f, 0.345f, 0.263f) : Leather;
             body.SetTint(hips.r, hips.g, hips.b);
             body.AddDeformedSphere(new Vector3(0f, HipY, 0f), new Vector3(0.098f, 0.062f, 0.070f), 5, 11, 0.03f, seed + 3u);
@@ -144,8 +167,10 @@ namespace Dawnkeep.Rendering
 
         private static void BuildTorso(MeshBuilder body, MeshBuilder cloth, bool armoured, uint seed)
         {
+            cloth.SetLimb(Limb.Chest);
             Torso(cloth, HipY - 0.02f, ShoulderY, 0.092f, 0.118f, 0.068f);
 
+            body.SetLimb(Limb.Chest);
             if (armoured)
             {
                 body.SetTint(SteelDark.r, SteelDark.g, SteelDark.b);
@@ -171,11 +196,21 @@ namespace Dawnkeep.Rendering
             {
                 float sx = s * 0.112f;
                 float bend = s < 0 ? 0.10f : 0.045f;
-                Limb(cloth, new Vector3(sx, ShoulderY - 0.035f, 0f),
-                    new Vector3(sx * 1.10f, ShoulderY - 0.175f, bend),
-                    new Vector3(sx * 1.02f, ShoulderY - 0.300f, bend * 1.9f),
-                    armR, armR * 0.88f, armR * 0.80f, 6);
+                float upper = s < 0 ? Limb.ArmLeftUpper : Limb.ArmRightUpper;
+                float lower = s < 0 ? Limb.ArmLeftLower : Limb.ArmRightLower;
 
+                cloth.SetLimb(upper);
+                cloth.AddTube(new Vector3(sx, ShoulderY - 0.035f, 0f),
+                    new Vector3(sx * 1.10f, ShoulderY - 0.175f, bend), armR, armR * 0.88f, 6, 1f, 0f, 0f, 0f);
+                cloth.AddDeformedSphere(new Vector3(sx * 1.10f, ShoulderY - 0.175f, bend),
+                    new Vector3(armR * 0.99f, armR * 0.99f, armR * 0.99f), 4, 6, 0f, 7u);   // المرفق على العضد
+
+                cloth.SetLimb(lower);
+                cloth.AddTube(new Vector3(sx * 1.10f, ShoulderY - 0.175f, bend),
+                    new Vector3(sx * 1.02f, ShoulderY - 0.300f, bend * 1.9f),
+                    armR * 0.88f, armR * 0.80f, 6, 1f, 0f, 0f, 0f);
+
+                body.SetLimb(lower);
                 body.SetTint(Skin.r, Skin.g, Skin.b);
                 body.AddDeformedSphere(new Vector3(sx * 1.02f, ShoulderY - 0.318f, bend * 2.0f),
                     new Vector3(0.030f, 0.034f, 0.030f), 4, 8, 0.05f, seed + (uint)(s * 29));
@@ -184,10 +219,12 @@ namespace Dawnkeep.Rendering
 
         private static void BuildHead(MeshBuilder body, MeshBuilder cloth, bool civilian, uint seed)
         {
+            body.SetLimb(Limb.Chest);
             body.SetTint(SkinDark.r, SkinDark.g, SkinDark.b);
             body.AddTube(new Vector3(0f, ShoulderY - 0.010f, 0f), new Vector3(0f, ShoulderY + 0.042f, 0f),
                 0.030f, 0.027f, 6, 1f, 0f, 0f, 0f);
 
+            body.SetLimb(Limb.Head);
             body.SetTint(Skin.r, Skin.g, Skin.b);
             body.AddDeformedSphere(new Vector3(0f, HeadY, 0.004f),
                 new Vector3(HeadR * 0.92f, HeadR * 1.06f, HeadR * 0.94f), 6, 11, 0.03f, seed + 41u);
@@ -198,6 +235,7 @@ namespace Dawnkeep.Rendering
                 body.AddDeformedSphere(new Vector3(0f, HeadY + 0.020f, -0.004f),
                     new Vector3(HeadR * 0.95f, HeadR * 0.80f, HeadR * 0.97f), 5, 11, 0.05f, seed + 53u);
 
+                cloth.SetLimb(Limb.Head);
                 ArchitectureBuilder.Lathe(cloth, new Vector3(0f, HeadY + (HeadR * 0.55f), 0f), new[]
                 {
                     new Vector2(HeadR * 1.5f, 0f), new Vector2(HeadR * 1.35f, 0.012f),
@@ -276,7 +314,7 @@ namespace Dawnkeep.Rendering
             }
 
             float th = r * 0.10f;
-            cloth.SetTint(1f, 1f, 1f);
+            cloth.SetTint(1f, 1f, 1f);   // المفصل ضُبط قبل الاستدعاء
             for (int s = -1; s <= 1; s += 2)
             {
                 int c0 = cloth.VertexCount;
@@ -460,23 +498,34 @@ namespace Dawnkeep.Rendering
 
             if (kind == Kind.Spearman)
             {
+                body.SetLimb(Limb.Head);
                 Helm(body, helmY, HeadR, "conical");
+                body.SetLimb(Limb.ArmLeftLower);      // الرمح في القبضة فيتأرجح معها
                 Spear(body, -0.128f, ShoulderY - 0.31f, 0.10f, 1.42f, 0.055f);
+                body.SetLimb(Limb.ArmRightLower);
+                cloth.SetLimb(Limb.ArmRightLower);
                 Shield(body, cloth, 0.150f, ShoulderY - 0.20f, 0.028f, 0.35f, 0.115f, false);
             }
             else if (kind == Kind.Swordsman)
             {
+                body.SetLimb(Limb.Head);
                 Helm(body, helmY, HeadR, "kettle");
+                body.SetLimb(Limb.ArmRightLower);
                 Sword(body, 0.152f, ShoulderY - 0.30f, 0.10f, 0.36f, 0.30f, false);
+                body.SetLimb(Limb.ArmLeftLower);
+                cloth.SetLimb(Limb.ArmLeftLower);
                 Shield(body, cloth, -0.152f, ShoulderY - 0.19f, 0.030f, -0.42f, 0.135f, true);
             }
             else if (kind == Kind.Archer)
             {
+                cloth.SetLimb(Limb.Head);
                 cloth.SetTint(1f, 1f, 1f);
                 cloth.AddDeformedSphere(new Vector3(0f, HeadY + 0.016f, -0.006f),
                     new Vector3(HeadR * 1.12f, HeadR * 1.02f, HeadR * 1.14f), 5, 11, 0.06f, seed + 61u);
+                body.SetLimb(Limb.ArmLeftLower);
                 Bow(body, -0.136f, ShoulderY - 0.16f, 0.10f);
 
+                body.SetLimb(Limb.Chest);
                 body.SetTint(Leather.r, Leather.g, Leather.b);
                 body.AddTube(new Vector3(0.075f, ShoulderY - 0.02f, -0.075f),
                     new Vector3(0.115f, ShoulderY - 0.30f, -0.045f), 0.030f, 0.026f, 6, 1f, 0f, 0f, 0f);
@@ -491,9 +540,11 @@ namespace Dawnkeep.Rendering
             }
             else if (kind == Kind.Hero)
             {
+                body.SetLimb(Limb.Head);
                 Helm(body, helmY, HeadR * 1.04f, "great");
 
                 // العُرف من القماش فيأخذ لون الراية مع العباءة
+                cloth.SetLimb(Limb.Head);
                 cloth.SetTint(1f, 1f, 1f);
                 float top = helmY + (HeadR * 1.02f);
                 for (int i = 0; i < 9; i++)
@@ -505,11 +556,16 @@ namespace Dawnkeep.Rendering
                         0.0075f, 0.003f, 4, 1f, 0f, 0.5f, i * 0.4f);
                 }
 
+                cloth.SetLimb(Limb.Cape);
                 Cape(cloth, ShoulderY + 0.02f, 0.115f, 0.128f, 0.235f, -0.058f, seed + 71u);
 
+                body.SetLimb(Limb.Chest);
                 body.SetTint(Gold.r, Gold.g, Gold.b);
                 Torso(body, ShoulderY - 0.055f, ShoulderY - 0.030f, 0.106f, 0.130f, 0.080f);
+                body.SetLimb(Limb.ArmRightLower);
                 Sword(body, 0.160f, ShoulderY - 0.24f, 0.09f, 0.46f, -0.28f, true);
+                body.SetLimb(Limb.ArmLeftLower);
+                cloth.SetLimb(Limb.ArmLeftLower);
                 Shield(body, cloth, -0.160f, ShoulderY - 0.20f, 0.030f, -0.40f, 0.145f, true);
             }
         }

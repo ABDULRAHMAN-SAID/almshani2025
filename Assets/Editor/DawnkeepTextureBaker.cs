@@ -242,8 +242,16 @@ namespace Dawnkeep.EditorTools
             // مادّتا أهل المملكة: بلا خامة صورية — اللون كلّه من ألوان الرؤوس.
             // على بُعد كاميرا الاستراتيجية تُقرأ الصورة الظلّية والإضاءة لا نقش
             // القماش، والاستغناء عن الخامة يوفّر ذاكرة ورسماً على الجوّال.
-            MakeVertexLit("Dawnkeep_FolkBody", lit, 0.22f, 0.16f);
-            MakeVertexLit("Dawnkeep_FolkCloth", lit, 0.06f, 0f);
+            // شادر الشخصيات يحمل التحريك في مُظلِّل الرؤوس؛ وإن غاب نرجع إلى Lit
+            Shader character = Shader.Find("Dawnkeep/Character");
+            Shader folkShader = character != null ? character : lit;
+            if (character == null)
+            {
+                Debug.LogWarning("مملكة الرماد: شادر Dawnkeep/Character غير موجود — الشخصيات ستكون ثابتة بلا حركة.");
+            }
+
+            MakeVertexLit("Dawnkeep_FolkBody", folkShader, 0.22f, 0.16f);
+            MakeVertexLit("Dawnkeep_FolkCloth", folkShader, 0.06f, 0f);
 
             Shader foliage = Shader.Find("Dawnkeep/Foliage");
             if (foliage != null)

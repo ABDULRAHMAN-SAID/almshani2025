@@ -3,13 +3,16 @@ function MB(){ this.p=[]; this.n=[]; this.u=[]; this.u2=[]; this.c=[]; this.t=[]
 /* لون الرأس: يُضبط مرّةً فتأخذه كل الرؤوس التالية. بهذا تُبنى الشخصية كلّها
    في شبكة واحدة — جلد وقماش وجلود وخشب — بلا مادّة منفصلة لكل جزء. */
 MB.prototype.setColor=function(r,g,b){ this._cr=r; this._cg=g; this._cb=b; };
+/* رقم الطرف: يُكتب في القناة الثانية فيعرف المُظلِّل أيّ مفصل يدير هذا الرأس.
+   بهذا تتحرّك الشخصية كلّها على بطاقة الرسم بلا هيكل عظمي ولا كلفة معالج. */
+MB.prototype.setLimb=function(id){ this._limb=id; };
 MB.prototype.v=function(px,py,pz, nx,ny,nz, u,v, phase,sway, shade){
   const sh = (shade===undefined) ? 1 : shade;
   const r=(this._cr===undefined?1:this._cr)*sh;
   const g=(this._cg===undefined?1:this._cg)*sh;
   const b=(this._cb===undefined?1:this._cb)*sh;
   this.p.push(px,py,pz); this.n.push(nx,ny,nz); this.u.push(u,v);
-  this.u2.push(phase||0, 0);
+  this.u2.push(this._limb===undefined ? (phase||0) : this._limb, 0);
   this.c.push(r, g, b, sway||0);
   return (this.p.length/3)-1;
 };
