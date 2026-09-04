@@ -47,3 +47,7 @@ desktop.ini
 # أدوات
 sysinfo.txt
 /.gradle/
+
+# ذاكرة بايثون المؤقّتة لفحوصنا
+__pycache__/
+*.pyc
