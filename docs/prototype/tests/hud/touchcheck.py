@@ -221,4 +221,75 @@ check('وقوس الأوامر منبثقٌ فوق زرّه (§7: دائرة ص�
       and order_rects.get('OrderButton') is not None
       and ring_origin.y >= order_rects['OrderButton'].top - 1)
 
+print()
+print('── القائمة الرئيسة (§24) ─────────────────')
+
+MENU = io.open(os.path.join(ROOT,
+    'Assets/Dawnkeep/Runtime/Flow/MainMenu.cs'), encoding='utf-8').read()
+MENUSETUP = io.open(os.path.join(ROOT,
+    'Assets/Editor/DawnkeepMenuSetup.cs'), encoding='utf-8').read()
+
+# أزرار القائمة تُبنى بدالّة `Button(...)` بمقاسٍ وإزاحةٍ صريحين
+menu_buttons = {}
+for m in re.finditer(r'Button\(rect,\s*"(\w+)",\s*[\w.]+,\s*' + VEC + r',\s*\n?\s*' + VEC,
+                     MENU, re.S):
+    name, ox, oy, w, h = m.groups()
+    menu_buttons[name] = place(ROOT_RECT, 0.5, 0.5,
+                               float(ox), float(oy), float(w), float(h))
+
+show('أزرار القائمة', menu_buttons)
+print()
+
+clashes = []
+names = list(menu_buttons)
+for i in range(len(names)):
+    for j in range(i + 1, len(names)):
+        hit = overlap(menu_buttons[names[i]], menu_buttons[names[j]])
+        if hit:
+            clashes.append((names[i], names[j], hit))
+
+check('لا تراكب بين أزرار القائمة', not clashes,
+      '' if not clashes else f'  ({clashes[0][0]} × {clashes[0][1]})')
+
+check('كلٌّ داخل الشاشة',
+      all(0 <= r.x and 0 <= r.y and r.right <= W and r.top <= H
+          for r in menu_buttons.values()))
+
+small = [n for n, r in menu_buttons.items() if min(r.w, r.h) < MIN_TAP]
+check(f'وكلٌّ لا يصغر عن {MIN_TAP} بكسلاً', not small,
+      '' if not small else f'  ({"، ".join(small)})')
+
+check('لا أكثر من سبعة أزرار رئيسة (§24)', len(menu_buttons) <= 7,
+      f'  ({len(menu_buttons)})')
+
+# §17: كل زرّ يفعل شيئاً. الدالّة توجب فعلاً في وسائطها، والفحص يقابل
+# كل زرّ باسم دالّةٍ موجودة في الملفّ.
+actions = re.findall(r'Button\(rect,\s*"(\w+)",[^;]*?,\s*(\w+)\);', MENU, re.S)
+dead = [name for name, action in actions
+        if not re.search(r'(private|public)[^\n]*\b' + action + r'\(', MENU)]
+check('كل زرّ يستدعي دالّةً موجودة (§17: ممنوع الشكليّ)', not dead,
+      '' if not dead else f'  ({"، ".join(dead)})')
+
+for name, action in actions:
+    print(f'      · {name} ← {action}()')
+
+print()
+boot = re.search(r'bootSeconds = ([0-9.]+)f', MENU)
+check('شعار الإقلاع أقلّ من ثانيتين (§24)',
+      boot is not None and float(boot.group(1)) < 2.0,
+      f'  ({boot.group(1) if boot else "؟"} ث)')
+
+check('ورسالة واضحة إن قُرئت نسخة احتياطية (§24)',
+      'SaveSource.BackupOne' in MENU and 'SaveRecovered' in MENU)
+
+check('القائمة أوّل مشهدٍ في إعدادات البناء (§41)',
+      'scenes.Add(new EditorBuildSettingsScene(MenuScene, true))' in MENUSETUP
+      and MENUSETUP.index('MenuScene, true') < MENUSETUP.index('WorldScene, true'))
+
+check('ومشاهد المستخدم الأخرى لا تُمحى',
+      'path != MenuScene && path != DawnkeepAssetPaths.WorldScene' in MENUSETUP)
+
+check('وزرّ اللعب يعيد الزمن قبل التحميل',
+      'Time.timeScale = 1f;' in MENU and 'SceneManager.LoadScene' in MENU)
+
 sys.exit(0 if ok else 1)

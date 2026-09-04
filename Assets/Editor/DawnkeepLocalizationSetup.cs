@@ -133,6 +133,7 @@ namespace Dawnkeep.EditorTools
                     "بلغت الموجة {0} قبل أن يسقط قلب الحصن.",
                     "You reached wave {0} before the Keep fell."),
                 DawnkeepLocale.Row(LocKeys.ResultRestart, "أعِد المرحلة", "Replay stage"),
+                DawnkeepLocale.Row(LocKeys.ResultToMenu, "إلى القائمة", "To the menu"),
 
                 DawnkeepLocale.Row(LocKeys.PauseButton, "إيقاف", "Pause"),
                 DawnkeepLocale.Row(LocKeys.PauseTitle, "إيقاف مؤقّت", "Paused"),
@@ -207,6 +208,17 @@ namespace Dawnkeep.EditorTools
                 DawnkeepLocale.Row(LocKeys.BranchFortification, "التحصين", "Fortification"),
                 DawnkeepLocale.Row(LocKeys.BranchCommand, "القيادة", "Command"),
                 DawnkeepLocale.Row(LocKeys.BranchDawncraft, "صنعة الفجر", "Dawncraft"),
+
+                // القائمة الرئيسة (§24)
+                DawnkeepLocale.Row(LocKeys.GameTitle, "مملكة الرماد", "Dawnkeep"),
+                DawnkeepLocale.Row(LocKeys.GameSubtitle, "حصن الفجر", "Keep of the Dawn"),
+                DawnkeepLocale.Row(LocKeys.MenuPlay, "ابدأ الليلة", "Begin the night"),
+                DawnkeepLocale.Row(LocKeys.MenuSoon,
+                    "البطل والحدادة والمتجر والمهامّ لم تُبنَ بعد",
+                    "Hero, Forge, Shop and Quests are not built yet"),
+                DawnkeepLocale.Row(LocKeys.SaveRecovered,
+                    "تعذّرت قراءة ملفّ الحفظ — استُعيدت نسخة احتياطية",
+                    "The save file could not be read — a backup was restored"),
             };
         }
 

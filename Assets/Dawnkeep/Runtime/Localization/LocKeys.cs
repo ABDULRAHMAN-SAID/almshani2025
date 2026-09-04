@@ -88,6 +88,7 @@ namespace Dawnkeep.Localization
         public const string ResultVictoryDetail = "result.victory.detail";
         public const string ResultDefeatDetail = "result.defeat.detail";
         public const string ResultRestart = "result.restart";
+        public const string ResultToMenu = "result.menu";
 
         // الإيقاف والإعدادات (§7)
         public const string PauseButton = "pause.button";
@@ -156,5 +157,12 @@ namespace Dawnkeep.Localization
         public const string BranchFortification = "branch.fortification";
         public const string BranchCommand = "branch.command";
         public const string BranchDawncraft = "branch.dawncraft";
+
+        // القائمة الرئيسة والإقلاع (§24)
+        public const string GameTitle = "menu.title";
+        public const string GameSubtitle = "menu.subtitle";
+        public const string MenuPlay = "menu.play";
+        public const string MenuSoon = "menu.soon";
+        public const string SaveRecovered = "menu.save.recovered";
     }
 }

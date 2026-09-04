@@ -106,6 +106,18 @@ namespace Dawnkeep.UI
             }
         }
 
+        /// <summary>
+        /// يُظهر زرّ الأبحاث بلا انتظار نتيجةِ مرحلة. تستعمله القائمة الرئيسة:
+        /// هناك لا نتيجةَ تسبقه، والأبحاث هي نصف ما يُفعل بين الجولات.
+        /// </summary>
+        public void Reveal()
+        {
+            if (_openButton != null)
+            {
+                _openButton.SetActive(true);
+            }
+        }
+
         public void Open()
         {
             _root.SetActive(true);

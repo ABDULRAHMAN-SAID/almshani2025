@@ -84,6 +84,25 @@ namespace Dawnkeep.UI
             SceneManager.LoadScene(scene.buildIndex);
         }
 
+        /// <summary>
+        /// يعود إلى القائمة الرئيسة. يكتب الحفظ أوّلاً: الانتقال قد يُتبع
+        /// بإغلاق التطبيق، وجولةٌ كاملة أثمن من أن تُترك لفترةٍ لم تحن.
+        /// </summary>
+        public void ToMenu()
+        {
+            Dawnkeep.Save.SaveService save = Dawnkeep.Save.SaveService.Instance;
+            if (save != null)
+            {
+                save.Flush();
+            }
+
+            Time.timeScale = 1f;
+            SceneManager.LoadScene(MenuSceneName);
+        }
+
+        /// <summary>اسم مشهد القائمة — في مكان واحد لا في كل مستدعٍ.</summary>
+        public const string MenuSceneName = "Dawnkeep_Menu";
+
         private void Build()
         {
             RectTransform parent = GetComponent<RectTransform>();
@@ -110,7 +129,7 @@ namespace Dawnkeep.UI
                 TextAlignmentOptions.Midline);
 
             RectTransform button = MakeRect("Restart", rect,
-                new Vector2(0.5f, 0f), new Vector2(0f, 26f), new Vector2(260f, 68f));
+                new Vector2(0.5f, 0f), new Vector2(-140f, 26f), new Vector2(260f, 68f));
 
             Image face = button.gameObject.AddComponent<Image>();
             face.color = new Color(victoryColor.r * 0.34f, victoryColor.g * 0.30f,
@@ -125,6 +144,27 @@ namespace Dawnkeep.UI
                 new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(240f, 48f),
                 TextAlignmentOptions.Midline);
             caption.gameObject.AddComponent<LocalizedLabel>().Bind(caption, LocKeys.ResultRestart);
+
+            // العودة إلى القائمة: §41 تصف الحلقة «من Main Menu حتى Result»،
+            // وحلقةٌ لا تعود ليست حلقة. والزرّان متجاوران لا متراكبان:
+            // ‏±١٤٠ عن الوسط بعرض ٢٦٠ يترك بينهما عشرين بكسلاً.
+            RectTransform menu = MakeRect("ToMenu", rect,
+                new Vector2(0.5f, 0f), new Vector2(140f, 26f), new Vector2(260f, 68f));
+
+            Image menuFace = menu.gameObject.AddComponent<Image>();
+            menuFace.color = new Color(inkColor.r * 0.18f, inkColor.g * 0.18f,
+                inkColor.b * 0.18f, 0.94f);
+            menuFace.raycastTarget = true;
+
+            Button menuAction = menu.gameObject.AddComponent<Button>();
+            menuAction.targetGraphic = menuFace;
+            menuAction.onClick.AddListener(ToMenu);
+
+            TextMeshProUGUI menuCaption = MakeText("Caption", menu, 28f, inkColor,
+                new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(240f, 48f),
+                TextAlignmentOptions.Midline);
+            menuCaption.gameObject.AddComponent<LocalizedLabel>()
+                .Bind(menuCaption, LocKeys.ResultToMenu);
 
             _root = rect.gameObject;
             _root.SetActive(false);
