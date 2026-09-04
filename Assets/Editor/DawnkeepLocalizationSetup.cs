@@ -177,6 +177,28 @@ namespace Dawnkeep.EditorTools
                 DawnkeepLocale.Row(LocKeys.BoonTaken, "لم تُؤخذ بركة بعد", "No boons taken yet"),
                 DawnkeepLocale.Row(LocKeys.TabBoons, "بركاتي", "My boons"),
                 DawnkeepLocale.Row(LocKeys.BoonRow, "{0} — {1}", "{0} — {1}"),
+
+                // التقدّم الدائم (§16)
+                DawnkeepLocale.Row(LocKeys.MetaOpen, "الأبحاث", "Research"),
+                DawnkeepLocale.Row(LocKeys.MetaClose, "إغلاق", "Close"),
+                DawnkeepLocale.Row(LocKeys.MetaHeader, "المستوى {0} · {1} ذهباً",
+                    "Level {0} · {1} gold"),
+                DawnkeepLocale.Row(LocKeys.MetaStars, "{0} نجمة بحث", "{0} research stars"),
+                DawnkeepLocale.Row(LocKeys.MetaRank, "({0}/{1})", "({0}/{1})"),
+                DawnkeepLocale.Row(LocKeys.MetaDelta, "{0} ← {1}", "{0} → {1}"),
+                DawnkeepLocale.Row(LocKeys.MetaCost, "{0} ذهباً و{1} نجمة",
+                    "{0} gold, {1} star"),
+                DawnkeepLocale.Row(LocKeys.MetaMaxed, "بلغت أقصاها", "Fully researched"),
+                DawnkeepLocale.Row(LocKeys.MetaLocked, "تُفتح عند المستوى {0}",
+                    "Unlocks at level {0}"),
+                DawnkeepLocale.Row(LocKeys.MetaCapped, "بلغت سقف الأبحاث",
+                    "Research cap reached"),
+                DawnkeepLocale.Row(LocKeys.MetaRespec, "أعِد توزيع الأبحاث",
+                    "Redistribute research"),
+                DawnkeepLocale.Row(LocKeys.BranchEconomy, "الاقتصاد", "Economy"),
+                DawnkeepLocale.Row(LocKeys.BranchFortification, "التحصين", "Fortification"),
+                DawnkeepLocale.Row(LocKeys.BranchCommand, "القيادة", "Command"),
+                DawnkeepLocale.Row(LocKeys.BranchDawncraft, "صنعة الفجر", "Dawncraft"),
             };
         }
 

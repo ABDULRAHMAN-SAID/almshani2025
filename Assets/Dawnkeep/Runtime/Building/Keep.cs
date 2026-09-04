@@ -38,7 +38,11 @@ namespace Dawnkeep.Building
 
         public float MaxHealth
         {
-            get { return healthByTier[Mathf.Clamp(_tier - 1, 0, healthByTier.Length - 1)]; }
+            get
+            {
+                return healthByTier[Mathf.Clamp(_tier - 1, 0, healthByTier.Length - 1)]
+                    * Dawnkeep.Boons.BoonBook.Stat(Dawnkeep.Boons.BoonStat.KeepHealth);
+            }
         }
 
         /// <summary>سقط الحصن — شرط الخسارة (§5).</summary>
@@ -70,7 +74,8 @@ namespace Dawnkeep.Building
                     return MaxHealth;
                 }
 
-                return healthByTier[_tier];
+                return healthByTier[_tier]
+                    * Dawnkeep.Boons.BoonBook.Stat(Dawnkeep.Boons.BoonStat.KeepHealth);
             }
         }
 

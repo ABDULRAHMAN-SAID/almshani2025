@@ -566,7 +566,10 @@ namespace Dawnkeep.Hero
                 return;
             }
 
-            int found = _combat.QueryFaction(_banner.position, definition.RallyRadius,
+            float rallyReach = definition.RallyRadius
+                * Dawnkeep.Boons.BoonBook.Stat(Dawnkeep.Boons.BoonStat.HeroRallyRadius);
+
+            int found = _combat.QueryFaction(_banner.position, rallyReach,
                 Faction.Kingdom, _scan);
 
             for (int i = 0; i < found; i++)

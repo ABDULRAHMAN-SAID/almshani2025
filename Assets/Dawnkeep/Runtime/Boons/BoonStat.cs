@@ -30,12 +30,19 @@ namespace Dawnkeep.Boons
         TowerFireRate = 22,
         TowerPierce = 23,           // يُضاف: اختراق الدرع نسبةً
 
+        // المباني (§10) — تحرّكها الأبحاث أكثر ممّا تحرّكها البركات
+        BuildingHealth = 25,
+        KeepHealth = 26,
+
         // الاقتصاد (§10)
         SellRefund = 30,            // يُضاف إلى نسبة البيع
         BuildingIncome = 31,
         WaveIncome = 32,
         KillBounty = 33,
         BuildCost = 34,             // أقلّ = أرخص
+
+        // القيادة (§8)
+        HeroRallyRadius = 6,
 
         // النور (§11)
         BeaconRadius = 40,

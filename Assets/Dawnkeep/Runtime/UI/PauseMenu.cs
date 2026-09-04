@@ -40,12 +40,19 @@ namespace Dawnkeep.UI
         [Tooltip("سرعات اللعب المتاحة (§7: 1× و2× و3×).")]
         [SerializeField] private float[] speeds = { 1f, 2f, 3f };
 
+        [Tooltip("لون الزرّ المقفل — يُعرض ولا يُخفى (§16).")]
+        [SerializeField] private Color lockedColor = new Color(0.098f, 0.106f, 0.122f, 0.92f);
+
+        [Tooltip("لون نصّه.")]
+        [SerializeField] private Color lockedInk = new Color(0.455f, 0.447f, 0.427f);
+
         private GameObject _root;
         private GameObject _listBody;
         private GameObject _settingsBody;
         private Image[] _tabHead;
         private TextMeshProUGUI[] _rows;
         private Image[] _speedButton;
+        private TextMeshProUGUI[] _speedCaption;
         private Image[] _languageButton;
         private Image[] _difficultyButton;
         private Image _healthBarsButton;
@@ -125,6 +132,14 @@ namespace Dawnkeep.UI
             if (_outcome != null && _outcome.Result != StageResult.Running)
             {
                 return;      // لا يُستأنف زمنُ معركةٍ انتهت
+            }
+
+            // السرعة المحفوظة قد تكون مقفلةً الآن (تُمحى بيانات، أو يُفتح
+            // المشهد على حساب آخر): تُردّ إلى العادية بدل أن تعمل مجّاناً.
+            Dawnkeep.Meta.Progress meta = Dawnkeep.Meta.Progress.Instance;
+            if (meta != null && !meta.SpeedUnlocked(_speed))
+            {
+                _speed = 0;
             }
 
             Time.timeScale = speeds[Mathf.Clamp(_speed, 0, speeds.Length - 1)];
@@ -348,8 +363,19 @@ namespace Dawnkeep.UI
 
         // ── الإعدادات ───────────────────────────────────────────────────────
 
+        /// <summary>
+        /// السرعة تُفتح بمستوى الحساب (§16). الزرّ المقفل **يُعرض مطفأً** لا
+        /// يُخفى: أن يرى اللاعب ما ينتظره أدعى إلى المضيّ من أن يُفاجأ بزرٍّ
+        /// يظهر يوماً بلا سبب.
+        /// </summary>
         private void SetSpeed(int index)
         {
+            Dawnkeep.Meta.Progress progress = Dawnkeep.Meta.Progress.Instance;
+            if (progress != null && !progress.SpeedUnlocked(index))
+            {
+                return;
+            }
+
             _speed = Mathf.Clamp(index, 0, speeds.Length - 1);
             PaintSpeed();
 
@@ -363,9 +389,20 @@ namespace Dawnkeep.UI
 
         private void PaintSpeed()
         {
+            Dawnkeep.Meta.Progress progress = Dawnkeep.Meta.Progress.Instance;
+
             for (int i = 0; i < _speedButton.Length; i++)
             {
-                _speedButton[i].color = i == _speed ? goldColor * 0.34f : dimColor;
+                bool open = progress == null || progress.SpeedUnlocked(i);
+
+                _speedButton[i].color = !open
+                    ? lockedColor
+                    : (i == _speed ? goldColor * 0.34f : dimColor);
+
+                if (_speedCaption != null && _speedCaption[i] != null)
+                {
+                    _speedCaption[i].color = open ? inkColor : lockedInk;
+                }
             }
         }
 
@@ -398,6 +435,14 @@ namespace Dawnkeep.UI
         /// </summary>
         private void SetDifficulty(Difficulty level)
         {
+            // «الكابوس» تُفتح بعد إنهاء المنطقة (§14) — والمخضرم قبلها. الزرّ
+            // المقفل يُعرض مطفأً كأزرار السرعة، فيعرف اللاعب ما ينتظره.
+            Dawnkeep.Meta.Progress progress = Dawnkeep.Meta.Progress.Instance;
+            if (progress != null && !progress.DifficultyUnlocked(level))
+            {
+                return;
+            }
+
             if (_waves != null)
             {
                 _waves.SetDifficulty(level);
@@ -414,10 +459,16 @@ namespace Dawnkeep.UI
                 return;
             }
 
+            Dawnkeep.Meta.Progress progress = Dawnkeep.Meta.Progress.Instance;
             int active = _waves != null ? (int)_waves.Level : (int)Difficulty.Normal;
+
             for (int i = 0; i < _difficultyButton.Length; i++)
             {
-                _difficultyButton[i].color = i == active ? goldColor * 0.34f : dimColor;
+                bool open = progress == null || progress.DifficultyUnlocked((Difficulty)i);
+
+                _difficultyButton[i].color = !open
+                    ? lockedColor
+                    : (i == active ? goldColor * 0.34f : dimColor);
             }
         }
 
@@ -571,6 +622,7 @@ namespace Dawnkeep.UI
                 TextAlignmentOptions.Midline);
 
             _speedButton = new Image[speeds.Length];
+            _speedCaption = new TextMeshProUGUI[speeds.Length];
             for (int i = 0; i < speeds.Length; i++)
             {
                 int captured = i;
@@ -590,6 +642,7 @@ namespace Dawnkeep.UI
                     new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(48f, 34f),
                     TextAlignmentOptions.Midline);
                 caption.text = Digits(Mathf.RoundToInt(speeds[i])) + "×";
+                _speedCaption[i] = caption;
             }
         }
 

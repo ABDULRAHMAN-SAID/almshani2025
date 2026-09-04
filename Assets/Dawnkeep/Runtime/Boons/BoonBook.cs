@@ -42,20 +42,41 @@ namespace Dawnkeep.Boons
         }
 
         /// <summary>
-        /// مضاعف رقمٍ بعينه. واحدٌ إن لم تمسّه بركة — فالمستدعي يضرب دائماً
-        /// ولا يفحص، ولا يحتاج فرعاً في حلقة إطار.
+        /// مضاعف رقمٍ بعينه: **بركات الجولة مضروبةً في أبحاث الحساب** (§16).
+        ///
+        /// نقطةُ قراءةٍ واحدة للاثنين معاً: لو قرأ كل نظامٍ الأبحاثَ على حدة
+        /// لَاحتاج كلٌّ سطرَين، ولَنُسي أحدهما في موضعٍ أو موضعين — وذاك
+        /// بحثٌ يشتريه اللاعب فلا يعمل.
+        ///
+        /// وواحدٌ إن لم يمسّه شيء، فالمستدعي يضرب دائماً ولا يفحص.
         /// </summary>
         public float Of(BoonStat stat)
         {
             float value;
-            return _stats.TryGetValue(stat, out value) ? value : 1f;
+            if (!_stats.TryGetValue(stat, out value))
+            {
+                value = 1f;
+            }
+
+            Dawnkeep.Meta.Progress progress = Dawnkeep.Meta.Progress.Instance;
+            return progress != null ? value * progress.Permanent(stat) : value;
         }
 
-        /// <summary>مضاعفٌ ساكن يعمل ولو لم يكن ثمّة كتاب في المشهد.</summary>
+        /// <summary>
+        /// مضاعفٌ ساكن يعمل ولو لم يكن ثمّة كتاب في المشهد — والأبحاث تعمل
+        /// حينها أيضاً: مشهدُ تجريبٍ بلا كتاب بركات لا يجوز أن يُلغي ما
+        /// اشتراه اللاعب.
+        /// </summary>
         public static float Stat(BoonStat stat)
         {
             BoonBook book = Instance;
-            return book != null ? book.Of(stat) : 1f;
+            if (book != null)
+            {
+                return book.Of(stat);
+            }
+
+            Dawnkeep.Meta.Progress progress = Dawnkeep.Meta.Progress.Instance;
+            return progress != null ? progress.Permanent(stat) : 1f;
         }
 
         public bool Has(BoonFlag flag)

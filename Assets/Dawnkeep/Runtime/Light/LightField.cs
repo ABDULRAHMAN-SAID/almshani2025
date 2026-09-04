@@ -70,6 +70,15 @@ namespace Dawnkeep.Light
             if (!_stockReady)
             {
                 _stock = settings != null ? settings.StartingCharges : 2;
+
+                // شحنات الأبحاث (§16) تُضاف إلى مخزون البداية مرّةً لكل
+                // جولة. و`Progress` يوقظ نفسه قبل هذا (‏−400) فقيمتُه جاهزة.
+                Dawnkeep.Meta.Progress progress = Dawnkeep.Meta.Progress.Instance;
+                if (progress != null)
+                {
+                    _stock += progress.ExtraLightCharges;
+                }
+
                 _stockReady = true;
             }
         }

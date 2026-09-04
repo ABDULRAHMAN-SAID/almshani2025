@@ -48,6 +48,25 @@ namespace Dawnkeep.Building
 
         public float Health { get { return _health; } }
 
+        /// <summary>
+        /// سقف صحّة المبنى بعد أبحاث §16. **مكانٌ واحد للحساب**: الصحّة
+        /// تُقرأ عند البناء وعند الترقية وعند الإصلاح وفي شريطها، ولو حُسبت
+        /// في كلٍّ على حدة لَظهر شريطٌ ممتلئ فوق مبنىً جريح.
+        /// </summary>
+        public float MaxHealth
+        {
+            get
+            {
+                if (_definition == null)
+                {
+                    return 1f;
+                }
+
+                return _definition.MaxHealth
+                    * Dawnkeep.Boons.BoonBook.Stat(Dawnkeep.Boons.BoonStat.BuildingHealth);
+            }
+        }
+
         /// <summary>إجمالي ما دُفع فيه وفي ترقياته — أساس ثمن البيع (§10).</summary>
         public int TotalPaid { get { return _totalPaid; } }
 
@@ -90,7 +109,7 @@ namespace Dawnkeep.Building
             _definition = definition;
             _node = node;
             _totalPaid = paid;
-            _health = definition.MaxHealth;
+            _health = MaxHealth;
             _nextShot = 0f;
             _builtAt = Time.time;
             Alive = true;
@@ -147,7 +166,7 @@ namespace Dawnkeep.Building
 
             // الصحّة تُملأ عند الترقية: المبنى أُعيد بناؤه لا رُقِّع
             _definition = definition;
-            _health = definition.MaxHealth;
+            _health = MaxHealth;
             _builtAt = Time.time;
             _nextShot = 0f;
 
@@ -177,12 +196,12 @@ namespace Dawnkeep.Building
         /// <summary>يعيد صحّةً بحدّ سقفه. يعيد true إن كان جريحاً فعلاً.</summary>
         public bool Repair(float amount)
         {
-            if (!Alive || _definition == null || _health >= _definition.MaxHealth)
+            if (!Alive || _definition == null || _health >= MaxHealth)
             {
                 return false;
             }
 
-            _health = Mathf.Min(_definition.MaxHealth, _health + amount);
+            _health = Mathf.Min(MaxHealth, _health + amount);
             TintByHealth();
             return true;
         }
@@ -268,7 +287,7 @@ namespace Dawnkeep.Building
                 return;
             }
 
-            float ratio = Mathf.Clamp01(_health / Mathf.Max(1f, _definition.MaxHealth));
+            float ratio = Mathf.Clamp01(_health / Mathf.Max(1f, MaxHealth));
             float shade = Mathf.Lerp(0.42f, 1f, ratio);
             Color tint = new Color(shade, shade * 0.97f, shade * 0.94f, 1f);
 

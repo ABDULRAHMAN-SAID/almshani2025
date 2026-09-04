@@ -131,5 +131,22 @@ namespace Dawnkeep.Localization
         public const string BoonTaken = "boon.taken";
         public const string TabBoons = "pause.tab.boons";
         public const string BoonRow = "boon.row";
+
+        // التقدّم الدائم والأبحاث (§16)
+        public const string MetaOpen = "meta.open";
+        public const string MetaClose = "meta.close";
+        public const string MetaHeader = "meta.header";
+        public const string MetaStars = "meta.stars";
+        public const string MetaRank = "meta.rank";
+        public const string MetaDelta = "meta.delta";
+        public const string MetaCost = "meta.cost";
+        public const string MetaMaxed = "meta.maxed";
+        public const string MetaLocked = "meta.locked";
+        public const string MetaCapped = "meta.capped";
+        public const string MetaRespec = "meta.respec";
+        public const string BranchEconomy = "branch.economy";
+        public const string BranchFortification = "branch.fortification";
+        public const string BranchCommand = "branch.command";
+        public const string BranchDawncraft = "branch.dawncraft";
     }
 }

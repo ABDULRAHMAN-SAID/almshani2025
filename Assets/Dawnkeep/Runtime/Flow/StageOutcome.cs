@@ -109,6 +109,15 @@ namespace Dawnkeep.Flow
         {
             _result = result;
 
+            // مكافأة التقدّم الدائم (§16) تُمنح **هنا** ومرّةً واحدة: `Resolve`
+            // تُستدعى من فرعين (فوزٍ وخسارة) ولا تُستدعى مرّتين — و`_result`
+            // يمنع دخولها ثانيةً على كل حال.
+            Dawnkeep.Meta.Progress progress = Dawnkeep.Meta.Progress.Instance;
+            if (progress != null)
+            {
+                progress.AwardStage(WavesCleared, result == StageResult.Victory);
+            }
+
             if (freezeOnResult)
             {
                 Time.timeScale = 0f;
