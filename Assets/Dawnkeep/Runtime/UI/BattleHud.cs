@@ -1,4 +1,5 @@
 using Dawnkeep.Combat;
+using Dawnkeep.Light;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -32,6 +33,7 @@ namespace Dawnkeep.UI
         [SerializeField] private Color goldColor = new Color(0.878f, 0.749f, 0.451f);
         [SerializeField] private Color kingdomColor = new Color(0.353f, 0.780f, 0.404f);
         [SerializeField] private Color hordeColor = new Color(0.851f, 0.294f, 0.267f);
+        [SerializeField] private Color dawnColor = new Color(1f, 0.796f, 0.451f);
 
         [Header("اللافتة")]
         [Tooltip("ثوانٍ تبقى فيها لافتة اسم الموجة قبل أن تذوب.")]
@@ -41,6 +43,7 @@ namespace Dawnkeep.UI
 
         private WaveDirector _waves;
         private CombatDirector _combat;
+        private LightField _light;
 
         private TextMeshProUGUI _waveNumber;
         private TextMeshProUGUI _phaseLabel;
@@ -48,7 +51,10 @@ namespace Dawnkeep.UI
         private TextMeshProUGUI _kingdomCount;
         private TextMeshProUGUI _hordeCount;
         private TextMeshProUGUI _heroHealth;
+        private TextMeshProUGUI _lightStock;
+        private TextMeshProUGUI _beaconCount;
         private TextMeshProUGUI _bannerText;
+        private GameObject _hint;
         private Image _heroBar;
         private CanvasGroup _heroPanel;
         private CanvasGroup _banner;
@@ -65,6 +71,9 @@ namespace Dawnkeep.UI
         private int _shownWave = -1;
         private int _shownKingdom = -1;
         private int _shownHorde = -1;
+        private int _shownStock = -1;
+        private int _shownBeacons = -1;
+        private bool _shownHint;
         private int _shownHeroHealth = -1;
         private int _shownHeroMax = -1;
         private WavePhase _shownPhase = (WavePhase)(-1);
@@ -86,6 +95,7 @@ namespace Dawnkeep.UI
         {
             _waves = FindAnyObjectByType<WaveDirector>();
             _combat = CombatDirector.Instance;
+            _light = LightField.Instance;
 
             if (_waves != null && _hastenButton != null)
             {
@@ -101,10 +111,50 @@ namespace Dawnkeep.UI
                 _combat = CombatDirector.Instance;
             }
 
+            if (_light == null)
+            {
+                _light = LightField.Instance;
+            }
+
             UpdateCounts();
             UpdateWave();
+            UpdateLight();
             UpdateHero();
             UpdateBanner();
+        }
+
+        /// <summary>مخزون النور وعدد المنارات المضيئة — قراءة §11 على الشاشة.</summary>
+        private void UpdateLight()
+        {
+            if (_light == null)
+            {
+                return;
+            }
+
+            if (_light.Stock != _shownStock)
+            {
+                _shownStock = _light.Stock;
+                _lightStock.SetCharArray(_digits, 0, ArabicNumber.Write(_shownStock, _digits, 0));
+
+                // المخزون الممتلئ ذهبيّ يلفت، والفارغ باهت لا يشغل العين
+                _lightStock.color = _shownStock > 0 ? dawnColor : inkColor;
+            }
+
+            int lit = _light.LitCount;
+            if (lit != _shownBeacons)
+            {
+                _shownBeacons = lit;
+                _beaconCount.SetCharArray(_digits, 0, ArabicNumber.Write(lit, _digits, 0));
+                _beaconCount.color = lit > 0 ? inkColor : hordeColor;
+            }
+
+            // التلميح أثناء التخطيط وحده: بقاؤه في الاشتباك ضجيج
+            bool hint = _waves == null || _waves.CanHasten || _waves.Phase == WavePhase.Idle;
+            if (hint != _shownHint)
+            {
+                _shownHint = hint;
+                _hint.SetActive(hint);
+            }
         }
 
         private void UpdateCounts()
@@ -270,8 +320,10 @@ namespace Dawnkeep.UI
 
             BuildWavePanel(root);
             BuildCountsPanel(root);
+            BuildLightPanel(root);
             BuildHeroPanel(root);
             BuildBanner(root);
+            BuildHint(root);
         }
 
         /// <summary>لوحة الموجة: الزاوية اليمنى العليا — أوّل ما تقع عليه العين.</summary>
@@ -350,6 +402,52 @@ namespace Dawnkeep.UI
             _hordeCount = Numeral("HordeCount", panel, 30f, inkColor,
                 new Vector2(0f, 0f), new Vector2(18f, 14f), new Vector2(96f, 34f),
                 TextAlignmentOptions.MidlineLeft);
+        }
+
+        /// <summary>
+        /// لوحة النور تحت لوحة الأعداد: المخزون وعدد المنارات المضيئة.
+        /// المنارات المضيئة بلون الخطر إن صفرت — انطفاؤها كلّها يعني أنّ درع
+        /// الظلام يعمل بكامله في كل الساحة.
+        /// </summary>
+        private void BuildLightPanel(RectTransform root)
+        {
+            // 340 لا 300: «شحنات النور» و«منارات مضيئة» أطول من عناوين لوحة
+            // الأعداد، ولوحةٌ يفيض نصّها عنها أسوأ من لوحة أعرض بقليل.
+            RectTransform panel = MakePanel("LightPanel", root,
+                new Vector2(0f, 1f), new Vector2(24f, -142f), new Vector2(340f, 108f));
+
+            Label("StockCaption", panel, "شحنات النور", 24f, dawnColor,
+                new Vector2(1f, 1f), new Vector2(-18f, -12f), new Vector2(220f, 34f),
+                TextAlignmentOptions.MidlineRight);
+
+            _lightStock = Numeral("Stock", panel, 30f, dawnColor,
+                new Vector2(0f, 1f), new Vector2(18f, -12f), new Vector2(86f, 34f),
+                TextAlignmentOptions.MidlineLeft);
+
+            Label("BeaconCaption", panel, "منارات مضيئة", 24f, inkColor,
+                new Vector2(1f, 0f), new Vector2(-18f, 14f), new Vector2(220f, 34f),
+                TextAlignmentOptions.MidlineRight);
+
+            _beaconCount = Numeral("Beacons", panel, 30f, inkColor,
+                new Vector2(0f, 0f), new Vector2(18f, 14f), new Vector2(86f, 34f),
+                TextAlignmentOptions.MidlineLeft);
+        }
+
+        /// <summary>
+        /// تلميح النقل: نظام النور لا يُكتشف بالصدفة. سطر واحد أثناء التخطيط
+        /// يقول للّاعب ما الذي بيده — وأزرارٌ صامتة لا تعلّم أحداً.
+        /// </summary>
+        private void BuildHint(RectTransform root)
+        {
+            RectTransform rect = MakeRect("Hint", root,
+                new Vector2(0.5f, 0f), new Vector2(0f, 26f), new Vector2(820f, 40f));
+
+            Label("Text", rect, "انقر منارةً لتنقل إليها شحنة نور، وانقرها ثانيةً لتستردّها",
+                24f, dawnColor, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(820f, 40f),
+                TextAlignmentOptions.Midline);
+
+            _hint = rect.gameObject;
+            _hint.SetActive(false);
         }
 
         /// <summary>لوحة البطل أسفل اليمين: قريبة من الإبهام على الجوّال.</summary>

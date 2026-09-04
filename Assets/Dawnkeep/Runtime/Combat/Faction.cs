@@ -15,5 +15,6 @@ namespace Dawnkeep.Combat
         Champion = 1,     // Assassin: القائد أو الجنود البعيدون
         Structure = 2,    // Siege: الجدران وقلب الحصن
         Ranged = 3,       // Mire Hound: يقفز إلى الرماة
+        Beacon = 4,       // آكل القناديل: يقصد المنارات ويطفئها (§11)
     }
 }

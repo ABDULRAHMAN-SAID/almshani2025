@@ -58,19 +58,36 @@ namespace Dawnkeep.EditorTools
                 CharacterMeshFactory.Kind.Swordsman, new Color(0.243f, 0.271f, 0.318f),
                 health: 110f, armour: 0.10f, speed: 3.6f, damage: 12f,
                 range: 1.9f, interval: 1.10f, ranged: false, sight: 24f, retarget: 0.5f,
-                targetClass: TargetClass.Nearest);
+                targetClass: TargetClass.Nearest, darkArmour: 0.18f);
 
             UnitDefinition brute = MakeUnit("Unit_Brute", "غاشم مدرّع", Faction.Horde,
                 CharacterMeshFactory.Kind.Spearman, new Color(0.318f, 0.271f, 0.243f),
                 health: 260f, armour: 0.34f, speed: 2.4f, damage: 22f,
                 range: 2.6f, interval: 1.45f, ranged: false, sight: 22f, retarget: 0.7f,
-                targetClass: TargetClass.Nearest);
+                targetClass: TargetClass.Nearest, darkArmour: 0.22f);
 
             UnitDefinition nightArcher = MakeUnit("Unit_NightArcher", "رامي الليل", Faction.Horde,
                 CharacterMeshFactory.Kind.Archer, new Color(0.353f, 0.239f, 0.416f),
                 health: 80f, armour: 0.05f, speed: 3.2f, damage: 16f,
                 range: 15f, interval: 1.75f, ranged: true, sight: 24f, retarget: 0.6f,
-                targetClass: TargetClass.Ranged);
+                targetClass: TargetClass.Ranged, darkArmour: 0.15f);
+
+            // وحدتا §11: الأولى تذوب في النور، والثانية تُطفئه.
+            // درع ظلام عالٍ وصحّة زهيدة: خارج النور تصمد، وداخله تتساقط —
+            // وهذا هو الدرس الذي يعلّم اللاعب قيمة الدائرة في موجة واحدة.
+            UnitDefinition duskling = MakeUnit("Unit_Duskling", "وليد الغَسَق", Faction.Horde,
+                CharacterMeshFactory.Kind.Swordsman, new Color(0.286f, 0.243f, 0.376f),
+                health: 55f, armour: 0.02f, speed: 4.7f, damage: 9f,
+                range: 1.8f, interval: 0.85f, ranged: false, sight: 26f, retarget: 0.45f,
+                targetClass: TargetClass.Nearest, darkArmour: 0.62f);
+
+            // يمرّ بالمقاتلين إلى المنارة فيُطفئها ثماني ثوانٍ (§11). ضربه لا
+            // يجرح أحداً: خطره أنّه يسلب المنطقة، فيوجب على اللاعب فكّ خطّه.
+            UnitDefinition lampEater = MakeUnit("Unit_LampEater", "آكل القناديل", Faction.Horde,
+                CharacterMeshFactory.Kind.Spearman, new Color(0.208f, 0.196f, 0.271f),
+                health: 165f, armour: 0.16f, speed: 3.5f, damage: 6f,
+                range: 3.4f, interval: 1.60f, ranged: false, sight: 40f, retarget: 0.8f,
+                targetClass: TargetClass.Beacon, darkArmour: 0.30f);
 
             WaveDefinition wave = MakeWave("Wave_01", "الموجة الأولى", 10f, new[]
             {
@@ -84,12 +101,21 @@ namespace Dawnkeep.EditorTools
                 MakeEntry(raider, 12, 0.7f, 0f),
                 MakeEntry(brute, 4, 2.0f, 5f),
                 MakeEntry(nightArcher, 6, 1.1f, 9f),
+                MakeEntry(lampEater, 1, 1f, 14f),
+            });
+
+            WaveDefinition wave3 = MakeWave("Wave_03", "موجة الغَسَق", 16f, new[]
+            {
+                MakeEntry(duskling, 14, 0.55f, 0f),
+                MakeEntry(lampEater, 2, 3.0f, 7f),
+                MakeEntry(brute, 4, 2.0f, 12f),
+                MakeEntry(nightArcher, 5, 1.2f, 16f),
             });
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
 
-            WireScene(new[] { wave, wave2 }, spearman, swordsman, archer, hero);
+            WireScene(new[] { wave, wave2, wave3 }, spearman, swordsman, archer, hero);
 
             Debug.Log("مملكة الرماد: القتال والموجات جاهزة. الأرقام في " + CombatFolder);
         }
@@ -267,7 +293,7 @@ namespace Dawnkeep.EditorTools
         private static UnitDefinition MakeUnit(string assetName, string display, Faction faction,
             CharacterMeshFactory.Kind kind, Color livery, float health, float armour, float speed,
             float damage, float range, float interval, bool ranged, float sight, float retarget,
-            TargetClass targetClass)
+            TargetClass targetClass, float darkArmour = 0f)
         {
             string path = CombatFolder + "/" + assetName + ".asset";
             UnitDefinition def = AssetDatabase.LoadAssetAtPath<UnitDefinition>(path);
@@ -285,6 +311,7 @@ namespace Dawnkeep.EditorTools
             SetPrivate(def, "livery", livery);
             SetPrivate(def, "maxHealth", health);
             SetPrivate(def, "armour", armour);
+            SetPrivate(def, "darkArmour", darkArmour);
             SetPrivate(def, "moveSpeed", speed);
             SetPrivate(def, "damage", damage);
             SetPrivate(def, "attackRange", range);

@@ -29,6 +29,11 @@ namespace Dawnkeep.Combat
         [Range(0f, 0.9f)]
         [SerializeField] private float armour;
 
+        [Tooltip("درع الظلام (§11): يُضاف إلى الدرع خارج النور ويذوب داخله. "
+            + "هو ما يجعل جرّ العدوّ إلى دائرة منارة قراراً لا زينة.")]
+        [Range(0f, 0.9f)]
+        [SerializeField] private float darkArmour;
+
         [Header("الحركة")]
         [Tooltip("متر في الثانية.")]
         [SerializeField] private float moveSpeed = 3.2f;
@@ -71,6 +76,9 @@ namespace Dawnkeep.Combat
         public float MaxHealth { get { return maxHealth; } }
 
         public float Armour { get { return armour; } }
+
+        /// <summary>درع الظلام الكامل — قبل ما يقضمه النور.</summary>
+        public float DarkArmour { get { return darkArmour; } }
 
         public float MoveSpeed { get { return moveSpeed; } }
 

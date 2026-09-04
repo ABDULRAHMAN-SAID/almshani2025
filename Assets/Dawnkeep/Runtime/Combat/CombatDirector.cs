@@ -44,6 +44,7 @@ namespace Dawnkeep.Combat
         private int[] _neighbours;
         private SpatialHash _hash;
         private ProjectilePool _projectiles;
+        private Dawnkeep.Light.LightField _light;
         private bool _ready;
 
         public int LiveCount { get; private set; }
@@ -77,6 +78,10 @@ namespace Dawnkeep.Combat
 
         private void Start()
         {
+            // يُلتقط هنا لا في Awake: ترتيب إيقاظ الكائنات غير مضمون، وحقل
+            // النور قد لا يكون سجّل نفسه بعد.
+            _light = Dawnkeep.Light.LightField.Instance;
+
             // تسجيل الحامية الموضوعة في المشهد مرّة واحدة عند الإقلاع.
             // البحث في المشهد مسموح هنا وحده — وممنوع داخل حلقة الإطار (§1).
             Unit[] placed = FindObjectsByType<Unit>(FindObjectsInactive.Include, FindObjectsSortMode.None);
@@ -143,6 +148,13 @@ namespace Dawnkeep.Combat
                 }
 
                 live++;
+
+                // النور يُقاس في كل إطار لا على فترة التفكير: الوحدة قد تعبر
+                // حافّة الدائرة بين تفكيرين، فيضربها الظلام وهي في النور.
+                // والمخزَّن هو **مقدار قضم الدرع** لا شدّة النور الخام: الشحنات
+                // جزء من الحساب، وتكرارها عند كل ضربة يعني استعلاماً زائداً.
+                unit.LightLevel = _light != null ? _light.ArmourCutAt(unit.Body.position) : 0f;
+
                 if (unit.Faction == Faction.Kingdom)
                 {
                     kingdom++;
@@ -203,21 +215,45 @@ namespace Dawnkeep.Combat
             // إعادة تقييم الهدف على فترتها، لا في كل إطار
             if (now >= unit.NextThink)
             {
+                if (def.TargetClass == TargetClass.Beacon && _light != null)
+                {
+                    unit.BeaconTarget = _light.NearestLit(unit.Body.position);
+                }
+
                 unit.Target = FindTarget(index, unit, def);
                 unit.NextThink = now + def.RetargetInterval;
             }
 
             Unit target = ResolveTarget(unit);
+            Dawnkeep.Light.Beacon beacon = ResolveBeacon(unit, def);
             Vector3 position = unit.Body.position;
             Vector3 desired;
             bool inRange = false;
 
-            if (target != null)
+            // المدى يتّسع داخل النور (§11: +5% لكل شحنة). طُبِّق على الرماة
+            // وحدهم لأنّهم أقرب ما في اللعبة اليوم إلى برج — ولا أبراج بعد.
+            float range = def.AttackRange;
+            if (def.Ranged && _light != null)
+            {
+                range *= 1f + _light.RangeBonusAt(position);
+            }
+
+            if (beacon != null)
+            {
+                // آكل القناديل يمرّ بالمقاتلين إلى المنارة: هذه هي التهديدة
+                // التي تجبر اللاعب على ترك خطّه ليحميها (§11).
+                Vector3 toBeacon = beacon.Position - position;
+                toBeacon.y = 0f;
+                float distance = toBeacon.magnitude;
+                inRange = distance <= range;
+                desired = inRange ? Vector3.zero : toBeacon / Mathf.Max(0.0001f, distance);
+            }
+            else if (target != null)
             {
                 Vector3 toTarget = target.Body.position - position;
                 toTarget.y = 0f;
                 float distance = toTarget.magnitude;
-                inRange = distance <= def.AttackRange;
+                inRange = distance <= range;
                 desired = inRange ? Vector3.zero : toTarget / Mathf.Max(0.0001f, distance);
             }
             else if (unit.HasPath)
@@ -259,10 +295,10 @@ namespace Dawnkeep.Combat
                 Quaternion look = Quaternion.LookRotation(desired, Vector3.up);
                 unit.Body.rotation = Quaternion.RotateTowards(unit.Body.rotation, look, def.TurnSpeed * dt);
             }
-            else if (target != null)
+            else if (target != null || beacon != null)
             {
                 // واقف يضرب: لا بدّ أن يلتفت إلى خصمه وإلا ضرب الهواء جانباً
-                Vector3 face = target.Body.position - position;
+                Vector3 face = (beacon != null ? beacon.Position : target.Body.position) - position;
                 face.y = 0f;
                 if (face.sqrMagnitude > 0.0001f)
                 {
@@ -276,7 +312,7 @@ namespace Dawnkeep.Combat
                 unit.Animator.Walk = speed > 0f ? 1f : 0f;
             }
 
-            if (target != null && inRange && now >= unit.NextAttack)
+            if ((target != null || beacon != null) && inRange && now >= unit.NextAttack)
             {
                 unit.NextAttack = now + def.AttackInterval;
                 if (unit.Animator != null)
@@ -292,16 +328,56 @@ namespace Dawnkeep.Combat
                 }
             }
 
-            ResolveHits(unit, def, target);
+            ResolveHits(unit, def, target, beacon);
+        }
+
+        /// <summary>
+        /// المنارة المقصودة إن بقيت مضيئة. تُنسى فور انطفائها: بقاء آكل
+        /// القناديل يضرب منارة مطفأة يجمّده عن المعركة كلّها.
+        /// </summary>
+        private Dawnkeep.Light.Beacon ResolveBeacon(Unit unit, UnitDefinition def)
+        {
+            if (def.TargetClass != TargetClass.Beacon)
+            {
+                return null;
+            }
+
+            Dawnkeep.Light.Beacon beacon = unit.BeaconTarget;
+            if (beacon == null || !beacon.IsLit)
+            {
+                unit.BeaconTarget = null;
+                unit.NextThink = 0f;
+                return null;
+            }
+
+            return beacon;
         }
 
         /// <summary>
         /// الضرر يقع في اللحظة التي **تُرى** فيها الضربة، لا عند بدء الحركة:
         /// المُحرِّك يرفع رايته في منتصف الهويّ، والسهم ينطلق عند الإفلات.
         /// </summary>
-        private void ResolveHits(Unit unit, UnitDefinition def, Unit target)
+        private void ResolveHits(Unit unit, UnitDefinition def, Unit target,
+            Dawnkeep.Light.Beacon beacon)
         {
-            if (unit.Animator == null || target == null || !target.Alive)
+            if (unit.Animator == null)
+            {
+                return;
+            }
+
+            // المنارة لا تُجرَح بل **تُطفَأ**: الشحنة تعود بعد المهلة، فالخسارة
+            // منطقةٌ لثوانٍ لا مورد إلى الأبد (§11).
+            if (beacon != null)
+            {
+                if (unit.Animator.AttackLandedThisFrame && _light != null && _light.Settings != null)
+                {
+                    beacon.Snuff(_light.Settings.SnuffSeconds);
+                }
+
+                return;
+            }
+
+            if (target == null || !target.Alive)
             {
                 return;
             }

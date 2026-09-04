@@ -23,8 +23,10 @@ namespace Dawnkeep.Combat
         private float _nextThink;
         private float _nextAttack;
         private Unit _target;
+        private Dawnkeep.Light.Beacon _beaconTarget;
         private Vector3 _home;
         private bool _hasHome;
+        private float _light;
 
         private Vector3[] _path;
         private int _pathIndex;
@@ -58,6 +60,26 @@ namespace Dawnkeep.Combat
         /// </summary>
         public Unit Target { get { return _target; } set { _target = value; } }
 
+        /// <summary>
+        /// المنارة التي تقصدها هذه الوحدة (آكل القناديل وحده). منفصلة عن
+        /// `Target` لأنّها ليست وحدة: لا تُقتل ولا تُحسب في الأحياء، وخلطهما
+        /// في حقل واحد يعني فحص نوع في كل إطار.
+        /// </summary>
+        public Dawnkeep.Light.Beacon BeaconTarget
+        {
+            get { return _beaconTarget; }
+            set { _beaconTarget = value; }
+        }
+
+        /// <summary>
+        /// شدّة النور على الوحدة الآن، من صفر إلى واحد. يحدّثها `CombatDirector`
+        /// في مروره، فلا تسأل الوحدةُ حقلَ النور بنفسها ولا تكرّر الاستعلام.
+        ///
+        /// اسمها `LightLevel` لا `Light`: عضوٌ باسم `Light` في صنف يستورد
+        /// `UnityEngine` يحجب نوع الضوء نفسه على كل من يقرأ الملفّ.
+        /// </summary>
+        public float LightLevel { get { return _light; } set { _light = value; } }
+
         /// <summary>موضع المرابطة: تعود إليه الحامية إذا لم يبقَ لها هدف.</summary>
         public Vector3 Home { get { return _home; } }
 
@@ -84,6 +106,8 @@ namespace Dawnkeep.Combat
             Alive = true;
             DeadFor = 0f;
             _target = null;
+            _beaconTarget = null;
+            _light = 0f;
             _nextThink = 0f;
             _nextAttack = 0f;
             _pathIndex = 0;
@@ -111,6 +135,8 @@ namespace Dawnkeep.Combat
             Alive = true;
             DeadFor = 0f;
             _target = null;
+            _beaconTarget = null;
+            _light = 0f;
             _nextThink = 0f;
             _nextAttack = 0f;
             _path = path;
@@ -135,8 +161,15 @@ namespace Dawnkeep.Combat
                 return false;
             }
 
+            // درع الظلام يذوب في النور (§11): هو ما يجعل جرّ العدوّ إلى دائرة
+            // منارة قراراً تكتيكياً. والمجموع مقصوص عند 0.9 فلا شيء يصير منيعاً.
             float armour = definition != null ? definition.Armour : 0f;
-            _health -= amount * (1f - armour);
+            if (definition != null && definition.DarkArmour > 0f)
+            {
+                armour += definition.DarkArmour * (1f - Mathf.Clamp01(_light));
+            }
+
+            _health -= amount * (1f - Mathf.Clamp(armour, 0f, 0.9f));
 
             if (_health > 0f)
             {
