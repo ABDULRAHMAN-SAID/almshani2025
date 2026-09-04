@@ -26,6 +26,7 @@ namespace Dawnkeep.Save
         public HeroProgress Hero = new HeroProgress();
         public EquipmentInventory Equipment = new EquipmentInventory();
         public DoctrineState Doctrine = new DoctrineState();
+        public ModeRecords Modes = new ModeRecords();
         public ResearchState Research = new ResearchState();
         public QuestState Quests = new QuestState();
         public PurchasesEntitlements Purchases = new PurchasesEntitlements();
@@ -155,6 +156,29 @@ namespace Dawnkeep.Save
 
             LevelValues[i] = level;
         }
+    }
+
+    [Serializable]
+    public class ModeRecords
+    {
+        /// <summary>
+        /// أفضل رقمٍ في كل نمطٍ (§20). **محلّيّة**: «لوحة أفضل رقم محلية»
+        /// بنصّ §20، ولا رقمَ عالميّ حتى يوجد خادمٌ يتحقّق.
+        /// </summary>
+        public int EndlessBest;
+
+        public int DailyBest;
+
+        public int BossHuntBest;
+
+        /// <summary>بذرة Endless الجارية — يبدّلها اللاعب فتتبدّل الخريطة.</summary>
+        public int EndlessSeed;
+
+        /// <summary>
+        /// اليوم الذي يخصّه رقم اليوميّة. رقمُ أمسٍ ليس رقم اليوم، وعرضُه
+        /// اليوم يجعل اللاعب يظنّ أنّه سبق نفسه وهو لم يلعب بعد.
+        /// </summary>
+        public string DailyDayUtc = string.Empty;
     }
 
     [Serializable]

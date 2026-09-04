@@ -147,6 +147,15 @@ namespace Dawnkeep.Flow
             }
         }
 
+        private void OpenModes()
+        {
+            Dawnkeep.UI.ModePanel panel = FindAnyObjectByType<Dawnkeep.UI.ModePanel>();
+            if (panel != null)
+            {
+                panel.Open();
+            }
+        }
+
         private void OpenCampaign()
         {
             Dawnkeep.UI.CampaignPanel panel = FindAnyObjectByType<Dawnkeep.UI.CampaignPanel>();
@@ -323,8 +332,12 @@ namespace Dawnkeep.Flow
                 new Vector2(280f, 92f), 28f, inkColor, OpenDoctrine);
 
             // خريطة الحملة (§19): تختار المرحلة التي يبدؤها زرّ اللعب
-            Button(rect, "Campaign", LocKeys.CampaignOpen, new Vector2(0f, -340f),
+            Button(rect, "Campaign", LocKeys.CampaignOpen, new Vector2(-150f, -340f),
                 new Vector2(280f, 92f), 28f, inkColor, OpenCampaign);
+
+            // وأنماط §20: الحملة أو بلا نهاية أو تجربة اليوم أو صيد الزعماء
+            Button(rect, "Modes", LocKeys.ModesOpen, new Vector2(150f, -340f),
+                new Vector2(280f, 92f), 28f, inkColor, OpenModes);
 
             // ما لم يُبنَ بعد يُقال نصّاً لا يُعرض زرّاً (§17). والحدّادة
             // خرجت من هذه القائمة: صارت داخل شاشة التجهيز.

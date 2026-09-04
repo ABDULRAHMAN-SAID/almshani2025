@@ -56,6 +56,9 @@ namespace Dawnkeep.Flow
         /// <summary>مخطّطٌ منحه الفوز أوّل مرّة (§19)، أو `null`. تعرضه النتيجة.</summary>
         public Dawnkeep.Equipment.EquipmentDefinition Blueprint { get; private set; }
 
+        /// <summary>هل سجّلت هذه الجولة رقماً جديداً في نمطها (§20)؟</summary>
+        public bool NewRecord { get; private set; }
+
         private void Awake()
         {
             Instance = this;
@@ -111,7 +114,13 @@ namespace Dawnkeep.Flow
             // نفاد المحتوى فيتجمّد رقمها، ولا يتحقّق شرط الفوز أبداً.
             WavesCleared = _waves.WavesCleared;
 
-            if (WavesCleared < WavesToSurvive)
+            // Endless بلا نهاية (§20): لا فوزَ فيه، والجولة تنتهي بالسقوط
+            // وحده. وحبسُ الفوز خلف رقمٍ كبير ليس «بلا نهاية» بل نهايةٌ
+            // بعيدة — والرقم يُبلَغ يوماً فتنتهي اللعبة بلا معنى.
+            int nights = Dawnkeep.Modes.ModeDirector.NightsFor(
+                Dawnkeep.Modes.ModeDirector.Current, WavesToSurvive);
+
+            if (nights <= 0 || WavesCleared < nights)
             {
                 return;
             }
@@ -141,6 +150,7 @@ namespace Dawnkeep.Flow
             }
 
             RecordCampaign(result);
+            RecordMode();
 
             // إنجاز مرحلة الحملة ومخطّطها (§19 و§17). عند الفوز وحده،
             // ومرّةً واحدة — `Complete` تحرسها بقائمة المنجَز لا بعدّاد.
@@ -165,6 +175,25 @@ namespace Dawnkeep.Flow
             {
                 handler(result);
             }
+        }
+
+        /// <summary>
+        /// يسجّل رقم النمط (§20) إن لم تكن حملة. **الرقم عدد الليالي**:
+        /// أبسطُ ما يُقاس ويُفهَم، ولا يحتاج صيغةً تُشرَح.
+        ///
+        /// و`NewRecord` يعرضه شاشة النتيجة — رقمٌ يُسجَّل بلا أن يُقال ليس
+        /// رقماً في نظر اللاعب.
+        /// </summary>
+        private void RecordMode()
+        {
+            Dawnkeep.Modes.ModeDirector modes = Dawnkeep.Modes.ModeDirector.Instance;
+            if (modes == null
+                || Dawnkeep.Modes.ModeDirector.Current == Dawnkeep.Modes.PlayMode.Campaign)
+            {
+                return;
+            }
+
+            NewRecord = modes.Record(Dawnkeep.Modes.ModeDirector.Current, WavesCleared);
         }
 
         /// <summary>

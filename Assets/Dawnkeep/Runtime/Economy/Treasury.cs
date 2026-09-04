@@ -55,8 +55,16 @@ namespace Dawnkeep.Economy
             // «الاستثمار المبكّر» (§18): فضّةٌ إضافية عند البداية. تُضاف هنا
             // **مرّةً** لا في كل قراءة: عقيدةٌ تُقرأ كمضاعفٍ على الرصيد تعني
             // مالاً يتضاعف عند كل بناء.
-            _silver = startingSilver + Dawnkeep.Doctrine.DoctrineBook.Opening(
-                Dawnkeep.Doctrine.DoctrineOpening.ExtraSilver);
+            // التجربة اليومية (§20) رصيدُها واحدٌ للجميع: «Loadout ومباني
+            // محددة مسبقًا». ولا عقيدةَ فيها كذلك — وإلّا صار الرقم رقمَ
+            // تجهيزٍ لا رقمَ لعب، ولوحةُ الأرقام بلا معنى.
+            int start = Dawnkeep.Modes.ModeDirector.SilverFor(
+                Dawnkeep.Modes.ModeDirector.Current, startingSilver);
+
+            _silver = Dawnkeep.Modes.ModeDirector.UsesLoadout
+                ? start + Dawnkeep.Doctrine.DoctrineBook.Opening(
+                    Dawnkeep.Doctrine.DoctrineOpening.ExtraSilver)
+                : start;
         }
 
         private void OnDestroy()

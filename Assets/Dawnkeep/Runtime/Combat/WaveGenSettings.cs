@@ -123,11 +123,35 @@ namespace Dawnkeep.Combat
 
         public int MiniBossEvery { get { return Mathf.Max(0, miniBossEvery); } }
 
-        public int BossEvery { get { return Mathf.Max(0, bossEvery); } }
+        /// <summary>
+        /// كل كم ليلةٍ زعيم. **صيد الزعماء (§20) يجعلها واحدة**: «معارك
+        /// قصيرة ضدّ نسخٍ معدَّلة من الزعماء» — ثلاث ليالٍ فيها زعيمٌ كل
+        /// ليلة، لا ثلاثٌ خاليةٌ يُسمّى آخرُها صيداً.
+        /// </summary>
+        public int BossEvery
+        {
+            get
+            {
+                return Dawnkeep.Modes.ModeDirector.Current == Dawnkeep.Modes.PlayMode.BossHunt
+                    ? 1 : Mathf.Max(0, bossEvery);
+            }
+        }
 
         public float BossShare { get { return bossShare; } }
 
-        public int Seed { get { return seed; } }
+        /// <summary>
+        /// بذرة الجولة، بعد النمط (§20). Endless له بذرةٌ يبدّلها اللاعب،
+        /// واليوميّة بذرةُ **يومها** — واحدةٌ للجميع بلا خادمٍ ولا اتّصال.
+        /// وبذرة الأصل هي الحملة.
+        /// </summary>
+        public int Seed
+        {
+            get
+            {
+                return Dawnkeep.Modes.ModeDirector.SeedFor(
+                    Dawnkeep.Modes.ModeDirector.Current, seed);
+            }
+        }
 
         /// <summary>ميزانية التهديد لموجةٍ بعينها — صيغة §14 حرفياً.</summary>
         public int Budget(int waveNumber, float difficultyScale)

@@ -232,5 +232,24 @@ namespace Dawnkeep.Localization
         public const string ObjectiveTwoGates = "objective.gates";
         public const string ObjectiveEconomy = "objective.economy";
         public const string ObjectiveBrokenWall = "objective.wall";
+
+        // أنماط اللعب (§20)
+        public const string ModesOpen = "modes.open";
+        public const string ModesTitle = "modes.title";
+        public const string ModeCampaign = "mode.campaign";
+        public const string ModeEndless = "mode.endless";
+        public const string ModeDaily = "mode.daily";
+        public const string ModeBossHunt = "mode.bosshunt";
+        public const string ModeCampaignNote = "mode.campaign.note";
+        public const string ModeEndlessNote = "mode.endless.note";
+        public const string ModeDailyNote = "mode.daily.note";
+        public const string ModeBossHuntNote = "mode.bosshunt.note";
+        public const string ModeLockedZone = "mode.locked.zone";
+        public const string ModeBest = "mode.best";
+        public const string ModeNoBest = "mode.nobest";
+        public const string ModeChosen = "mode.chosen";
+        public const string ModeSeed = "mode.seed";
+        public const string ModeReroll = "mode.reroll";
+        public const string ModeNewRecord = "mode.record";
     }
 }

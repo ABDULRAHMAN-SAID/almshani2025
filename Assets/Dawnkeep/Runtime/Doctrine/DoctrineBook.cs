@@ -187,6 +187,11 @@ namespace Dawnkeep.Doctrine
 
         public static float Stat(Dawnkeep.Boons.BoonStat stat)
         {
+            if (!Dawnkeep.Modes.ModeDirector.UsesLoadout)
+            {
+                return 1f;      // اليوميّة: تجهيزٌ محدَّد سلفاً (§20)
+            }
+
             DoctrineBook book = Instance;
             return book != null ? book.Of(stat) : 1f;
         }
@@ -213,6 +218,11 @@ namespace Dawnkeep.Doctrine
         /// <summary>مجموعٌ ساكن يعمل ولو لم يكن ثمّة كتابٌ في المشهد.</summary>
         public static int Opening(DoctrineOpening opening)
         {
+            if (!Dawnkeep.Modes.ModeDirector.UsesLoadout)
+            {
+                return 0;       // اليوميّة: تجهيزٌ محدَّد سلفاً (§20)
+            }
+
             DoctrineBook book = Instance;
             return book != null ? book.OpeningAmount(opening) : 0;
         }

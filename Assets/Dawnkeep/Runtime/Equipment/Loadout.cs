@@ -219,6 +219,13 @@ namespace Dawnkeep.Equipment
         /// <summary>مضاعفٌ ساكن يعمل ولو لم يكن ثمّة تجهيزٌ في المشهد.</summary>
         public static float Stat(Dawnkeep.Boons.BoonStat stat)
         {
+            // التجربة اليومية (§20): تجهيزٌ محدَّد سلفاً، فلا يُقرأ عتاد
+            // اللاعب — ولو قُرئ لصار رقمُه رقمَ عتادٍ لا رقمَ لعب.
+            if (!Dawnkeep.Modes.ModeDirector.UsesLoadout)
+            {
+                return 1f;
+            }
+
             Loadout loadout = Instance;
             return loadout != null ? loadout.Of(stat) : 1f;
         }

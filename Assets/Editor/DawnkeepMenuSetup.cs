@@ -122,6 +122,22 @@ namespace Dawnkeep.EditorTools
             Dawnkeep.UI.CampaignPanel campaign =
                 canvasObject.AddComponent<Dawnkeep.UI.CampaignPanel>();
             campaign.Configure(font);
+
+            // وأنماط §20
+            Dawnkeep.UI.ModePanel modes = canvasObject.AddComponent<Dawnkeep.UI.ModePanel>();
+            modes.Configure(font);
+
+            // ومُخرِج الأنماط نفسه على كائن `Meta` مع بقيّة قرّاء الحفظ
+            GameObject meta = GameObject.Find("Meta");
+            if (meta == null)
+            {
+                meta = new GameObject("Meta");
+            }
+
+            if (meta.GetComponent<Dawnkeep.Modes.ModeDirector>() == null)
+            {
+                meta.AddComponent<Dawnkeep.Modes.ModeDirector>();
+            }
         }
 
         /// <summary>

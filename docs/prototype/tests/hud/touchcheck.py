@@ -576,4 +576,81 @@ check('والشاشات الثلاث بالمقاس نفسه',
       abs(panel.w - mpanel.w) < 1 and abs(panel.h - mpanel.h) < 1,
       f'  ({mpanel.w:.0f}×{mpanel.h:.0f})')
 
+print()
+print('── شاشة الأنماط (§20) ────────────────────')
+
+MODEUI = read('ModePanel.cs')
+mode_rects = collect(MODEUI, {'parent': ROOT_RECT})
+opanel = mode_rects.get('ModePanel', ROOT_RECT)
+
+orow = re.search(r'MakeRect\("Row_" \+ i, rect,\s*\n\s*' + VEC
+                 + r',\s*new Vector2\(([0-9.]+)f,\s*(-?[0-9.]+)f - \(i \* ([0-9.]+)f\)\),'
+                 + r'\s*\n\s*' + VEC, MODEUI)
+OROWS = int(re.search(r'public const int Rows = (\d+);', MODEUI).group(1))
+otaps = {}
+if orow:
+    g = orow.groups()
+    ax, ay = pair(*g[0:3])
+    x, y0, step = float(g[3]), float(g[4]), float(g[5])
+    w, h = pair(*g[6:9])
+    for i in range(OROWS):
+        otaps['نمط ' + str(i)] = place(opanel, ax, ay, x, y0 - i * step, w, h)
+
+for name in ('Reroll',):
+    if name in mode_rects:
+        g = re.search(r'MakeRect\("' + name + r'", rect,\s*\n\s*' + VEC
+                      + r',\s*' + VEC + r',\s*' + VEC, MODEUI)
+        if g:
+            gg = g.groups()
+            ax, ay = pair(*gg[0:3])
+            ox, oy = pair(*gg[3:6])
+            w, h = pair(*gg[6:9])
+            otaps[name] = place(opanel, ax, ay, ox, oy, w, h)
+
+OSMALL = pair(*re.search(r'MakeRect\(name, rect, anchor, offset, ' + VEC,
+                         MODEUI).groups())
+for m in re.finditer(r'SmallButton\(rect,\s*"(\w+)",\s*' + VEC + r',\s*\n?\s*' + VEC,
+                     MODEUI, re.S):
+    g = m.groups()
+    ax, ay = pair(*g[1:4])
+    ox, oy = pair(*g[4:7])
+    otaps[g[0]] = place(opanel, ax, ay, ox, oy, OSMALL[0], OSMALL[1])
+
+show('أهداف اللمس', otaps)
+print()
+
+check('الأنماط أربعةٌ (§20: بلا PvP)',
+      len([k for k in otaps if k.startswith('نمط')]) == 4, f'  ({OROWS})')
+
+small = [n for n, r in otaps.items() if min(r.w, r.h) < MIN_TAP]
+check(f'لا هدفَ يصغر عن {MIN_TAP} بكسلاً', not small,
+      '' if not small else f'  ({"، ".join(small)})')
+
+clashes = []
+names = list(otaps)
+for i in range(len(names)):
+    for j in range(i + 1, len(names)):
+        hit = overlap(otaps[names[i]], otaps[names[j]])
+        if hit:
+            clashes.append((names[i], names[j], hit))
+
+check('ولا تراكب بين هدفين', not clashes,
+      '' if not clashes else f'  ({clashes[0][0]} × {clashes[0][1]} بـ{clashes[0][2]})')
+
+outside = [n for n, r in otaps.items()
+           if r.x < opanel.x - 1 or r.y < opanel.y - 1
+           or r.right > opanel.right + 1 or r.top > opanel.top + 1]
+check('وكلٌّ داخل اللوحة', not outside,
+      '' if not outside else f'  ({"، ".join(outside)})')
+
+listeners = re.findall(r'onClick\.AddListener\((?:delegate \{ )?(\w+)', MODEUI)
+missing = [a for a in set(listeners)
+           if not re.search(r'(private|public)[^\n]*\b' + a + r'\(', MODEUI)]
+check('كل زرٍّ في الشاشة يستدعي دالّةً موجودة (§17)', not missing,
+      '' if not missing else f'  ({"، ".join(missing)})')
+
+check('والشاشات الأربع بالمقاس نفسه',
+      abs(panel.w - opanel.w) < 1 and abs(panel.h - opanel.h) < 1,
+      f'  ({opanel.w:.0f}×{opanel.h:.0f})')
+
 sys.exit(0 if ok else 1)
