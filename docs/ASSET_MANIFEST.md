@@ -28,6 +28,22 @@
 | `timber_albedo/normal.png` | `BuildingMaterials.Timber` | أصلي |
 | `thatch_albedo/normal.png` | `BuildingMaterials.Thatch` | أصلي |
 
+## أهل المملكة والخيل
+
+كلّها **مبنيّة إجرائياً** من أدوات البناء نفسها — لا أصل مأخوذ من أي لعبة أو صورة.
+كل صنف شبكتان: بدن لا يُصبغ، وقماش يأخذ لون الراية.
+
+| الأصل | المولِّد | الترخيص |
+|---|---|---|
+| `Dawnkeep_Folk_Hero_*` | `CharacterMeshFactory.Build(Kind.Hero)` — خوذة بقناع وعُرف وعباءة وسيف مذهّب | أصلي — هذا المستودع |
+| `Dawnkeep_Folk_Spearman_*` | `CharacterMeshFactory.Build(Kind.Spearman)` — خوذة مخروطة ورمح ودرع مستدير | أصلي |
+| `Dawnkeep_Folk_Swordsman_*` | `CharacterMeshFactory.Build(Kind.Swordsman)` — خوذة بحافّة وسيف ودرع طُرس | أصلي |
+| `Dawnkeep_Folk_Archer_*` | `CharacterMeshFactory.Build(Kind.Archer)` — قلنسوة وقوس وجَعبة | أصلي |
+| `Dawnkeep_Folk_Villager_*` | `CharacterMeshFactory.Build(Kind.Villager)` — قميص وقبّعة | أصلي |
+| `Dawnkeep_Horse_Barded_*` | `HorseMeshFactory.Build(barded: true)` — بسرج وجُلّ | أصلي |
+| `Dawnkeep_Horse_Free_*` | `HorseMeshFactory.Build(barded: false)` | أصلي |
+| `Dawnkeep_FolkBody.mat` · `Dawnkeep_FolkCloth.mat` | مادّتان بلا خامة صورية — اللون من ألوان الرؤوس | أصلي |
+
 ## خامات النبات الشفّافة
 
 | الأصل | المولِّد | الترخيص |

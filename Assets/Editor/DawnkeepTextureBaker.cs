@@ -239,6 +239,12 @@ namespace Dawnkeep.EditorTools
             MakeLit("Dawnkeep_TileBlue", lit, "tile_blue", 0.32f, Vector2.one);
             MakeLit("Dawnkeep_Thatch", lit, "thatch", 0.06f, Vector2.one);
 
+            // مادّتا أهل المملكة: بلا خامة صورية — اللون كلّه من ألوان الرؤوس.
+            // على بُعد كاميرا الاستراتيجية تُقرأ الصورة الظلّية والإضاءة لا نقش
+            // القماش، والاستغناء عن الخامة يوفّر ذاكرة ورسماً على الجوّال.
+            MakeVertexLit("Dawnkeep_FolkBody", lit, 0.22f, 0.16f);
+            MakeVertexLit("Dawnkeep_FolkCloth", lit, 0.06f, 0f);
+
             Shader foliage = Shader.Find("Dawnkeep/Foliage");
             if (foliage != null)
             {
@@ -264,6 +270,21 @@ namespace Dawnkeep.EditorTools
             {
                 Debug.LogWarning("مملكة الرماد: شادر Dawnkeep/Foliage غير مُصرَّف بعد — نفّذ الخطوة 1 (تثبيت URP) ثم أعد الخطوة 3.");
             }
+        }
+
+        /// <summary>مادّة تأخذ لونها من ألوان الرؤوس وحدها، بلا خامة صورية.</summary>
+        private static void MakeVertexLit(string name, Shader shader, float smoothness, float metallic)
+        {
+            Material material = EnsureMaterial(name, shader);
+            if (material == null)
+            {
+                return;
+            }
+
+            material.SetColor("_BaseColor", Color.white);
+            material.SetFloat("_Smoothness", smoothness);
+            material.SetFloat("_Metallic", metallic);
+            EditorUtility.SetDirty(material);
         }
 
         private static void MakeLit(string name, Shader shader, string texture, float smoothness, Vector2 scale)

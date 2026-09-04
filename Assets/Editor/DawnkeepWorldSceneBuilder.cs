@@ -68,6 +68,9 @@ namespace Dawnkeep.EditorTools
                 EditorUtility.DisplayProgressBar("مملكة الرماد", "نثر الصخور…", 0.93f);
                 ScatterRocks(settings, world);
 
+                EditorUtility.DisplayProgressBar("مملكة الرماد", "إنزال أهل المملكة…", 0.94f);
+                PlaceFolk(settings, world);
+
                 EditorUtility.DisplayProgressBar("مملكة الرماد", "إضاءة الفجر…", 0.96f);
                 CreateLighting();
                 CreateCamera(settings, world);
@@ -496,6 +499,196 @@ namespace Dawnkeep.EditorTools
             }
 
             ScatterCliffOutcrops(settings, world, prefabs, parent.transform);
+        }
+
+        /// <summary>
+        /// أهل المملكة: حرس البوّابة، وتشكيل البطل ورماحه ورماته، وفارسان،
+        /// وحرس على الطوق، وقرويّون وخيل ترعى حول القرية.
+        ///
+        /// لون الراية يُوضع على **مُصيِّر القماش وحده** عبر MaterialPropertyBlock:
+        /// وضعه على الجذر يصبغ الجلد والفولاذ معه فيصير الجندي كتلة قرمزية.
+        /// </summary>
+        private static void PlaceFolk(WorldGenSettings settings, WorldData world)
+        {
+            float scale = settings.WorldScale;
+            GameObject parent = new GameObject("Folk");
+            System.Random rng = new System.Random((settings.Seed * 7717) + 31);
+
+            GameObject[] folk = new GameObject[DawnkeepPrefabBuilder.FolkKinds.Length];
+            for (int i = 0; i < folk.Length; i++)
+            {
+                folk[i] = AssetDatabase.LoadAssetAtPath<GameObject>(
+                    DawnkeepPrefabBuilder.FolkPrefabPath(DawnkeepPrefabBuilder.FolkKinds[i]));
+            }
+
+            GameObject bardedHorse = AssetDatabase.LoadAssetAtPath<GameObject>(
+                DawnkeepPrefabBuilder.HorsePrefabPath(true));
+            GameObject freeHorse = AssetDatabase.LoadAssetAtPath<GameObject>(
+                DawnkeepPrefabBuilder.HorsePrefabPath(false));
+
+            if (folk[0] == null)
+            {
+                Debug.LogWarning("مملكة الرماد: جاهزات أهل المملكة غير موجودة — نفّذ الخطوة 4 أولاً.");
+                return;
+            }
+
+            Color guard = new Color(0.647f, 0.180f, 0.180f);
+            Color archerLivery = new Color(0.220f, 0.353f, 0.541f);
+            Color heroLivery = new Color(0.741f, 0.153f, 0.169f);
+            Color[] folkLivery =
+            {
+                new Color(0.643f, 0.573f, 0.451f), new Color(0.514f, 0.455f, 0.353f),
+                new Color(0.427f, 0.482f, 0.400f), new Color(0.596f, 0.514f, 0.404f),
+            };
+
+            float ringR = settings.CastleRadius * scale;
+            float gateAngle = world.Roads.Count > 0 ? RoadEntryAngle(world.Roads[0]) : 0f;
+            float ux = Mathf.Cos(gateAngle);
+            float uz = Mathf.Sin(gateAngle);
+            float px = -uz;
+            float pz = ux;
+
+            // ١) حرس البوّابة: زوج على كل جانب
+            for (int s = -1; s <= 1; s += 2)
+            {
+                float a = gateAngle + (s * 0.085f);
+                Spawn(parent, folk[1], settings, world, Mathf.Cos(a) * (ringR + 9f), Mathf.Sin(a) * (ringR + 9f), a, guard, 1f);
+                Spawn(parent, folk[1], settings, world, Mathf.Cos(a) * (ringR + 21f), Mathf.Sin(a) * (ringR + 21f), a, guard, 1f);
+            }
+
+            // ٢) البطل أمام البوّابة ووراءه صفوف الرماح والرماة — تشكيل استعراض
+            float hx = ux * (ringR + 46f);
+            float hz = uz * (ringR + 46f);
+            Spawn(parent, folk[0], settings, world, hx, hz, gateAngle, heroLivery, 1.10f);
+
+            for (int row = 0; row < 3; row++)
+            {
+                for (int col = -3; col <= 3; col++)
+                {
+                    if (row == 0 && Mathf.Abs(col) < 1)
+                    {
+                        continue;
+                    }
+
+                    float jitter = ((float)rng.NextDouble() - 0.5f) * 1.4f;
+                    float x = hx + (ux * ((row * 11f) + 9f)) + (px * ((col * 9.5f) + jitter));
+                    float z = hz + (uz * ((row * 11f) + 9f)) + (pz * ((col * 9.5f) + jitter));
+                    GameObject prefab = row == 2 ? folk[3] : folk[1];
+                    Color livery = row == 2 ? archerLivery : guard;
+                    Spawn(parent, prefab, settings, world, x, z,
+                        gateAngle + (((float)rng.NextDouble() - 0.5f) * 0.10f), livery, 1f);
+                }
+            }
+
+            // ٣) فارسان على جانبَي الطريق
+            if (bardedHorse != null)
+            {
+                for (int s = -1; s <= 1; s += 2)
+                {
+                    float x = hx + (ux * 44f) + (px * s * 30f);
+                    float z = hz + (uz * 44f) + (pz * s * 30f);
+                    Spawn(parent, bardedHorse, settings, world, x, z, gateAngle, heroLivery, 1f);
+                    // الفارس يجلس على السرج: 0.82 من وحدة البناء مضروبةً في مقياس الحصان
+                    Spawn(parent, folk[2], settings, world, x, z, gateAngle, heroLivery, 1f,
+                        0.82f * DawnkeepPrefabBuilder.HorseScale);
+                }
+            }
+
+            // ٤) حرس على الطوق
+            for (int i = 0; i < 4; i++)
+            {
+                float a = gateAngle + (Mathf.PI * 0.5f) + (i * Mathf.PI * 0.42f);
+                Spawn(parent, folk[2], settings, world, Mathf.Cos(a) * (ringR + 6f), Mathf.Sin(a) * (ringR + 6f), a, guard, 1f);
+            }
+
+            // ٥) قرويّون وخيل ترعى حول القرية
+            Vector2 village = VillagePoint(settings, world, scale);
+            if (village.sqrMagnitude > 1f)
+            {
+                for (int i = 0; i < 14; i++)
+                {
+                    float a = (float)rng.NextDouble() * Mathf.PI * 2f;
+                    float r = 12f + ((float)rng.NextDouble() * 46f);
+                    Color livery = folkLivery[rng.Next(0, folkLivery.Length)];
+                    Spawn(parent, folk[4], settings, world,
+                        village.x + (Mathf.Cos(a) * r), village.y + (Mathf.Sin(a) * r),
+                        (float)rng.NextDouble() * Mathf.PI * 2f, livery,
+                        0.95f + ((float)rng.NextDouble() * 0.06f));
+                }
+
+                if (freeHorse != null)
+                {
+                    for (int i = 0; i < 3; i++)
+                    {
+                        float a = (float)rng.NextDouble() * Mathf.PI * 2f;
+                        float r = 26f + ((float)rng.NextDouble() * 30f);
+                        Spawn(parent, freeHorse, settings, world,
+                            village.x + (Mathf.Cos(a) * r), village.y + (Mathf.Sin(a) * r),
+                            (float)rng.NextDouble() * Mathf.PI * 2f, Color.white,
+                            0.95f + ((float)rng.NextDouble() * 0.08f));
+                    }
+                }
+            }
+        }
+
+        private static Vector2 VillagePoint(WorldGenSettings settings, WorldData world, float scale)
+        {
+            if (world.Roads.Count == 0)
+            {
+                return Vector2.zero;
+            }
+
+            Vector2[] road = world.Roads[0];
+            for (int i = 0; i < road.Length; i++)
+            {
+                float r = road[i].magnitude;
+                if (r > settings.CastleRadius * 2.5f && r < settings.CastleRadius * 3.5f)
+                {
+                    return road[i] * scale;
+                }
+            }
+
+            return Vector2.zero;
+        }
+
+        /// <summary>
+        /// إنزال نسخة على الأرض وصبغ قماشها وحده بلون الراية.
+        /// الزاوية تُمرَّر بالراديان في إحداثيات العالم (كما يخرج زاوية البوّابة)،
+        /// وتُحوَّل إلى دوران Y: الشخصية تنظر إلى الخارج على امتداد نصف القطر.
+        /// </summary>
+        private static void Spawn(GameObject parent, GameObject prefab, WorldGenSettings settings,
+            WorldData world, float x, float z, float angle, Color livery, float scaleMul, float lift = 0f)
+        {
+            if (prefab == null)
+            {
+                return;
+            }
+
+            GameObject instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab, parent.transform);
+            if (instance == null)
+            {
+                return;
+            }
+
+            float scale = settings.WorldScale;
+            float y = world.SampleSmooth(world.Height, x / scale, z / scale) * scale;
+            instance.transform.position = new Vector3(x, y + lift, z);
+            instance.transform.rotation = Quaternion.Euler(0f, 90f - (angle * Mathf.Rad2Deg), 0f);
+            instance.transform.localScale = prefab.transform.localScale * scaleMul;
+
+            // اللون على مُصيِّر القماش وحده — وضعه على الجذر يصبغ الجلد والفولاذ معه
+            Transform cloth = instance.transform.Find("Cloth");
+            if (cloth != null)
+            {
+                MeshRenderer renderer = cloth.GetComponent<MeshRenderer>();
+                if (renderer != null)
+                {
+                    MaterialPropertyBlock block = new MaterialPropertyBlock();
+                    renderer.GetPropertyBlock(block);
+                    block.SetColor("_BaseColor", livery);
+                    renderer.SetPropertyBlock(block);
+                }
+            }
         }
 
         /// <summary>

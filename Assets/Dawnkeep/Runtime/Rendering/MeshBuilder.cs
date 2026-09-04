@@ -30,8 +30,32 @@ namespace Dawnkeep.Rendering
             AddVertex(position, normal, uv, Vector2.zero, color);
         }
 
+        /// <summary>
+        /// صبغة الرأس: تُضبط مرّةً فتأخذها كل الرؤوس التالية. بهذا تُبنى الشخصية
+        /// كلّها — جلد وقماش وجلود وخشب — في شبكة واحدة بلا مادّة لكل جزء.
+        /// </summary>
+        public Color Tint { get; set; }
+
+        private bool _tintSet;
+
+        public void SetTint(float r, float g, float b)
+        {
+            Tint = new Color(r, g, b, 1f);
+            _tintSet = true;
+        }
+
+        public void ClearTint()
+        {
+            _tintSet = false;
+        }
+
         public void AddVertex(Vector3 position, Vector3 normal, Vector2 uv, Vector2 uv2, Color color)
         {
+            if (_tintSet)
+            {
+                color = new Color(color.r * Tint.r, color.g * Tint.g, color.b * Tint.b, color.a);
+            }
+
             _vertices.Add(position);
             _normals.Add(normal);
             _uvs.Add(uv);

@@ -676,6 +676,20 @@ function populate(cx, cz, treeR, rockR, grassR, grassN){
     const list=cliffPool.filter(r=>r.v===v && near(r.x,r.z,rockR*2.2));
     addInstanced(ROCKS[v], cliffMat, list, (it,p,e,sc)=>{ p.set(it.x*SC,it.y*SC,it.z*SC); e.set(it.tx,it.r,it.tz); sc.set(it.s,it.s*it.sy,it.s); }, true, true);
   }
+  // أهل المملكة: يُوضعون بنفس نصف قطر الصخور فيظهرون في كل لقطة قريبة
+  {
+    for(const key of Object.keys(FOLK)){
+      const list=folkPool.filter(f=>f.v===key && near(f.x,f.z,Math.max(rockR,520/SC)));
+      if(!list.length) continue;
+      const isHorse = key==='horse' || key==='horseplain';
+      const place=(it,p,e,sc)=>{
+        const k=(isHorse?HORSE_S:HUMAN_H)*it.s;
+        p.set(it.x*SC, it.y*SC, it.z*SC); e.set(0, it.r, 0); sc.set(k,k,k);
+      };
+      addInstanced(FOLK[key].body,  bodyMat,  list, place, true, false);
+      addInstanced(FOLK[key].cloth, clothMat, list, place, true, true);
+    }
+  }
   if(grassR>0){
     const rnd=rngFrom(4242), list=[];
     let tries=0;
@@ -759,6 +773,110 @@ const GA = GATE_ANGLE*180/Math.PI;
 const GATE_R = 150;
 const gatePos = [Math.cos(GATE_ANGLE)*GATE_R*0.98, Math.sin(GATE_ANGLE)*GATE_R*0.98];
 const YAW_OUT = 90 - GA;          // الكاميرا خارج البوّابة تنظر إلى الداخل
+/* ═══ أهل المملكة: بطل وجنود وقرويّون وخيل ═══
+   نُصبح الشبكة الواحدة لكل صنف، ويُصبغ القماش بلون النسخة عبر instanceColor:
+   القميص والعباءة والجُلّ بيضاء في الشبكة، فتأخذ لون الرايات لكل فصيلة. */
+// مادّتان: البدن لا يُصبغ بلون النسخة، والقماش يُصبغ. لو كانت واحدة لصبغ لونُ
+// الراية الجلدَ والفولاذ معه فيصير الجندي كتلة قرمزية بلا ملامح.
+const bodyMat=new THREE.MeshStandardMaterial({
+  color:0xffffff, roughness:0.68, metalness:0.16, vertexColors:true, side:THREE.DoubleSide });
+const clothMat=new THREE.MeshStandardMaterial({
+  color:0xffffff, roughness:0.86, metalness:0.0, vertexColors:true, side:THREE.DoubleSide });
+const HUMAN_H = 3.05;                 // وحدة توليد ≈ 0.6 متر لعب ← الجندي 1.83 م
+const HORSE_S = 3.20;
+
+const mkFolk=(seed,kind)=>{ const r=buildHuman(seed,kind); return { body:r.body.geo(true), cloth:r.cloth.geo(true) }; };
+const mkHorse=(seed,barded)=>{ const r=buildHorse(seed,barded); return { body:r.body.geo(true), cloth:r.cloth.geo(true) }; };
+const FOLK = {
+  hero:      mkFolk(90001,'hero'),
+  spear:     mkFolk(90002,'spear'),
+  spear2:    mkFolk(90003,'spear2'),
+  sword:     mkFolk(90004,'sword'),
+  sword2:    mkFolk(90005,'sword2'),
+  archer:    mkFolk(90006,'archer'),
+  villager:  mkFolk(90007,'villager'),
+  villager2: mkFolk(90008,'villager'),
+  horse:      mkHorse(91001,true),
+  horseplain: mkHorse(91002,false),
+};
+
+/* ألوان رايات المملكة: قرمزيّ الحرس، وأزرق الرماة، وترابيّ القرويّين */
+const LIVERY = {
+  guard:  [0.647,0.180,0.180],
+  archer: [0.220,0.353,0.541],
+  hero:   [0.741,0.153,0.169],
+  folk:   [[0.643,0.573,0.451],[0.514,0.455,0.353],[0.427,0.482,0.400],[0.596,0.514,0.404]]
+};
+
+const folkPool=[];       // {x,z,r,v,s,tr,tg,tb}
+{
+  const rnd=rngFrom(SEED*7717+31);
+  const put=(v, x, z, rot, liv, scale)=>{
+    folkPool.push({ v, x, z, r:rot, s:(scale||1)*(0.96+rnd()*0.09),
+                    y:groundY(x,z), tr:liv[0], tg:liv[1], tb:liv[2] });
+  };
+  const ringR = 150;                              // نصف قطر سور القلعة بوحدات التوليد
+  const gA = GATE_ANGLE;
+
+  // ١) حرس البوّابة: زوج على كل جانب، متقابلان
+  for(const side of [-1,1]){
+    const a=gA + side*0.085;
+    put('spear', Math.cos(a)*(ringR+9), Math.sin(a)*(ringR+9), -a+Math.PI/2, LIVERY.guard);
+    put('spear2', Math.cos(a)*(ringR+21), Math.sin(a)*(ringR+21), -a+Math.PI/2, LIVERY.guard);
+  }
+
+  // ٢) البطل أمام البوّابة، ووراءه صفّان من الرِّماح — كتشكيل استعراض
+  const hx=Math.cos(gA)*(ringR+46), hz=Math.sin(gA)*(ringR+46);
+  put('hero', hx, hz, -gA+Math.PI/2, LIVERY.hero, 1.10);
+  const ux=Math.cos(gA), uz=Math.sin(gA);          // اتّجاه الخروج
+  const px=-uz, pz=ux;                              // عرض الصفّ
+  for(let row=0; row<3; row++){
+    for(let col=-3; col<=3; col++){
+      if(row===0 && Math.abs(col)<1) continue;      // مكان البطل
+      const jitter=(rnd()-0.5)*1.4;
+      const x=hx + ux*(row*11+9) + px*(col*9.5+jitter);
+      const z=hz + uz*(row*11+9) + pz*(col*9.5+jitter);
+      const kind = (row===2) ? (col%2 ? 'archer':'archer') : ((col+row)%2 ? 'spear':'spear2');
+      put(kind, x, z, -gA+Math.PI/2 + (rnd()-0.5)*0.10,
+          row===2 ? LIVERY.archer : LIVERY.guard);
+    }
+  }
+
+  // ٣) فارسان على جانبَي الطريق
+  for(const side of [-1,1]){
+    const x=hx + ux*44 + px*side*30, z=hz + uz*44 + pz*side*30;
+    folkPool.push({ v:'horse', x, z, r:-gA+Math.PI/2, s:1, y:groundY(x,z),
+                    tr:LIVERY.hero[0], tg:LIVERY.hero[1], tb:LIVERY.hero[2] });
+    // الفارس يجلس على السرج: 0.82 من وحدة بناء الحصان مضروبةً في مقياسه
+    folkPool.push({ v:'sword2', x, z, r:-gA+Math.PI/2, s:0.98,
+                    y:groundY(x,z)+0.82*HORSE_S/SC*SC,
+                    tr:LIVERY.hero[0], tg:LIVERY.hero[1], tb:LIVERY.hero[2] });
+  }
+
+  // ٤) حرس على أبراج السور: أربعة موزّعة حول الطوق
+  for(let i=0;i<4;i++){
+    const a=gA + Math.PI*0.5 + i*Math.PI*0.42;
+    put('sword', Math.cos(a)*(ringR+6), Math.sin(a)*(ringR+6), -a+Math.PI/2, LIVERY.guard);
+  }
+
+  // ٥) قرويّون حول القرية وعلى الطريق
+  if(villP){
+    for(let i=0;i<14;i++){
+      const a=rnd()*Math.PI*2, r=12+rnd()*46;
+      const x=villP[0]+Math.cos(a)*r, z=villP[1]+Math.sin(a)*r;
+      const liv=LIVERY.folk[(rnd()*LIVERY.folk.length)|0];
+      put(rnd()<0.5?'villager':'villager2', x, z, rnd()*Math.PI*2, liv, 0.95+rnd()*0.06);
+    }
+    // خيل بلا فارس ترعى قرب القرية
+    for(let i=0;i<3;i++){
+      const a=rnd()*Math.PI*2, r=26+rnd()*30;
+      const x=villP[0]+Math.cos(a)*r, z=villP[1]+Math.sin(a)*r;
+      folkPool.push({ v:'horseplain', x, z, r:rnd()*Math.PI*2, s:0.95+rnd()*0.08,
+                      y:groundY(x,z), tr:1, tg:1, tb:1 });
+    }
+  }
+}
+
 const SHOTS={
   mountain: ()=>{ populate(-560, 700, 1500, 1400, 260, 16000);
                   look([-560, 700], 620, 152, 7, 60); },
@@ -779,6 +897,10 @@ const SHOTS={
   through:()=>{ populate(0,0, 700, 560, 320, 16000);
                 look([Math.cos(GATE_ANGLE)*GATE_R*0.45, Math.sin(GATE_ANGLE)*GATE_R*0.45],
                      46, YAW_OUT+180, 3, 5, 0); },
+  army:   ()=>{ populate(gatePos[0], gatePos[1], 700, 560, 260, 16000);
+                look([Math.cos(GATE_ANGLE)*(150+62), Math.sin(GATE_ANGLE)*(150+62)], 92, YAW_OUT+18, 12, 4); },
+  hero2:  ()=>{ populate(gatePos[0], gatePos[1], 620, 480, 200, 14000);
+                look([Math.cos(GATE_ANGLE)*(150+46), Math.sin(GATE_ANGLE)*(150+46)], 26, YAW_OUT+8, 6, 1.4); },
   gate:   ()=>{ populate(0,0, 700, 560, 330, 17000);
                 look(gatePos, 52, YAW_OUT, 5); },
   castle: ()=>{ populate(0,0, 900, 700, 340, 15000);
