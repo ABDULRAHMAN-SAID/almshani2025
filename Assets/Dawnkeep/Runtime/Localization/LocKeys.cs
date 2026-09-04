@@ -215,5 +215,22 @@ namespace Dawnkeep.Localization
         public const string UnlockFurthestWave = "doctrine.unlock.wave";
         public const string UnlockBossesMet = "doctrine.unlock.bosses";
         public const string UnlockStagesPlayed = "doctrine.unlock.stages";
+
+        // خريطة الحملة (§19)
+        public const string CampaignOpen = "campaign.open";
+        public const string CampaignTitle = "campaign.title";
+        public const string StageCleared = "campaign.cleared";
+        public const string StageLocked = "campaign.locked";
+        public const string StageNext = "campaign.next";
+        public const string StagePlay = "campaign.play";
+        public const string StageReward = "campaign.reward";
+        public const string ZoneLockedAfter = "campaign.zone.locked";
+        public const string ObjectiveHoldKeep = "objective.keep";
+        public const string ObjectiveConvoy = "objective.convoy";
+        public const string ObjectiveBeacons = "objective.beacons";
+        public const string ObjectiveSixNodes = "objective.nodes";
+        public const string ObjectiveTwoGates = "objective.gates";
+        public const string ObjectiveEconomy = "objective.economy";
+        public const string ObjectiveBrokenWall = "objective.wall";
     }
 }

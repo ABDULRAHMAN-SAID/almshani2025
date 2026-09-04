@@ -117,6 +117,11 @@ namespace Dawnkeep.EditorTools
             Dawnkeep.UI.DoctrinePanel doctrine =
                 canvasObject.AddComponent<Dawnkeep.UI.DoctrinePanel>();
             doctrine.Configure(font);
+
+            // وخريطة الحملة (§19): من هنا تُختار المرحلة قبل زرّ اللعب
+            Dawnkeep.UI.CampaignPanel campaign =
+                canvasObject.AddComponent<Dawnkeep.UI.CampaignPanel>();
+            campaign.Configure(font);
         }
 
         /// <summary>

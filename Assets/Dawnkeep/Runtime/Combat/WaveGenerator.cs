@@ -111,9 +111,12 @@ namespace Dawnkeep.Combat
 
             // جهة ثانية في بعض الليالي (§14: «موجة من اتجاه إضافي في بعض الليالي»)
             int frontCount = Mathf.Max(1, fronts);
-            bool secondFront = profile.SecondFrontEvery > 0
-                && frontCount > 1
-                && waveNumber % profile.SecondFrontEvery == 0;
+            // «بوّابتان» (§19) تجعلهما اثنتين من أوّل ليلة: الهدف يقسّم
+            // الجيش، وقسمةٌ تبدأ في الليلة الخامسة ليست قسمة.
+            bool secondFront = frontCount > 1
+                && (Dawnkeep.Campaign.StageRules.ForcedTwoFronts
+                    || (profile.SecondFrontEvery > 0
+                        && waveNumber % profile.SecondFrontEvery == 0));
 
             HasBoss = settings.BossEvery > 0 && waveNumber % settings.BossEvery == 0;
             HasMiniBoss = !HasBoss && settings.MiniBossEvery > 0

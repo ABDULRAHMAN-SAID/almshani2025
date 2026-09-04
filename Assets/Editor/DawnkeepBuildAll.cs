@@ -9,7 +9,7 @@ namespace Dawnkeep.EditorTools
     /// </summary>
     public static class DawnkeepBuildAll
     {
-        [MenuItem("مملكة الرماد/بناء كل شيء (2 ← 20)", false, 21)]
+        [MenuItem("مملكة الرماد/بناء كل شيء (2 ← 21)", false, 22)]
         public static void BuildEverything()
         {
             if (!DawnkeepAssetPaths.TypeExists("UnityEngine.Rendering.Universal.UniversalRenderPipelineAsset"))
@@ -40,6 +40,9 @@ namespace Dawnkeep.EditorTools
             // على لوحة المعركة — فكلاهما موجودٌ الآن.
             DawnkeepEquipmentSetup.Setup();
             DawnkeepDoctrineSetup.Setup();
+
+            // الحملة بعد العتاد: مخطّطاتُها تشير إلى قطعه (§19 مصدرُ §17)
+            DawnkeepCampaignSetup.Setup();
 
             DawnkeepArenaSetup.Setup();
 

@@ -340,9 +340,10 @@ namespace Dawnkeep.Building
             IReadOnlyList<Unit> units = _combat.Units;
             Vector3 position = building.Body.position;
 
-            // مدى البرج بعد بركة §15 وبعد زيادة النور (§11) معاً
+            // مدى البرج بعد بركة §15 وزيادة النور (§11) وعاصفة المنطقة (§19)
             float reach = def.Range
-                * Dawnkeep.Boons.BoonBook.Stat(Dawnkeep.Boons.BoonStat.TowerRange);
+                * Dawnkeep.Boons.BoonBook.Stat(Dawnkeep.Boons.BoonStat.TowerRange)
+                * Dawnkeep.Campaign.CampaignDirector.TowerRange();
 
             float rangeSqr = reach * reach;
             float minSqr = def.MinimumRange * def.MinimumRange;
@@ -418,6 +419,14 @@ namespace Dawnkeep.Building
                 return null;
             }
 
+            // المرحلة الاقتصادية (§19): لا أبراجَ قبل ليلتها. هنا لا في
+            // اللوحة وحدها — اللوحة تُخفيها، وهذا يمنعها من أيّ طريقٍ آخر.
+            if (definition.Role == BuildingRole.Tower
+                && !Dawnkeep.Campaign.StageRules.TowersOpen)
+            {
+                return null;
+            }
+
             if (_treasury == null)
             {
                 _treasury = Treasury.Instance;
@@ -440,6 +449,35 @@ namespace Dawnkeep.Building
             Building building = go.AddComponent<Building>();
 
             building.Raise(definition, node, price, NextSeed());
+            node.Attach(building);
+            _buildings.Add(building);
+
+            SpawnGuards(building, definition);
+            EnsureBeacon(building, definition);
+            return building;
+        }
+
+        /// <summary>
+        /// يقيم مبنىً **بلا ثمن**: هبةُ المرحلة (§19) لا شراءُ اللاعب. تمرّ
+        /// بالطريق نفسه بعد الخصم — فالحرّاس والمنارة والتسجيل واحدٌ، ولا
+        /// يفترق المُهدى عن المشترى في شيءٍ إلّا في ثمنه.
+        /// </summary>
+        public Building Grant(BuildNode node, BuildingDefinition definition)
+        {
+            if (node == null || definition == null || !node.IsEmpty
+                || !definition.Fits(node.Kind))
+            {
+                return null;
+            }
+
+            GameObject go = new GameObject("Building_" + definition.name);
+            go.transform.SetParent(transform, false);
+            go.transform.position = node.Position;
+
+            Building building = go.AddComponent<Building>();
+
+            // بثمنٍ صفر: البيع يردّ نسبةً ممّا دُفع، ومن لم يدفع لا يُردّ له
+            building.Raise(definition, node, 0, NextSeed());
             node.Attach(building);
             _buildings.Add(building);
 

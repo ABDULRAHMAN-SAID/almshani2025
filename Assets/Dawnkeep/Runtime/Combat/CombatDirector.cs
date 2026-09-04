@@ -943,8 +943,12 @@ namespace Dawnkeep.Combat
                 ? Dawnkeep.Boons.BoonBook.Stat(Dawnkeep.Boons.BoonStat.ArmyMoveSpeed)
                 : 1f;
 
+            // أرضُ المنطقة (§19): الوحل يبطئ والجليد يسرّع. **على الفصيلتين
+            // معاً** — أرضٌ تبطئ المهاجم وحده هبةٌ لا بيئة، وتبطئ المدافع
+            // وحده عقابٌ لا بيئة.
             float speed = desired.sqrMagnitude > 0.0001f
                 ? def.MoveSpeed * unit.SpeedMultiplier * boonSpeed * unit.PackFactor
+                    * Dawnkeep.Campaign.CampaignDirector.Ground()
                 : 0f;
             if (speed > 0f)
             {

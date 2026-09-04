@@ -147,6 +147,15 @@ namespace Dawnkeep.Flow
             }
         }
 
+        private void OpenCampaign()
+        {
+            Dawnkeep.UI.CampaignPanel panel = FindAnyObjectByType<Dawnkeep.UI.CampaignPanel>();
+            if (panel != null)
+            {
+                panel.Open();
+            }
+        }
+
         private void OpenDoctrine()
         {
             Dawnkeep.UI.DoctrinePanel panel = FindAnyObjectByType<Dawnkeep.UI.DoctrinePanel>();
@@ -312,6 +321,10 @@ namespace Dawnkeep.Flow
 
             Button(rect, "Doctrine", LocKeys.DoctrineOpen, new Vector2(150f, -232f),
                 new Vector2(280f, 92f), 28f, inkColor, OpenDoctrine);
+
+            // خريطة الحملة (§19): تختار المرحلة التي يبدؤها زرّ اللعب
+            Button(rect, "Campaign", LocKeys.CampaignOpen, new Vector2(0f, -340f),
+                new Vector2(280f, 92f), 28f, inkColor, OpenCampaign);
 
             // ما لم يُبنَ بعد يُقال نصّاً لا يُعرض زرّاً (§17). والحدّادة
             // خرجت من هذه القائمة: صارت داخل شاشة التجهيز.

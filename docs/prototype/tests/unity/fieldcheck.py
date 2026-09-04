@@ -61,7 +61,15 @@ for path in glob.glob(os.path.join(ASSETS, 'Editor', '*.cs')):
     for m in re.finditer(r'SetPrivate\(\s*(\w+)\s*,\s*"(\w+)"', src):
         total += 1
         var, field = m.group(1), m.group(2)
-        decl = re.search(r'\b([A-Z]\w+)\s+' + re.escape(var) + r'\s*[=;)]', src)
+        # **أقرب تصريحٍ قبل النداء** لا أوّل تصريحٍ في الملفّ: ملفٌّ فيه
+        # بانيان يسمّيان متغيّرهما `def` كان يُنسَب ثانيهما إلى صنف الأوّل،
+        # فتُرفَض حقولٌ سليمة. (وقع هذا في `DawnkeepCampaignSetup`.)
+        decl = None
+        for d in re.finditer(r'\b([A-Z]\w+)\s+' + re.escape(var) + r'\s*[=;)]', src):
+            if d.start() > m.start():
+                break
+            decl = d
+
         guessed = decl.group(1) if decl else None
         candidates = [guessed] if guessed and guessed in classes else list(classes)
         if not any(field in classes.get(c, set()) for c in candidates if c):

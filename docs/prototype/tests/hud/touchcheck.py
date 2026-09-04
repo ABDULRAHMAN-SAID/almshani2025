@@ -497,4 +497,83 @@ check('ولوحتا التجهيز والعقائد بالمقاس نفسه (ت�
       abs(panel.w - dpanel.w) < 1 and abs(panel.h - dpanel.h) < 1,
       f'  ({panel.w:.0f}×{panel.h:.0f})')
 
+print()
+print('── خريطة الحملة (§19) ────────────────────')
+
+MAPUI = read('CampaignPanel.cs')
+map_rects = collect(MAPUI, {'parent': ROOT_RECT})
+mpanel = map_rects.get('CampaignPanel', ROOT_RECT)
+
+mzone = re.search(r'MakeRect\("Zone_" \+ i, rect,\s*\n\s*' + VEC
+                  + r',\s*new Vector2\(-([0-9.]+)f - \(i \* ([0-9.]+)f\),\s*(-?[0-9.]+)f\),'
+                  + r'\s*\n\s*' + VEC, MAPUI)
+mtaps = {}
+if mzone:
+    g = mzone.groups()
+    ax, ay = pair(*g[0:3])
+    x0, step, y = float(g[3]), float(g[4]), float(g[5])
+    w, h = pair(*g[6:9])
+    for i in range(4):
+        mtaps['منطقة ' + str(i)] = place(mpanel, ax, ay, -(x0 + i * step), y, w, h)
+
+mrow = re.search(r'MakeRect\("Row_" \+ i, rect,\s*\n\s*' + VEC
+                 + r',\s*new Vector2\(([0-9.]+)f,\s*(-?[0-9.]+)f - \(i \* ([0-9.]+)f\)\),'
+                 + r'\s*\n\s*' + VEC, MAPUI)
+MROWS = int(re.search(r'public const int Rows = (\d+);', MAPUI).group(1))
+if mrow:
+    g = mrow.groups()
+    ax, ay = pair(*g[0:3])
+    x, y0, step = float(g[3]), float(g[4]), float(g[5])
+    w, h = pair(*g[6:9])
+    for i in range(MROWS):
+        mtaps['مرحلة ' + str(i)] = place(mpanel, ax, ay, x, y0 - i * step, w, h)
+
+MSMALL = pair(*re.search(r'MakeRect\(name, rect, anchor, offset, ' + VEC,
+                         MAPUI).groups())
+for m in re.finditer(r'SmallButton\(rect,\s*"(\w+)",\s*' + VEC + r',\s*\n?\s*' + VEC,
+                     MAPUI, re.S):
+    g = m.groups()
+    ax, ay = pair(*g[1:4])
+    ox, oy = pair(*g[4:7])
+    mtaps[g[0]] = place(mpanel, ax, ay, ox, oy, MSMALL[0], MSMALL[1])
+
+show('أهداف اللمس', mtaps)
+print()
+
+check('المناطق أربعٌ (§19) والمراحل كما في الشيفرة',
+      len([k for k in mtaps if k.startswith('منطقة')]) == 4
+      and len([k for k in mtaps if k.startswith('مرحلة')]) == MROWS,
+      f'  (4 مناطق · {MROWS} مراحل في الصفحة)')
+
+small = [n for n, r in mtaps.items() if min(r.w, r.h) < MIN_TAP]
+check(f'لا هدفَ يصغر عن {MIN_TAP} بكسلاً', not small,
+      '' if not small else f'  ({"، ".join(small)})')
+
+clashes = []
+names = list(mtaps)
+for i in range(len(names)):
+    for j in range(i + 1, len(names)):
+        hit = overlap(mtaps[names[i]], mtaps[names[j]])
+        if hit:
+            clashes.append((names[i], names[j], hit))
+
+check('ولا تراكب بين هدفين', not clashes,
+      '' if not clashes else f'  ({clashes[0][0]} × {clashes[0][1]} بـ{clashes[0][2]})')
+
+outside = [n for n, r in mtaps.items()
+           if r.x < mpanel.x - 1 or r.y < mpanel.y - 1
+           or r.right > mpanel.right + 1 or r.top > mpanel.top + 1]
+check('وكلٌّ داخل اللوحة', not outside,
+      '' if not outside else f'  ({"، ".join(outside)})')
+
+listeners = re.findall(r'onClick\.AddListener\((?:delegate \{ )?(\w+)', MAPUI)
+missing = [a for a in set(listeners)
+           if not re.search(r'(private|public)[^\n]*\b' + a + r'\(', MAPUI)]
+check('كل زرٍّ في الشاشة يستدعي دالّةً موجودة (§17)', not missing,
+      '' if not missing else f'  ({"، ".join(missing)})')
+
+check('والشاشات الثلاث بالمقاس نفسه',
+      abs(panel.w - mpanel.w) < 1 and abs(panel.h - mpanel.h) < 1,
+      f'  ({mpanel.w:.0f}×{mpanel.h:.0f})')
+
 sys.exit(0 if ok else 1)

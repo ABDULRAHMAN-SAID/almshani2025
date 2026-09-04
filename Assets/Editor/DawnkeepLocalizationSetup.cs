@@ -281,6 +281,31 @@ namespace Dawnkeep.EditorTools
                 DawnkeepLocale.Row(LocKeys.UnlockFurthestWave, "أبعد ليلة", "Furthest night"),
                 DawnkeepLocale.Row(LocKeys.UnlockBossesMet, "زعماء لُقُوا", "Bosses met"),
                 DawnkeepLocale.Row(LocKeys.UnlockStagesPlayed, "مراحل لُعبت", "Stages played"),
+
+                // خريطة الحملة (§19)
+                DawnkeepLocale.Row(LocKeys.CampaignOpen, "الحملة", "Campaign"),
+                DawnkeepLocale.Row(LocKeys.CampaignTitle, "خريطة الحملة", "Campaign map"),
+                DawnkeepLocale.Row(LocKeys.StageCleared, "أُنجزت", "Cleared"),
+                DawnkeepLocale.Row(LocKeys.StageLocked, "مقفلة", "Locked"),
+                DawnkeepLocale.Row(LocKeys.StageNext, "التالية", "Next"),
+                DawnkeepLocale.Row(LocKeys.StagePlay, "العب هذه", "Play this"),
+                DawnkeepLocale.Row(LocKeys.StageReward, "تمنح: {0}", "Grants: {0}"),
+                DawnkeepLocale.Row(LocKeys.ZoneLockedAfter, "تُفتح بعد {0} مراحل",
+                    "Opens after {0} stages"),
+                DawnkeepLocale.Row(LocKeys.ObjectiveHoldKeep, "احمِ قلب الحصن",
+                    "Hold the keep"),
+                DawnkeepLocale.Row(LocKeys.ObjectiveConvoy, "احمِ القافلة حتى الفجر",
+                    "Guard the convoy until dawn"),
+                DawnkeepLocale.Row(LocKeys.ObjectiveBeacons, "أشعِل منارتين",
+                    "Light two beacons"),
+                DawnkeepLocale.Row(LocKeys.ObjectiveSixNodes, "ستّ عقد بناءٍ فقط",
+                    "Six build nodes only"),
+                DawnkeepLocale.Row(LocKeys.ObjectiveTwoGates, "بوّابتان: اقسِم جيشك",
+                    "Two gates: split your army"),
+                DawnkeepLocale.Row(LocKeys.ObjectiveEconomy, "لا أبراج حتى الليلة الرابعة",
+                    "No towers until night four"),
+                DawnkeepLocale.Row(LocKeys.ObjectiveBrokenWall, "جدارٌ مكسور من البداية",
+                    "A broken wall from the start"),
             };
         }
 

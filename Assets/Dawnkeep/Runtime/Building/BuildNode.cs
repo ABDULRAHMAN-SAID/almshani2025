@@ -47,6 +47,14 @@ namespace Dawnkeep.Building
         {
             get
             {
+                // هدف «ستّ عقد فقط» (§19) يقفل ما زاد عنها طول المرحلة.
+                // هنا لا في اللوحة: العقدة المقفلة لا تُعلَّم ولا تُلمس،
+                // والقفل من موضعٍ واحد يسري على كل طريقٍ إليها.
+                if (!Dawnkeep.Campaign.StageRules.NodeAllowed(this))
+                {
+                    return false;
+                }
+
                 Keep keep = Keep.Instance;
                 return keep == null || unlockTier <= keep.Tier;
             }

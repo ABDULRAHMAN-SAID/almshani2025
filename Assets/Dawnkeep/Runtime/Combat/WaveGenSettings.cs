@@ -132,9 +132,13 @@ namespace Dawnkeep.Combat
         /// <summary>ميزانية التهديد لموجةٍ بعينها — صيغة §14 حرفياً.</summary>
         public int Budget(int waveNumber, float difficultyScale)
         {
+            // معامل المنطقة من الأصل × معامل منطقة الحملة الجارية (§19):
+            // الأصل هو معامل الخريطة الواحدة، ومنطقةُ الحملة تصعد بالسلّم
+            // كلّه. وضربُهما لا استبدالُهما — لأنّ الخريطة تبقى خريطتها.
             float raw = baseBudget
                 * Mathf.Pow(growth, Mathf.Max(0, waveNumber - 1))
                 * zoneFactor
+                * Dawnkeep.Campaign.CampaignDirector.Threat()
                 * Mathf.Max(0.01f, difficultyScale);
 
             return Mathf.Max(1, Mathf.RoundToInt(raw));

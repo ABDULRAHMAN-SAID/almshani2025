@@ -98,6 +98,13 @@ namespace Dawnkeep.Save
 
         /// <summary>الزعماء الذين لُقُوا، بأسماء أصولهم.</summary>
         public List<string> BossesMet = new List<string>();
+
+        /// <summary>
+        /// المراحل المنجَزة (§19) بمفاتيحها «المنطقة‑الترتيب». **قائمةٌ لا
+        /// عدّاد**: العدّاد يقول «ستّ» ولا يقول أيّها، فلا يُعرَف ما فُتح
+        /// بعدها ولا يُمنَع منح مخطّطها مرّتين.
+        /// </summary>
+        public List<string> StagesCleared = new List<string>();
     }
 
     [Serializable]

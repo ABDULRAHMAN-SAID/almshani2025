@@ -53,6 +53,9 @@ namespace Dawnkeep.Flow
         /// <summary>الموجات التي نجا منها فعلاً — تعرضها شاشة النتيجة.</summary>
         public int WavesCleared { get; private set; }
 
+        /// <summary>مخطّطٌ منحه الفوز أوّل مرّة (§19)، أو `null`. تعرضه النتيجة.</summary>
+        public Dawnkeep.Equipment.EquipmentDefinition Blueprint { get; private set; }
+
         private void Awake()
         {
             Instance = this;
@@ -90,6 +93,15 @@ namespace Dawnkeep.Flow
                 return;
             }
 
+            // «حماية قافلة حتى الفجر» (§19): سقوطُها خسارةٌ ولو صمد القلب —
+            // وإلّا صار الهدف نصّاً على الشاشة لا شرطاً في الساحة.
+            if (Dawnkeep.Campaign.StageRules.Instance != null
+                && Dawnkeep.Campaign.StageRules.Instance.ConvoyLost)
+            {
+                Resolve(StageResult.Defeat);
+                return;
+            }
+
             if (_waves == null)
             {
                 return;
@@ -99,10 +111,20 @@ namespace Dawnkeep.Flow
             // نفاد المحتوى فيتجمّد رقمها، ولا يتحقّق شرط الفوز أبداً.
             WavesCleared = _waves.WavesCleared;
 
-            if (WavesCleared >= WavesToSurvive)
+            if (WavesCleared < WavesToSurvive)
             {
-                Resolve(StageResult.Victory);
+                return;
             }
+
+            // «تشغيل منارتين خارجيّتين» (§19): الصمود وحده لا يكفي. ولا
+            // تُحسَب خسارةً — اللاعب صمد، وما نقص إلّا الشرط: تبقى المرحلة
+            // جاريةً حتى يُشعل، فيفوز حين يفعل.
+            if (!Dawnkeep.Campaign.StageRules.BeaconsSatisfied)
+            {
+                return;
+            }
+
+            Resolve(StageResult.Victory);
         }
 
         private void Resolve(StageResult result)
@@ -119,6 +141,19 @@ namespace Dawnkeep.Flow
             }
 
             RecordCampaign(result);
+
+            // إنجاز مرحلة الحملة ومخطّطها (§19 و§17). عند الفوز وحده،
+            // ومرّةً واحدة — `Complete` تحرسها بقائمة المنجَز لا بعدّاد.
+            if (result == StageResult.Victory)
+            {
+                Dawnkeep.Campaign.CampaignDirector campaign =
+                    Dawnkeep.Campaign.CampaignDirector.Instance;
+
+                if (campaign != null)
+                {
+                    Blueprint = campaign.Complete();
+                }
+            }
 
             if (freezeOnResult)
             {

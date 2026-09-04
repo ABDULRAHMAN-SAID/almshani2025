@@ -124,6 +124,9 @@ namespace Dawnkeep.Light
 
             scale *= Dawnkeep.Boons.BoonBook.Stat(Dawnkeep.Boons.BoonStat.BeaconRadius);
 
+            // ظلامُ المنطقة (§19: «ظلام كثيف ومنارات قليلة»)
+            scale *= Dawnkeep.Campaign.CampaignDirector.BeaconRadius();
+
             return baseRadius * (1f + (radiusPerCharge * Mathf.Max(0, charges))) * scale;
         }
     }
