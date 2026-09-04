@@ -118,6 +118,8 @@ namespace Dawnkeep.Flow
                 progress.AwardStage(WavesCleared, result == StageResult.Victory);
             }
 
+            RecordCampaign(result);
+
             if (freezeOnResult)
             {
                 Time.timeScale = 0f;
@@ -128,6 +130,39 @@ namespace Dawnkeep.Flow
             {
                 handler(result);
             }
+        }
+
+        /// <summary>
+        /// يسجّل ما بلغته هذه الجولة في كتلة الحملة (§27). **أبعدُ ليلةٍ لا
+        /// آخرُها**: من نجا من ثمانٍ ثمّ أعاد فخسر في ثلاث لم يتراجع تقدّمه.
+        /// </summary>
+        private void RecordCampaign(StageResult result)
+        {
+            Dawnkeep.Save.SaveService save = Dawnkeep.Save.SaveService.Instance;
+            if (save == null)
+            {
+                return;
+            }
+
+            Dawnkeep.Save.SaveData data = save.Data;
+            data.Profile.StagesPlayed++;
+
+            if (result == StageResult.Victory)
+            {
+                data.Profile.StagesWon++;
+                data.Campaign.Victories++;
+            }
+
+            if (WavesCleared > data.Campaign.FurthestWave)
+            {
+                data.Campaign.FurthestWave = WavesCleared;
+            }
+
+            save.Mark();
+
+            // الكتابة الآن لا على الفترة: شاشة النتيجة قد تُتبع بإغلاق
+            // التطبيق، وجولةٌ كاملة أثمن من أن تُترك لفترةٍ لم تحن.
+            save.Flush();
         }
 
         /// <summary>يستأنف الزمن — تناديه شاشة النتيجة عند الإعادة.</summary>

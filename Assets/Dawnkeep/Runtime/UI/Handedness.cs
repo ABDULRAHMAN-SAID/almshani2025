@@ -9,15 +9,11 @@ namespace Dawnkeep.UI
     /// الأيمن، ثمّ تُعكَس مرساتُه وإزاحتُه أفقيّاً عند التبديل. بناءُ تخطيطين
     /// يعني تعديلَين لكل تغيير، وسهواً في أحدهما لا يظهر إلّا لمن يلعب به.
     ///
-    /// ويُحفظ الاختيار: من يقلب التحكّم يقلبه مرّةً لا كل جولة.
+    /// ويُحفظ الاختيار في ملفّ الحفظ (§27) لا في `PlayerPrefs`: من يقلب
+    /// التحكّم يقلبه مرّةً لا كل جولة، وإعداداتُه تنتقل مع بقيّة تقدّمه.
     /// </summary>
     public static class Handedness
     {
-        private const string Key = "dawnkeep.lefthanded";
-
-        private static bool _left;
-        private static bool _loaded;
-
         /// <summary>يُرفع عند التبديل — تعكس العناصر نفسها عنده.</summary>
         public static event System.Action Changed;
 
@@ -25,25 +21,20 @@ namespace Dawnkeep.UI
         {
             get
             {
-                if (!_loaded)
-                {
-                    _left = PlayerPrefs.GetInt(Key, 0) != 0;
-                    _loaded = true;
-                }
-
-                return _left;
+                Dawnkeep.Save.SaveService save = Dawnkeep.Save.SaveService.Instance;
+                return save != null && save.Data.Settings.LeftHanded;
             }
 
             set
             {
-                if (LeftHanded == value)
+                Dawnkeep.Save.SaveService save = Dawnkeep.Save.SaveService.Instance;
+                if (save == null || save.Data.Settings.LeftHanded == value)
                 {
                     return;
                 }
 
-                _left = value;
-                PlayerPrefs.SetInt(Key, value ? 1 : 0);
-                PlayerPrefs.Save();
+                save.Data.Settings.LeftHanded = value;
+                save.Mark();
 
                 System.Action handler = Changed;
                 if (handler != null)

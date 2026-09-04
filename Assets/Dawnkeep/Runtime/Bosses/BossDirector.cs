@@ -81,12 +81,35 @@ namespace Dawnkeep.Bosses
 
             boss.Enter();
             _bosses.Add(boss);
+            Remember(boss);
 
             if (intro != null && boss.Definition != null)
             {
                 intro.Play(boss);
                 boss.IntroShown = true;
             }
+        }
+
+        /// <summary>
+        /// يسجّل لقاء الزعيم في كتلة الحملة (§27). **عند الظهور لا عند
+        /// القتل**: «لُقُوا» لا «قُتلوا»، ومن رآه ثمّ خسر قد رآه.
+        /// </summary>
+        private static void Remember(Boss boss)
+        {
+            Dawnkeep.Save.SaveService save = Dawnkeep.Save.SaveService.Instance;
+            if (save == null || boss.Definition == null)
+            {
+                return;
+            }
+
+            string key = boss.Definition.name;
+            if (save.Data.Campaign.BossesMet.Contains(key))
+            {
+                return;
+            }
+
+            save.Data.Campaign.BossesMet.Add(key);
+            save.Mark();
         }
 
         public void Unregister(Boss boss)

@@ -11,20 +11,15 @@ namespace Dawnkeep.Meta
     /// البحث) تُربَط في المفتّش، وصنفٌ ساكن لا يُربَط له شيء فيضطرّ إلى
     /// `Resources.Load` — وهو بحثٌ بالاسم يُكسَر بأوّل إعادة تسمية.
     ///
-    /// والحفظ في `PlayerPrefs`: خمسة أعداد وقاموسٌ صغير من المراتب. ملفٌّ
-    /// كامل بصيغته وقارئه ثمنٌ لا يشتري شيئاً على هذا الحجم.
+    /// **ولا يملك بياناته**: هي في `SaveService` (§27). كان يحفظها في
+    /// `PlayerPrefs`، و§27 تمنع ذلك صراحةً — «لا تستخدم PlayerPrefs لحفظ
+    /// التقدم». وهي محقّة: `PlayerPrefs` بلا بصمة ولا نسخة احتياطية ولا
+    /// كتابة ذرّية، فقرصٌ ينقطع في منتصف كتابته يترك تقدّماً نصفَه.
     /// </summary>
     [DisallowMultipleComponent]
     [DefaultExecutionOrder(-400)]
     public class Progress : MonoBehaviour
     {
-        private const string KeyXp = "dawnkeep.account.xp";
-        private const string KeyHeroXp = "dawnkeep.hero.xp";
-        private const string KeyGold = "dawnkeep.gold";
-        private const string KeyStars = "dawnkeep.stars";
-        private const string KeySpent = "dawnkeep.talents.spent";
-        private const string KeyRank = "dawnkeep.research.";
-
         public static Progress Instance { get; private set; }
 
         [SerializeField] private ProgressSettings settings;
@@ -32,7 +27,6 @@ namespace Dawnkeep.Meta
         [Tooltip("كل عقد البحث. تُملأ من باني الأصول.")]
         [SerializeField] private ResearchNode[] nodes = new ResearchNode[0];
 
-        private readonly Dictionary<string, int> _ranks = new Dictionary<string, int>(24);
         private readonly Dictionary<BoonStat, float> _research = new Dictionary<BoonStat, float>(24);
 
         /// <summary>يُرفع عند كل شراء أو مكافأة — تُعيد الواجهة رسم نفسها.</summary>
@@ -42,16 +36,57 @@ namespace Dawnkeep.Meta
 
         public IReadOnlyList<ResearchNode> Nodes { get { return nodes; } }
 
-        public int AccountXp { get; private set; }
+        private Dawnkeep.Save.SaveService _save;
 
-        public int HeroXp { get; private set; }
+        private Dawnkeep.Save.SaveData Store
+        {
+            get
+            {
+                if (_save == null)
+                {
+                    _save = Dawnkeep.Save.SaveService.Instance;
+                }
 
-        public int Gold { get; private set; }
+                return _save != null ? _save.Data : _fallback;
+            }
+        }
 
-        public int Stars { get; private set; }
+        /// <summary>
+        /// حفظٌ في الذاكرة وحدها إن لم يكن ثمّة `SaveService` في المشهد —
+        /// مشهدُ تجريبٍ ناقص لا يجوز أن يرمي، ولا أن يكتب فوق حفظ اللاعب.
+        /// </summary>
+        private readonly Dawnkeep.Save.SaveData _fallback = new Dawnkeep.Save.SaveData();
+
+        public int AccountXp
+        {
+            get { return Store.Profile.AccountXp; }
+            private set { Store.Profile.AccountXp = value; }
+        }
+
+        public int HeroXp
+        {
+            get { return Store.Hero.Xp; }
+            private set { Store.Hero.Xp = value; }
+        }
+
+        public int Gold
+        {
+            get { return Store.Currencies.Gold; }
+            private set { Store.Currencies.Gold = value; }
+        }
+
+        public int Stars
+        {
+            get { return Store.Currencies.ResearchStars; }
+            private set { Store.Currencies.ResearchStars = value; }
+        }
 
         /// <summary>نقاط الموهبة المنفَقة — الباقي يُحسب من المستوى.</summary>
-        public int TalentsSpent { get; private set; }
+        public int TalentsSpent
+        {
+            get { return Store.Hero.TalentsSpent; }
+            private set { Store.Hero.TalentsSpent = value; }
+        }
 
         public void Configure(ProgressSettings value, ResearchNode[] all)
         {
@@ -211,13 +246,7 @@ namespace Dawnkeep.Meta
 
         public int RankOf(ResearchNode node)
         {
-            if (node == null)
-            {
-                return 0;
-            }
-
-            int rank;
-            return _ranks.TryGetValue(node.Key, out rank) ? rank : 0;
+            return node != null ? Store.Research.RankOf(node.Key) : 0;
         }
 
         /// <summary>هل يمكن شراء المرتبة التالية من هذه العقدة؟</summary>
@@ -282,7 +311,7 @@ namespace Dawnkeep.Meta
             int rank = RankOf(node);
             Gold -= node.GoldFor(rank);
             Stars -= node.StarsPerRank;
-            _ranks[node.Key] = rank + 1;
+            Store.Research.SetRank(node.Key, rank + 1);
 
             Rebuild();
             Save();
@@ -295,7 +324,8 @@ namespace Dawnkeep.Meta
         /// </summary>
         public bool Respec()
         {
-            if (settings == null || _ranks.Count == 0 || Gold < settings.RespecGold)
+            if (settings == null || Store.Research.Keys.Count == 0
+                || Gold < settings.RespecGold)
             {
                 return false;
             }
@@ -322,7 +352,7 @@ namespace Dawnkeep.Meta
 
             Gold += gold - settings.RespecGold;
             Stars += stars;
-            _ranks.Clear();
+            Store.Research.Clear();
 
             Rebuild();
             Save();
@@ -451,15 +481,14 @@ namespace Dawnkeep.Meta
             Raise();
         }
 
+        /// <summary>
+        /// يقرأ من الحفظ. لا قرصَ هنا: `SaveService` قرأ وحقّق ورحّل قبل أن
+        /// يُوقَظ هذا (‏−600 قبل ‏−400)، وما بقي إلّا قصُّ مراتبَ قد تكون
+        /// أكبر ممّا تسمح به عقدتُها اليوم — ملفٌّ حُفظ حين كانت أعمق.
+        /// </summary>
         private void Load()
         {
-            AccountXp = PlayerPrefs.GetInt(KeyXp, 0);
-            HeroXp = PlayerPrefs.GetInt(KeyHeroXp, 0);
-            Gold = PlayerPrefs.GetInt(KeyGold, 0);
-            Stars = PlayerPrefs.GetInt(KeyStars, 0);
-            TalentsSpent = PlayerPrefs.GetInt(KeySpent, 0);
-
-            _ranks.Clear();
+            Dawnkeep.Save.ResearchState research = Store.Research;
             for (int i = 0; i < nodes.Length; i++)
             {
                 ResearchNode node = nodes[i];
@@ -468,34 +497,32 @@ namespace Dawnkeep.Meta
                     continue;
                 }
 
-                int rank = PlayerPrefs.GetInt(KeyRank + node.Key, 0);
-                if (rank > 0)
+                int rank = research.RankOf(node.Key);
+                if (rank > node.Ranks)
                 {
-                    _ranks[node.Key] = Mathf.Min(rank, node.Ranks);
+                    research.SetRank(node.Key, node.Ranks);
                 }
             }
 
             Rebuild();
         }
 
+        /// <summary>
+        /// يعلّم الحاجة إلى الكتابة. **لا يكتب**: `SaveService` يجمع التغييرات
+        /// ويكتب على فترته وعند الخروج — وكتابةُ ملفٍّ كامل عند كل عملة تُكسب
+        /// توقف الإطار على الجوّال.
+        /// </summary>
         private void Save()
         {
-            PlayerPrefs.SetInt(KeyXp, AccountXp);
-            PlayerPrefs.SetInt(KeyHeroXp, HeroXp);
-            PlayerPrefs.SetInt(KeyGold, Gold);
-            PlayerPrefs.SetInt(KeyStars, Stars);
-            PlayerPrefs.SetInt(KeySpent, TalentsSpent);
-
-            for (int i = 0; i < nodes.Length; i++)
+            if (_save == null)
             {
-                ResearchNode node = nodes[i];
-                if (node != null)
-                {
-                    PlayerPrefs.SetInt(KeyRank + node.Key, RankOf(node));
-                }
+                _save = Dawnkeep.Save.SaveService.Instance;
             }
 
-            PlayerPrefs.Save();
+            if (_save != null)
+            {
+                _save.Mark();
+            }
         }
 
         /// <summary>يمحو التقدّم كلّه — للتجريب في المحرّر.</summary>
@@ -506,7 +533,7 @@ namespace Dawnkeep.Meta
             Gold = 0;
             Stars = 0;
             TalentsSpent = 0;
-            _ranks.Clear();
+            Store.Research.Clear();
             Rebuild();
             Save();
         }

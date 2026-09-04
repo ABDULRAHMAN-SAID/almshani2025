@@ -21,6 +21,16 @@ namespace Dawnkeep.Localization
         private void Awake()
         {
             Loc.Use(table);
+
+            // اللغة من ملفّ الحفظ إن وُجد (§27): مَن بدّلها مرّةً يجدها
+            // مبدَّلةً في كل جولة. و`SaveService` يوقظ نفسه قبل هذا (‏−600
+            // قبل ‏−500) فقيمتُه جاهزة.
+            Dawnkeep.Save.SaveService save = Dawnkeep.Save.SaveService.Instance;
+            if (save != null)
+            {
+                language = (Language)Mathf.Clamp(save.Data.Settings.Language, 0, 1);
+            }
+
             Loc.Current = language;
         }
 
@@ -29,6 +39,13 @@ namespace Dawnkeep.Localization
         {
             language = value;
             Loc.Current = value;
+
+            Dawnkeep.Save.SaveService save = Dawnkeep.Save.SaveService.Instance;
+            if (save != null)
+            {
+                save.Data.Settings.Language = (int)value;
+                save.Mark();
+            }
         }
     }
 }

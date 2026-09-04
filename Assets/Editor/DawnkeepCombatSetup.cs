@@ -173,6 +173,13 @@ namespace Dawnkeep.EditorTools
                 battle = new GameObject("Battle");
             }
 
+            // خدمة الحفظ (§27) أوّل ما يُضاف: كل نظامٍ بعدها يقرأ منها في
+            // `Awake`، وهي توقظ نفسها قبلهم جميعاً (‏−600).
+            if (battle.GetComponent<Dawnkeep.Save.SaveService>() == null)
+            {
+                battle.AddComponent<Dawnkeep.Save.SaveService>();
+            }
+
             CombatDirector director = battle.GetComponent<CombatDirector>();
             if (director == null)
             {

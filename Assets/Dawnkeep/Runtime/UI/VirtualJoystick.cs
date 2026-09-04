@@ -88,14 +88,15 @@ namespace Dawnkeep.UI
             }
         }
 
-        /// <summary>تكبير العصا أو تصغيرها من الإعدادات (§7).</summary>
+        /// <summary>تكبير العصا أو تصغيرها من الإعدادات (§7). يُحفظ (§27).</summary>
         public void SetScale(float value)
         {
             scale = Mathf.Clamp(value, 0.6f, 1.8f);
             Apply();
+            Store();
         }
 
-        /// <summary>شفافيّتها من الإعدادات (§7).</summary>
+        /// <summary>شفافيّتها من الإعدادات (§7). تُحفظ (§27).</summary>
         public void SetOpacity(float value)
         {
             opacity = Mathf.Clamp(value, 0.15f, 1f);
@@ -103,6 +104,48 @@ namespace Dawnkeep.UI
             {
                 _group.alpha = opacity;
             }
+
+            Store();
+        }
+
+        /// <summary>
+        /// يكتب ضبط العصا في كتلة `Settings` من ملفّ الحفظ (§27). العلامة لا
+        /// الكتابة: `SaveService` يجمع ويكتب على فترته.
+        /// </summary>
+        private void Store()
+        {
+            Dawnkeep.Save.SaveService save = Dawnkeep.Save.SaveService.Instance;
+            if (save == null)
+            {
+                return;
+            }
+
+            save.Data.Settings.StickScale = scale;
+            save.Data.Settings.StickOpacity = opacity;
+            save.Mark();
+        }
+
+        /// <summary>يقرأ ضبطها من الحفظ عند البدء. صفرٌ يعني ملفّاً بلا ضبط.</summary>
+        private void Restore()
+        {
+            Dawnkeep.Save.SaveService save = Dawnkeep.Save.SaveService.Instance;
+            if (save == null)
+            {
+                return;
+            }
+
+            Dawnkeep.Save.SaveSettings settings = save.Data.Settings;
+            if (settings.StickScale > 0.01f)
+            {
+                scale = Mathf.Clamp(settings.StickScale, 0.6f, 1.8f);
+            }
+
+            if (settings.StickOpacity > 0.01f)
+            {
+                opacity = Mathf.Clamp(settings.StickOpacity, 0.15f, 1f);
+            }
+
+            Apply();
         }
 
         public float Scale { get { return scale; } }
@@ -114,6 +157,7 @@ namespace Dawnkeep.UI
             Instance = this;
             _canvas = GetComponent<RectTransform>();
             Build();
+            Restore();
         }
 
         private void OnEnable()

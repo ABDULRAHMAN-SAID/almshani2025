@@ -90,6 +90,10 @@ namespace Dawnkeep.UI
             _locale = FindAnyObjectByType<LocaleRuntime>();
             _healthBars = FindAnyObjectByType<HealthBarPool>();
 
+            // الاستعادة قبل الصبغ: الصبغُ يقرأ ما استُعيد، وعكسُه يعرض
+            // الافتراضيّ ثمّ يبدّله بعد إطارٍ أمام عين اللاعب.
+            RestoreSettings();
+
             PaintSpeed();
             PaintLanguage();
             PaintHealthBars();
@@ -384,6 +388,7 @@ namespace Dawnkeep.UI
             }
 
             _speed = Mathf.Clamp(index, 0, speeds.Length - 1);
+            Remember(save => save.Data.Settings.SpeedIndex = _speed);
             PaintSpeed();
 
             // اللوحة مفتوحة والزمن موقوف: السرعة تُطبَّق عند المتابعة لا الآن،
@@ -455,6 +460,7 @@ namespace Dawnkeep.UI
                 _waves.SetDifficulty(level);
             }
 
+            Remember(save => save.Data.Settings.Difficulty = (int)level);
             PaintDifficulty();
             Fill();
         }
@@ -536,6 +542,54 @@ namespace Dawnkeep.UI
             PaintStick();
         }
 
+        /// <summary>
+        /// يكتب إعداداً في ملفّ الحفظ (§27) ويعلّم الحاجة إلى الكتابة. دالّةٌ
+        /// واحدة بدل ستّة أسطر متكرّرة، وهي التي تضمن ألّا يُنسى `Mark`.
+        /// </summary>
+        private static void Remember(System.Action<Dawnkeep.Save.SaveService> write)
+        {
+            Dawnkeep.Save.SaveService save = Dawnkeep.Save.SaveService.Instance;
+            if (save == null)
+            {
+                return;
+            }
+
+            write(save);
+            save.Mark();
+        }
+
+        /// <summary>
+        /// يستعيد ما حُفظ من إعدادات (§27). يُستدعى بعد البناء لا قبله:
+        /// أزرارُ السرعة تُصبغ بحسب المحفوظ، ولا وجود لها قبل البناء.
+        /// </summary>
+        private void RestoreSettings()
+        {
+            Dawnkeep.Save.SaveService save = Dawnkeep.Save.SaveService.Instance;
+            if (save == null)
+            {
+                return;
+            }
+
+            Dawnkeep.Save.SaveSettings settings = save.Data.Settings;
+
+            _speed = Mathf.Clamp(settings.SpeedIndex, 0, speeds.Length - 1);
+
+            if (_healthBars == null)
+            {
+                _healthBars = FindAnyObjectByType<HealthBarPool>();
+            }
+
+            if (_healthBars != null)
+            {
+                _healthBars.enabled = settings.HealthBars;
+            }
+
+            if (_waves != null)
+            {
+                _waves.SetDifficulty((Difficulty)Mathf.Clamp(settings.Difficulty, 0, 3));
+            }
+        }
+
         private void PaintStick()
         {
             VirtualJoystick stick = VirtualJoystick.Instance;
@@ -579,6 +633,7 @@ namespace Dawnkeep.UI
             }
 
             _healthBars.enabled = !_healthBars.enabled;
+            Remember(save => save.Data.Settings.HealthBars = _healthBars.enabled);
             PaintHealthBars();
         }
 
