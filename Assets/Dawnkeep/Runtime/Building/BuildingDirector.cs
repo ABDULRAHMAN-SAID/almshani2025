@@ -82,6 +82,18 @@ namespace Dawnkeep.Building
             {
                 RegisterNode(placed[i]);
             }
+
+            // والمباني الموضوعة في المشهد يدوياً كذلك: `Place` وحدها كانت
+            // تُدخل المبنى في القائمة، فمبنىً وُضع في مشهدٍ (ساحة قياسٍ أو
+            // مشهدِ تجريب) يقف صامتاً ولا يرمي — وهو عطبٌ لا يُرى إلّا بعدّ
+            // المقذوفات.
+            Building[] standing = FindObjectsByType<Building>(
+                FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+
+            for (int i = 0; i < standing.Length; i++)
+            {
+                Adopt(standing[i]);
+            }
         }
 
         private void OnDestroy()
@@ -90,6 +102,20 @@ namespace Dawnkeep.Building
             {
                 Instance = null;
             }
+        }
+
+        /// <summary>
+        /// يضمّ مبنىً قائماً إلى الحلقة إن لم يكن فيها. لا يبنيه ولا يخصم
+        /// ثمنه: هو موضوعٌ سلفاً، والمطلوب أن يعمل لا أن يُشترى.
+        /// </summary>
+        public void Adopt(Building building)
+        {
+            if (building == null || _buildings.Contains(building))
+            {
+                return;
+            }
+
+            _buildings.Add(building);
         }
 
         public void RegisterNode(BuildNode node)

@@ -43,7 +43,11 @@ namespace Dawnkeep.Combat
 
         private readonly List<Unit> _units = new List<Unit>(512);
 
+        [Tooltip("أرقام الأداء (§31). فارغاً تُستعمل نبضةٌ افتراضية 25 هرتز.")]
+        [SerializeField] private Dawnkeep.Performance.PerformanceSettings performance;
+
         private Vector3[] _positions;
+        private float _simLeft;
         private int[] _neighbours;
         private SpatialHash _hash;
         private ProjectilePool _projectiles;
@@ -229,6 +233,30 @@ namespace Dawnkeep.Combat
             float dt = Time.deltaTime;
             float now = Time.time;
 
+            // ── نبضة المحاكاة (§31: بين 20 و30 هرتز) ──────────────────────
+            //
+            // ليس كلّ ما في هذه الحلقة يستحقّ ستّين مرّةً في الثانية. الحركة
+            // والضرب المرئي نعم — تراهما العين. أمّا **بناء الشبكة المكانية**
+            // و**قياس النور لكل وحدة** فقراراتٌ لا صور: بناؤها خمساً وعشرين
+            // مرّة يكفي، ويوفّر ثلثها على حشدٍ من خمسمئة.
+            //
+            // والثمن مقيس لا مقدَّر: أربعون ميلي ثانية من التقادم، وأسرع
+            // وحدة في اللعبة (وليد الغسق، 4.7 م/ث) تقطع فيها **تسعة عشر
+            // سنتيمتراً** — أقلّ من نصف نصف قطر جسدها.
+            _simLeft -= dt;
+            bool simulate = _simLeft <= 0f;
+            if (simulate)
+            {
+                _simLeft += SimulationStep;
+
+                // الحارس: إطارٌ طويل (تحميلٌ أو انتقال مشهد) قد يترك المتبقّي
+                // سالباً بثوانٍ، فتُلاحَق النبضاتُ الفائتة دفعةً وتتجمّد الصورة.
+                if (_simLeft < 0f)
+                {
+                    _simLeft = SimulationStep;
+                }
+            }
+
             // تنظيف المهدوم قبل أي قراءة: قد يُهدم حارسُ مبنى بين إطارين من
             // خارج هذه الحلقة، فيبقى مرجعه هنا وتنكسر قراءة موضعه.
             for (int i = _units.Count - 1; i >= 0; i--)
@@ -240,12 +268,15 @@ namespace Dawnkeep.Combat
             }
 
             int count = _units.Count;
-            for (int i = 0; i < count; i++)
+            if (simulate)
             {
-                _positions[i] = _units[i].Body.position;
-            }
+                for (int i = 0; i < count; i++)
+                {
+                    _positions[i] = _units[i].Body.position;
+                }
 
-            _hash.Rebuild(_positions, count);
+                _hash.Rebuild(_positions, count);
+            }
 
             int live = 0;
             int kingdom = 0;
@@ -263,11 +294,18 @@ namespace Dawnkeep.Combat
 
                 live++;
 
-                // النور يُقاس في كل إطار لا على فترة التفكير: الوحدة قد تعبر
-                // حافّة الدائرة بين تفكيرين، فيضربها الظلام وهي في النور.
+                // النور يُقاس على **نبضة المحاكاة** لا على فترة التفكير: فترةُ
+                // التفكير تبلغ ثانيةً كاملة، والوحدة تعبر حافّة الدائرة فيها
+                // فيضربها الظلام وهي في النور. والنبضة أربعون ميلي ثانية.
+                //
                 // والمخزَّن هو **مقدار قضم الدرع** لا شدّة النور الخام: الشحنات
                 // جزء من الحساب، وتكرارها عند كل ضربة يعني استعلاماً زائداً.
-                unit.LightLevel = _light != null ? _light.ArmourCutAt(unit.Body.position) : 0f;
+                if (simulate)
+                {
+                    unit.LightLevel = _light != null
+                        ? _light.ArmourCutAt(unit.Body.position)
+                        : 0f;
+                }
 
                 if (unit.Faction == Faction.Kingdom)
                 {
@@ -290,6 +328,54 @@ namespace Dawnkeep.Combat
             LiveKingdom = kingdom;
             LiveHorde = horde;
             SweepDead();
+        }
+
+        /// <summary>
+        /// هل يُقاس زمن اختيار الهدف الآن؟ يرفعه `PerformanceProbe` وحده.
+        /// </summary>
+        public bool Measuring { get; set; }
+
+        /// <summary>
+        /// زمن اختيار الأهداف في الإطار المنقضي، بالميلي ثانية (§31).
+        /// يُصفَّر عند القراءة: الجمع بلا تصفير يقيس منذ بدء اللعبة لا الإطار.
+        /// </summary>
+        public double TakeTargetMilliseconds()
+        {
+            double ms = (_targetTicks * 1000.0) / System.Diagnostics.Stopwatch.Frequency;
+            _targetTicks = 0;
+            return ms;
+        }
+
+        private long _targetTicks;
+
+        /// <summary>مدّة نبضة المحاكاة — من الأصل أو الافتراضي (§31).</summary>
+        private float SimulationStep
+        {
+            get { return performance != null ? performance.SimulationStep : 1f / 25f; }
+        }
+
+        /// <summary>سقف الأعداء الأحياء (§31). صفرٌ يعني بلا سقف.</summary>
+        public int HordeBudget
+        {
+            get { return performance != null ? performance.Budget : 0; }
+        }
+
+        /// <summary>هل يتّسع المكان لعدوٍّ آخر؟ يسأله `WaveDirector` قبل الصيحة.</summary>
+        public bool HasRoomForHorde
+        {
+            get
+            {
+                int budget = HordeBudget;
+                return budget <= 0 || LiveHorde < budget;
+            }
+        }
+
+        public void UsePerformance(Dawnkeep.Performance.PerformanceSettings value)
+        {
+            if (value != null)
+            {
+                performance = value;
+            }
         }
 
         private void TickCorpse(Unit unit, float dt)
@@ -413,7 +499,19 @@ namespace Dawnkeep.Combat
                     unit.BeaconTarget = _light.NearestLit(unit.Body.position);
                 }
 
-                unit.Target = FindTarget(index, unit, def);
+                // قياس زمن اختيار الهدف (§31) — **مطفأ في اللعب العادي**:
+                // `GetTimestamp` رخيص لكنّه ليس مجّاناً، ونداؤه مرّتين لكل
+                // وحدةٍ في كل نبضة ثمنٌ يُدفع مقابل رقمٍ لا يقرؤه أحد.
+                if (Measuring)
+                {
+                    long started = System.Diagnostics.Stopwatch.GetTimestamp();
+                    unit.Target = FindTarget(index, unit, def);
+                    _targetTicks += System.Diagnostics.Stopwatch.GetTimestamp() - started;
+                }
+                else
+                {
+                    unit.Target = FindTarget(index, unit, def);
+                }
 
                 // المبنى هدف احتياطي لا أصلي: يُقصد إن لم يعترض المهاجمَ مقاتلٌ،
                 // أو إن كانت فئته `Structure` أصلاً. وإلّا صار الجند يتجاهلون

@@ -108,6 +108,10 @@ namespace Dawnkeep.Localization
         public const string SettingHanded = "settings.handed";
         public const string SettingRightHanded = "settings.handed.right";
         public const string SettingLeftHanded = "settings.handed.left";
+        public const string SettingQuality = "settings.quality";
+        public const string QualityLow = "quality.low";
+        public const string QualityMedium = "quality.medium";
+        public const string QualityHigh = "quality.high";
         public const string SettingOn = "settings.on";
         public const string SettingOff = "settings.off";
         public const string SpeedCaption = "pause.speed";

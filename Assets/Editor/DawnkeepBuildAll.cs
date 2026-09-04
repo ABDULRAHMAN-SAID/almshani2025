@@ -9,7 +9,7 @@ namespace Dawnkeep.EditorTools
     /// </summary>
     public static class DawnkeepBuildAll
     {
-        [MenuItem("مملكة الرماد/بناء كل شيء (2 ← 17)", false, 20)]
+        [MenuItem("مملكة الرماد/بناء كل شيء (2 ← 18)", false, 20)]
         public static void BuildEverything()
         {
             if (!DawnkeepAssetPaths.TypeExists("UnityEngine.Rendering.Universal.UniversalRenderPipelineAsset"))
@@ -35,6 +35,8 @@ namespace Dawnkeep.EditorTools
             DawnkeepBossSetup.Setup();
             DawnkeepBoonSetup.Setup();
             DawnkeepMetaSetup.Setup();
+
+            DawnkeepArenaSetup.Setup();
 
             // القائمة آخراً: بناؤها يفتح مشهداً آخر ثمّ يعيد الذي كان
             DawnkeepMenuSetup.Setup();

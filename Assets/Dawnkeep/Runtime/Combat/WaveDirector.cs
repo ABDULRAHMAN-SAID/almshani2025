@@ -56,6 +56,9 @@ namespace Dawnkeep.Combat
         [Tooltip("درجات الصعوبة (§14). فارغاً تُستعمل القياسية.")]
         [SerializeField] private DifficultySettings difficulty;
 
+        [Tooltip("أرقام الأداء (§31): سقف الأحياء وتسخين المجمّعات.")]
+        [SerializeField] private Dawnkeep.Performance.PerformanceSettings performance;
+
         [Tooltip("جهات الدخول. الأولى هي جهة الطريق الرئيسة.")]
         [SerializeField] private Front[] fronts = new Front[0];
 
@@ -207,6 +210,14 @@ namespace Dawnkeep.Combat
         }
 
         /// <summary>يربط محتوى التوليد. يُستدعى من باني المشهد.</summary>
+        public void UsePerformance(Dawnkeep.Performance.PerformanceSettings value)
+        {
+            if (value != null)
+            {
+                performance = value;
+            }
+        }
+
         public void ConfigureGeneration(UnitDefinition[] units, WaveGenSettings settings,
             DifficultySettings levels)
         {
@@ -323,6 +334,8 @@ namespace Dawnkeep.Combat
 
         private void Start()
         {
+            PreWarm();
+
             if (autoStart)
             {
                 BeginNextWave();
@@ -439,6 +452,14 @@ namespace Dawnkeep.Combat
             float spacing = Mathf.Max(0.05f, entry.Spacing);
             for (int i = 0; i < entry.Count; i++)
             {
+                // سقف الأحياء (§31): إن ضاق المكان **يُؤجَّل الخروج ولا يُلغى**.
+                // إلغاؤه يُنقص الموجة عن وزنها فتصير الليلة أخفّ على جهازٍ
+                // أضعف — وهو عقابٌ على ضعف الجهاز لا موازنةٌ له.
+                while (!HasRoom())
+                {
+                    yield return WaitForRoom;
+                }
+
                 SpawnOne(entry.Unit, entry.Front, entry.Tier);
                 yield return new WaitForSeconds(spacing);
             }
@@ -556,6 +577,102 @@ namespace Dawnkeep.Combat
                 {
                     director.Register(unit);
                 }
+            }
+        }
+
+        /// <summary>هل يتّسع المكان لعدوٍّ آخر؟ (§31)</summary>
+        private bool HasRoom()
+        {
+            CombatDirector director = CombatDirector.Instance;
+            return director == null || director.HasRoomForHorde;
+        }
+
+        /// <summary>
+        /// مهلة الانتظار حين يمتلئ المكان. **كائنٌ واحد يُعاد استعماله**:
+        /// `new WaitForSeconds` في حلقةٍ تنتظر يولّد قمامةً كل ربع ثانية،
+        /// وهو بالضبط ما تمنعه §31 («صفر بايت في أغلب الإطارات»).
+        /// </summary>
+        private static readonly WaitForSeconds WaitForRoom = new WaitForSeconds(0.25f);
+
+        /// <summary>
+        /// يسخّن المجمّعات مسبقاً بحسب أثقل موجة معرَّفة (§31). التسخين عند
+        /// الإقلاع لا عند أوّل صيحة: `Instantiate` لثلاثين وحدة في إطارٍ واحد
+        /// يُسقط الإطار سقوطاً يُرى، وأوّل صيحة تقع في أوّل ليلة.
+        /// </summary>
+        private void PreWarm()
+        {
+            if (performance == null || !performance.PreWarmPools || waves == null)
+            {
+                return;
+            }
+
+            // أثقل عددٍ لكل نوعٍ عبر الموجات المصمَّمة: المولَّدة تُبنى على
+            // الأسراب نفسها، فأقصى سربٍ في التعريف هو السقف الحقيقي.
+            Dictionary<UnitDefinition, int> most = new Dictionary<UnitDefinition, int>(16);
+
+            for (int w = 0; w < waves.Length; w++)
+            {
+                if (waves[w] == null)
+                {
+                    continue;
+                }
+
+                WaveDefinition.Entry[] entries = waves[w].Entries;
+                for (int e = 0; e < entries.Length; e++)
+                {
+                    UnitDefinition def = entries[e].Unit;
+                    if (def == null)
+                    {
+                        continue;
+                    }
+
+                    int had;
+                    most.TryGetValue(def, out had);
+                    if (entries[e].Count > had)
+                    {
+                        most[def] = entries[e].Count;
+                    }
+                }
+            }
+
+            for (int i = 0; i < _catalogue.Count; i++)
+            {
+                UnitDefinition def = _catalogue[i];
+                int had;
+                most.TryGetValue(def, out had);
+
+                int want = Mathf.Max(had, def.MaxPack);
+                want = Mathf.CeilToInt(want * performance.PreWarmMargin);
+                Warm(def, want);
+            }
+        }
+
+        /// <summary>ينشئ `count` نسخةً مطفأة من نوعٍ ويضعها في مجمّعه.</summary>
+        private void Warm(UnitDefinition def, int count)
+        {
+            if (def == null || def.Prefab == null || count <= 0)
+            {
+                return;
+            }
+
+            List<Unit> pool;
+            if (!_pools.TryGetValue(def, out pool))
+            {
+                pool = new List<Unit>(count);
+                _pools.Add(def, pool);
+            }
+
+            while (pool.Count < count)
+            {
+                GameObject go = Instantiate(def.Prefab, transform);
+                Unit unit = go.GetComponent<Unit>();
+                if (unit == null)
+                {
+                    unit = go.AddComponent<Unit>();
+                }
+
+                go.SetActive(false);
+                pool.Add(unit);
             }
         }
 

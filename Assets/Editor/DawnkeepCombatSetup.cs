@@ -205,6 +205,25 @@ namespace Dawnkeep.EditorTools
             waveDirector.ConfigureFronts(BuildFronts(battle.transform));
             waveDirector.ConfigureGeneration(horde, generation, levels);
 
+            // أرقام الأداء (§31): سقف الأحياء ونبضة المحاكاة وتسخين المجمّعات
+            Dawnkeep.Performance.PerformanceSettings performance =
+                AssetDatabase.LoadAssetAtPath<Dawnkeep.Performance.PerformanceSettings>(
+                    DawnkeepAssetPaths.Settings + "/PerformanceSettings.asset");
+
+            if (performance == null)
+            {
+                performance = ScriptableObject
+                    .CreateInstance<Dawnkeep.Performance.PerformanceSettings>();
+
+                AssetDatabase.CreateAsset(performance,
+                    DawnkeepAssetPaths.Settings + "/PerformanceSettings.asset");
+
+                AssetDatabase.SaveAssets();
+            }
+
+            director.UsePerformance(performance);
+            waveDirector.UsePerformance(performance);
+
             int assigned = AssignGarrison(spearman, swordsman, archer, hero);
 
             EditorUtility.SetDirty(battle);

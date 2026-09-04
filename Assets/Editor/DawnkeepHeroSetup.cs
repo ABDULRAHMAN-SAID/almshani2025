@@ -154,7 +154,11 @@ namespace Dawnkeep.EditorTools
 
             SetPrivate(Require<AbilityBar>(canvas), "font", font);
             SetPrivate(Require<ResultPanel>(canvas), "font", font);
-            SetPrivate(Require<PauseMenu>(canvas), "font", font);
+            PauseMenu pause = Require<PauseMenu>(canvas);
+            SetPrivate(pause, "font", font);
+            SetPrivate(pause, "performance",
+                AssetDatabase.LoadAssetAtPath<Dawnkeep.Performance.PerformanceSettings>(
+                    DawnkeepAssetPaths.Settings + "/PerformanceSettings.asset"));
 
             // العصا الافتراضية (§7) ومواضع الأزرار التي تتجاهلها. تُبنى هنا
             // لا في القائمة 7: مواضعها تأتي من `AbilityBar` و`OrderRing`،

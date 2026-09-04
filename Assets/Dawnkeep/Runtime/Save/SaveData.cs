@@ -67,6 +67,9 @@ namespace Dawnkeep.Save
         public int Difficulty = 1;
 
         public int SpeedIndex;
+
+        /// <summary>درجة الجهاز (§31). ‏−1 يعني «لم تُختر بعد» فتُقترح.</summary>
+        public int Quality = -1;
     }
 
     [Serializable]

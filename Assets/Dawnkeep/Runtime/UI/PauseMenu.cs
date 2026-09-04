@@ -55,6 +55,10 @@ namespace Dawnkeep.UI
         private TextMeshProUGUI[] _speedCaption;
         private Image[] _languageButton;
         private Image[] _difficultyButton;
+        private Image[] _qualityButton;
+
+        [Tooltip("أرقام الأداء (§31). فارغاً يُخفى اختيار الدرجة.")]
+        [SerializeField] private Dawnkeep.Performance.PerformanceSettings performance;
         private Image _healthBarsButton;
         private Image _stickSizeButton;
         private Image _stickFadeButton;
@@ -99,6 +103,7 @@ namespace Dawnkeep.UI
             PaintHealthBars();
             PaintDifficulty();
             PaintStick();
+            PaintQuality();
         }
 
         private void Update()
@@ -590,6 +595,35 @@ namespace Dawnkeep.UI
             }
         }
 
+        /// <summary>
+        /// يبدّل درجة الجهاز (§31). أثرها على الموجة **التالية** لا الجارية:
+        /// خفضُ السقف وسط اشتباكٍ لا يمحو من في الساحة، ورفعُه لا يملؤها —
+        /// فالتبديل في منتصفها يُقرأ بلا أثر ثمّ يظهر فجأةً.
+        /// </summary>
+        private void SetQuality(Dawnkeep.Performance.QualityTier level)
+        {
+            if (performance != null)
+            {
+                performance.Tier = level;
+            }
+
+            PaintQuality();
+        }
+
+        private void PaintQuality()
+        {
+            if (_qualityButton == null)
+            {
+                return;
+            }
+
+            int active = performance != null ? (int)performance.Tier : 1;
+            for (int i = 0; i < _qualityButton.Length; i++)
+            {
+                _qualityButton[i].color = i == active ? goldColor * 0.34f : dimColor;
+            }
+        }
+
         private void PaintStick()
         {
             VirtualJoystick stick = VirtualJoystick.Instance;
@@ -857,6 +891,25 @@ namespace Dawnkeep.UI
 
             _stickFadeButton = MakeChoice(body, "StickFade", null, -412f, -202f, CycleStickFade);
             _stickFadeValue = _stickFadeButton.GetComponentInChildren<TextMeshProUGUI>();
+
+            Label("QualityCaption", body, LocKeys.SettingQuality, 26f, goldColor,
+                new Vector2(1f, 1f), new Vector2(-16f, -330f), new Vector2(220f, 40f),
+                TextAlignmentOptions.MidlineRight);
+
+            string[] qualityKeys =
+            {
+                LocKeys.QualityLow, LocKeys.QualityMedium, LocKeys.QualityHigh,
+            };
+
+            _qualityButton = new Image[qualityKeys.Length];
+            for (int i = 0; i < qualityKeys.Length; i++)
+            {
+                Dawnkeep.Performance.QualityTier captured =
+                    (Dawnkeep.Performance.QualityTier)i;
+
+                _qualityButton[i] = MakeChoice(body, "Quality_" + i, qualityKeys[i],
+                    -250f - (i * 162f), -330f, delegate { SetQuality(captured); });
+            }
 
             Label("HandCaption", body, LocKeys.SettingHanded, 26f, goldColor,
                 new Vector2(1f, 1f), new Vector2(-16f, -266f), new Vector2(220f, 40f),
