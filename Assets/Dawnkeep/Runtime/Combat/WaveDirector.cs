@@ -59,10 +59,31 @@ namespace Dawnkeep.Combat
         /// <summary>رقم الموجة الجارية بدءاً من واحد. صفر يعني لم تبدأ بعد.</summary>
         public int WaveNumber { get { return _waveIndex + 1; } }
 
+        /// <summary>
+        /// عدد الموجات المنقضية. **ليس `WaveNumber`**: آخر موجة تتكرّر عند نفاد
+        /// المحتوى فيتجمّد فهرسها، فشرطُ الفوز «النجاة حتى العاشرة» (§5) لا
+        /// يتحقّق أبداً لو قيس بالفهرس. هذا عدّاد لا يعود.
+        /// </summary>
+        public int WavesCleared { get; private set; }
+
         public int WaveCount { get { return waves != null ? waves.Length : 0; } }
 
         /// <summary>طور الموجة الآن — للواجهة.</summary>
         public WavePhase Phase { get { return _phase; } }
+
+        /// <summary>أصل الموجة الجارية — تقرؤه لوحة الإيقاف لتعرض تركيبتها.</summary>
+        public WaveDefinition CurrentWave
+        {
+            get
+            {
+                if (waves == null || _waveIndex < 0 || _waveIndex >= waves.Length)
+                {
+                    return null;
+                }
+
+                return waves[_waveIndex];
+            }
+        }
 
         /// <summary>اسم الموجة الجارية كما في أصلها، أو نصّ فارغ.</summary>
         public string WaveTitle
@@ -201,6 +222,7 @@ namespace Dawnkeep.Combat
             // الاستراحة تُقاس بالساعة نفسها لا بـWaitForSeconds: الواجهة تقرأ
             // ما بقي منها، والزرّ «ابدأ الآن» يقصّها.
             _phase = WavePhase.Respite;
+            WavesCleared++;
             _nextEvent = Time.time + betweenWaves;
             while (Time.time < _nextEvent)
             {

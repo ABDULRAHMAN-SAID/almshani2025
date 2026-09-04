@@ -289,6 +289,13 @@ namespace Dawnkeep.Combat
                     continue;
                 }
 
+                if (unit.PlayerControlled)
+                {
+                    // البطل لا يُعاد إلى المجمّع بموته: §5 تجعله روحاً تعود.
+                    // إخفاء كائنه يوقف `HeroController` فلا يعود أبداً.
+                    continue;
+                }
+
                 unit.Despawn();
                 _units.RemoveAt(i);
             }
@@ -298,6 +305,13 @@ namespace Dawnkeep.Combat
         {
             UnitDefinition def = unit.Definition;
             if (def == null)
+            {
+                return;
+            }
+
+            // البطل يقوده اللاعب: `HeroController` يحرّكه ويستهدف له ويضرب به.
+            // تحريكه هنا أيضاً يعني إصبعاً وذكاءً اصطناعيّاً يتنازعان وحدة واحدة.
+            if (unit.PlayerControlled)
             {
                 return;
             }
@@ -449,7 +463,8 @@ namespace Dawnkeep.Combat
             if ((target != null || beacon != null || structure != null || aimKeep)
                 && inRange && now >= unit.NextAttack)
             {
-                unit.NextAttack = now + def.AttackInterval;
+                // راية الحشد تسرّع الضرب: الفترة تُقسَم على الزيادة (§8)
+                unit.NextAttack = now + (def.AttackInterval / (1f + unit.RallyAttackSpeed));
                 if (unit.Animator != null)
                 {
                     if (def.Ranged)

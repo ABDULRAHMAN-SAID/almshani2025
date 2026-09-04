@@ -506,8 +506,9 @@ namespace Dawnkeep.UI
         /// <summary>لوحة الأعداد: كم واقفاً من كل جانب.</summary>
         private void BuildCountsPanel(RectTransform root)
         {
+            // ‎-96‎ لا ‎-24‎: صفّ الإيقاف والسرعة يعلوها، و§7 تضعه أعلى الشاشة
             RectTransform panel = MakePanel("CountsPanel", root,
-                new Vector2(0f, 1f), new Vector2(24f, -24f), new Vector2(300f, 108f));
+                new Vector2(0f, 1f), new Vector2(24f, -96f), new Vector2(300f, 108f));
 
             Label("KingdomCaption", panel, LocKeys.DefendersCaption, 24f, kingdomColor,
                 new Vector2(1f, 1f), new Vector2(-18f, -12f), new Vector2(160f, 34f),

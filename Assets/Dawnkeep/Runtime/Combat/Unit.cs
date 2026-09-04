@@ -32,6 +32,10 @@ namespace Dawnkeep.Combat
         private float _light;
         private float _slowUntil;
         private float _slowFactor = 1f;
+        private float _rallyUntil;
+        private float _rallyAttackSpeed;
+        private float _rallyResistance;
+        private float _purgeUntil;
 
         private Vector3[] _path;
         private int _pathIndex;
@@ -112,6 +116,86 @@ namespace Dawnkeep.Combat
             get { return Time.time < _slowUntil ? _slowFactor : 1f; }
         }
 
+        /// <summary>
+        /// هذه الوحدة يقودها اللاعب. `CombatDirector` يتخطّاها في حلقته: لا
+        /// يحرّكها ولا يختار لها هدفاً — وإلّا تنازع الذكاءُ الاصطناعي والإصبعُ
+        /// على وحدة واحدة. وتبقى تُعدّ وتُستهدَف وتُجرَح كغيرها.
+        /// </summary>
+        public bool PlayerControlled { get; set; }
+
+        /// <summary>زيادة سرعة الهجوم من راية الحشد (§8). صفر خارجها.</summary>
+        public float RallyAttackSpeed
+        {
+            get { return Time.time < _rallyUntil ? _rallyAttackSpeed : 0f; }
+        }
+
+        /// <summary>
+        /// درع الظلام مُزال مؤقّتاً بـ«الضوء الأوّل» (§8). أقوى من النور:
+        /// النور يقضم بحسب الشحنات، وهذه تنزعه كلّه أينما وقف العدوّ.
+        /// </summary>
+        public bool DarkArmourPurged { get { return Time.time < _purgeUntil; } }
+
+        /// <summary>يمنح راية الحشد: سرعة هجوم ومقاومة لمدّة.</summary>
+        public void ApplyRally(float attackSpeed, float resistance, float seconds)
+        {
+            if (seconds <= 0f)
+            {
+                return;
+            }
+
+            // الأقوى يغلب ولا يتراكم: رايتان لا تعطيان ضعف الأثر
+            float until = Time.time + seconds;
+            if (until > _rallyUntil || attackSpeed > _rallyAttackSpeed)
+            {
+                _rallyAttackSpeed = Mathf.Max(attackSpeed, RallyAttackSpeed);
+                _rallyResistance = Mathf.Max(resistance, Time.time < _rallyUntil ? _rallyResistance : 0f);
+            }
+
+            if (until > _rallyUntil)
+            {
+                _rallyUntil = until;
+            }
+        }
+
+        /// <summary>ينزع درع الظلام عن الوحدة مدّة معلومة.</summary>
+        public void PurgeDarkArmour(float seconds)
+        {
+            float until = Time.time + seconds;
+            if (until > _purgeUntil)
+            {
+                _purgeUntil = until;
+            }
+        }
+
+        /// <summary>
+        /// يضبط الصحّة نسبةً من سقفها. **لا يمرّ بالدرع**: العودة بنصف الصحّة
+        /// (§5) عددٌ مقصود، وإنزالها بضربةٍ يجعل الدرع يقضم منها فيعود البطل
+        /// بأربعةٍ وخمسين في المئة لا بخمسين.
+        /// </summary>
+        public void SetHealthFraction(float fraction)
+        {
+            if (definition == null)
+            {
+                return;
+            }
+
+            _health = Mathf.Clamp01(fraction) * definition.MaxHealth;
+            Alive = _health > 0f;
+        }
+
+        /// <summary>يشفي بحدّ سقف الصحّة. يعيد ما شُفي فعلاً.</summary>
+        public float Heal(float amount)
+        {
+            if (!Alive || definition == null || amount <= 0f)
+            {
+                return 0f;
+            }
+
+            float before = _health;
+            _health = Mathf.Min(definition.MaxHealth, _health + amount);
+            return _health - before;
+        }
+
         /// <summary>يُبطئ الوحدة. `factor` معامل السرعة (0.68 يعني بطء 32%).</summary>
         public void ApplySlow(float factor, float seconds)
         {
@@ -186,6 +270,8 @@ namespace Dawnkeep.Combat
             _light = 0f;
             _slowUntil = 0f;
             _slowFactor = 1f;
+            _rallyUntil = 0f;
+            _purgeUntil = 0f;
             _nextThink = 0f;
             _nextAttack = 0f;
             _pathIndex = 0;
@@ -221,6 +307,8 @@ namespace Dawnkeep.Combat
             _light = 0f;
             _slowUntil = 0f;
             _slowFactor = 1f;
+            _rallyUntil = 0f;
+            _purgeUntil = 0f;
             _nextThink = 0f;
             _nextAttack = 0f;
             _path = path;
@@ -260,9 +348,16 @@ namespace Dawnkeep.Combat
             // درع الظلام يذوب في النور (§11): هو ما يجعل جرّ العدوّ إلى دائرة
             // منارة قراراً تكتيكياً. والمجموع مقصوص عند 0.9 فلا شيء يصير منيعاً.
             float armour = definition != null ? definition.Armour : 0f;
-            if (definition != null && definition.DarkArmour > 0f)
+            if (definition != null && definition.DarkArmour > 0f && !DarkArmourPurged)
             {
                 armour += definition.DarkArmour * (1f - Mathf.Clamp01(_light));
+            }
+
+            // مقاومة الراية تُضاف إلى الدرع لا تُضرب فيه: §8 تسمّيها «مقاومة»
+            // بجانب الدرع، وضربُها فيه يجعلها بلا أثر على من لا درع له.
+            if (Time.time < _rallyUntil)
+            {
+                armour += _rallyResistance;
             }
 
             armour = Mathf.Clamp(armour, 0f, 0.9f) * (1f - Mathf.Clamp01(armourPierce));

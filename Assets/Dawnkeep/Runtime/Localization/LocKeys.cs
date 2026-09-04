@@ -73,5 +73,37 @@ namespace Dawnkeep.Localization
         public const string FilterGuards = "orders.filter.guards";
         public const string FilterArchers = "orders.filter.archers";
         public const string FilterHint = "orders.filter.hint";
+
+        // قدرات البطل (§8)
+        public const string AbilityVolley = "hero.volley";
+        public const string AbilityRally = "hero.rally";
+        public const string AbilityUltimate = "hero.ultimate";
+        public const string SpiritWait = "hero.spirit";
+
+        // النتيجة (§5)
+        public const string ResultVictory = "result.victory";
+        public const string ResultDefeat = "result.defeat";
+        public const string ResultVictoryDetail = "result.victory.detail";
+        public const string ResultDefeatDetail = "result.defeat.detail";
+        public const string ResultRestart = "result.restart";
+
+        // الإيقاف والإعدادات (§7)
+        public const string PauseButton = "pause.button";
+        public const string PauseTitle = "pause.title";
+        public const string PauseResume = "pause.resume";
+        public const string TabWave = "pause.tab.wave";
+        public const string TabForces = "pause.tab.forces";
+        public const string TabTowers = "pause.tab.towers";
+        public const string TabSettings = "pause.tab.settings";
+        public const string SettingLanguage = "settings.language";
+        public const string SettingArabic = "settings.language.ar";
+        public const string SettingEnglish = "settings.language.en";
+        public const string SettingHealthBars = "settings.healthbars";
+        public const string SettingOn = "settings.on";
+        public const string SettingOff = "settings.off";
+        public const string SpeedCaption = "pause.speed";
+        public const string TabEmpty = "pause.empty";
+        public const string SquadOrderLabel = "pause.squad.order";
+        public const string OrderGarrisonName = "orders.garrison";
     }
 }

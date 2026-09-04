@@ -1,0 +1,591 @@
+using Dawnkeep.Building;
+using Dawnkeep.Combat;
+using Dawnkeep.Flow;
+using Dawnkeep.Localization;
+using Dawnkeep.Squads;
+using TMPro;
+using UnityEngine;
+using UnityEngine.InputSystem;
+using UnityEngine.UI;
+
+namespace Dawnkeep.UI
+{
+    /// <summary>
+    /// الإيقاف المؤقّت وتبويباته وسرعة اللعب (§7).
+    ///
+    /// كل تبويب يعرض **بياناً حقيقيّاً** من أنظمة اللعبة: تركيبة الموجة من
+    /// أصلها، والفرق من قائدها، والمباني من قائدها، والإعدادات تعمل فعلاً.
+    /// تبويبٌ يعرض نصّاً ثابتاً لوحةٌ شكلية، وهي ممنوعة (§17).
+    ///
+    /// **لا يستأنف الزمن إن كانت المرحلة قد حُسمت**: شاشة النتيجة توقفه عمداً
+    /// (§5)، ورفعُ الإيقاف من هنا يعيد تشغيل معركة انتهت.
+    /// </summary>
+    [DisallowMultipleComponent]
+    public class PauseMenu : MonoBehaviour
+    {
+        private const int TabCount = 4;
+        private const int MaxRows = 9;
+
+        [SerializeField] private TMP_FontAsset font;
+
+        [SerializeField] private Color panelColor = new Color(0.055f, 0.063f, 0.075f, 0.94f);
+        [SerializeField] private Color inkColor = new Color(0.918f, 0.898f, 0.851f);
+        [SerializeField] private Color goldColor = new Color(0.878f, 0.749f, 0.451f);
+        [SerializeField] private Color dimColor = new Color(0.243f, 0.271f, 0.318f, 0.92f);
+
+        [Tooltip("سرعات اللعب المتاحة (§7: 1× و2× و3×).")]
+        [SerializeField] private float[] speeds = { 1f, 2f, 3f };
+
+        private GameObject _root;
+        private GameObject _listBody;
+        private GameObject _settingsBody;
+        private Image[] _tabHead;
+        private TextMeshProUGUI[] _rows;
+        private Image[] _speedButton;
+        private Image[] _languageButton;
+        private Image _healthBarsButton;
+        private TextMeshProUGUI _healthBarsValue;
+
+        private WaveDirector _waves;
+        private SquadDirector _squads;
+        private BuildingDirector _buildings;
+        private StageOutcome _outcome;
+        private LocaleRuntime _locale;
+        private HealthBarPool _healthBars;
+
+        private int _tab;
+        private int _speed;
+
+        public bool IsOpen { get { return _root != null && _root.activeSelf; } }
+
+        private void Awake()
+        {
+            Build();
+        }
+
+        private void Start()
+        {
+            _waves = FindAnyObjectByType<WaveDirector>();
+            _squads = SquadDirector.Instance;
+            _buildings = BuildingDirector.Instance;
+            _outcome = StageOutcome.Instance;
+            _locale = FindAnyObjectByType<LocaleRuntime>();
+            _healthBars = FindAnyObjectByType<HealthBarPool>();
+
+            PaintSpeed();
+            PaintLanguage();
+            PaintHealthBars();
+        }
+
+        private void Update()
+        {
+            Keyboard keyboard = Keyboard.current;
+            if (keyboard != null && keyboard.escapeKey.wasPressedThisFrame)
+            {
+                Toggle();
+            }
+        }
+
+        // ── الفتح والإغلاق ──────────────────────────────────────────────────
+
+        public void Toggle()
+        {
+            if (IsOpen)
+            {
+                Resume();
+            }
+            else
+            {
+                Open();
+            }
+        }
+
+        public void Open()
+        {
+            if (_outcome != null && _outcome.Result != StageResult.Running)
+            {
+                return;      // المرحلة حُسمت: شاشة النتيجة صاحبة الزمن
+            }
+
+            _root.SetActive(true);
+            Time.timeScale = 0f;
+            Fill();
+        }
+
+        public void Resume()
+        {
+            _root.SetActive(false);
+
+            if (_outcome != null && _outcome.Result != StageResult.Running)
+            {
+                return;      // لا يُستأنف زمنُ معركةٍ انتهت
+            }
+
+            Time.timeScale = speeds[Mathf.Clamp(_speed, 0, speeds.Length - 1)];
+        }
+
+        // ── التبويبات ───────────────────────────────────────────────────────
+
+        private void ShowTab(int index)
+        {
+            _tab = Mathf.Clamp(index, 0, TabCount - 1);
+
+            // التبويبات الثلاثة الأولى صفوف نصّ فتتشارك جسماً واحداً؛ الإعدادات
+            // أزرار فلها جسمها. أربعة أجسام متطابقة تعني أربع نسخ من الصفوف
+            // تُملأ ثلاثتها بلا أن تُرى.
+            bool settings = _tab == TabCount - 1;
+            _listBody.SetActive(!settings);
+            _settingsBody.SetActive(settings);
+
+            for (int i = 0; i < TabCount; i++)
+            {
+                _tabHead[i].color = i == _tab ? goldColor * 0.34f : dimColor;
+            }
+
+            Fill();
+        }
+
+        /// <summary>يملأ صفوف التبويب المفتوح من بيانات النظام الحيّة.</summary>
+        private void Fill()
+        {
+            for (int i = 0; i < _rows.Length; i++)
+            {
+                _rows[i].text = string.Empty;
+            }
+
+            int written = 0;
+            switch (_tab)
+            {
+                case 0: written = FillWave(); break;
+                case 1: written = FillForces(); break;
+                case 2: written = FillTowers(); break;
+                default: return;      // الإعدادات أزرار لا صفوف
+            }
+
+            if (written == 0)
+            {
+                _rows[0].text = Loc.Text(LocKeys.TabEmpty);
+            }
+        }
+
+        private int FillWave()
+        {
+            if (_waves == null)
+            {
+                return 0;
+            }
+
+            WaveDefinition wave = _waves.CurrentWave;
+            if (wave == null)
+            {
+                return 0;
+            }
+
+            int row = 0;
+            _rows[row++].text = Loc.Shape(wave.Title);
+
+            WaveDefinition.Entry[] entries = wave.Entries;
+            for (int i = 0; i < entries.Length && row < MaxRows; i++)
+            {
+                if (entries[i].Unit == null)
+                {
+                    continue;
+                }
+
+                _rows[row++].text = Loc.Format(LocKeys.SquadOrderLabel,
+                    entries[i].Unit.DisplayName, Digits(entries[i].Count));
+            }
+
+            return row;
+        }
+
+        private int FillForces()
+        {
+            if (_squads == null)
+            {
+                _squads = SquadDirector.Instance;
+            }
+
+            if (_squads == null)
+            {
+                return 0;
+            }
+
+            System.Collections.Generic.IReadOnlyList<Squad> squads = _squads.Squads;
+            int row = 0;
+
+            for (int i = 0; i < squads.Count && row < MaxRows; i++)
+            {
+                Squad squad = squads[i];
+                if (squad == null || squad.LiveCount == 0)
+                {
+                    continue;
+                }
+
+                _rows[row++].text = Loc.Format(LocKeys.SquadOrderLabel,
+                    Loc.Raw(OrderKey(squad.Order)), Digits(squad.LiveCount));
+            }
+
+            return row;
+        }
+
+        private int FillTowers()
+        {
+            if (_buildings == null)
+            {
+                _buildings = BuildingDirector.Instance;
+            }
+
+            if (_buildings == null)
+            {
+                return 0;
+            }
+
+            System.Collections.Generic.IReadOnlyList<Building.Building> list = _buildings.Buildings;
+            int row = 0;
+
+            for (int i = 0; i < list.Count && row < MaxRows; i++)
+            {
+                Building.Building building = list[i];
+                if (building == null || !building.Alive || building.Definition == null)
+                {
+                    continue;
+                }
+
+                _rows[row++].text = Loc.Format(LocKeys.SquadOrderLabel,
+                    building.Definition.DisplayName,
+                    Digits(Mathf.CeilToInt(building.Health)));
+            }
+
+            return row;
+        }
+
+        private static string OrderKey(SquadOrder order)
+        {
+            switch (order)
+            {
+                case SquadOrder.Follow: return LocKeys.OrderFollow;
+                case SquadOrder.Hold: return LocKeys.OrderHold;
+                case SquadOrder.Defend: return LocKeys.OrderDefend;
+                case SquadOrder.Retreat: return LocKeys.OrderRetreat;
+                default: return LocKeys.OrderGarrisonName;
+            }
+        }
+
+        // ── الإعدادات ───────────────────────────────────────────────────────
+
+        private void SetSpeed(int index)
+        {
+            _speed = Mathf.Clamp(index, 0, speeds.Length - 1);
+            PaintSpeed();
+
+            // اللوحة مفتوحة والزمن موقوف: السرعة تُطبَّق عند المتابعة لا الآن،
+            // وإلّا استأنفت اللعبة تحت اللوحة.
+            if (!IsOpen)
+            {
+                Time.timeScale = speeds[_speed];
+            }
+        }
+
+        private void PaintSpeed()
+        {
+            for (int i = 0; i < _speedButton.Length; i++)
+            {
+                _speedButton[i].color = i == _speed ? goldColor * 0.34f : dimColor;
+            }
+        }
+
+        private void SetLanguage(Language language)
+        {
+            if (_locale != null)
+            {
+                _locale.SetLanguage(language);
+            }
+            else
+            {
+                Loc.Current = language;
+            }
+
+            PaintLanguage();
+            Fill();      // الصفوف مبنيّة بالنصّ لا بالمفتاح، فتُعاد كتابتها
+        }
+
+        private void PaintLanguage()
+        {
+            for (int i = 0; i < _languageButton.Length; i++)
+            {
+                _languageButton[i].color = (int)Loc.Current == i ? goldColor * 0.34f : dimColor;
+            }
+        }
+
+        private void ToggleHealthBars()
+        {
+            if (_healthBars == null)
+            {
+                _healthBars = FindAnyObjectByType<HealthBarPool>();
+            }
+
+            if (_healthBars == null)
+            {
+                return;
+            }
+
+            _healthBars.enabled = !_healthBars.enabled;
+            PaintHealthBars();
+        }
+
+        private void PaintHealthBars()
+        {
+            if (_healthBarsValue == null)
+            {
+                return;
+            }
+
+            bool on = _healthBars != null && _healthBars.enabled;
+            _healthBarsButton.color = on ? goldColor * 0.34f : dimColor;
+            _healthBarsValue.text = Loc.Text(on ? LocKeys.SettingOn : LocKeys.SettingOff);
+        }
+
+        private static string Digits(int value)
+        {
+            char[] buffer = new char[ArabicNumber.MaxLength];
+            int length = ArabicNumber.Write(value, buffer, 0);
+            return new string(buffer, 0, length);
+        }
+
+        // ── البناء ──────────────────────────────────────────────────────────
+
+        private void Build()
+        {
+            RectTransform parent = GetComponent<RectTransform>();
+            if (parent == null)
+            {
+                Debug.LogError("مملكة الرماد: PauseMenu يجب أن يكون على كائن Canvas.");
+                enabled = false;
+                return;
+            }
+
+            BuildTopRow(parent);
+
+            RectTransform panel = MakeRect("PausePanel", parent,
+                new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(900f, 560f));
+
+            Image background = panel.gameObject.AddComponent<Image>();
+            background.color = panelColor;
+            background.raycastTarget = true;
+
+            TextMeshProUGUI title = MakeText("Title", panel, 40f, goldColor,
+                new Vector2(0.5f, 1f), new Vector2(0f, -14f), new Vector2(600f, 56f),
+                TextAlignmentOptions.Midline);
+            title.gameObject.AddComponent<LocalizedLabel>().Bind(title, LocKeys.PauseTitle);
+
+            _tabHead = new Image[TabCount];
+
+            string[] keys = { LocKeys.TabWave, LocKeys.TabForces, LocKeys.TabTowers, LocKeys.TabSettings };
+            for (int i = 0; i < TabCount; i++)
+            {
+                // أوّل تبويب يميناً: ترتيب القراءة العربي
+                float x = -14f - (i * 218f);
+                int captured = i;
+
+                RectTransform head = MakeRect("Tab_" + i, panel,
+                    new Vector2(1f, 1f), new Vector2(x, -78f), new Vector2(210f, 54f));
+
+                Image face = head.gameObject.AddComponent<Image>();
+                face.color = dimColor;
+                face.raycastTarget = true;
+                _tabHead[i] = face;
+
+                Button button = head.gameObject.AddComponent<Button>();
+                button.targetGraphic = face;
+                button.onClick.AddListener(delegate { ShowTab(captured); });
+
+                Label("Caption", head, keys[i], 24f, inkColor,
+                    new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(202f, 40f),
+                    TextAlignmentOptions.Midline);
+            }
+
+            RectTransform list = MakeRect("ListBody", panel,
+                new Vector2(0.5f, 1f), new Vector2(0f, -140f), new Vector2(860f, 340f));
+            _listBody = list.gameObject;
+            BuildRows(list);
+
+            RectTransform settingsBody = MakeRect("SettingsBody", panel,
+                new Vector2(0.5f, 1f), new Vector2(0f, -140f), new Vector2(860f, 340f));
+            _settingsBody = settingsBody.gameObject;
+            BuildSettings(settingsBody);
+
+            RectTransform resume = MakeRect("Resume", panel,
+                new Vector2(0.5f, 0f), new Vector2(0f, 20f), new Vector2(260f, 62f));
+
+            Image resumeFace = resume.gameObject.AddComponent<Image>();
+            resumeFace.color = goldColor * 0.34f;
+            resumeFace.raycastTarget = true;
+
+            Button resumeButton = resume.gameObject.AddComponent<Button>();
+            resumeButton.targetGraphic = resumeFace;
+            resumeButton.onClick.AddListener(Resume);
+
+            Label("Caption", resume, LocKeys.PauseResume, 28f, goldColor,
+                new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(240f, 44f),
+                TextAlignmentOptions.Midline);
+
+            _root = panel.gameObject;
+            _root.SetActive(false);
+            ShowTab(0);
+            _root.SetActive(false);
+        }
+
+        /// <summary>صفّ الإيقاف والسرعة أعلى اليسار (§7: أعلى الشاشة).</summary>
+        private void BuildTopRow(RectTransform parent)
+        {
+            RectTransform row = MakeRect("TopRow", parent,
+                new Vector2(0f, 1f), new Vector2(24f, -24f), new Vector2(300f, 56f));
+
+            Image background = row.gameObject.AddComponent<Image>();
+            background.color = panelColor;
+            background.raycastTarget = false;
+
+            RectTransform pause = MakeRect("PauseButton", row,
+                new Vector2(1f, 0.5f), new Vector2(-8f, 0f), new Vector2(108f, 44f));
+
+            Image pauseFace = pause.gameObject.AddComponent<Image>();
+            pauseFace.color = dimColor;
+            pauseFace.raycastTarget = true;
+
+            Button pauseButton = pause.gameObject.AddComponent<Button>();
+            pauseButton.targetGraphic = pauseFace;
+            pauseButton.onClick.AddListener(Open);
+
+            Label("Caption", pause, LocKeys.PauseButton, 22f, inkColor,
+                new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(100f, 34f),
+                TextAlignmentOptions.Midline);
+
+            _speedButton = new Image[speeds.Length];
+            for (int i = 0; i < speeds.Length; i++)
+            {
+                int captured = i;
+                RectTransform button = MakeRect("Speed_" + i, row,
+                    new Vector2(0f, 0.5f), new Vector2(8f + (i * 58f), 0f), new Vector2(54f, 44f));
+
+                Image face = button.gameObject.AddComponent<Image>();
+                face.color = dimColor;
+                face.raycastTarget = true;
+                _speedButton[i] = face;
+
+                Button action = button.gameObject.AddComponent<Button>();
+                action.targetGraphic = face;
+                action.onClick.AddListener(delegate { SetSpeed(captured); });
+
+                TextMeshProUGUI caption = MakeText("Caption", button, 22f, inkColor,
+                    new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(48f, 34f),
+                    TextAlignmentOptions.Midline);
+                caption.text = Digits(Mathf.RoundToInt(speeds[i])) + "×";
+            }
+        }
+
+        private void BuildRows(RectTransform body)
+        {
+            _rows = new TextMeshProUGUI[MaxRows];
+            for (int i = 0; i < MaxRows; i++)
+            {
+                _rows[i] = MakeText("Row_" + i, body, 24f, inkColor,
+                    new Vector2(1f, 1f), new Vector2(-16f, -8f - (i * 36f)), new Vector2(820f, 34f),
+                    TextAlignmentOptions.MidlineRight);
+            }
+        }
+
+        private void BuildSettings(RectTransform body)
+        {
+            Label("LanguageCaption", body, LocKeys.SettingLanguage, 26f, goldColor,
+                new Vector2(1f, 1f), new Vector2(-16f, -10f), new Vector2(220f, 40f),
+                TextAlignmentOptions.MidlineRight);
+
+            _languageButton = new Image[2];
+            _languageButton[0] = MakeChoice(body, "Arabic", LocKeys.SettingArabic, -250f, -10f,
+                delegate { SetLanguage(Language.Arabic); });
+            _languageButton[1] = MakeChoice(body, "English", LocKeys.SettingEnglish, -412f, -10f,
+                delegate { SetLanguage(Language.English); });
+
+            Label("BarsCaption", body, LocKeys.SettingHealthBars, 26f, goldColor,
+                new Vector2(1f, 1f), new Vector2(-16f, -74f), new Vector2(220f, 40f),
+                TextAlignmentOptions.MidlineRight);
+
+            // القيمة تُكتب يدويّاً لا بـ`LocalizedLabel`: المكوّن يعيد كتابة
+            // مفتاحه عند تبديل اللغة فيطمس «مطفأة» ويعيدها «تعمل».
+            _healthBarsButton = MakeChoice(body, "Bars", null, -250f, -74f, ToggleHealthBars);
+            _healthBarsValue = _healthBarsButton.GetComponentInChildren<TextMeshProUGUI>();
+
+            // السرعة أزرارها في الصفّ العلوي (§7): تكرار عنوانها هنا بلا قيمة
+            // يعرضها لصقٌ لا إعداد.
+        }
+
+        private Image MakeChoice(Transform parent, string name, string captionKey,
+            float x, float y, UnityEngine.Events.UnityAction action)
+        {
+            RectTransform rect = MakeRect(name, parent,
+                new Vector2(1f, 1f), new Vector2(x, y), new Vector2(152f, 44f));
+
+            Image face = rect.gameObject.AddComponent<Image>();
+            face.color = dimColor;
+            face.raycastTarget = true;
+
+            Button button = rect.gameObject.AddComponent<Button>();
+            button.targetGraphic = face;
+            button.onClick.AddListener(action);
+
+            TextMeshProUGUI caption = MakeText("Caption", rect, 22f, inkColor,
+                new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(144f, 34f),
+                TextAlignmentOptions.Midline);
+
+            if (!string.IsNullOrEmpty(captionKey))
+            {
+                caption.gameObject.AddComponent<LocalizedLabel>().Bind(caption, captionKey);
+            }
+
+            return face;
+        }
+
+        private static RectTransform MakeRect(string name, Transform parent, Vector2 anchor,
+            Vector2 offset, Vector2 size)
+        {
+            GameObject go = new GameObject(name, typeof(RectTransform));
+            RectTransform rect = go.GetComponent<RectTransform>();
+            rect.SetParent(parent, false);
+            rect.anchorMin = anchor;
+            rect.anchorMax = anchor;
+            rect.pivot = anchor;
+            rect.anchoredPosition = offset;
+            rect.sizeDelta = size;
+            return rect;
+        }
+
+        private TextMeshProUGUI Label(string name, Transform parent, string key, float size,
+            Color color, Vector2 anchor, Vector2 offset, Vector2 rectSize, TextAlignmentOptions align)
+        {
+            TextMeshProUGUI text = MakeText(name, parent, size, color, anchor, offset, rectSize, align);
+            text.gameObject.AddComponent<LocalizedLabel>().Bind(text, key);
+            return text;
+        }
+
+        private TextMeshProUGUI MakeText(string name, Transform parent, float size, Color color,
+            Vector2 anchor, Vector2 offset, Vector2 rectSize, TextAlignmentOptions align)
+        {
+            RectTransform rect = MakeRect(name, parent, anchor, offset, rectSize);
+            TextMeshProUGUI text = rect.gameObject.AddComponent<TextMeshProUGUI>();
+
+            if (font != null)
+            {
+                text.font = font;
+            }
+
+            text.fontSize = size;
+            text.color = color;
+            text.alignment = align;
+            text.raycastTarget = false;
+            text.isRightToLeftText = false;
+            text.textWrappingMode = TextWrappingModes.NoWrap;
+            return text;
+        }
+    }
+}

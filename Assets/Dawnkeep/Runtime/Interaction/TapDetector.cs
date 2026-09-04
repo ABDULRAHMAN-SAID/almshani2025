@@ -41,6 +41,15 @@ namespace Dawnkeep.Interaction
         {
             screen = Vector2.zero;
 
+            // اللعبة موقوفة: هذا المميِّز يعمل بزمن غير مقيّس (وهو الصواب،
+            // فالكاميرا تتحرّك أثناء الإيقاف)، فلولا هذا الحارس لبنى اللاعب
+            // ونقل شحنات النور ولوحة الإيقاف مفتوحة فوقه.
+            if (Time.timeScale <= 0f)
+            {
+                _pressed = false;
+                return false;
+            }
+
             Pointer pointer = Pointer.current;
             if (pointer == null)
             {
