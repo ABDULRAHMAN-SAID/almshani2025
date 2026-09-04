@@ -47,6 +47,12 @@ namespace Dawnkeep.Meta
         [SerializeField] private int goldVictoryBonus = 180;
 
         [Tooltip("نجوم بحثٍ عند الفوز.")]
+        [Tooltip("جوهرٌ لكل موجة صُمدت (§17): مصدرُ ترقية العتاد من اللعب.")]
+        [SerializeField] private int essencePerWave = 3;
+
+        [Tooltip("جوهرٌ إضافيّ عند الفوز.")]
+        [SerializeField] private int essenceVictoryBonus = 24;
+
         [SerializeField] private int starsOnVictory = 2;
 
         [Tooltip("نجمة عند بلوغ هذه الليلة ولو خُسرت المرحلة.")]
@@ -93,6 +99,10 @@ namespace Dawnkeep.Meta
         public int GoldPerWave { get { return goldPerWave; } }
 
         public int GoldVictoryBonus { get { return goldVictoryBonus; } }
+
+        public int EssencePerWave { get { return essencePerWave; } }
+
+        public int EssenceVictoryBonus { get { return essenceVictoryBonus; } }
 
         public int StarsOnVictory { get { return starsOnVictory; } }
 

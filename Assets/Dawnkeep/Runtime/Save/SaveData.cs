@@ -77,6 +77,13 @@ namespace Dawnkeep.Save
     {
         public int Gold;
         public int ResearchStars;
+
+        /// <summary>
+        /// الجوهر: ثمن ترقية العتاد الثاني مع الذهب (§17). عملةٌ ثانية
+        /// **لأنّ الذهب وحده يجعل الترقية سباق ادّخارٍ لا اختياراً**: الجوهر
+        /// يأتي من التفكيك، فترقيةُ قطعةٍ ثمنُها التخلّي عن أخرى.
+        /// </summary>
+        public int Essence;
     }
 
     [Serializable]
@@ -107,6 +114,39 @@ namespace Dawnkeep.Save
 
         /// <summary>ما هو مرتدىً الآن.</summary>
         public List<string> Equipped = new List<string>();
+
+        /// <summary>
+        /// مستوى كل قطعة (§17: من 1 إلى 50). قائمتان متوازيتان لا قاموس:
+        /// `JsonUtility` لا يسلسل `Dictionary`، والقائمتان هما ما تسلسله.
+        /// </summary>
+        public List<string> LevelKeys = new List<string>();
+
+        public List<int> LevelValues = new List<int>();
+
+        /// <summary>مستوى قطعة، وواحدٌ لمن لم تُرقَّ بعد.</summary>
+        public int LevelOf(string key)
+        {
+            int i = LevelKeys.IndexOf(key);
+            return i >= 0 && i < LevelValues.Count ? LevelValues[i] : 1;
+        }
+
+        public void SetLevel(string key, int level)
+        {
+            int i = LevelKeys.IndexOf(key);
+            if (i < 0)
+            {
+                LevelKeys.Add(key);
+                LevelValues.Add(level);
+                return;
+            }
+
+            while (LevelValues.Count <= i)
+            {
+                LevelValues.Add(1);
+            }
+
+            LevelValues[i] = level;
+        }
     }
 
     [Serializable]

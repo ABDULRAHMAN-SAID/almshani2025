@@ -106,6 +106,12 @@ namespace Dawnkeep.EditorTools
 
             PauseMenu pause = canvasObject.AddComponent<PauseMenu>();
             SetPrivate(pause, "font", font);
+
+            // شاشة التجهيز في القائمة أيضاً (§17: «يجهّز قبل المرحلة»).
+            // نسخةٌ في كل مشهد لا كائنٌ باقٍ بين المشهدين: `Loadout` وحده هو
+            // ما يحمل الحال، وهو على `Meta`؛ واللوحة رسمٌ يُبنى حيث يُعرض.
+            Dawnkeep.UI.LoadoutPanel loadout = canvasObject.AddComponent<Dawnkeep.UI.LoadoutPanel>();
+            loadout.Configure(font);
         }
 
         /// <summary>

@@ -277,6 +277,22 @@ namespace Dawnkeep.Building
                 return;
             }
 
+            // قفّاز المهندس (§17): «يقوّي الإصلاح». والقوّة **من القطعة** لا
+            // رقماً هنا: `Shape` في تعريف القفّاز هو مضاعف الإصلاح، فتُبدَّل
+            // قوّته من المفتّش لا من الشيفرة (§1).
+            float mend = def.RepairAmount;
+            if (Dawnkeep.Equipment.Loadout.Shape() == Dawnkeep.Equipment.WeaponKind.EngineerGauntlet)
+            {
+                Dawnkeep.Equipment.Loadout loadout = Dawnkeep.Equipment.Loadout.Instance;
+                Dawnkeep.Equipment.EquipmentDefinition gauntlet =
+                    loadout != null ? loadout.Weapon : null;
+
+                if (gauntlet != null)
+                {
+                    mend *= Mathf.Max(1f, gauntlet.Shape);
+                }
+            }
+
             Vector3 centre = workshop.Body.position;
             float rangeSqr = def.RepairRange * def.RepairRange;
             int healed = 0;
@@ -306,7 +322,7 @@ namespace Dawnkeep.Building
                     continue;
                 }
 
-                if (other.Repair(def.RepairAmount))
+                if (other.Repair(mend))
                 {
                     healed++;
                 }

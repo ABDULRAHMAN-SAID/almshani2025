@@ -9,7 +9,7 @@ namespace Dawnkeep.EditorTools
     /// </summary>
     public static class DawnkeepBuildAll
     {
-        [MenuItem("مملكة الرماد/بناء كل شيء (2 ← 18)", false, 20)]
+        [MenuItem("مملكة الرماد/بناء كل شيء (2 ← 19)", false, 20)]
         public static void BuildEverything()
         {
             if (!DawnkeepAssetPaths.TypeExists("UnityEngine.Rendering.Universal.UniversalRenderPipelineAsset"))
@@ -35,6 +35,10 @@ namespace Dawnkeep.EditorTools
             DawnkeepBossSetup.Setup();
             DawnkeepBoonSetup.Setup();
             DawnkeepMetaSetup.Setup();
+
+            // العتاد بعد التقدّم: `Loadout` يقع على كائن `Meta` نفسه، وشاشتُه
+            // على لوحة المعركة — فكلاهما موجودٌ الآن.
+            DawnkeepEquipmentSetup.Setup();
 
             DawnkeepArenaSetup.Setup();
 

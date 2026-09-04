@@ -42,11 +42,13 @@ namespace Dawnkeep.Boons
         }
 
         /// <summary>
-        /// مضاعف رقمٍ بعينه: **بركات الجولة مضروبةً في أبحاث الحساب** (§16).
+        /// مضاعف رقمٍ بعينه: **بركةُ الجولة × بحثُ الحساب (§16) × التجهيز
+        /// (§17)**.
         ///
-        /// نقطةُ قراءةٍ واحدة للاثنين معاً: لو قرأ كل نظامٍ الأبحاثَ على حدة
-        /// لَاحتاج كلٌّ سطرَين، ولَنُسي أحدهما في موضعٍ أو موضعين — وذاك
-        /// بحثٌ يشتريه اللاعب فلا يعمل.
+        /// نقطةُ قراءةٍ واحدة للثلاثة: لو قرأ كل نظامٍ كلاًّ على حدة لَاحتاج
+        /// ثلاثة أسطر، ولَنُسي أحدها في موضعٍ أو موضعين — وذاك بحثٌ يشتريه
+        /// اللاعب أو سيفٌ يلبسه فلا يعمل. والثلاثة **تُضرب**: قطعتان بـ+10%
+        /// تعطيان 1.21 لا 1.20، والضربُ يجعل التكديس يتناقص من نفسه.
         ///
         /// وواحدٌ إن لم يمسّه شيء، فالمستدعي يضرب دائماً ولا يفحص.
         /// </summary>
@@ -59,7 +61,12 @@ namespace Dawnkeep.Boons
             }
 
             Dawnkeep.Meta.Progress progress = Dawnkeep.Meta.Progress.Instance;
-            return progress != null ? value * progress.Permanent(stat) : value;
+            if (progress != null)
+            {
+                value *= progress.Permanent(stat);
+            }
+
+            return value * Dawnkeep.Equipment.Loadout.Stat(stat);
         }
 
         /// <summary>
@@ -76,7 +83,8 @@ namespace Dawnkeep.Boons
             }
 
             Dawnkeep.Meta.Progress progress = Dawnkeep.Meta.Progress.Instance;
-            return progress != null ? progress.Permanent(stat) : 1f;
+            float permanent = progress != null ? progress.Permanent(stat) : 1f;
+            return permanent * Dawnkeep.Equipment.Loadout.Stat(stat);
         }
 
         public bool Has(BoonFlag flag)

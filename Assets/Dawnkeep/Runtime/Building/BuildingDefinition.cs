@@ -217,13 +217,21 @@ namespace Dawnkeep.Building
 
         public int LightCharges { get { return lightCharges; } }
 
-        /// <summary>أثر مقذوف هذا المبنى، جاهزاً لـ`ProjectilePool`.</summary>
+        /// <summary>
+        /// أثر مقذوف هذا المبنى، جاهزاً لـ`ProjectilePool`.
+        ///
+        /// و`TowerPierce` **يُضاف ولا يُضرب**: الاختراق نسبةٌ من الدرع، ومبنىً
+        /// اختراقُه صفرٌ لا يرفعه الضربُ عن الصفر أبداً — فأثرٌ يعد بـ«+18٪
+        /// اختراقاً» لا يفعل شيئاً على المسلّة الأولى. وهذه هي القاعدة نفسها
+        /// التي تسير عليها `ArmyResistance` في `Unit`.
+        /// </summary>
         public Combat.ProjectileEffect Effect
         {
             get
             {
                 Combat.ProjectileEffect e;
-                e.ArmourPierce = armourPierce;
+                e.ArmourPierce = Mathf.Clamp01(armourPierce
+                    + (Dawnkeep.Boons.BoonBook.Stat(Dawnkeep.Boons.BoonStat.TowerPierce) - 1f));
                 e.BlastRadius = blastRadius;
                 e.SlowFactor = slowFactor;
                 e.SlowSeconds = slowSeconds;

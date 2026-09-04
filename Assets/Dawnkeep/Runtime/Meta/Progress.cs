@@ -81,6 +81,13 @@ namespace Dawnkeep.Meta
             private set { Store.Currencies.ResearchStars = value; }
         }
 
+        /// <summary>الجوهر: ثمن ترقية العتاد مع الذهب (§17).</summary>
+        public int Essence
+        {
+            get { return Store.Currencies.Essence; }
+            private set { Store.Currencies.Essence = value; }
+        }
+
         /// <summary>نقاط الموهبة المنفَقة — الباقي يُحسب من المستوى.</summary>
         public int TalentsSpent
         {
@@ -472,10 +479,16 @@ namespace Dawnkeep.Meta
                 stars += 1;      // الخسارة بعد صمودٍ طويل ليست صفراً
             }
 
+            // الجوهر من اللعب لا من التفكيك وحده (§17): لاعبٌ لا يفكّك شيئاً
+            // لا يجوز أن يُحرَم الترقية بالكلّية، وإلّا صار التفكيك إجباراً.
+            int essence = (settings.EssencePerWave * Mathf.Max(0, wavesCleared))
+                + (victory ? settings.EssenceVictoryBonus : 0);
+
             AccountXp += xp;
             HeroXp += xp;      // البطل يتقدّم مع حسابه: بطلٌ واحد في الإصدار الأوّل
             Gold += gold;
             Stars += stars;
+            Essence += essence;
 
             Save();
             Raise();
@@ -525,6 +538,38 @@ namespace Dawnkeep.Meta
             }
         }
 
+        /// <summary>
+        /// يجبي ثمن ترقيةٍ من الحدّادة (§17). **هنا لا في `Forge`**: العملات
+        /// كلّها في صنفٍ واحد، فمن أراد أن يعرف من أين تُنقَص وجدها في مكان.
+        /// يعيد false ولا ينقص شيئاً إن لم يكفِ أحدهما.
+        /// </summary>
+        public bool SpendForge(int gold, int essence)
+        {
+            if (gold < 0 || essence < 0 || Gold < gold || Essence < essence)
+            {
+                return false;
+            }
+
+            Gold -= gold;
+            Essence -= essence;
+            Save();
+            Raise();
+            return true;
+        }
+
+        /// <summary>يردّ جوهراً — من التفكيك (§17: ثمانون في المئة).</summary>
+        public void AddEssence(int amount)
+        {
+            if (amount <= 0)
+            {
+                return;
+            }
+
+            Essence += amount;
+            Save();
+            Raise();
+        }
+
         /// <summary>يمحو التقدّم كلّه — للتجريب في المحرّر.</summary>
         public void Wipe()
         {
@@ -532,6 +577,7 @@ namespace Dawnkeep.Meta
             HeroXp = 0;
             Gold = 0;
             Stars = 0;
+            Essence = 0;
             TalentsSpent = 0;
             Store.Research.Clear();
             Rebuild();

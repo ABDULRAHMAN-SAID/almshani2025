@@ -355,12 +355,219 @@ namespace Dawnkeep.Hero
                 damage *= definition.CritMultiplier;
             }
 
-            Strike(_target, damage);
+            Swing(_target, damage);
         }
 
         /// <summary>
-        /// فترة ضرب البطل بعد بركات §15. البركة تحرّك **السرعة**، والفترة
-        /// مقلوبها — فالقسمة لا الضرب، وضربُها يبطئ ما وُعد بتسريعه.
+        /// الضربة بشكل السلاح الملبوس (§17). **الشكل هو الفرق** بين سلاحٍ
+        /// وسلاح: ستّةٌ تختلف بالضرر وحده هي رقمٌ واحدٌ مكتوبٌ ستّ مرّات.
+        ///
+        /// والفروع كلّها تنتهي إلى `Strike` نفسها، فالشحن والمقذوف والضرر
+        /// موضعٌ واحد لا ستّة.
+        /// </summary>
+        private void Swing(Unit target, float damage)
+        {
+            Dawnkeep.Equipment.EquipmentDefinition weapon = Weapon;
+            if (weapon == null)
+            {
+                Strike(target, damage);
+                return;
+            }
+
+            switch (weapon.Weapon)
+            {
+                case Dawnkeep.Equipment.WeaponKind.Sunblade:
+                    SwingArc(target, damage, weapon.Shape);
+                    break;
+
+                case Dawnkeep.Equipment.WeaponKind.StormStaff:
+                    SwingChain(target, damage, weapon.Shape);
+                    break;
+
+                case Dawnkeep.Equipment.WeaponKind.HandBallista:
+                    SwingLine(target, damage, weapon.Shape);
+                    break;
+
+                case Dawnkeep.Equipment.WeaponKind.EmberAxe:
+                    SwingBlast(target, damage, weapon.Shape);
+                    break;
+
+                default:
+                    // قوس الفجر وقفّاز المهندس: هدفٌ واحد. وفرقُ القفّاز في
+                    // مداه وفترته وفي تقويته الإصلاح — لا في شكل ضربته.
+                    Strike(target, damage);
+                    break;
+            }
+        }
+
+        /// <summary>نصل الشمس: قوسٌ أمامك بزاويةٍ من القطعة.</summary>
+        private void SwingArc(Unit target, float damage, float degrees)
+        {
+            Strike(target, damage);
+
+            Vector3 me = _transform.position;
+            Vector3 facing = target.Body.position - me;
+            facing.y = 0f;
+            if (facing.sqrMagnitude < 0.0001f)
+            {
+                return;
+            }
+
+            facing.Normalize();
+            float cos = Mathf.Cos(Mathf.Deg2Rad * Mathf.Max(10f, degrees) * 0.5f);
+            int found = _combat.QueryFaction(me, Reach, Faction.Horde, _scan);
+
+            for (int i = 0; i < found; i++)
+            {
+                Unit other = _scan[i];
+                if (other == null || other == target || !other.Alive)
+                {
+                    continue;
+                }
+
+                Vector3 delta = other.Body.position - me;
+                delta.y = 0f;
+                if (delta.sqrMagnitude < 0.0001f)
+                {
+                    continue;
+                }
+
+                if (Vector3.Dot(delta.normalized, facing) >= cos)
+                {
+                    Strike(other, damage);
+                }
+            }
+        }
+
+        /// <summary>عصا العاصفة: ترتدّ إلى أقرب ثانٍ بحصّةٍ من الضرر.</summary>
+        private void SwingChain(Unit target, float damage, float share)
+        {
+            Strike(target, damage);
+
+            Vector3 from = target.Body.position;
+            int found = _combat.QueryFaction(from, Reach * 0.55f, Faction.Horde, _scan);
+
+            Unit second = null;
+            float bestSqr = float.MaxValue;
+
+            for (int i = 0; i < found; i++)
+            {
+                Unit other = _scan[i];
+                if (other == null || other == target || !other.Alive)
+                {
+                    continue;
+                }
+
+                Vector3 delta = other.Body.position - from;
+                delta.y = 0f;
+                if (delta.sqrMagnitude < bestSqr)
+                {
+                    bestSqr = delta.sqrMagnitude;
+                    second = other;
+                }
+            }
+
+            if (second != null)
+            {
+                Strike(second, damage * Mathf.Clamp01(share));
+            }
+        }
+
+        /// <summary>باليستا اليد: تخترق خطّاً — كل من على المسار بنصف قطرٍ منه.</summary>
+        private void SwingLine(Unit target, float damage, float width)
+        {
+            Strike(target, damage);
+
+            Vector3 me = _transform.position;
+            Vector3 to = target.Body.position - me;
+            to.y = 0f;
+            float length = to.magnitude;
+            if (length < 0.01f)
+            {
+                return;
+            }
+
+            Vector3 heading = to / length;
+            float half = Mathf.Max(0.5f, width);
+            float reach = Reach;
+
+            // من منتصف الخطّ بنصف طوله: استعلامٌ واحد يغطّي المسار كلّه
+            Vector3 middle = me + (heading * (reach * 0.5f));
+            int found = _combat.QueryFaction(middle, reach * 0.5f + half, Faction.Horde, _scan);
+
+            for (int i = 0; i < found; i++)
+            {
+                Unit other = _scan[i];
+                if (other == null || other == target || !other.Alive)
+                {
+                    continue;
+                }
+
+                Vector3 delta = other.Body.position - me;
+                delta.y = 0f;
+
+                float along = Vector3.Dot(delta, heading);
+                if (along < 0f || along > reach)
+                {
+                    continue;      // خلفي أو أبعد من مداي
+                }
+
+                Vector3 offset = delta - (heading * along);
+                if (offset.sqrMagnitude <= half * half)
+                {
+                    Strike(other, damage);
+                }
+            }
+        }
+
+        /// <summary>فأس الجمر: ضرر منطقة حول الهدف بنصف قطرٍ من القطعة.</summary>
+        private void SwingBlast(Unit target, float damage, float radius)
+        {
+            Strike(target, damage);
+
+            Vector3 centre = target.Body.position;
+            float reach = Mathf.Max(1f, radius);
+            int found = _combat.QueryFaction(centre, reach, Faction.Horde, _scan);
+
+            for (int i = 0; i < found; i++)
+            {
+                Unit other = _scan[i];
+                if (other != null && other != target && other.Alive)
+                {
+                    Strike(other, damage * 0.6f);
+                }
+            }
+        }
+
+        /// <summary>
+        /// السلاح الملبوس (§17)، أو `null` إن لم يُبنَ التجهيز في هذا المشهد
+        /// — وحينها يقاتل البطل بأرقام تعريفه كما كان قبل §17.
+        /// </summary>
+        private Dawnkeep.Equipment.EquipmentDefinition Weapon
+        {
+            get
+            {
+                Dawnkeep.Equipment.Loadout loadout = Dawnkeep.Equipment.Loadout.Instance;
+                return loadout != null ? loadout.Weapon : null;
+            }
+        }
+
+        /// <summary>
+        /// مدى الضربة: من السلاح إن لُبس، وإلّا من تعريف البطل. **السلاح
+        /// أوّلاً**: باليستا اليد بمدى القوس ليست باليستا.
+        /// </summary>
+        private float Reach
+        {
+            get
+            {
+                Dawnkeep.Equipment.EquipmentDefinition weapon = Weapon;
+                return weapon != null ? weapon.Range : definition.WeaponRange;
+            }
+        }
+
+        /// <summary>
+        /// فترة ضرب البطل بعد بركات §15 وسلاح §17. البركة تحرّك **السرعة**،
+        /// والفترة مقلوبها — فالقسمة لا الضرب، وضربُها يبطئ ما وُعد بتسريعه.
         /// </summary>
         private float AttackInterval
         {
@@ -368,7 +575,12 @@ namespace Dawnkeep.Hero
             {
                 float speed = Mathf.Max(0.1f,
                     Dawnkeep.Boons.BoonBook.Stat(Dawnkeep.Boons.BoonStat.HeroAttackSpeed));
-                return definition.AttackInterval / speed;
+
+                Dawnkeep.Equipment.EquipmentDefinition weapon = Weapon;
+                float baseInterval = weapon != null
+                    ? weapon.Interval : definition.AttackInterval;
+
+                return baseInterval / speed;
             }
         }
 
@@ -384,7 +596,8 @@ namespace Dawnkeep.Hero
                 return;
             }
 
-            float reach = definition.WeaponRange;
+            // بمدى السلاح الملبوس: ضربةٌ عاديّة لا قدرة
+            float reach = Reach;
             if (!bosses.StrikeEgg(_transform.position, reach, definition.Damage))
             {
                 return;
@@ -407,7 +620,7 @@ namespace Dawnkeep.Hero
         private Unit FindTarget()
         {
             Vector3 me = _transform.position;
-            float range = definition.WeaponRange;
+            float range = Reach;
             int found = _combat.QueryFaction(me, range, Faction.Horde, _scan);
 
             Unit best = null;
@@ -448,7 +661,8 @@ namespace Dawnkeep.Hero
         {
             Vector3 delta = target.Body.position - _transform.position;
             delta.y = 0f;
-            return delta.sqrMagnitude > definition.WeaponRange * definition.WeaponRange;
+            float reach = Reach;
+            return delta.sqrMagnitude > reach * reach;
         }
 
         /// <summary>يوقع الضرر ويشحن الضوء الأوّل بما أوقعه (§8).</summary>
@@ -493,6 +707,8 @@ namespace Dawnkeep.Hero
 
             _volleyReady = Time.time + Cooldown(true);
 
+            // **بمدى البطل لا بمدى سلاحه**: الرشقة قدرةُ القائد نفسه (§8)،
+            // وربطُها بالسلاح يجعل حاملَ النصل يرمي سهامه إلى متر ونصف.
             Vector3 me = _transform.position;
             int found = _combat.QueryFaction(me, definition.WeaponRange, Faction.Horde, _scan);
             if (found == 0)

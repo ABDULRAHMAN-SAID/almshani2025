@@ -27,7 +27,16 @@ MIN_TAP = 88               # أقلّ مقاس هدفٍ يُصاب بالإبه�
 
 def read(name): return io.open(os.path.join(UI, name), encoding='utf-8').read()
 
-VEC = r'new Vector2\(\s*(-?[0-9.]+)f?\s*,\s*(-?[0-9.]+)f?\s*\)'
+# `Vector2.zero` مقبولةٌ كصفرين: من دونها يسقط النداء كلّه من القراءة،
+# فتُنسَب اللوحة إلى الشاشة وتمرّ كل فحوص «داخل اللوحة» وهي عمياء. وقد
+# وقع هذا: لوحة التجهيز خرجت عن حدّها والفحص أخضر.
+VEC = r'(?:new Vector2\(\s*(-?[0-9.]+)f?\s*,\s*(-?[0-9.]+)f?\s*\)|Vector2\.(zero))'
+
+
+def pair(*groups):
+    """يفكّ ثلاثيّة `VEC`: رقمان، أو `zero` فصفران."""
+    x, y, z = groups
+    return (0.0, 0.0) if z else (float(x), float(y))
 CALL = re.compile(r'MakeRect\(\s*"([^"]*)"[^,]*,\s*(\w+),\s*\n?\s*'
                   + VEC + r',\s*' + VEC + r',\s*' + VEC + r'\s*\)', re.S)
 
@@ -56,10 +65,13 @@ def collect(source, parents):
     """يحسب كل MakeRect في ملفّ. `parents` يربط اسم المتغيّر بمستطيله."""
     found = {}
     for m in CALL.finditer(source):
-        name, parent, ax, ay, ox, oy, w, h = m.groups()
+        g = m.groups()
+        name, parent = g[0], g[1]
+        ax, ay = pair(*g[2:5])
+        ox, oy = pair(*g[5:8])
+        w, h = pair(*g[8:11])
         base = parents.get(parent, ROOT_RECT)
-        rect = place(base, float(ax), float(ay), float(ox), float(oy), float(w), float(h))
-        found[name] = rect
+        found[name] = place(base, ax, ay, ox, oy, w, h)
     return found
 
 # ── ما نفحصه: أهداف اللمس التي تظهر أثناء اللعب ────────────────────
@@ -81,28 +93,32 @@ ring_origin = order_rects.get('Ring')
 # يمرّ على مقاسٍ تغيّر في الكود ولم يتغيّر هنا.
 size = re.search(r'RectTransform rect = MakeRect\(name, parent,\s*\n\s*'
                  + VEC + r',\s*offset,\s*' + VEC, ORDER)
-CARD = (float(size.group(3)), float(size.group(4))) if size else (150.0, 76.0)
+CARD = pair(*size.groups()[3:6]) if size else (150.0, 76.0)
 
 options = {}
 if ring_origin is not None:
     for m in re.finditer(r'MakeOption\(ring,\s*"(\w+)",[^,]*,\s*' + VEC, ORDER):
-        name, ox, oy = m.groups()
+        name = m.group(1)
+        ox, oy = pair(*m.groups()[1:4])
         options['أمر ' + name] = place(ring_origin, 0.5, 0.5,
-                                       float(ox), float(oy), CARD[0], CARD[1])
+                                       ox, oy, CARD[0], CARD[1])
 
 hint = None
 m = re.search(r'Label\("FilterHint", ring[^)]*?' + VEC + r',\s*' + VEC, ORDER, re.S)
 if m:
-    ox, oy, w, h = m.groups()
-    hint = place(ring_origin, 0.5, 0.5, float(ox), float(oy), float(w), float(h))
+    ox, oy = pair(*m.groups()[0:3])
+    w, h = pair(*m.groups()[3:6])
+    hint = place(ring_origin, 0.5, 0.5, ox, oy, w, h)
 
 # لوحات الواجهة الثابتة
 panels = {}
 for m in re.finditer(r'MakePanel\("(\w+)", root,\s*\n?\s*' + VEC + r',\s*' + VEC
                      + r',\s*' + VEC + r'\)', HUD, re.S):
-    name, ax, ay, ox, oy, w, h = m.groups()
-    panels[name] = place(ROOT_RECT, float(ax), float(ay), float(ox), float(oy),
-                         float(w), float(h))
+    g = m.groups()
+    ax, ay = pair(*g[1:4])
+    ox, oy = pair(*g[4:7])
+    w, h = pair(*g[7:10])
+    panels[g[0]] = place(ROOT_RECT, ax, ay, ox, oy, w, h)
 
 print('── ما قُرئ ──────────────────────────────')
 print(f'قدرات: {len(abilities)} · بطاقات أوامر: {len(options)} · لوحات: {len(panels)}')
@@ -233,9 +249,10 @@ MENUSETUP = io.open(os.path.join(ROOT,
 menu_buttons = {}
 for m in re.finditer(r'Button\(rect,\s*"(\w+)",\s*[\w.]+,\s*' + VEC + r',\s*\n?\s*' + VEC,
                      MENU, re.S):
-    name, ox, oy, w, h = m.groups()
-    menu_buttons[name] = place(ROOT_RECT, 0.5, 0.5,
-                               float(ox), float(oy), float(w), float(h))
+    g = m.groups()
+    ox, oy = pair(*g[1:4])
+    w, h = pair(*g[4:7])
+    menu_buttons[g[0]] = place(ROOT_RECT, 0.5, 0.5, ox, oy, w, h)
 
 show('أزرار القائمة', menu_buttons)
 print()
@@ -291,5 +308,105 @@ check('ومشاهد المستخدم الأخرى لا تُمحى',
 
 check('وزرّ اللعب يعيد الزمن قبل التحميل',
       'Time.timeScale = 1f;' in MENU and 'SceneManager.LoadScene' in MENU)
+
+print()
+print('── شاشة التجهيز (§17) ────────────────────')
+
+GEARUI = read('LoadoutPanel.cs')
+gear_rects = collect(GEARUI, {'parent': ROOT_RECT})
+
+# اللوحة أوّلاً، ثمّ ما بداخلها منسوباً إليها
+panel = gear_rects.get('LoadoutPanel', ROOT_RECT)
+inside = {}
+for m in CALL.finditer(GEARUI):
+    g = m.groups()
+    if g[1] == 'rect':
+        ax, ay = pair(*g[2:5])
+        ox, oy = pair(*g[5:8])
+        w, h = pair(*g[8:11])
+        inside[g[0]] = place(panel, ax, ay, ox, oy, w, h)
+
+# الفتحات الأربع والصفوف الستّة يُبنيان في حلقة، فمواضعهما تُحسب بخطوتها
+slot = re.search(r'MakeRect\("Slot_" \+ i, rect,\s*\n\s*' + VEC
+                 + r',\s*new Vector2\(-([0-9.]+)f - \(i \* ([0-9.]+)f\),\s*(-?[0-9.]+)f\),'
+                 + r'\s*\n\s*' + VEC, GEARUI)
+slots = {}
+if slot:
+    g = slot.groups()
+    ax, ay = pair(*g[0:3])
+    x0, step, y = float(g[3]), float(g[4]), float(g[5])
+    w, h = pair(*g[6:9])
+    for i in range(4):
+        slots['فتحة ' + str(i)] = place(panel, ax, ay, -(x0 + i * step), y, w, h)
+
+row = re.search(r'MakeRect\("Row_" \+ i, rect,\s*\n\s*' + VEC
+                + r',\s*new Vector2\(([0-9.]+)f,\s*(-?[0-9.]+)f - \(i \* ([0-9.]+)f\)\),'
+                + r'\s*\n\s*' + VEC, GEARUI)
+rows = {}
+ROWS = int(re.search(r'public const int Rows = (\d+);', GEARUI).group(1))
+if row:
+    g = row.groups()
+    ax, ay = pair(*g[0:3])
+    x, y0, step = float(g[3]), float(g[4]), float(g[5])
+    w, h = pair(*g[6:9])
+    for i in range(ROWS):
+        rows['بطاقة ' + str(i)] = place(panel, ax, ay, x, y0 - i * step, w, h)
+
+taps = {}
+taps.update(slots)
+taps.update(rows)
+for name in ('Upgrade', 'Dismantle'):
+    if name in inside:
+        taps[name] = inside[name]
+
+# الأزرار الصغيرة تمرّ بـ`SmallButton` فلا تلتقطها `CALL`: تُقرأ من نداءاتها
+SMALL = pair(*re.search(r'MakeRect\(name, rect, anchor, offset, ' + VEC,
+                        GEARUI).groups())
+for m in re.finditer(r'SmallButton\(rect,\s*"(\w+)",\s*' + VEC + r',\s*\n?\s*' + VEC,
+                     GEARUI, re.S):
+    g = m.groups()
+    ax, ay = pair(*g[1:4])
+    ox, oy = pair(*g[4:7])
+    taps[g[0]] = place(panel, ax, ay, ox, oy, SMALL[0], SMALL[1])
+
+show('أهداف اللمس', taps)
+print()
+
+check('الفتحات أربعٌ (§17) والبطاقات كما في الشيفرة',
+      len(slots) == 4 and len(rows) == ROWS,
+      f'  ({len(slots)} فتحات · {len(rows)} بطاقات)')
+
+small = [n for n, r in taps.items() if min(r.w, r.h) < MIN_TAP]
+check(f'لا هدفَ يصغر عن {MIN_TAP} بكسلاً', not small,
+      '' if not small else f'  ({"، ".join(small)})')
+
+clashes = []
+names = list(taps)
+for i in range(len(names)):
+    for j in range(i + 1, len(names)):
+        hit = overlap(taps[names[i]], taps[names[j]])
+        if hit:
+            clashes.append((names[i], names[j], hit))
+
+check('ولا تراكب بين هدفين', not clashes,
+      '' if not clashes else f'  ({clashes[0][0]} × {clashes[0][1]} بـ{clashes[0][2]})')
+
+outside = [n for n, r in taps.items()
+           if r.x < panel.x - 1 or r.y < panel.y - 1
+           or r.right > panel.right + 1 or r.top > panel.top + 1]
+check('وكلٌّ داخل اللوحة', not outside,
+      '' if not outside else f'  ({"، ".join(outside)})')
+
+check('واللوحة داخل الشاشة',
+      0 <= panel.x and 0 <= panel.y and panel.right <= W and panel.top <= H,
+      f'  ({panel})')
+
+# §17 مرّةً أخرى: زرٌّ لا يفعل شيئاً ممنوع
+listeners = re.findall(r'onClick\.AddListener\((?:delegate \{ )?(\w+)', GEARUI)
+missing = [a for a in set(listeners)
+           if not re.search(r'(private|public)[^\n]*\b' + a + r'\(', GEARUI)]
+check('كل زرٍّ في الشاشة يستدعي دالّةً موجودة (§17)', not missing,
+      '' if not missing else f'  ({"، ".join(missing)})')
+print('      · ' + '، '.join(sorted(set(listeners))))
 
 sys.exit(0 if ok else 1)

@@ -168,5 +168,36 @@ namespace Dawnkeep.Localization
         public const string MenuPlay = "menu.play";
         public const string MenuSoon = "menu.soon";
         public const string SaveRecovered = "menu.save.recovered";
+
+        // التجهيز والحدّادة (§17)
+        public const string LoadoutOpen = "gear.open";
+        public const string LoadoutTitle = "gear.title";
+        public const string LoadoutClose = "gear.close";
+        public const string SlotWeapon = "gear.slot.weapon";
+        public const string SlotArmor = "gear.slot.armor";
+        public const string SlotRelic = "gear.slot.relic";
+        public const string SlotMount = "gear.slot.mount";
+        public const string SlotEmpty = "gear.slot.empty";
+        public const string RarityCommon = "gear.rarity.common";
+        public const string RarityUncommon = "gear.rarity.uncommon";
+        public const string RarityRare = "gear.rarity.rare";
+        public const string RarityEpic = "gear.rarity.epic";
+        public const string RarityLegendary = "gear.rarity.legendary";
+        public const string GearLevel = "gear.level";
+        public const string GearEquip = "gear.equip";
+        public const string GearEquipped = "gear.equipped";
+        public const string GearUnequip = "gear.unequip";
+        public const string GearLocked = "gear.locked";
+        public const string ForgeUpgrade = "forge.upgrade";
+        public const string ForgeDismantle = "forge.dismantle";
+        public const string ForgeCost = "forge.cost";
+        public const string ForgeReturns = "forge.returns";
+        public const string ForgeEssence = "forge.essence";
+        public const string ForgeNoGear = "forge.no.gear";
+        public const string ForgeNotOwned = "forge.not.owned";
+        public const string ForgeMaxLevel = "forge.max.level";
+        public const string ForgeNoGold = "forge.no.gold";
+        public const string ForgeNoEssence = "forge.no.essence";
+        public const string ForgeStarterGear = "forge.starter";
     }
 }
