@@ -27,26 +27,27 @@ namespace Dawnkeep.EditorTools
         {
             DawnkeepAssetPaths.EnsureFolders();
             EnsureFolder(CombatFolder);
+            Rows.Clear();
 
-            UnitDefinition spearman = MakeUnit("Unit_Spearman", "رمّاح", Faction.Kingdom,
+            UnitDefinition spearman = MakeUnit("Unit_Spearman", "رمّاح", "Spearman", Faction.Kingdom,
                 CharacterMeshFactory.Kind.Spearman, new Color(0.647f, 0.180f, 0.180f),
                 health: 140f, armour: 0.20f, speed: 3.0f, damage: 14f,
                 range: 2.6f, interval: 1.20f, ranged: false, sight: 22f, retarget: 0.5f,
                 targetClass: TargetClass.Nearest);
 
-            UnitDefinition swordsman = MakeUnit("Unit_Swordsman", "سيّاف", Faction.Kingdom,
+            UnitDefinition swordsman = MakeUnit("Unit_Swordsman", "سيّاف", "Swordsman", Faction.Kingdom,
                 CharacterMeshFactory.Kind.Swordsman, new Color(0.647f, 0.180f, 0.180f),
                 health: 165f, armour: 0.28f, speed: 3.2f, damage: 17f,
                 range: 1.9f, interval: 1.05f, ranged: false, sight: 20f, retarget: 0.5f,
                 targetClass: TargetClass.Nearest);
 
-            UnitDefinition archer = MakeUnit("Unit_Archer", "رامٍ", Faction.Kingdom,
+            UnitDefinition archer = MakeUnit("Unit_Archer", "رامٍ", "Archer", Faction.Kingdom,
                 CharacterMeshFactory.Kind.Archer, new Color(0.220f, 0.353f, 0.541f),
                 health: 95f, armour: 0.05f, speed: 3.1f, damage: 21f,
                 range: 17f, interval: 1.55f, ranged: true, sight: 26f, retarget: 0.6f,
                 targetClass: TargetClass.Nearest);
 
-            UnitDefinition hero = MakeUnit("Unit_Hero", "البطل", Faction.Kingdom,
+            UnitDefinition hero = MakeUnit("Unit_Hero", "البطل", "Champion", Faction.Kingdom,
                 CharacterMeshFactory.Kind.Hero, new Color(0.741f, 0.153f, 0.169f),
                 health: 520f, armour: 0.35f, speed: 4.1f, damage: 38f,
                 range: 2.4f, interval: 0.85f, ranged: false, sight: 30f, retarget: 0.35f,
@@ -54,19 +55,19 @@ namespace Dawnkeep.EditorTools
 
             // المهاجمون: نفس الأشكال بألوان راية أخرى — أصالة الشكل محفوظة
             // والتمييز باللون، وهو أوضح ما يُقرأ على بُعد كاميرا الاستراتيجية.
-            UnitDefinition raider = MakeUnit("Unit_Raider", "مُغِير", Faction.Horde,
+            UnitDefinition raider = MakeUnit("Unit_Raider", "مُغِير", "Raider", Faction.Horde,
                 CharacterMeshFactory.Kind.Swordsman, new Color(0.243f, 0.271f, 0.318f),
                 health: 110f, armour: 0.10f, speed: 3.6f, damage: 12f,
                 range: 1.9f, interval: 1.10f, ranged: false, sight: 24f, retarget: 0.5f,
                 targetClass: TargetClass.Nearest, darkArmour: 0.18f, bounty: 6);
 
-            UnitDefinition brute = MakeUnit("Unit_Brute", "غاشم مدرّع", Faction.Horde,
+            UnitDefinition brute = MakeUnit("Unit_Brute", "غاشم مدرّع", "Armoured Brute", Faction.Horde,
                 CharacterMeshFactory.Kind.Spearman, new Color(0.318f, 0.271f, 0.243f),
                 health: 260f, armour: 0.34f, speed: 2.4f, damage: 22f,
                 range: 2.6f, interval: 1.45f, ranged: false, sight: 22f, retarget: 0.7f,
                 targetClass: TargetClass.Nearest, darkArmour: 0.22f, bounty: 14);
 
-            UnitDefinition nightArcher = MakeUnit("Unit_NightArcher", "رامي الليل", Faction.Horde,
+            UnitDefinition nightArcher = MakeUnit("Unit_NightArcher", "رامي الليل", "Night Archer", Faction.Horde,
                 CharacterMeshFactory.Kind.Archer, new Color(0.353f, 0.239f, 0.416f),
                 health: 80f, armour: 0.05f, speed: 3.2f, damage: 16f,
                 range: 15f, interval: 1.75f, ranged: true, sight: 24f, retarget: 0.6f,
@@ -75,7 +76,7 @@ namespace Dawnkeep.EditorTools
             // وحدتا §11: الأولى تذوب في النور، والثانية تُطفئه.
             // درع ظلام عالٍ وصحّة زهيدة: خارج النور تصمد، وداخله تتساقط —
             // وهذا هو الدرس الذي يعلّم اللاعب قيمة الدائرة في موجة واحدة.
-            UnitDefinition duskling = MakeUnit("Unit_Duskling", "وليد الغَسَق", Faction.Horde,
+            UnitDefinition duskling = MakeUnit("Unit_Duskling", "وليد الغَسَق", "Duskling", Faction.Horde,
                 CharacterMeshFactory.Kind.Swordsman, new Color(0.286f, 0.243f, 0.376f),
                 health: 55f, armour: 0.02f, speed: 4.7f, damage: 9f,
                 range: 1.8f, interval: 0.85f, ranged: false, sight: 26f, retarget: 0.45f,
@@ -83,20 +84,20 @@ namespace Dawnkeep.EditorTools
 
             // يمرّ بالمقاتلين إلى المنارة فيُطفئها ثماني ثوانٍ (§11). ضربه لا
             // يجرح أحداً: خطره أنّه يسلب المنطقة، فيوجب على اللاعب فكّ خطّه.
-            UnitDefinition lampEater = MakeUnit("Unit_LampEater", "آكل القناديل", Faction.Horde,
+            UnitDefinition lampEater = MakeUnit("Unit_LampEater", "آكل القناديل", "Lamp Eater", Faction.Horde,
                 CharacterMeshFactory.Kind.Spearman, new Color(0.208f, 0.196f, 0.271f),
                 health: 165f, armour: 0.16f, speed: 3.5f, damage: 6f,
                 range: 3.4f, interval: 1.60f, ranged: false, sight: 40f, retarget: 0.8f,
                 targetClass: TargetClass.Beacon, darkArmour: 0.30f, bounty: 12);
 
-            WaveDefinition wave = MakeWave("Wave_01", "الموجة الأولى", 10f, new[]
+            WaveDefinition wave = MakeWave("Wave_01", "الموجة الأولى", "First Wave", 10f, new[]
             {
                 MakeEntry(raider, 8, 0.9f, 0f),
                 MakeEntry(brute, 2, 2.4f, 6f),
                 MakeEntry(nightArcher, 3, 1.4f, 10f),
             });
 
-            WaveDefinition wave2 = MakeWave("Wave_02", "الموجة الثانية", 14f, new[]
+            WaveDefinition wave2 = MakeWave("Wave_02", "الموجة الثانية", "Second Wave", 14f, new[]
             {
                 MakeEntry(raider, 12, 0.7f, 0f),
                 MakeEntry(brute, 4, 2.0f, 5f),
@@ -104,7 +105,7 @@ namespace Dawnkeep.EditorTools
                 MakeEntry(lampEater, 1, 1f, 14f),
             });
 
-            WaveDefinition wave3 = MakeWave("Wave_03", "موجة الغَسَق", 16f, new[]
+            WaveDefinition wave3 = MakeWave("Wave_03", "موجة الغَسَق", "Dusk Wave", 16f, new[]
             {
                 MakeEntry(duskling, 14, 0.55f, 0f),
                 MakeEntry(lampEater, 2, 3.0f, 7f),
@@ -112,6 +113,7 @@ namespace Dawnkeep.EditorTools
                 MakeEntry(nightArcher, 5, 1.2f, 16f),
             });
 
+            DawnkeepLocale.Add(Rows);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
 
@@ -290,7 +292,12 @@ namespace Dawnkeep.EditorTools
             return assigned;
         }
 
-        private static UnitDefinition MakeUnit(string assetName, string display, Faction faction,
+        /// <summary>صفوف النصوص التي تجمعها هذه الخطوة قبل ضمّها إلى الجدول.</summary>
+        private static readonly List<Dawnkeep.Localization.LocaleTable.Entry> Rows =
+            new List<Dawnkeep.Localization.LocaleTable.Entry>(16);
+
+        private static UnitDefinition MakeUnit(string assetName, string display, string english,
+            Faction faction,
             CharacterMeshFactory.Kind kind, Color livery, float health, float armour, float speed,
             float damage, float range, float interval, bool ranged, float sight, float retarget,
             TargetClass targetClass, float darkArmour = 0f, int bounty = 6)
@@ -303,7 +310,11 @@ namespace Dawnkeep.EditorTools
                 AssetDatabase.CreateAsset(def, path);
             }
 
+            // الاسم مفتاحاً في الجدول، والحرفيّ يبقى احتياطاً ولقارئ المفتش
+            string key = DawnkeepLocale.ContentKey(assetName);
+            SetPrivate(def, "nameKey", key);
             SetPrivate(def, "displayName", display);
+            Rows.Add(DawnkeepLocale.Row(key, display, english));
             SetPrivate(def, "faction", faction);
             SetPrivate(def, "targetClass", targetClass);
             SetPrivate(def, "prefab", AssetDatabase.LoadAssetAtPath<GameObject>(
@@ -325,8 +336,8 @@ namespace Dawnkeep.EditorTools
             return def;
         }
 
-        private static WaveDefinition MakeWave(string assetName, string title, float prepare,
-            WaveDefinition.Entry[] entries)
+        private static WaveDefinition MakeWave(string assetName, string title, string english,
+            float prepare, WaveDefinition.Entry[] entries)
         {
             string path = CombatFolder + "/" + assetName + ".asset";
             WaveDefinition wave = AssetDatabase.LoadAssetAtPath<WaveDefinition>(path);
@@ -336,7 +347,10 @@ namespace Dawnkeep.EditorTools
                 AssetDatabase.CreateAsset(wave, path);
             }
 
+            string key = DawnkeepLocale.ContentKey(assetName);
+            SetPrivate(wave, "titleKey", key);
             SetPrivate(wave, "title", title);
+            Rows.Add(DawnkeepLocale.Row(key, title, english));
             SetPrivate(wave, "prepareTime", prepare);
             SetPrivate(wave, "entries", entries);
 

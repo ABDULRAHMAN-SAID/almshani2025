@@ -72,6 +72,32 @@ for name, (ar, en) in sorted(rows.items()):
     if not has_slot and called_fill:
         print('  ✗ %s بلا {0} ونُودي بـFormat — الوسيط يُهمَل صامتاً' % name); bad_use += 1
 
-bad = len(missing) + len(extra) + dupes + blank + bad_use
+
+# ── نصوص المحتوى: أسماء المباني والوحدات والموجات
+BUILD = io.open(os.path.join(ROOT, 'Assets/Editor/DawnkeepBuildSetup.cs'), encoding='utf-8').read()
+COMBAT = io.open(os.path.join(ROOT, 'Assets/Editor/DawnkeepCombatSetup.cs'), encoding='utf-8').read()
+
+FACTORY = re.compile(r'(?:Economy|Tower|Garrison|WallDef|Obelisk|Bombard|Workshop|BeaconDef)'
+                     r'\("(Build_\w+)"')
+assets = set(FACTORY.findall(BUILD))
+translated = set(re.findall(r'\{ "(Build_\w+)", new\[\]', BUILD))
+
+content = 0
+for a in sorted(assets - translated):
+    print('  ✗ %s يُبنى ولا ترجمة إنجليزية له — ستُردّ العربية في اللغتين' % a); content += 1
+for a in sorted(translated - assets):
+    print('  ✗ ترجمة لأصل لا يُبنى: %s (أعيدت تسميته؟)' % a); content += 1
+
+# كل وحدة وموجة تمرّر ترجمتها الإنجليزية
+units = re.findall(r'MakeUnit\("(\w+)",\s*"[^"]+",\s*"([^"]*)"', COMBAT)
+waves = re.findall(r'MakeWave\("(\w+)",\s*"[^"]+",\s*"([^"]*)"', COMBAT)
+for name, en in units + waves:
+    if not en.strip():
+        print('  ✗ %s بلا ترجمة إنجليزية' % name); content += 1
+
+print('محتوى مترجَم: %d مبنىً · %d وحدة · %d موجة'
+      % (len(assets), len(units), len(waves)))
+
+bad = len(missing) + len(extra) + dupes + blank + bad_use + content
 print('جدول النصوص:', 'مكتمل' if bad == 0 else '%d مشكلة' % bad)
 sys.exit(0 if bad == 0 else 1)

@@ -10,6 +10,10 @@ namespace Dawnkeep.Combat
     public class UnitDefinition : ScriptableObject
     {
         [Header("الهوية")]
+        [Tooltip("مفتاح الاسم في جدول النصوص. فارغاً يُستعمل `displayName` كما هو.")]
+        [SerializeField] private string nameKey = string.Empty;
+
+        [Tooltip("اسم احتياطي إن لم يوجد مفتاح — ولمن يقرأ الأصل في المفتش.")]
         [SerializeField] private string displayName = "وحدة";
         [SerializeField] private Faction faction = Faction.Kingdom;
         [SerializeField] private TargetClass targetClass = TargetClass.Nearest;
@@ -63,7 +67,19 @@ namespace Dawnkeep.Combat
         [Tooltip("فضّة يضيفها قتله إلى المكافأة المعلّقة، تُصرف عند الفجر (§10).")]
         [SerializeField] private int bounty = 6;
 
-        public string DisplayName { get { return displayName; } }
+        /// <summary>
+        /// الاسم **المنطقي** لا المشكَّل: الواجهة هي التي تشكّل، وتشكيلُه هنا
+        /// يعني تشكيلاً مضاعفاً عند أوّل مستدعٍ يمرّ به على `Loc`.
+        /// </summary>
+        public string DisplayName
+        {
+            get
+            {
+                return string.IsNullOrEmpty(nameKey)
+                    ? displayName
+                    : Dawnkeep.Localization.Loc.Raw(nameKey);
+            }
+        }
 
         public Faction Faction { get { return faction; } }
 

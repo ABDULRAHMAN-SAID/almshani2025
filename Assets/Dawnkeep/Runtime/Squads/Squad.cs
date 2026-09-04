@@ -144,6 +144,36 @@ namespace Dawnkeep.Squads
             get { return _order != SquadOrder.Retreat && LiveCount > 0 && HealthFraction < retreatThreshold; }
         }
 
+        /// <summary>
+        /// فرقة رماة: أغلب أحيائها يرمون. §9 تصنّف الفرق «حرّاس أو رماة»،
+        /// والفرقة المختلطة تُنسب إلى أغلبها لا تُستثنى من الاثنين.
+        /// </summary>
+        public bool IsRanged
+        {
+            get
+            {
+                int ranged = 0;
+                int live = 0;
+
+                for (int i = 0; i < _members.Count; i++)
+                {
+                    Unit unit = _members[i];
+                    if (unit == null || !unit.Alive || unit.Definition == null)
+                    {
+                        continue;
+                    }
+
+                    live++;
+                    if (unit.Definition.Ranged)
+                    {
+                        ranged++;
+                    }
+                }
+
+                return live > 0 && ranged * 2 > live;
+            }
+        }
+
         /// <summary>مركز الفرقة — لاختيارها بقربها من البطل.</summary>
         public Vector3 Centre
         {

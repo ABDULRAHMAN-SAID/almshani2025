@@ -55,6 +55,13 @@ namespace Dawnkeep.Building
     public class BuildingDefinition : ScriptableObject
     {
         [Header("التعريف")]
+        [Tooltip("مفتاح الاسم في جدول النصوص. فارغاً يُستعمل `displayName` كما هو.")]
+        [SerializeField] private string nameKey = string.Empty;
+
+        [Tooltip("مفتاح الوصف في جدول النصوص.")]
+        [SerializeField] private string summaryKey = string.Empty;
+
+        [Tooltip("اسم احتياطي إن لم يوجد مفتاح — ولمن يقرأ الأصل في المفتش.")]
         [SerializeField] private string displayName = "مبنى";
 
         [Tooltip("سطر واحد يقول ما يفعله — يُعرض على البطاقة.")]
@@ -145,9 +152,26 @@ namespace Dawnkeep.Building
 
         [SerializeField] private Color accent = new Color(0.647f, 0.180f, 0.180f);
 
-        public string DisplayName { get { return displayName; } }
+        /// <summary>الاسم المنطقي — الواجهة هي التي تشكّل.</summary>
+        public string DisplayName
+        {
+            get
+            {
+                return string.IsNullOrEmpty(nameKey)
+                    ? displayName
+                    : Dawnkeep.Localization.Loc.Raw(nameKey);
+            }
+        }
 
-        public string Summary { get { return summary; } }
+        public string Summary
+        {
+            get
+            {
+                return string.IsNullOrEmpty(summaryKey)
+                    ? summary
+                    : Dawnkeep.Localization.Loc.Raw(summaryKey);
+            }
+        }
 
         public BuildingRole Role { get { return role; } }
 

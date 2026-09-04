@@ -14,6 +14,7 @@ namespace Dawnkeep.UI
     /// على شاشة جوّال — كل خيار على قوسٍ حول نقطة ارتكاز الإصبع نفسها.
     ///
     /// الزرّ أسفل اليمين فوق لوحة البطل: §7 تضع أزرار الأوامر والقدرات يميناً.
+    /// و**ضغطه مطوّلاً يفتح مرشِّح النوع** (§9): الجميع أو الحرّاس أو الرماة.
     /// </summary>
     [DisallowMultipleComponent]
     public class OrderRing : MonoBehaviour
@@ -31,7 +32,10 @@ namespace Dawnkeep.UI
         private SquadDirector _squads;
 
         private GameObject _ring;
+        private GameObject _filterRow;
         private GameObject _retreatButton;
+        private Image[] _filterBack;
+        private LongPressButton _openPress;
         private Image _openBackground;
         private TextMeshProUGUI _toast;
         private float _toastLeft;
@@ -85,21 +89,92 @@ namespace Dawnkeep.UI
             {
                 _shownAlert = alert;
                 _retreatButton.SetActive(alert);
-                _openBackground.color = alert
+
+                Color rest = alert
                     ? new Color(alertColor.r * 0.42f, alertColor.g * 0.20f, alertColor.b * 0.18f, 0.94f)
                     : panelColor;
+
+                // اللون يمرّ عبر الزرّ لا يُكتب على صورته وحدها: الكتابة
+                // المباشرة تُطمَس حين يرفع اللاعب إصبعه فيعيد الزرّ لون راحته
+                // القديم.
+                _openBackground.color = rest;
+                _openPress.Refresh(rest);
             }
         }
 
         /// <summary>يفتح الدائرة أو يغلقها — يُنادى من زرّ الأوامر.</summary>
         public void Toggle()
         {
-            _ring.SetActive(!_ring.activeSelf);
+            bool open = !_ring.activeSelf;
+            _ring.SetActive(open);
+
+            // لا يُفتح الاثنان معاً: صفّ المرشِّح يقع على قوس الدائرة
+            if (open)
+            {
+                _filterRow.SetActive(false);
+            }
+        }
+
+        /// <summary>يفتح مرشِّح النوع أو يغلقه — من الضغطة المطوّلة (§9).</summary>
+        public void ToggleFilter()
+        {
+            bool open = !_filterRow.activeSelf;
+            _filterRow.SetActive(open);
+
+            if (open)
+            {
+                _ring.SetActive(false);
+                PaintFilter();
+            }
         }
 
         public void Close()
         {
             _ring.SetActive(false);
+            _filterRow.SetActive(false);
+        }
+
+        private void SetFilter(SquadFilter filter)
+        {
+            if (_squads != null)
+            {
+                _squads.Filter = filter;
+            }
+
+            PaintFilter();
+            _filterRow.SetActive(false);
+
+            // سطرٌ يقول ما اختير: مرشِّحٌ يُضبط بلا ردّ لا يُعرف أنّه ضُبط
+            _toast.text = Loc.Text(FilterKey(filter));
+            _toast.color = goldColor;
+            _toastLeft = toastSeconds;
+        }
+
+        /// <summary>المختار يُضاء والباقي يبهت — الحال مقروءة قبل الأمر لا بعده.</summary>
+        private void PaintFilter()
+        {
+            if (_filterBack == null || _squads == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < _filterBack.Length; i++)
+            {
+                bool active = (int)_squads.Filter == i;
+                _filterBack[i].color = active
+                    ? new Color(goldColor.r * 0.34f, goldColor.g * 0.30f, goldColor.b * 0.20f, 0.94f)
+                    : panelColor;
+            }
+        }
+
+        private static string FilterKey(SquadFilter filter)
+        {
+            switch (filter)
+            {
+                case SquadFilter.Guards: return LocKeys.FilterGuards;
+                case SquadFilter.Archers: return LocKeys.FilterArchers;
+                default: return LocKeys.FilterAll;
+            }
         }
 
         // ── الأوامر ─────────────────────────────────────────────────────────
@@ -173,9 +248,11 @@ namespace Dawnkeep.UI
             _openBackground.color = panelColor;
             _openBackground.raycastTarget = true;
 
-            Button openButton = open.gameObject.AddComponent<Button>();
-            openButton.targetGraphic = _openBackground;
-            openButton.onClick.AddListener(Toggle);
+            // لا `Button` هنا: نقرته تقع عند الرفع مهما طالت الضغطة، فيصدر
+            // الأمران معاً — تُفتح الدائرة ويُفتح المرشِّح في لمسة واحدة.
+            _openPress = open.gameObject.AddComponent<LongPressButton>();
+            _openPress.Clicked += Toggle;
+            _openPress.LongPressed += ToggleFilter;
 
             Label("Caption", open, LocKeys.OrdersButton, 26f, goldColor,
                 new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(124f, 44f),
@@ -196,12 +273,54 @@ namespace Dawnkeep.UI
             _retreatButton = MakeOption(ring, "Retreat", LocKeys.OrderRetreat, new Vector2(-166f, 306f), Retreat);
             _retreatButton.SetActive(false);
 
+            // التلميح **داخل القوس** لا خارجه: خارجه يقع على بطاقة «اثبت»،
+            // وداخله يظهر ويختفي معه — واللاعب لا يحتاجه إلّا وهو يفكّر في أمر.
+            Label("FilterHint", ring, LocKeys.FilterHint, 20f, inkColor,
+                new Vector2(0.5f, 0.5f), new Vector2(-166f, 372f), new Vector2(420f, 32f),
+                TextAlignmentOptions.Midline);
+
             _ring.SetActive(false);
 
-            // سطر التأكيد فوق أعلى بطاقة في القوس: على ارتفاعها يحجب إحداها
+            // صفّ المرشِّح: يقع على قوس الدائرة، ولذلك لا يُفتحان معاً
+            RectTransform filter = MakeRect("FilterRow", parent,
+                new Vector2(1f, 0f), new Vector2(-24f, 470f), new Vector2(396f, 56f));
+            _filterRow = filter.gameObject;
+            _filterBack = new Image[3];
+
+            _filterBack[0] = MakeFilter(filter, "All", LocKeys.FilterAll, -8f, SquadFilter.All);
+            _filterBack[1] = MakeFilter(filter, "Guards", LocKeys.FilterGuards, -140f, SquadFilter.Guards);
+            _filterBack[2] = MakeFilter(filter, "Archers", LocKeys.FilterArchers, -272f, SquadFilter.Archers);
+
+            _filterRow.SetActive(false);
+
+            // سطر التأكيد فوق الصفّ والقوس معاً: على ارتفاع أيّهما يحجبه
             _toast = MakeText("Toast", parent, 26f, goldColor,
-                new Vector2(1f, 0f), new Vector2(-24f, 520f), new Vector2(420f, 40f),
+                new Vector2(1f, 0f), new Vector2(-24f, 600f), new Vector2(420f, 40f),
                 TextAlignmentOptions.MidlineRight);
+        }
+
+        /// <summary>بطاقة مرشِّح واحدة. تعيد خلفيّتها لتُلوَّن بحسب المختار.</summary>
+        private Image MakeFilter(Transform parent, string name, string captionKey,
+            float offsetX, SquadFilter filter)
+        {
+            RectTransform rect = MakeRect(name, parent,
+                new Vector2(1f, 0f), new Vector2(offsetX, 0f), new Vector2(124f, 56f));
+
+            Image background = rect.gameObject.AddComponent<Image>();
+            background.color = panelColor;
+            background.raycastTarget = true;
+
+            Button button = rect.gameObject.AddComponent<Button>();
+            button.targetGraphic = background;
+
+            SquadFilter captured = filter;
+            button.onClick.AddListener(delegate { SetFilter(captured); });
+
+            Label("Caption", rect, captionKey, 24f, inkColor,
+                new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(116f, 36f),
+                TextAlignmentOptions.Midline);
+
+            return background;
         }
 
         private GameObject MakeOption(Transform parent, string name, string captionKey,

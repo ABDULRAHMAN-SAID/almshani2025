@@ -69,5 +69,9 @@ namespace Dawnkeep.Localization
         public const string OrderAckRetreat = "orders.ack.retreat";
         public const string OrderNoSquad = "orders.none";
         public const string OrderNoHero = "orders.noHero";
+        public const string FilterAll = "orders.filter.all";
+        public const string FilterGuards = "orders.filter.guards";
+        public const string FilterArchers = "orders.filter.archers";
+        public const string FilterHint = "orders.filter.hint";
     }
 }

@@ -23,75 +23,21 @@ namespace Dawnkeep.EditorTools
     /// </summary>
     public static class DawnkeepLocalizationSetup
     {
-        private const string TablePath = DawnkeepAssetPaths.Settings + "/LocaleTable.asset";
-
         [MenuItem("مملكة الرماد/11) جدول النصوص", false, 11)]
         public static void Setup()
         {
             DawnkeepAssetPaths.EnsureFolders();
 
-            LocaleTable table = AssetDatabase.LoadAssetAtPath<LocaleTable>(TablePath);
-            if (table == null)
-            {
-                table = ScriptableObject.CreateInstance<LocaleTable>();
-                AssetDatabase.CreateAsset(table, TablePath);
-            }
-
             LocaleTable.Entry[] defaults = Defaults();
-            int added = Merge(table, defaults);
+            int added = DawnkeepLocale.Add(defaults);
 
-            EditorUtility.SetDirty(table);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
 
-            WireScene(table);
+            WireScene(DawnkeepLocale.Ensure());
 
-            Debug.Log("مملكة الرماد: جدول النصوص جاهز — " + defaults.Length + " مفتاحاً"
+            Debug.Log("مملكة الرماد: جدول النصوص جاهز — " + defaults.Length + " مفتاح واجهة"
                 + (added > 0 ? "، أُضيف " + added + " جديداً." : "، بلا جديد."));
-        }
-
-        /// <summary>
-        /// يضمّ المفاتيح الناقصة إلى الجدول القائم ويُبقي الموجود.
-        /// يعيد عدد ما أُضيف.
-        /// </summary>
-        private static int Merge(LocaleTable table, LocaleTable.Entry[] defaults)
-        {
-            List<LocaleTable.Entry> merged = new List<LocaleTable.Entry>(defaults.Length);
-            HashSet<string> present = new HashSet<string>();
-
-            LocaleTable.Entry[] existing = table.Entries;
-            if (existing != null)
-            {
-                for (int i = 0; i < existing.Length; i++)
-                {
-                    if (!string.IsNullOrEmpty(existing[i].Key) && present.Add(existing[i].Key))
-                    {
-                        merged.Add(existing[i]);
-                    }
-                }
-            }
-
-            int added = 0;
-            for (int i = 0; i < defaults.Length; i++)
-            {
-                if (present.Add(defaults[i].Key))
-                {
-                    merged.Add(defaults[i]);
-                    added++;
-                }
-            }
-
-            SetPrivate(table, "entries", merged.ToArray());
-            return added;
-        }
-
-        private static LocaleTable.Entry Row(string key, string arabic, string english)
-        {
-            LocaleTable.Entry entry;
-            entry.Key = key;
-            entry.Arabic = arabic;
-            entry.English = english;
-            return entry;
         }
 
         private static LocaleTable.Entry[] Defaults()
@@ -99,72 +45,77 @@ namespace Dawnkeep.EditorTools
             return new[]
             {
                 // لوحة الموجة
-                Row(LocKeys.WaveCaption, "الموجة", "Wave"),
-                Row(LocKeys.PhasePrepare, "استعداد", "Prepare"),
-                Row(LocKeys.PhaseAssault, "هجوم", "Assault"),
-                Row(LocKeys.PhaseRespite, "استراحة", "Respite"),
-                Row(LocKeys.PhaseIdle, "سكون", "Idle"),
-                Row(LocKeys.HastenButton, "ابدأ الآن", "Start now"),
+                DawnkeepLocale.Row(LocKeys.WaveCaption, "الموجة", "Wave"),
+                DawnkeepLocale.Row(LocKeys.PhasePrepare, "استعداد", "Prepare"),
+                DawnkeepLocale.Row(LocKeys.PhaseAssault, "هجوم", "Assault"),
+                DawnkeepLocale.Row(LocKeys.PhaseRespite, "استراحة", "Respite"),
+                DawnkeepLocale.Row(LocKeys.PhaseIdle, "سكون", "Idle"),
+                DawnkeepLocale.Row(LocKeys.HastenButton, "ابدأ الآن", "Start now"),
 
                 // لوحة الأعداد
-                Row(LocKeys.DefendersCaption, "المدافعون", "Defenders"),
-                Row(LocKeys.AttackersCaption, "المهاجمون", "Attackers"),
+                DawnkeepLocale.Row(LocKeys.DefendersCaption, "المدافعون", "Defenders"),
+                DawnkeepLocale.Row(LocKeys.AttackersCaption, "المهاجمون", "Attackers"),
 
                 // قلب الحصن والفضّة
-                Row(LocKeys.KeepCaption, "قلب الحصن", "The Keep"),
-                Row(LocKeys.KeepTier, "المستوى {0}", "Tier {0}"),
-                Row(LocKeys.SilverCaption, "الفضّة", "Silver"),
+                DawnkeepLocale.Row(LocKeys.KeepCaption, "قلب الحصن", "The Keep"),
+                DawnkeepLocale.Row(LocKeys.KeepTier, "المستوى {0}", "Tier {0}"),
+                DawnkeepLocale.Row(LocKeys.SilverCaption, "الفضّة", "Silver"),
 
                 // النور
-                Row(LocKeys.LightStockCaption, "شحنات النور", "Light charges"),
-                Row(LocKeys.LightBeaconsCaption, "منارات مضيئة", "Beacons lit"),
-                Row(LocKeys.LightHint,
+                DawnkeepLocale.Row(LocKeys.LightStockCaption, "شحنات النور", "Light charges"),
+                DawnkeepLocale.Row(LocKeys.LightBeaconsCaption, "منارات مضيئة", "Beacons lit"),
+                DawnkeepLocale.Row(LocKeys.LightHint,
                     "انقر منارةً لتنقل إليها شحنة نور، وانقرها ثانيةً لتستردّها",
                     "Tap a beacon to move a charge to it, tap again to take it back"),
 
                 // البطل
-                Row(LocKeys.HeroCaption, "البطل", "Champion"),
+                DawnkeepLocale.Row(LocKeys.HeroCaption, "البطل", "Champion"),
 
                 // بطاقات البناء
-                Row(LocKeys.BuildOnNode, "ابنِ على {0}", "Build on {0}"),
-                Row(LocKeys.BuildUpgradeOrSell, "رقِّ أو بِع", "Upgrade or sell"),
-                Row(LocKeys.BuildCost, "{0} فضّة", "{0} silver"),
-                Row(LocKeys.BuildSell, "بِع", "Sell"),
-                Row(LocKeys.BuildSellRefund, "+{0} فضّة", "+{0} silver"),
-                Row(LocKeys.BuildSellSummary,
+                DawnkeepLocale.Row(LocKeys.BuildOnNode, "ابنِ على {0}", "Build on {0}"),
+                DawnkeepLocale.Row(LocKeys.BuildUpgradeOrSell, "رقِّ أو بِع", "Upgrade or sell"),
+                DawnkeepLocale.Row(LocKeys.BuildCost, "{0} فضّة", "{0} silver"),
+                DawnkeepLocale.Row(LocKeys.BuildSell, "بِع", "Sell"),
+                DawnkeepLocale.Row(LocKeys.BuildSellRefund, "+{0} فضّة", "+{0} silver"),
+                DawnkeepLocale.Row(LocKeys.BuildSellSummary,
                     "يُهدم {0} ويُستردّ {1}٪ مِمّا دُفع فيه.",
                     "Demolishes {0} and refunds {1}% of what was paid."),
-                Row(LocKeys.BuildSellStat, "العقدة تعود خالية", "The node is freed"),
-                Row(LocKeys.BuildKeepTitle, "قلب الحصن", "The Keep"),
-                Row(LocKeys.BuildKeepUpgrade, "رقِّ قلب الحصن", "Upgrade the Keep"),
-                Row(LocKeys.BuildKeepSummary,
+                DawnkeepLocale.Row(LocKeys.BuildSellStat, "العقدة تعود خالية", "The node is freed"),
+                DawnkeepLocale.Row(LocKeys.BuildKeepTitle, "قلب الحصن", "The Keep"),
+                DawnkeepLocale.Row(LocKeys.BuildKeepUpgrade, "رقِّ قلب الحصن", "Upgrade the Keep"),
+                DawnkeepLocale.Row(LocKeys.BuildKeepSummary,
                     "المستوى {0} يفتح عقد بناء جديدة.",
                     "Tier {0} unlocks new build nodes."),
-                Row(LocKeys.BuildStatIncome, "دخل الفجر {0}", "Dawn income {0}"),
-                Row(LocKeys.BuildStatDps, "ضرر/ث {0}", "DPS {0}"),
-                Row(LocKeys.BuildStatRange, "مدى {0}", "range {0}"),
-                Row(LocKeys.BuildStatGuards, "{0} حرّاس", "{0} guards"),
-                Row(LocKeys.BuildStatHealth, "صحّة {0}", "Health {0}"),
+                DawnkeepLocale.Row(LocKeys.BuildStatIncome, "دخل الفجر {0}", "Dawn income {0}"),
+                DawnkeepLocale.Row(LocKeys.BuildStatDps, "ضرر/ث {0}", "DPS {0}"),
+                DawnkeepLocale.Row(LocKeys.BuildStatRange, "مدى {0}", "range {0}"),
+                DawnkeepLocale.Row(LocKeys.BuildStatGuards, "{0} حرّاس", "{0} guards"),
+                DawnkeepLocale.Row(LocKeys.BuildStatHealth, "صحّة {0}", "Health {0}"),
 
                 // أنواع العقد
-                Row(LocKeys.NodeInner, "عقدة داخلية", "an inner node"),
-                Row(LocKeys.NodeGate, "عقدة البوّابة", "a gate node"),
-                Row(LocKeys.NodeOuter, "عقدة خارجية", "an outer node"),
-                Row(LocKeys.NodeEconomy, "عقدة اقتصاد", "an economy node"),
-                Row(LocKeys.NodeBeacon, "عقدة منارة", "a beacon node"),
+                DawnkeepLocale.Row(LocKeys.NodeInner, "عقدة داخلية", "an inner node"),
+                DawnkeepLocale.Row(LocKeys.NodeGate, "عقدة البوّابة", "a gate node"),
+                DawnkeepLocale.Row(LocKeys.NodeOuter, "عقدة خارجية", "an outer node"),
+                DawnkeepLocale.Row(LocKeys.NodeEconomy, "عقدة اقتصاد", "an economy node"),
+                DawnkeepLocale.Row(LocKeys.NodeBeacon, "عقدة منارة", "a beacon node"),
 
                 // الأوامر
-                Row(LocKeys.OrdersButton, "الأوامر", "Orders"),
-                Row(LocKeys.OrderFollow, "اتبعني", "Follow me"),
-                Row(LocKeys.OrderHold, "اثبت", "Hold"),
-                Row(LocKeys.OrderDefend, "دافع", "Defend"),
-                Row(LocKeys.OrderRetreat, "تراجع", "Retreat"),
-                Row(LocKeys.OrderAckFollow, "{0} فرقةً تتبعك", "{0} squads following"),
-                Row(LocKeys.OrderAckHold, "{0} فرقةً ثبتت", "{0} squads holding"),
-                Row(LocKeys.OrderAckDefend, "{0} فرقةً تدافع", "{0} squads defending"),
-                Row(LocKeys.OrderAckRetreat, "{0} فرقةً تتراجع", "{0} squads retreating"),
-                Row(LocKeys.OrderNoSquad, "لا فرقة قريبة", "No squad nearby"),
-                Row(LocKeys.OrderNoHero, "لا بطل في الساحة", "No champion in the field"),
+                DawnkeepLocale.Row(LocKeys.OrdersButton, "الأوامر", "Orders"),
+                DawnkeepLocale.Row(LocKeys.OrderFollow, "اتبعني", "Follow me"),
+                DawnkeepLocale.Row(LocKeys.OrderHold, "اثبت", "Hold"),
+                DawnkeepLocale.Row(LocKeys.OrderDefend, "دافع", "Defend"),
+                DawnkeepLocale.Row(LocKeys.OrderRetreat, "تراجع", "Retreat"),
+                DawnkeepLocale.Row(LocKeys.OrderAckFollow, "{0} فرقةً تتبعك", "{0} squads following"),
+                DawnkeepLocale.Row(LocKeys.OrderAckHold, "{0} فرقةً ثبتت", "{0} squads holding"),
+                DawnkeepLocale.Row(LocKeys.OrderAckDefend, "{0} فرقةً تدافع", "{0} squads defending"),
+                DawnkeepLocale.Row(LocKeys.OrderAckRetreat, "{0} فرقةً تتراجع", "{0} squads retreating"),
+                DawnkeepLocale.Row(LocKeys.OrderNoSquad, "لا فرقة قريبة", "No squad nearby"),
+                DawnkeepLocale.Row(LocKeys.OrderNoHero, "لا بطل في الساحة", "No champion in the field"),
+                DawnkeepLocale.Row(LocKeys.FilterAll, "الجميع", "All"),
+                DawnkeepLocale.Row(LocKeys.FilterGuards, "حرّاس", "Guards"),
+                DawnkeepLocale.Row(LocKeys.FilterArchers, "رماة", "Archers"),
+                DawnkeepLocale.Row(LocKeys.FilterHint, "اضغط الأوامر مطوّلاً لاختيار النوع",
+                    "Hold Orders to pick a type"),
             };
         }
 

@@ -38,21 +38,34 @@ for m in re.finditer(KINDS + r'\("(\w+)",\s*"([^"]+)",\s*\n?\s*"[^"]*",\s*\n?\s*
 
 # ── مكافآت القتل وتركيب الموجات
 bounty = {}
-for m in re.finditer(r'MakeUnit\("(\w+)",\s*"([^"]+)".*?bounty:\s*(\d+)\)', CS, re.S):
-    bounty[m.group(1)] = int(m.group(3))
+for m in re.finditer(r'MakeUnit\("(\w+)"', CS):
+    tail = CS[m.end():m.end() + 900]
+    bm = re.search(r'bounty:\s*(\d+)', tail.split('MakeUnit(', 1)[0])
+    bounty[m.group(1)] = int(bm.group(1)) if bm else 6
 for m in re.finditer(r'UnitDefinition (\w+) = MakeUnit\("(\w+)"', CS):
     pass
 varname = {}
 for m in re.finditer(r'UnitDefinition (\w+) = MakeUnit\("(\w+)"', CS):
     varname[m.group(1)] = m.group(2)
 
+# الموجة: يُلتقط اسمها ثمّ كتلة `new[] { ... }` التي تليها مهما تغيّرت
+# الوسائط بينهما. الالتقاط بعدد الوسائط هشّ: إضافة وسيط ترجمة واحد أعمى
+# الفحص عن الموجات كلّها فسقط الدخل بمقدار مكافآت القتل جميعها.
 waves = []
-for wm in re.finditer(r'MakeWave\("(\w+)",\s*"([^"]+)",[^,]+,\s*new\[\]\s*\{(.*?)\}\)', BS + CS, re.S):
+for wm in re.finditer(r'MakeWave\("(\w+)",\s*"([^"]+)"', BS + CS):
+    tail = (BS + CS)[wm.end():]
+    block = tail.split('new[]', 1)
+    if len(block) < 2:
+        continue
+    body = block[1].split('});', 1)[0]
     entries = []
-    for em in re.finditer(r'MakeEntry\((\w+),\s*(\d+)', wm.group(3)):
+    for em in re.finditer(r'MakeEntry\((\w+),\s*(\d+)', body):
         entries.append((varname.get(em.group(1), em.group(1)), int(em.group(2))))
     if entries:
         waves.append((wm.group(2), entries))
+
+if not waves:
+    print('  ✗ لم تُقرأ أيّ موجة — تغيّر توقيع MakeWave؟ الفحص أعمى عن مكافآت القتل')
 
 def wave_bounty(i):
     """الموجة i (من واحد). ما بعد آخر موجة يتكرّر — كما في WaveDirector."""

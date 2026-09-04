@@ -38,6 +38,7 @@ namespace Dawnkeep.EditorTools
         {
             DawnkeepAssetPaths.EnsureFolders();
             EnsureFolder(BuildFolder);
+            Rows.Clear();
 
             UnitDefinition spearGuard = LoadUnit("Unit_Spearman");
             UnitDefinition archerGuard = LoadUnit("Unit_Archer");
@@ -214,6 +215,7 @@ namespace Dawnkeep.EditorTools
             catalogue.Add(beacon);
             catalogue.Add(wall);
 
+            DawnkeepLocale.Add(Rows);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
 
@@ -227,7 +229,7 @@ namespace Dawnkeep.EditorTools
             BuildingShape shape = BuildingShape.Cottage)
         {
             BuildingDefinition def = Make(asset);
-            Common(def, name, summary, BuildingRole.Economy, cost, health, upgrades, shape,
+            Common(def, asset, name, summary, BuildingRole.Economy, cost, health, upgrades, shape,
                 new[] { NodeKind.Economy, NodeKind.Inner });
             SetPrivate(def, "dawnIncome", income);
             EditorUtility.SetDirty(def);
@@ -239,7 +241,7 @@ namespace Dawnkeep.EditorTools
             TargetClass targetClass, BuildingDefinition[] upgrades = null)
         {
             BuildingDefinition def = Make(asset);
-            Common(def, name, summary, BuildingRole.Tower, cost, health, upgrades,
+            Common(def, asset, name, summary, BuildingRole.Tower, cost, health, upgrades,
                 BuildingShape.Watchtower, new[] { NodeKind.Outer, NodeKind.Inner });
             SetPrivate(def, "damage", damage);
             SetPrivate(def, "shotsPerSecond", rate);
@@ -254,7 +256,7 @@ namespace Dawnkeep.EditorTools
             BuildingDefinition[] upgrades = null, BuildingShape shape = BuildingShape.Barracks)
         {
             BuildingDefinition def = Make(asset);
-            Common(def, name, summary, BuildingRole.Garrison, cost, health, upgrades, shape,
+            Common(def, asset, name, summary, BuildingRole.Garrison, cost, health, upgrades, shape,
                 new[] { NodeKind.Inner, NodeKind.Gate });
             SetPrivate(def, "guardCount", guards);
             SetPrivate(def, "guard", guard);
@@ -268,7 +270,7 @@ namespace Dawnkeep.EditorTools
             BuildingDefinition[] upgrades = null)
         {
             BuildingDefinition def = Make(asset);
-            Common(def, name, summary, BuildingRole.Tower, cost, health, upgrades,
+            Common(def, asset, name, summary, BuildingRole.Tower, cost, health, upgrades,
                 BuildingShape.Obelisk, new[] { NodeKind.Inner, NodeKind.Outer });
             SetPrivate(def, "damage", damage);
             SetPrivate(def, "shotsPerSecond", rate);
@@ -288,7 +290,7 @@ namespace Dawnkeep.EditorTools
             BuildingDefinition[] upgrades = null)
         {
             BuildingDefinition def = Make(asset);
-            Common(def, name, summary, BuildingRole.Tower, cost, health, upgrades,
+            Common(def, asset, name, summary, BuildingRole.Tower, cost, health, upgrades,
                 BuildingShape.Bombard, new[] { NodeKind.Inner, NodeKind.Outer });
             SetPrivate(def, "damage", damage);
             SetPrivate(def, "shotsPerSecond", rate);
@@ -305,7 +307,7 @@ namespace Dawnkeep.EditorTools
             BuildingDefinition[] upgrades = null)
         {
             BuildingDefinition def = Make(asset);
-            Common(def, name, summary, BuildingRole.Support, cost, health, upgrades,
+            Common(def, asset, name, summary, BuildingRole.Support, cost, health, upgrades,
                 BuildingShape.Workshop, new[] { NodeKind.Inner, NodeKind.Economy });
             SetPrivate(def, "repairAmount", repair);
             SetPrivate(def, "repairTargets", targets);
@@ -318,7 +320,7 @@ namespace Dawnkeep.EditorTools
             int cost, float health, int charges, BuildingDefinition[] upgrades = null)
         {
             BuildingDefinition def = Make(asset);
-            Common(def, name, summary, BuildingRole.Beacon, cost, health, upgrades,
+            Common(def, asset, name, summary, BuildingRole.Beacon, cost, health, upgrades,
                 BuildingShape.Beacon, new[] { NodeKind.Beacon, NodeKind.Inner, NodeKind.Outer });
             SetPrivate(def, "lightCharges", charges);
             EditorUtility.SetDirty(def);
@@ -329,18 +331,90 @@ namespace Dawnkeep.EditorTools
             int cost, float health, BuildingDefinition[] upgrades = null)
         {
             BuildingDefinition def = Make(asset);
-            Common(def, name, summary, BuildingRole.Wall, cost, health, upgrades,
+            Common(def, asset, name, summary, BuildingRole.Wall, cost, health, upgrades,
                 BuildingShape.Wall, new[] { NodeKind.Gate });
             EditorUtility.SetDirty(def);
             return def;
         }
 
-        private static void Common(BuildingDefinition def, string name, string summary,
-            BuildingRole role, int cost, float health, BuildingDefinition[] upgrades,
+
+        /// <summary>
+        /// الترجمة الإنجليزية للمحتوى، مفتاحها اسم الأصل.
+        ///
+        /// جدولٌ واحد لا وسيطان في كل مصنع: إضافة وسيطَي ترجمة إلى ثمانية
+        /// مصانع وثلاثة وثلاثين نداءً تُغرق ملفّ الأرقام بنصوص، والمترجم اللغوي
+        /// يريد النصوص مجتمعة لا مبعثرة بين التكاليف.
+        /// </summary>
+        private static readonly Dictionary<string, string[]> English =
+            new Dictionary<string, string[]>
+        {
+            { "Build_Cottage", new[] { "Cottage", "The cheapest steady income. The base of any economy." } },
+            { "Build_Cottage2", new[] { "Expanded Cottage", "A house built out, so its income grew." } },
+            { "Build_GuildHouse", new[] { "Guild House", "Highest cottage income, and a larger end-of-stage haul." } },
+            { "Build_Safehouse", new[] { "Safehouse", "Less income, but it restores one fallen squad at dawn." } },
+
+            { "Build_Farm", new[] { "Farm", "High income and slight health — an economy that needs guarding." } },
+            { "Build_Farm2", new[] { "Expanded Farm", "A wider field and higher income." } },
+            { "Build_GrandHarvest", new[] { "Grand Harvest", "The highest income in the game, and the frailest thing to guard." } },
+            { "Build_PowderMill", new[] { "Powder Mill", "Less income, and it bursts when torn down, burning what stands near." } },
+
+            { "Build_Watchtower", new[] { "Watchtower", "The cheapest ranged damage. It shoots whatever enters its reach, unbidden." } },
+            { "Build_Watchtower2", new[] { "Fortified Tower", "The same tower with higher damage and reach." } },
+            { "Build_LongbowSpire", new[] { "Longbow Spire", "A heavy slow strike that reaches further than anything." } },
+            { "Build_SplitshotBastion", new[] { "Splitshot Bastion", "Lighter, faster strikes — better against a crowd." } },
+
+            { "Build_Barracks", new[] { "Barracks", "Four guards who stop whoever passes." } },
+            { "Build_Barracks2", new[] { "Great Barracks", "Six guards posted around it." } },
+            { "Build_ArcherCamp", new[] { "Archer Camp", "Four archers — ranged damage that moves, unlike a tower." } },
+            { "Build_ArcherCamp2", new[] { "Great Archer Camp", "Six archers shooting from behind the line." } },
+
+            { "Build_Obelisk", new[] { "Arcane Obelisk", "Slow heavy strikes that pierce part of the armour." } },
+            { "Build_Obelisk2", new[] { "High Obelisk", "The same magic at doubled damage." } },
+            { "Build_StormObelisk", new[] { "Storm Obelisk", "A bolt that leaps to four, weakening twenty percent each jump." } },
+            { "Build_FrostObelisk", new[] { "Frost Obelisk", "Less damage, but it slows the struck by thirty-two percent." } },
+
+            { "Build_Bombard", new[] { "Bombard", "An area strike on the crowd. It cannot hit whoever closes on it." } },
+            { "Build_EmberMortar", new[] { "Ember Mortar", "A wider burst that burns what surrounds it." } },
+            { "Build_BreakerCannon", new[] { "Breaker Cannon", "A narrower burst and a far heavier blow against the armoured." } },
+
+            { "Build_Workshop", new[] { "Workshop", "Repairs the nearest two buildings thirty-five health every four seconds." } },
+            { "Build_Workshop2", new[] { "Great Workshop", "Repairs three buildings by fifty-five health." } },
+            { "Build_EngineerGuild", new[] { "Engineer Guild", "Stronger repair over a wider reach." } },
+            { "Build_Trapworks", new[] { "Trapworks", "Lighter repair, and it lays what slows attackers around it." } },
+
+            { "Build_Beacon", new[] { "Dawn Beacon", "A new circle of light where you need it — it melts dark armour." } },
+            { "Build_Beacon2", new[] { "Expanded Beacon", "Two charges: a wider circle and a deeper bite into dark armour." } },
+            { "Build_Sanctuary", new[] { "Sanctuary", "A beacon of three charges — the widest circle of safety in the game." } },
+            { "Build_Sunlance", new[] { "Sunlance", "A beacon of two charges whose spire strikes whoever nears." } },
+
+            { "Build_Wall", new[] { "Wall", "It blocks the path and buys you time." } },
+            { "Build_Wall2", new[] { "Double Wall", "Doubled stone that endures longer." } },
+        };
+
+        /// <summary>صفوف النصوص التي تجمعها هذه الخطوة قبل ضمّها إلى الجدول.</summary>
+        private static readonly List<Dawnkeep.Localization.LocaleTable.Entry> Rows =
+            new List<Dawnkeep.Localization.LocaleTable.Entry>(48);
+
+        private static void Common(BuildingDefinition def, string assetName, string name,
+            string summary, BuildingRole role, int cost, float health, BuildingDefinition[] upgrades,
             BuildingShape shape, NodeKind[] nodes)
         {
+            // الاسم والوصف مفتاحان في الجدول، والحرفيّان يبقيان احتياطاً
+            string key = DawnkeepLocale.ContentKey(assetName);
+            SetPrivate(def, "nameKey", key);
+            SetPrivate(def, "summaryKey", key + ".summary");
             SetPrivate(def, "displayName", name);
             SetPrivate(def, "summary", summary);
+
+            string[] translated;
+            if (!English.TryGetValue(assetName, out translated))
+            {
+                // بلا ترجمة: تُرَدّ العربية في اللغتين، ويكشفها فحص المفاتيح
+                translated = new[] { name, summary };
+            }
+
+            Rows.Add(DawnkeepLocale.Row(key, name, translated[0]));
+            Rows.Add(DawnkeepLocale.Row(key + ".summary", summary, translated[1]));
             SetPrivate(def, "role", role);
             SetPrivate(def, "cost", cost);
             SetPrivate(def, "maxHealth", health);

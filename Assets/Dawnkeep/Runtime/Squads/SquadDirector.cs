@@ -11,6 +11,14 @@ namespace Dawnkeep.Squads
     /// والمقود لا يتغيّران بين إطارين، وتحديثهما في كل إطار عملٌ لا يراه أحد.
     /// والفرق موزّعة على الدورات فلا تتزامن كلّها في إطار واحد.
     /// </summary>
+    /// <summary>مرشِّح نوع الفرق التي يشملها الأمر (§9).</summary>
+    public enum SquadFilter
+    {
+        All = 0,
+        Guards = 1,
+        Archers = 2,
+    }
+
     [DisallowMultipleComponent]
     public class SquadDirector : MonoBehaviour
     {
@@ -39,6 +47,12 @@ namespace Dawnkeep.Squads
         private static readonly int RadiusId = Shader.PropertyToID("_Radius");
 
         public IReadOnlyList<Squad> Squads { get { return _squads; } }
+
+        /// <summary>
+        /// نوع الفرق التي يشملها الأمر التالي. يبقى مضبوطاً حتى يبدّله اللاعب:
+        /// مرشِّحٌ يعود إلى «الجميع» بعد كل أمر يجعل اختياره بلا معنى.
+        /// </summary>
+        public SquadFilter Filter { get; set; }
 
         /// <summary>فرقة واحدة على الأقلّ منهكة وتحتاج تراجعاً (§9).</summary>
         public bool AnyNeedsRetreat
@@ -133,7 +147,7 @@ namespace Dawnkeep.Squads
             {
                 for (int i = 0; i < _squads.Count; i++)
                 {
-                    if (_squads[i] != null && _squads[i].LiveCount > 0)
+                    if (_squads[i] != null && _squads[i].LiveCount > 0 && Passes(_squads[i]))
                     {
                         into.Add(_squads[i]);
                     }
@@ -153,6 +167,11 @@ namespace Dawnkeep.Squads
                     continue;
                 }
 
+                if (!Passes(squad))
+                {
+                    continue;
+                }
+
                 Vector3 delta = squad.Centre - centre;
                 delta.y = 0f;
                 if (delta.sqrMagnitude <= radiusSqr)
@@ -162,6 +181,16 @@ namespace Dawnkeep.Squads
             }
 
             return into.Count;
+        }
+
+        private bool Passes(Squad squad)
+        {
+            switch (Filter)
+            {
+                case SquadFilter.Guards: return !squad.IsRanged;
+                case SquadFilter.Archers: return squad.IsRanged;
+                default: return true;
+            }
         }
 
         private readonly List<Squad> _scratch = new List<Squad>(16);
