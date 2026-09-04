@@ -4,12 +4,12 @@ using UnityEngine;
 namespace Dawnkeep.EditorTools
 {
     /// <summary>
-    /// زرّ واحد ينفّذ الخطوات 2→10 بالترتيب.
+    /// زرّ واحد ينفّذ الخطوات 2→11 بالترتيب.
     /// الخطوة 1 (تثبيت الحزم) تبقى منفصلة لأنها تُشغّل إعادة تجميع.
     /// </summary>
     public static class DawnkeepBuildAll
     {
-        [MenuItem("مملكة الرماد/بناء كل شيء (2 ← 10)", false, 20)]
+        [MenuItem("مملكة الرماد/بناء كل شيء (2 ← 11)", false, 20)]
         public static void BuildEverything()
         {
             if (!DawnkeepAssetPaths.TypeExists("UnityEngine.Rendering.Universal.UniversalRenderPipelineAsset"))
@@ -25,6 +25,7 @@ namespace Dawnkeep.EditorTools
             DawnkeepTextureBaker.BakeAll();
             DawnkeepPrefabBuilder.BuildAll();
             DawnkeepWorldSceneBuilder.BuildScene();
+            DawnkeepLocalizationSetup.Setup();
             DawnkeepCombatSetup.Setup();
             DawnkeepUiSetup.Setup();
             DawnkeepLightSetup.Setup();

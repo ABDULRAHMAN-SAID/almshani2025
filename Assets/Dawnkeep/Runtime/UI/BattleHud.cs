@@ -2,6 +2,7 @@ using Dawnkeep.Building;
 using Dawnkeep.Combat;
 using Dawnkeep.Economy;
 using Dawnkeep.Light;
+using Dawnkeep.Localization;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -96,12 +97,37 @@ namespace Dawnkeep.UI
 
         private void Awake()
         {
-            _wordPrepare = ArabicShaper.Shape("استعداد");
-            _wordAssault = ArabicShaper.Shape("هجوم");
-            _wordRespite = ArabicShaper.Shape("استراحة");
-            _wordIdle = ArabicShaper.Shape("سكون");
+            _wordPrepare = Loc.Text(LocKeys.PhasePrepare);
+            _wordAssault = Loc.Text(LocKeys.PhaseAssault);
+            _wordRespite = Loc.Text(LocKeys.PhaseRespite);
+            _wordIdle = Loc.Text(LocKeys.PhaseIdle);
 
             Build();
+        }
+
+        private void OnEnable()
+        {
+            Loc.Changed += ReloadWords;
+        }
+
+        private void OnDisable()
+        {
+            Loc.Changed -= ReloadWords;
+        }
+
+        /// <summary>
+        /// كلمات الأطوار مخزَّنة لتُبدَّل بلا تخصيص في الإطار، فتبديل اللغة
+        /// يوجب إعادة جلبها — وإلّا بقيت لوحة الموجة بلغة سابقة وحدها.
+        /// </summary>
+        private void ReloadWords()
+        {
+            _wordPrepare = Loc.Text(LocKeys.PhasePrepare);
+            _wordAssault = Loc.Text(LocKeys.PhaseAssault);
+            _wordRespite = Loc.Text(LocKeys.PhaseRespite);
+            _wordIdle = Loc.Text(LocKeys.PhaseIdle);
+
+            _shownPhase = (WavePhase)(-1);      // يُجبر التحديث التالي على الكتابة
+            _shownKeepTier = -1;
         }
 
         private void Start()
@@ -178,7 +204,7 @@ namespace Dawnkeep.UI
                 // أربع مرّات في الجولة كلّها: بناء سلسلة هنا لا يُحسب قمامةَ إطار
                 _shownKeepTier = _keep.Tier;
                 int length = ArabicNumber.Write(_shownKeepTier, _digits, 0);
-                _keepTier.text = ArabicShaper.Shape("المستوى " + new string(_digits, 0, length));
+                _keepTier.text = Loc.Format(LocKeys.KeepTier, new string(_digits, 0, length));
             }
         }
 
@@ -380,7 +406,7 @@ namespace Dawnkeep.UI
                 return;
             }
 
-            _bannerText.text = ArabicShaper.Shape(title);
+            _bannerText.text = Loc.Shape(title);
             _banner.gameObject.SetActive(true);
             _banner.alpha = 1f;
             _bannerLeft = bannerHold + bannerFade;
@@ -428,7 +454,7 @@ namespace Dawnkeep.UI
             RectTransform panel = MakePanel("WavePanel", root,
                 new Vector2(1f, 1f), new Vector2(-24f, -24f), new Vector2(330f, 108f));
 
-            Label("Caption", panel, "الموجة", 30f, goldColor,
+            Label("Caption", panel, LocKeys.WaveCaption, 30f, goldColor,
                 new Vector2(1f, 1f), new Vector2(-18f, -12f), new Vector2(150f, 38f),
                 TextAlignmentOptions.MidlineRight);
 
@@ -436,7 +462,7 @@ namespace Dawnkeep.UI
                 new Vector2(0f, 1f), new Vector2(18f, -8f), new Vector2(110f, 48f),
                 TextAlignmentOptions.MidlineLeft);
 
-            _phaseLabel = Label("Phase", panel, "استعداد", 24f, goldColor,
+            _phaseLabel = Label("Phase", panel, LocKeys.PhasePrepare, 24f, goldColor,
                 new Vector2(1f, 0f), new Vector2(-18f, 14f), new Vector2(160f, 34f),
                 TextAlignmentOptions.MidlineRight);
 
@@ -470,7 +496,7 @@ namespace Dawnkeep.UI
             colors.selectedColor = Color.white;
             button.colors = colors;
 
-            Label("Caption", rect, "ابدأ الآن", 26f, goldColor,
+            Label("Caption", rect, LocKeys.HastenButton, 26f, goldColor,
                 new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(180f, 44f),
                 TextAlignmentOptions.Midline);
 
@@ -483,7 +509,7 @@ namespace Dawnkeep.UI
             RectTransform panel = MakePanel("CountsPanel", root,
                 new Vector2(0f, 1f), new Vector2(24f, -24f), new Vector2(300f, 108f));
 
-            Label("KingdomCaption", panel, "المدافعون", 24f, kingdomColor,
+            Label("KingdomCaption", panel, LocKeys.DefendersCaption, 24f, kingdomColor,
                 new Vector2(1f, 1f), new Vector2(-18f, -12f), new Vector2(160f, 34f),
                 TextAlignmentOptions.MidlineRight);
 
@@ -491,7 +517,7 @@ namespace Dawnkeep.UI
                 new Vector2(0f, 1f), new Vector2(18f, -12f), new Vector2(96f, 34f),
                 TextAlignmentOptions.MidlineLeft);
 
-            Label("HordeCaption", panel, "المهاجمون", 24f, hordeColor,
+            Label("HordeCaption", panel, LocKeys.AttackersCaption, 24f, hordeColor,
                 new Vector2(1f, 0f), new Vector2(-18f, 14f), new Vector2(160f, 34f),
                 TextAlignmentOptions.MidlineRight);
 
@@ -508,7 +534,7 @@ namespace Dawnkeep.UI
             RectTransform panel = MakePanel("KeepBar", root,
                 new Vector2(0.5f, 1f), new Vector2(0f, -18f), new Vector2(560f, 66f));
 
-            Label("Caption", panel, "قلب الحصن", 26f, goldColor,
+            Label("Caption", panel, LocKeys.KeepCaption, 26f, goldColor,
                 new Vector2(1f, 1f), new Vector2(-16f, -6f), new Vector2(180f, 32f),
                 TextAlignmentOptions.MidlineRight);
 
@@ -548,7 +574,7 @@ namespace Dawnkeep.UI
             RectTransform panel = MakePanel("SilverPanel", root,
                 new Vector2(0f, 1f), new Vector2(24f, -260f), new Vector2(340f, 62f));
 
-            Label("Caption", panel, "الفضّة", 26f, goldColor,
+            Label("Caption", panel, LocKeys.SilverCaption, 26f, goldColor,
                 new Vector2(1f, 0.5f), new Vector2(-18f, 0f), new Vector2(120f, 40f),
                 TextAlignmentOptions.MidlineRight);
 
@@ -573,7 +599,7 @@ namespace Dawnkeep.UI
             RectTransform panel = MakePanel("LightPanel", root,
                 new Vector2(0f, 1f), new Vector2(24f, -334f), new Vector2(340f, 108f));
 
-            Label("StockCaption", panel, "شحنات النور", 24f, dawnColor,
+            Label("StockCaption", panel, LocKeys.LightStockCaption, 24f, dawnColor,
                 new Vector2(1f, 1f), new Vector2(-18f, -12f), new Vector2(220f, 34f),
                 TextAlignmentOptions.MidlineRight);
 
@@ -581,7 +607,7 @@ namespace Dawnkeep.UI
                 new Vector2(0f, 1f), new Vector2(18f, -12f), new Vector2(86f, 34f),
                 TextAlignmentOptions.MidlineLeft);
 
-            Label("BeaconCaption", panel, "منارات مضيئة", 24f, inkColor,
+            Label("BeaconCaption", panel, LocKeys.LightBeaconsCaption, 24f, inkColor,
                 new Vector2(1f, 0f), new Vector2(-18f, 14f), new Vector2(220f, 34f),
                 TextAlignmentOptions.MidlineRight);
 
@@ -599,7 +625,7 @@ namespace Dawnkeep.UI
             RectTransform rect = MakeRect("Hint", root,
                 new Vector2(0.5f, 0f), new Vector2(0f, 26f), new Vector2(820f, 40f));
 
-            Label("Text", rect, "انقر منارةً لتنقل إليها شحنة نور، وانقرها ثانيةً لتستردّها",
+            Label("Text", rect, LocKeys.LightHint,
                 24f, dawnColor, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(820f, 40f),
                 TextAlignmentOptions.Midline);
 
@@ -617,7 +643,7 @@ namespace Dawnkeep.UI
             _heroPanel.alpha = 0.35f;      // تبهت حتى يدخل البطل الساحة
             _heroPanel.blocksRaycasts = false;
 
-            Label("Name", panel, "البطل", 28f, goldColor,
+            Label("Name", panel, LocKeys.HeroCaption, 28f, goldColor,
                 new Vector2(1f, 1f), new Vector2(-18f, -10f), new Vector2(150f, 36f),
                 TextAlignmentOptions.MidlineRight);
 
@@ -654,7 +680,7 @@ namespace Dawnkeep.UI
             _banner.blocksRaycasts = false;
             _banner.interactable = false;
 
-            _bannerText = Label("Title", rect, string.Empty, 48f, goldColor,
+            _bannerText = MakeText("Title", rect, 48f, goldColor,
                 new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(720f, 76f),
                 TextAlignmentOptions.Midline);
 
@@ -687,12 +713,15 @@ namespace Dawnkeep.UI
             return rect;
         }
 
-        /// <summary>نصّ عربي ثابت: يُشكَّل مرّة عند البناء.</summary>
-        private TextMeshProUGUI Label(string name, Transform parent, string logical, float size,
+        /// <summary>
+        /// نصّ ثابت **بمفتاحه** لا بحروفه: `Loc` يجلبه باللغة الحالية ويشكّله.
+        /// يُبنى مرّة في `Awake`، ويُعاد بناؤه عند تبديل اللغة.
+        /// </summary>
+        private TextMeshProUGUI Label(string name, Transform parent, string key, float size,
             Color color, Vector2 anchor, Vector2 offset, Vector2 rectSize, TextAlignmentOptions align)
         {
             TextMeshProUGUI text = MakeText(name, parent, size, color, anchor, offset, rectSize, align);
-            text.text = ArabicShaper.Shape(logical);
+            text.gameObject.AddComponent<LocalizedLabel>().Bind(text, key);
             return text;
         }
 

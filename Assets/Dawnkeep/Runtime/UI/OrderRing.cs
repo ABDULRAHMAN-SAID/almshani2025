@@ -1,3 +1,4 @@
+using Dawnkeep.Localization;
 using Dawnkeep.Squads;
 using TMPro;
 using UnityEngine;
@@ -36,21 +37,18 @@ namespace Dawnkeep.UI
         private float _toastLeft;
         private bool _shownAlert;
 
+        // مفاتيح لا نصوص: القالب يحمل `{0}` لعدد الفرق، فيُحلّ عند كل أمر
         private string _wordFollow;
         private string _wordHold;
         private string _wordDefend;
         private string _wordRetreat;
-        private string _wordNone;
-        private string _wordNoHero;
 
         private void Awake()
         {
-            _wordFollow = ArabicShaper.Shape("فرقةً تتبعك");
-            _wordHold = ArabicShaper.Shape("فرقةً ثبتت");
-            _wordDefend = ArabicShaper.Shape("فرقةً تدافع");
-            _wordRetreat = ArabicShaper.Shape("فرقةً تتراجع");
-            _wordNone = ArabicShaper.Shape("لا فرقة قريبة");
-            _wordNoHero = ArabicShaper.Shape("لا بطل في الساحة");
+            _wordFollow = LocKeys.OrderAckFollow;
+            _wordHold = LocKeys.OrderAckHold;
+            _wordDefend = LocKeys.OrderAckDefend;
+            _wordRetreat = LocKeys.OrderAckRetreat;
 
             Build();
         }
@@ -127,7 +125,7 @@ namespace Dawnkeep.UI
         }
 
         /// <summary>
-        /// يقول كم فرقة سمعت الأمر. أمرٌ بلا ردّ يجعل اللاعب يعيده ظنّاً أنّه
+        /// يقول كم فرقة سمعت الأمر. `what` مفتاح قالبٍ فيه `{0}` للعدد. أمرٌ بلا ردّ يجعل اللاعب يعيده ظنّاً أنّه
         /// لم يصل — وأسوأ منه أمرٌ لم يشمل أحداً فيبدو كأنّه نُفِّذ.
         /// </summary>
         private void Report(int count, string what)
@@ -136,19 +134,19 @@ namespace Dawnkeep.UI
 
             if (count < 0)
             {
-                _toast.text = _wordNoHero;
+                _toast.text = Loc.Text(LocKeys.OrderNoHero);
                 _toast.color = alertColor;
             }
             else if (count == 0)
             {
-                _toast.text = _wordNone;
+                _toast.text = Loc.Text(LocKeys.OrderNoSquad);
                 _toast.color = alertColor;
             }
             else
             {
                 char[] buffer = new char[ArabicNumber.MaxLength];
                 int length = ArabicNumber.Write(count, buffer, 0);
-                _toast.text = new string(buffer, 0, length) + " " + what;
+                _toast.text = Loc.Format(what, new string(buffer, 0, length));
                 _toast.color = goldColor;
             }
 
@@ -179,7 +177,7 @@ namespace Dawnkeep.UI
             openButton.targetGraphic = _openBackground;
             openButton.onClick.AddListener(Toggle);
 
-            Label("Caption", open, "الأوامر", 26f, goldColor,
+            Label("Caption", open, LocKeys.OrdersButton, 26f, goldColor,
                 new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(124f, 44f),
                 TextAlignmentOptions.Midline);
 
@@ -190,12 +188,12 @@ namespace Dawnkeep.UI
                 new Vector2(1f, 0f), new Vector2(-136f, 138f), new Vector2(10f, 10f));
             _ring = ring.gameObject;
 
-            MakeOption(ring, "Follow", "اتبعني", new Vector2(-120f, 24f), Follow);
-            MakeOption(ring, "Hold", "اثبت", new Vector2(-108f, 126f), Hold);
-            MakeOption(ring, "Defend", "دافع", new Vector2(-62f, 222f), Defend);
+            MakeOption(ring, "Follow", LocKeys.OrderFollow, new Vector2(-120f, 24f), Follow);
+            MakeOption(ring, "Hold", LocKeys.OrderHold, new Vector2(-108f, 126f), Hold);
+            MakeOption(ring, "Defend", LocKeys.OrderDefend, new Vector2(-62f, 222f), Defend);
 
             // «تراجع» أبعد البطاقات عن الإبهام: لا يُضغط بالخطأ بدل «دافع»
-            _retreatButton = MakeOption(ring, "Retreat", "تراجع", new Vector2(-166f, 306f), Retreat);
+            _retreatButton = MakeOption(ring, "Retreat", LocKeys.OrderRetreat, new Vector2(-166f, 306f), Retreat);
             _retreatButton.SetActive(false);
 
             _ring.SetActive(false);
@@ -206,7 +204,7 @@ namespace Dawnkeep.UI
                 TextAlignmentOptions.MidlineRight);
         }
 
-        private GameObject MakeOption(Transform parent, string name, string caption,
+        private GameObject MakeOption(Transform parent, string name, string captionKey,
             Vector2 offset, UnityEngine.Events.UnityAction action)
         {
             RectTransform rect = MakeRect(name, parent,
@@ -220,7 +218,7 @@ namespace Dawnkeep.UI
             button.targetGraphic = background;
             button.onClick.AddListener(action);
 
-            Label("Caption", rect, caption, 26f, inkColor,
+            Label("Caption", rect, captionKey, 26f, inkColor,
                 new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(142f, 44f),
                 TextAlignmentOptions.Midline);
 
@@ -241,11 +239,11 @@ namespace Dawnkeep.UI
             return rect;
         }
 
-        private TextMeshProUGUI Label(string name, Transform parent, string logical, float size,
+        private TextMeshProUGUI Label(string name, Transform parent, string key, float size,
             Color color, Vector2 anchor, Vector2 offset, Vector2 rectSize, TextAlignmentOptions align)
         {
             TextMeshProUGUI text = MakeText(name, parent, size, color, anchor, offset, rectSize, align);
-            text.text = ArabicShaper.Shape(logical);
+            text.gameObject.AddComponent<LocalizedLabel>().Bind(text, key);
             return text;
         }
 

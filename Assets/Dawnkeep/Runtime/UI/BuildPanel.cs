@@ -1,5 +1,6 @@
 using Dawnkeep.Building;
 using Dawnkeep.Economy;
+using Dawnkeep.Localization;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -91,22 +92,21 @@ namespace Dawnkeep.UI
 
             bool affordable = _treasury == null || _treasury.CanAfford(keep.NextTierCost);
 
-            _name[0].text = ArabicShaper.Shape("رقِّ قلب الحصن");
+            _name[0].text = Loc.Text(LocKeys.BuildKeepUpgrade);
             _name[0].color = goldColor;
 
-            _cost[0].text = ArabicShaper.Shape(Digits(keep.NextTierCost) + " فضّة");
+            _cost[0].text = Loc.Format(LocKeys.BuildCost, Digits(keep.NextTierCost));
             _cost[0].color = affordable ? inkColor : denyColor;
 
-            _summary[0].text = ArabicShaper.Shape(
-                "المستوى " + Digits(keep.Tier + 1) + " يفتح عقد بناء جديدة.");
+            _summary[0].text = Loc.Format(LocKeys.BuildKeepSummary, Digits(keep.Tier + 1));
 
-            _stat[0].text = ArabicShaper.Shape("صحّة "
-                + Digits(Mathf.RoundToInt(keep.NextTierHealth))
+            _stat[0].text = Loc.Format(LocKeys.BuildStatHealth,
+                Digits(Mathf.RoundToInt(keep.NextTierHealth))
                 + Delta(Mathf.RoundToInt(keep.NextTierHealth), Mathf.RoundToInt(keep.MaxHealth)));
             _stat[0].color = inkColor;
 
             HideFrom(1);
-            _header.text = ArabicShaper.Shape("قلب الحصن");
+            _header.text = Loc.Text(LocKeys.BuildKeepTitle);
             _root.SetActive(true);
         }
 
@@ -139,9 +139,9 @@ namespace Dawnkeep.UI
                 return;
             }
 
-            _header.text = ArabicShaper.Shape(node.IsEmpty
-                ? "ابنِ على " + NodeName(node.Kind)
-                : "رقِّ أو بِع");
+            _header.text = node.IsEmpty
+                ? Loc.Format(LocKeys.BuildOnNode, Loc.Raw(NodeKey(node.Kind)))
+                : Loc.Text(LocKeys.BuildUpgradeOrSell);
 
             _root.SetActive(true);
         }
@@ -241,14 +241,14 @@ namespace Dawnkeep.UI
             bool affordable = _treasury == null || _treasury.CanAfford(def.Cost);
             _cardBack[index].color = panelColor;
 
-            _name[index].text = ArabicShaper.Shape(def.DisplayName);
+            _name[index].text = Loc.Shape(def.DisplayName);
             _name[index].color = goldColor;
 
-            _cost[index].text = ArabicShaper.Shape(Digits(def.Cost) + " فضّة");
+            _cost[index].text = Loc.Format(LocKeys.BuildCost, Digits(def.Cost));
             _cost[index].color = affordable ? inkColor : denyColor;
 
-            _summary[index].text = ArabicShaper.Shape(def.Summary);
-            _stat[index].text = ArabicShaper.Shape(StatLine(def, compareTo));
+            _summary[index].text = Loc.Shape(def.Summary);
+            _stat[index].text = Loc.Shape(StatLine(def, compareTo));
             _stat[index].color = inkColor;
         }
 
@@ -261,17 +261,16 @@ namespace Dawnkeep.UI
             float fraction = _treasury != null ? _treasury.SellFraction : 0.7f;
             int back = Mathf.RoundToInt(current.TotalPaid * fraction);
 
-            _name[index].text = ArabicShaper.Shape("بِع");
+            _name[index].text = Loc.Text(LocKeys.BuildSell);
             _name[index].color = sellColor;
 
-            _cost[index].text = ArabicShaper.Shape("+" + Digits(back) + " فضّة");
+            _cost[index].text = Loc.Format(LocKeys.BuildSellRefund, Digits(back));
             _cost[index].color = sellColor;
 
-            _summary[index].text = ArabicShaper.Shape(
-                "يُهدم " + current.Definition.DisplayName + " ويُستردّ "
-                + Digits(Mathf.RoundToInt(fraction * 100f)) + "٪ مِمّا دُفع فيه.");
+            _summary[index].text = Loc.Format(LocKeys.BuildSellSummary,
+                current.Definition.DisplayName, Digits(Mathf.RoundToInt(fraction * 100f)));
 
-            _stat[index].text = ArabicShaper.Shape("العقدة تعود خالية");
+            _stat[index].text = Loc.Text(LocKeys.BuildSellStat);
             _stat[index].color = sellColor;
         }
 
@@ -284,24 +283,30 @@ namespace Dawnkeep.UI
             switch (def.Role)
             {
                 case BuildingRole.Economy:
-                    return "دخل الفجر " + Digits(def.DawnIncome)
-                        + Delta(def.DawnIncome, compareTo != null ? compareTo.DawnIncome : 0);
+                    return Fill(LocKeys.BuildStatIncome, Digits(def.DawnIncome)
+                        + Delta(def.DawnIncome, compareTo != null ? compareTo.DawnIncome : 0));
 
                 case BuildingRole.Tower:
-                    return "ضرر/ث " + Digits(Mathf.RoundToInt(def.DamagePerSecond))
-                        + Delta(Mathf.RoundToInt(def.DamagePerSecond),
-                            compareTo != null ? Mathf.RoundToInt(compareTo.DamagePerSecond) : 0)
-                        + " · مدى " + Digits(Mathf.RoundToInt(def.Range));
+                    return Fill(LocKeys.BuildStatDps, Digits(Mathf.RoundToInt(def.DamagePerSecond))
+                            + Delta(Mathf.RoundToInt(def.DamagePerSecond),
+                                compareTo != null ? Mathf.RoundToInt(compareTo.DamagePerSecond) : 0))
+                        + " · " + Fill(LocKeys.BuildStatRange, Digits(Mathf.RoundToInt(def.Range)));
 
                 case BuildingRole.Garrison:
-                    return Digits(def.GuardCount) + " حرّاس"
-                        + Delta(def.GuardCount, compareTo != null ? compareTo.GuardCount : 0);
+                    return Fill(LocKeys.BuildStatGuards, Digits(def.GuardCount)
+                        + Delta(def.GuardCount, compareTo != null ? compareTo.GuardCount : 0));
 
                 default:
-                    return "صحّة " + Digits(Mathf.RoundToInt(def.MaxHealth))
+                    return Fill(LocKeys.BuildStatHealth, Digits(Mathf.RoundToInt(def.MaxHealth))
                         + Delta(Mathf.RoundToInt(def.MaxHealth),
-                            compareTo != null ? Mathf.RoundToInt(compareTo.MaxHealth) : 0);
+                            compareTo != null ? Mathf.RoundToInt(compareTo.MaxHealth) : 0));
             }
+        }
+
+        /// <summary>قالبٌ محلولٌ **بلا تشكيل**: المنادي يركّب ثمّ يشكّل مرّة.</summary>
+        private static string Fill(string key, string value)
+        {
+            return Loc.Raw(key).Replace("{0}", value);
         }
 
         private static string Delta(int now, int before)
@@ -323,15 +328,15 @@ namespace Dawnkeep.UI
             return new string(buffer, 0, length);
         }
 
-        private static string NodeName(NodeKind kind)
+        private static string NodeKey(NodeKind kind)
         {
             switch (kind)
             {
-                case NodeKind.Gate: return "عقدة البوّابة";
-                case NodeKind.Outer: return "عقدة خارجية";
-                case NodeKind.Economy: return "عقدة اقتصاد";
-                case NodeKind.Beacon: return "عقدة منارة";
-                default: return "عقدة داخلية";
+                case NodeKind.Gate: return LocKeys.NodeGate;
+                case NodeKind.Outer: return LocKeys.NodeOuter;
+                case NodeKind.Economy: return LocKeys.NodeEconomy;
+                case NodeKind.Beacon: return LocKeys.NodeBeacon;
+                default: return LocKeys.NodeInner;
             }
         }
 
