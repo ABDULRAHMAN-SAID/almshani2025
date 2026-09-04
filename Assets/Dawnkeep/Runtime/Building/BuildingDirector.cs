@@ -433,6 +433,16 @@ namespace Dawnkeep.Building
                 _combat = CombatDirector.Instance;
             }
 
+            // كل ثكنة فرقة (§9): قرارٌ واحد يقود جندها لا قرارٌ لكل فرد
+            Squads.Squad squad = building.GetComponent<Squads.Squad>();
+            if (squad == null)
+            {
+                squad = building.gameObject.AddComponent<Squads.Squad>();
+            }
+
+            squad.Clear();
+            squad.SetPost(building.Body.position);
+
             for (int i = 0; i < definition.GuardCount; i++)
             {
                 float angle = (float)i / definition.GuardCount * Mathf.PI * 2f;
@@ -452,6 +462,7 @@ namespace Dawnkeep.Building
                 unit.SetDefinition(definition.Guard);
                 unit.Awaken();
                 building.AddGuard(unit);
+                squad.Enlist(unit);
 
                 if (_combat != null)
                 {

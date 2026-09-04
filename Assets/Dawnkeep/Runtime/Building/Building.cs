@@ -131,6 +131,12 @@ namespace Dawnkeep.Building
             }
 
             _guards.Clear();
+
+            Squads.Squad squad = GetComponent<Squads.Squad>();
+            if (squad != null)
+            {
+                squad.Clear();      // فرقةٌ بلا أفراد تبقى مسجَّلة وتُحسب في الأوامر
+            }
         }
 
         /// <summary>يضيف ثمن ترقية إلى إجماليه، ويعيد بناء شكله بتعريفه الجديد.</summary>

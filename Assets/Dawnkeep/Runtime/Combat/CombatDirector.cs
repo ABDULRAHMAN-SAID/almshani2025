@@ -632,6 +632,12 @@ namespace Dawnkeep.Combat
             float bestScore = float.MaxValue;
             float sightSqr = def.SightRange * def.SightRange;
 
+            // المقود: لا تلاحق الفرقة هدفاً يخرج بها عن مرساتها (§9). الفحص
+            // على **موضع الهدف** لا على موضع الملاحِق: عدوٌّ يقف على حافّة
+            // المقود يجرّ الجندي خارجه إن قيسَ من الجندي.
+            bool leashed = unit.HasHome && unit.Leash > 0f;
+            float leashSqr = unit.Leash * unit.Leash;
+
             for (int n = 0; n < found; n++)
             {
                 int j = _neighbours[n];
@@ -654,7 +660,23 @@ namespace Dawnkeep.Combat
                     continue;
                 }
 
+                if (leashed)
+                {
+                    Vector3 fromHome = other.Body.position - unit.Home;
+                    fromHome.y = 0f;
+                    if (fromHome.sqrMagnitude > leashSqr)
+                    {
+                        continue;
+                    }
+                }
+
                 float score = distSqr;
+
+                // «دافع عن الهدف»: من يضرب ما نحرسه أولى بضربنا (§9)
+                if (unit.Guarded != null && other.StructureTarget == unit.Guarded)
+                {
+                    score *= 0.30f;
+                }
 
                 // تفضيل الفئة: الأثمن يُقرَّب وزنه فيُختار وإن كان أبعد قليلاً
                 UnitDefinition otherDef = other.Definition;

@@ -27,6 +27,8 @@ namespace Dawnkeep.Combat
         private Dawnkeep.Building.Building _structureTarget;
         private Vector3 _home;
         private bool _hasHome;
+        private float _leash;
+        private Dawnkeep.Building.Building _guarded;
         private float _light;
         private float _slowUntil;
         private float _slowFactor = 1f;
@@ -135,6 +137,28 @@ namespace Dawnkeep.Combat
 
         public bool HasHome { get { return _hasHome; } }
 
+        /// <summary>
+        /// أبعد ما تبتعده عن مرساتها لملاحقة عدوّ. صفر يعني بلا حدّ.
+        /// هذا هو كل ما تحتاجه حلقة القتال لتعرف أمر الفرقة — لا تعرف الفرق
+        /// أصلاً، بل تقرأ حقلَين على الوحدة كما كانت تفعل.
+        /// </summary>
+        public float Leash { get { return _leash; } }
+
+        /// <summary>المبنى الذي تدافع عنه — يرجّح مهاجميه في اختيار الهدف.</summary>
+        public Dawnkeep.Building.Building Guarded
+        {
+            get { return _guarded; }
+            set { _guarded = value; }
+        }
+
+        /// <summary>يضبط مرساة الوحدة ومقودها. تستعمله `Squad` وحدها.</summary>
+        public void SetPost(Vector3 home, float leash)
+        {
+            _home = home;
+            _hasHome = true;
+            _leash = leash;
+        }
+
         private void Awake()
         {
             _transform = transform;
@@ -167,6 +191,8 @@ namespace Dawnkeep.Combat
             _pathIndex = 0;
             _home = _transform.position;
             _hasHome = true;      // الحامية ترابط: تعود إلى موقعها بعد الاشتباك
+            _leash = 0f;
+            _guarded = null;
         }
 
         /// <summary>يضبط تعريف الوحدة من محرّر المشهد.</summary>
@@ -200,6 +226,8 @@ namespace Dawnkeep.Combat
             _path = path;
             _pathIndex = 0;
             _hasHome = false;      // المهاجم لا يرابط: يمضي على مساره
+            _leash = 0f;
+            _guarded = null;
 
             if (_animator != null)
             {
