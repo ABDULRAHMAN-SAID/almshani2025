@@ -199,5 +199,21 @@ namespace Dawnkeep.Localization
         public const string ForgeNoGold = "forge.no.gold";
         public const string ForgeNoEssence = "forge.no.essence";
         public const string ForgeStarterGear = "forge.starter";
+
+        // بطاقات العقائد (§18)
+        public const string DoctrineOpen = "doctrine.open";
+        public const string DoctrineTitle = "doctrine.title";
+        public const string DoctrineHint = "doctrine.hint";
+        public const string DoctrineLocked = "doctrine.locked";
+        public const string DoctrineAlready = "doctrine.already";
+        public const string DoctrineNeeds = "doctrine.needs";
+        public const string DoctrineUpgraded = "doctrine.upgraded";
+        public const string DoctrineUpgradeAt = "doctrine.upgrade.at";
+        public const string UnlockFromStart = "doctrine.unlock.start";
+        public const string UnlockAccountLevel = "doctrine.unlock.level";
+        public const string UnlockVictories = "doctrine.unlock.victories";
+        public const string UnlockFurthestWave = "doctrine.unlock.wave";
+        public const string UnlockBossesMet = "doctrine.unlock.bosses";
+        public const string UnlockStagesPlayed = "doctrine.unlock.stages";
     }
 }

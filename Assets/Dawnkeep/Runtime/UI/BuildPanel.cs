@@ -240,7 +240,7 @@ namespace Dawnkeep.UI
 
             // الثمن المعروض هو المخصوم نفسه: بطاقةٌ تقول مئةً وتخصم خمسةً
             // وثمانين تُقرأ عطباً لا بركة.
-            int price = BuildingDirector.CostOf(def);
+            int price = BuildingDirector.PriceOf(def);
             bool affordable = _treasury == null || _treasury.CanAfford(price);
             _cardBack[index].color = panelColor;
 

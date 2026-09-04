@@ -259,6 +259,28 @@ namespace Dawnkeep.EditorTools
                     "Not enough essence"),
                 DawnkeepLocale.Row(LocKeys.ForgeStarterGear, "عتاد البداية لا يُفكَّك",
                     "Starter gear cannot be dismantled"),
+
+                // بطاقات العقائد (§18)
+                DawnkeepLocale.Row(LocKeys.DoctrineOpen, "العقائد", "Doctrines"),
+                DawnkeepLocale.Row(LocKeys.DoctrineTitle, "عقيدتك في هذه المرحلة",
+                    "Your doctrine for this stage"),
+                DawnkeepLocale.Row(LocKeys.DoctrineHint,
+                    "بطاقتان لا أكثر — ولكلٍّ ثمنها",
+                    "Two cards, no more — and each has its price"),
+                DawnkeepLocale.Row(LocKeys.DoctrineLocked, "لم تُفتح بعد", "Not unlocked yet"),
+                DawnkeepLocale.Row(LocKeys.DoctrineAlready, "هي في الفتحة الأخرى",
+                    "Already in the other slot"),
+                DawnkeepLocale.Row(LocKeys.DoctrineNeeds, "{0}: {1}", "{0}: {1}"),
+                DawnkeepLocale.Row(LocKeys.DoctrineUpgraded, "مُرقّاة", "Upgraded"),
+                DawnkeepLocale.Row(LocKeys.DoctrineUpgradeAt, "ترقية عند {0}",
+                    "Upgrade at {0}"),
+                DawnkeepLocale.Row(LocKeys.UnlockFromStart, "مفتوحة", "Open"),
+                DawnkeepLocale.Row(LocKeys.UnlockAccountLevel, "مستوى الحساب",
+                    "Account level"),
+                DawnkeepLocale.Row(LocKeys.UnlockVictories, "انتصارات", "Victories"),
+                DawnkeepLocale.Row(LocKeys.UnlockFurthestWave, "أبعد ليلة", "Furthest night"),
+                DawnkeepLocale.Row(LocKeys.UnlockBossesMet, "زعماء لُقُوا", "Bosses met"),
+                DawnkeepLocale.Row(LocKeys.UnlockStagesPlayed, "مراحل لُعبت", "Stages played"),
             };
         }
 

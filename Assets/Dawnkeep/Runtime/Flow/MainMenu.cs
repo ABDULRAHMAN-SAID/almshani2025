@@ -147,6 +147,15 @@ namespace Dawnkeep.Flow
             }
         }
 
+        private void OpenDoctrine()
+        {
+            Dawnkeep.UI.DoctrinePanel panel = FindAnyObjectByType<Dawnkeep.UI.DoctrinePanel>();
+            if (panel != null)
+            {
+                panel.Open();
+            }
+        }
+
         private void OpenSettings()
         {
             PauseMenu pause = FindAnyObjectByType<PauseMenu>();
@@ -297,8 +306,12 @@ namespace Dawnkeep.Flow
 
             // التجهيز **قبل المرحلة** لا في أثنائها (§17): من دخل الليلة
             // بسلاحٍ لا يريده يخرج منها ليبدّله، وذاك ليس اختياراً.
-            Button(rect, "Loadout", LocKeys.LoadoutOpen, new Vector2(0f, -232f),
+            // والعقائد كذلك بنصّ §18: «يجهّز اللاعب بطاقتين قبل المرحلة».
+            Button(rect, "Loadout", LocKeys.LoadoutOpen, new Vector2(-150f, -232f),
                 new Vector2(280f, 92f), 28f, inkColor, OpenLoadout);
+
+            Button(rect, "Doctrine", LocKeys.DoctrineOpen, new Vector2(150f, -232f),
+                new Vector2(280f, 92f), 28f, inkColor, OpenDoctrine);
 
             // ما لم يُبنَ بعد يُقال نصّاً لا يُعرض زرّاً (§17). والحدّادة
             // خرجت من هذه القائمة: صارت داخل شاشة التجهيز.

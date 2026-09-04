@@ -51,7 +51,12 @@ namespace Dawnkeep.Economy
         private void Awake()
         {
             Instance = this;
-            _silver = startingSilver;
+
+            // «الاستثمار المبكّر» (§18): فضّةٌ إضافية عند البداية. تُضاف هنا
+            // **مرّةً** لا في كل قراءة: عقيدةٌ تُقرأ كمضاعفٍ على الرصيد تعني
+            // مالاً يتضاعف عند كل بناء.
+            _silver = startingSilver + Dawnkeep.Doctrine.DoctrineBook.Opening(
+                Dawnkeep.Doctrine.DoctrineOpening.ExtraSilver);
         }
 
         private void OnDestroy()

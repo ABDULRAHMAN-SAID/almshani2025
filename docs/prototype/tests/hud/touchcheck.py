@@ -409,4 +409,92 @@ check('كل زرٍّ في الشاشة يستدعي دالّةً موجودة (�
       '' if not missing else f'  ({"، ".join(missing)})')
 print('      · ' + '، '.join(sorted(set(listeners))))
 
+print()
+print('── شاشة العقائد (§18) ────────────────────')
+
+DOCUI = read('DoctrinePanel.cs')
+doc_rects = collect(DOCUI, {'parent': ROOT_RECT})
+dpanel = doc_rects.get('DoctrinePanel', ROOT_RECT)
+
+dslot = re.search(r'MakeRect\("Slot_" \+ i, rect,\s*\n\s*' + VEC
+                  + r',\s*new Vector2\(-([0-9.]+)f - \(i \* ([0-9.]+)f\),\s*(-?[0-9.]+)f\),'
+                  + r'\s*\n\s*' + VEC, DOCUI)
+DSLOTS = int(re.search(r'public const int Slots = (\d+);', io.open(os.path.join(ROOT,
+    'Assets/Dawnkeep/Runtime/Doctrine/DoctrineBook.cs'), encoding='utf-8').read()).group(1))
+
+dtaps = {}
+if dslot:
+    g = dslot.groups()
+    ax, ay = pair(*g[0:3])
+    x0, step, y = float(g[3]), float(g[4]), float(g[5])
+    w, h = pair(*g[6:9])
+    for i in range(DSLOTS):
+        dtaps['فتحة ' + str(i)] = place(dpanel, ax, ay, -(x0 + i * step), y, w, h)
+
+drow = re.search(r'MakeRect\("Row_" \+ i, rect,\s*\n\s*' + VEC
+                 + r',\s*new Vector2\(([0-9.]+)f,\s*(-?[0-9.]+)f - \(i \* ([0-9.]+)f\)\),'
+                 + r'\s*\n\s*' + VEC, DOCUI)
+DROWS = int(re.search(r'public const int Rows = (\d+);', DOCUI).group(1))
+if drow:
+    g = drow.groups()
+    ax, ay = pair(*g[0:3])
+    x, y0, step = float(g[3]), float(g[4]), float(g[5])
+    w, h = pair(*g[6:9])
+    for i in range(DROWS):
+        dtaps['بطاقة ' + str(i)] = place(dpanel, ax, ay, x, y0 - i * step, w, h)
+
+DSMALL = pair(*re.search(r'MakeRect\(name, rect, anchor, offset, ' + VEC,
+                         DOCUI).groups())
+for m in re.finditer(r'SmallButton\(rect,\s*"(\w+)",\s*' + VEC + r',\s*\n?\s*' + VEC,
+                     DOCUI, re.S):
+    g = m.groups()
+    ax, ay = pair(*g[1:4])
+    ox, oy = pair(*g[4:7])
+    dtaps[g[0]] = place(dpanel, ax, ay, ox, oy, DSMALL[0], DSMALL[1])
+
+show('أهداف اللمس', dtaps)
+print()
+
+check(f'الفتحتان (§18) والبطاقات كما في الشيفرة',
+      len([k for k in dtaps if k.startswith('فتحة')]) == DSLOTS
+      and len([k for k in dtaps if k.startswith('بطاقة')]) == DROWS,
+      f'  ({DSLOTS} فتحتان · {DROWS} بطاقات)')
+
+small = [n for n, r in dtaps.items() if min(r.w, r.h) < MIN_TAP]
+check(f'لا هدفَ يصغر عن {MIN_TAP} بكسلاً', not small,
+      '' if not small else f'  ({"، ".join(small)})')
+
+clashes = []
+names = list(dtaps)
+for i in range(len(names)):
+    for j in range(i + 1, len(names)):
+        hit = overlap(dtaps[names[i]], dtaps[names[j]])
+        if hit:
+            clashes.append((names[i], names[j], hit))
+
+check('ولا تراكب بين هدفين', not clashes,
+      '' if not clashes else f'  ({clashes[0][0]} × {clashes[0][1]} بـ{clashes[0][2]})')
+
+outside = [n for n, r in dtaps.items()
+           if r.x < dpanel.x - 1 or r.y < dpanel.y - 1
+           or r.right > dpanel.right + 1 or r.top > dpanel.top + 1]
+check('وكلٌّ داخل اللوحة', not outside,
+      '' if not outside else f'  ({"، ".join(outside)})')
+
+check('واللوحة داخل الشاشة',
+      0 <= dpanel.x and 0 <= dpanel.y and dpanel.right <= W and dpanel.top <= H,
+      f'  ({dpanel})')
+
+listeners = re.findall(r'onClick\.AddListener\((?:delegate \{ )?(\w+)', DOCUI)
+missing = [a for a in set(listeners)
+           if not re.search(r'(private|public)[^\n]*\b' + a + r'\(', DOCUI)]
+check('كل زرٍّ في الشاشة يستدعي دالّةً موجودة (§17)', not missing,
+      '' if not missing else f'  ({"، ".join(missing)})')
+
+# واللوحتان لا تُفتحان معاً على الشاشة نفسها: كلٌّ تُغلق الأخرى؟ لا —
+# تُفتح واحدةٌ في كل مرّة من القائمة، ومقاسهما واحد فتتطابقان تماماً.
+check('ولوحتا التجهيز والعقائد بالمقاس نفسه (تخطيطٌ واحد)',
+      abs(panel.w - dpanel.w) < 1 and abs(panel.h - dpanel.h) < 1,
+      f'  ({panel.w:.0f}×{panel.h:.0f})')
+
 sys.exit(0 if ok else 1)

@@ -79,6 +79,12 @@ namespace Dawnkeep.Light
                     _stock += progress.ExtraLightCharges;
                 }
 
+                // «التخم المضيء» (§18): شحنةٌ مجّانية من العقيدة. تُضاف إلى
+                // المخزون لا تُشعل منارةً بعينها: العقيدة تُجهَّز قبل رؤية
+                // الخريطة، وإشعالُ عقدةٍ بعينها لا يعرف اللاعب أين هي.
+                _stock += Dawnkeep.Doctrine.DoctrineBook.Opening(
+                    Dawnkeep.Doctrine.DoctrineOpening.LitBeacon);
+
                 _stockReady = true;
             }
         }

@@ -43,12 +43,13 @@ namespace Dawnkeep.Boons
 
         /// <summary>
         /// مضاعف رقمٍ بعينه: **بركةُ الجولة × بحثُ الحساب (§16) × التجهيز
-        /// (§17)**.
+        /// (§17) × العقيدة (§18)**.
         ///
-        /// نقطةُ قراءةٍ واحدة للثلاثة: لو قرأ كل نظامٍ كلاًّ على حدة لَاحتاج
-        /// ثلاثة أسطر، ولَنُسي أحدها في موضعٍ أو موضعين — وذاك بحثٌ يشتريه
-        /// اللاعب أو سيفٌ يلبسه فلا يعمل. والثلاثة **تُضرب**: قطعتان بـ+10%
-        /// تعطيان 1.21 لا 1.20، والضربُ يجعل التكديس يتناقص من نفسه.
+        /// نقطةُ قراءةٍ واحدة للأربعة: لو قرأ كل نظامٍ كلاًّ على حدة لَاحتاج
+        /// أربعة أسطر، ولَنُسي أحدها في موضعٍ أو موضعين — وذاك بحثٌ يشتريه
+        /// اللاعب أو سيفٌ يلبسه أو عقيدةٌ يجهّزها فلا تعمل. والأربعة
+        /// **تُضرب**: مصدران بـ+10% يعطيان 1.21 لا 1.20، والضربُ يجعل
+        /// التكديس يتناقص من نفسه بلا سقفٍ مكتوب.
         ///
         /// وواحدٌ إن لم يمسّه شيء، فالمستدعي يضرب دائماً ولا يفحص.
         /// </summary>
@@ -66,7 +67,8 @@ namespace Dawnkeep.Boons
                 value *= progress.Permanent(stat);
             }
 
-            return value * Dawnkeep.Equipment.Loadout.Stat(stat);
+            return value * Dawnkeep.Equipment.Loadout.Stat(stat)
+                * Dawnkeep.Doctrine.DoctrineBook.Stat(stat);
         }
 
         /// <summary>
@@ -84,7 +86,8 @@ namespace Dawnkeep.Boons
 
             Dawnkeep.Meta.Progress progress = Dawnkeep.Meta.Progress.Instance;
             float permanent = progress != null ? progress.Permanent(stat) : 1f;
-            return permanent * Dawnkeep.Equipment.Loadout.Stat(stat);
+            return permanent * Dawnkeep.Equipment.Loadout.Stat(stat)
+                * Dawnkeep.Doctrine.DoctrineBook.Stat(stat);
         }
 
         public bool Has(BoonFlag flag)

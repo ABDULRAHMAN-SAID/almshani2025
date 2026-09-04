@@ -112,6 +112,11 @@ namespace Dawnkeep.EditorTools
             // ما يحمل الحال، وهو على `Meta`؛ واللوحة رسمٌ يُبنى حيث يُعرض.
             Dawnkeep.UI.LoadoutPanel loadout = canvasObject.AddComponent<Dawnkeep.UI.LoadoutPanel>();
             loadout.Configure(font);
+
+            // والعقائد معها (§18: «قبل المرحلة»)
+            Dawnkeep.UI.DoctrinePanel doctrine =
+                canvasObject.AddComponent<Dawnkeep.UI.DoctrinePanel>();
+            doctrine.Configure(font);
         }
 
         /// <summary>

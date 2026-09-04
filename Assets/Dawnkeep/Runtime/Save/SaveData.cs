@@ -25,6 +25,7 @@ namespace Dawnkeep.Save
         public CampaignProgress Campaign = new CampaignProgress();
         public HeroProgress Hero = new HeroProgress();
         public EquipmentInventory Equipment = new EquipmentInventory();
+        public DoctrineState Doctrine = new DoctrineState();
         public ResearchState Research = new ResearchState();
         public QuestState Quests = new QuestState();
         public PurchasesEntitlements Purchases = new PurchasesEntitlements();
@@ -147,6 +148,17 @@ namespace Dawnkeep.Save
 
             LevelValues[i] = level;
         }
+    }
+
+    [Serializable]
+    public class DoctrineState
+    {
+        /// <summary>
+        /// البطاقتان المجهَّزتان (§18) بأسماء أصولهما. الفتحة الفارغة نصٌّ
+        /// فارغٌ لا حذفٌ من القائمة: الترتيب هو الفتحة، وحذفُ الأولى يجعل
+        /// الثانية أولى.
+        /// </summary>
+        public List<string> Held = new List<string>();
     }
 
     [Serializable]

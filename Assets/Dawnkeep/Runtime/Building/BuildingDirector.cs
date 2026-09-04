@@ -423,11 +423,13 @@ namespace Dawnkeep.Building
                 _treasury = Treasury.Instance;
             }
 
-            int price = CostOf(definition);
+            int price = PriceOf(definition);
             if (_treasury == null || !_treasury.Spend(price))
             {
                 return null;
             }
+
+            Consume(definition);
 
             // لا جاهزة: المبنى يبني شكله بالكود من تعريفه، فجاهزةٌ فارغة تُحفظ
             // في الأصول لا تضيف إلّا ملفّاً يُنسى تحديثه.
@@ -444,6 +446,79 @@ namespace Dawnkeep.Building
             SpawnGuards(building, definition);
             EnsureBeacon(building, definition);
             return building;
+        }
+
+        // ── خصومات العقيدة (§18) ────────────────────────────────────────────
+        //
+        // «الحجر أوّلاً» و«أوّل برج»: خصمٌ على **أوّل ما يُبنى** لا على كل ما
+        // يُبنى. وعدُّ ما استُهلك هنا لا في البطاقة: البطاقة بيانٌ خالص،
+        // والعدّاد حالُ جولةٍ يُمحى بإعادتها.
+
+        /// <summary>كم جداراً بقي من خصم «الحجر أوّلاً».</summary>
+        private int _cheapWallsLeft = -1;
+
+        /// <summary>كم برجاً بقي من خصم «أوّل برج».</summary>
+        private int _freeTowersLeft = -1;
+
+        private void EnsureDiscounts()
+        {
+            if (_cheapWallsLeft >= 0)
+            {
+                return;
+            }
+
+            _cheapWallsLeft = Dawnkeep.Doctrine.DoctrineBook.Opening(
+                Dawnkeep.Doctrine.DoctrineOpening.CheapFirstWalls);
+
+            _freeTowersLeft = Dawnkeep.Doctrine.DoctrineBook.Opening(
+                Dawnkeep.Doctrine.DoctrineOpening.FreeFirstTower);
+        }
+
+        /// <summary>
+        /// الثمن الذي **يدفعه اللاعب فعلاً**: ثمن §10 بعد خصم العقيدة.
+        /// تقرؤه بطاقة اللوحة كما يقرؤه الخصم — لو عرضت البطاقة الثمن
+        /// الكامل بينما يُخصَم النصف، رأى اللاعب بطاقةً حمراء لا يملك ثمنها
+        /// وهو يملكه.
+        /// </summary>
+        public static int PriceOf(BuildingDefinition definition)
+        {
+            int price = CostOf(definition);
+            BuildingDirector director = Instance;
+            return director != null ? director.Discounted(definition, price) : price;
+        }
+
+        /// <summary>ثمنٌ بعد خصم العقيدة، إن بقي منه شيء.</summary>
+        private int Discounted(BuildingDefinition definition, int price)
+        {
+            EnsureDiscounts();
+
+            if (definition.Role == BuildingRole.Wall && _cheapWallsLeft > 0)
+            {
+                return Mathf.Max(0, Mathf.RoundToInt(price * 0.5f));
+            }
+
+            if (definition.Role == BuildingRole.Tower && _freeTowersLeft > 0)
+            {
+                return 0;
+            }
+
+            return price;
+        }
+
+        /// <summary>
+        /// يستهلك خصمةً بعد نجاح الدفع. **بعده لا قبله**: لو نقص الرصيد عن
+        /// الثمن المخفَّض ما بُني شيء، فاستهلاكُ الخصم حينها يضيّعه هدراً.
+        /// </summary>
+        private void Consume(BuildingDefinition definition)
+        {
+            if (definition.Role == BuildingRole.Wall && _cheapWallsLeft > 0)
+            {
+                _cheapWallsLeft--;
+            }
+            else if (definition.Role == BuildingRole.Tower && _freeTowersLeft > 0)
+            {
+                _freeTowersLeft--;
+            }
         }
 
         /// <summary>يرقّي مبنى قائماً إلى أحد فروعه بعد خصم فرق الثمن.</summary>

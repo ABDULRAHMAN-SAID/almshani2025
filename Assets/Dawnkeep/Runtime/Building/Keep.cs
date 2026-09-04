@@ -40,8 +40,9 @@ namespace Dawnkeep.Building
         {
             get
             {
-                return healthByTier[Mathf.Clamp(_tier - 1, 0, healthByTier.Length - 1)]
-                    * Dawnkeep.Boons.BoonBook.Stat(Dawnkeep.Boons.BoonStat.KeepHealth);
+                return (healthByTier[Mathf.Clamp(_tier - 1, 0, healthByTier.Length - 1)]
+                    * Dawnkeep.Boons.BoonBook.Stat(Dawnkeep.Boons.BoonStat.KeepHealth))
+                    + _bonus;
             }
         }
 
@@ -74,16 +75,27 @@ namespace Dawnkeep.Building
                     return MaxHealth;
                 }
 
-                return healthByTier[_tier]
-                    * Dawnkeep.Boons.BoonBook.Stat(Dawnkeep.Boons.BoonStat.KeepHealth);
+                return (healthByTier[_tier]
+                    * Dawnkeep.Boons.BoonBook.Stat(Dawnkeep.Boons.BoonStat.KeepHealth))
+                    + _bonus;
             }
         }
 
         private void Awake()
         {
             Instance = this;
+
+            // «حجر الأساس» (§18): صحّةٌ إضافية لقلب الحصن. تُضاف إلى الرصيد
+            // **وإلى السقف** معاً: زيادةٌ في الرصيد وحده يمحوها أوّل ترميم،
+            // وزيادةٌ في السقف وحده تترك القلب ناقصاً من أوّل ثانية.
+            _bonus = Dawnkeep.Doctrine.DoctrineBook.Opening(
+                Dawnkeep.Doctrine.DoctrineOpening.ReinforcedKeep);
+
             _health = MaxHealth;
         }
+
+        /// <summary>صحّةٌ تضيفها العقيدة إلى السقف (§18). صفرٌ بلا عقيدة.</summary>
+        private int _bonus;
 
         private void OnDestroy()
         {
