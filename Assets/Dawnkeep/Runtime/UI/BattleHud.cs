@@ -1,4 +1,6 @@
+using Dawnkeep.Building;
 using Dawnkeep.Combat;
+using Dawnkeep.Economy;
 using Dawnkeep.Light;
 using TMPro;
 using UnityEngine;
@@ -44,6 +46,8 @@ namespace Dawnkeep.UI
         private WaveDirector _waves;
         private CombatDirector _combat;
         private LightField _light;
+        private Treasury _treasury;
+        private Keep _keep;
 
         private TextMeshProUGUI _waveNumber;
         private TextMeshProUGUI _phaseLabel;
@@ -51,11 +55,16 @@ namespace Dawnkeep.UI
         private TextMeshProUGUI _kingdomCount;
         private TextMeshProUGUI _hordeCount;
         private TextMeshProUGUI _heroHealth;
+        private TextMeshProUGUI _silver;
+        private TextMeshProUGUI _bounty;
         private TextMeshProUGUI _lightStock;
         private TextMeshProUGUI _beaconCount;
         private TextMeshProUGUI _bannerText;
         private GameObject _hint;
         private Image _heroBar;
+        private Image _keepBar;
+        private TextMeshProUGUI _keepHealth;
+        private TextMeshProUGUI _keepTier;
         private CanvasGroup _heroPanel;
         private CanvasGroup _banner;
         private GameObject _hastenButton;
@@ -71,9 +80,13 @@ namespace Dawnkeep.UI
         private int _shownWave = -1;
         private int _shownKingdom = -1;
         private int _shownHorde = -1;
+        private int _shownSilver = -1;
+        private int _shownBounty = -1;
         private int _shownStock = -1;
         private int _shownBeacons = -1;
         private bool _shownHint;
+        private int _shownKeepHealth = -1;
+        private int _shownKeepTier = -1;
         private int _shownHeroHealth = -1;
         private int _shownHeroMax = -1;
         private WavePhase _shownPhase = (WavePhase)(-1);
@@ -96,6 +109,8 @@ namespace Dawnkeep.UI
             _waves = FindAnyObjectByType<WaveDirector>();
             _combat = CombatDirector.Instance;
             _light = LightField.Instance;
+            _treasury = Treasury.Instance;
+            _keep = Keep.Instance;
 
             if (_waves != null && _hastenButton != null)
             {
@@ -114,13 +129,92 @@ namespace Dawnkeep.UI
             if (_light == null)
             {
                 _light = LightField.Instance;
+            _treasury = Treasury.Instance;
+            _keep = Keep.Instance;
+            }
+
+            if (_treasury == null)
+            {
+                _treasury = Treasury.Instance;
+            _keep = Keep.Instance;
             }
 
             UpdateCounts();
             UpdateWave();
+            UpdateSilver();
+            UpdateKeep();
             UpdateLight();
             UpdateHero();
             UpdateBanner();
+        }
+
+        /// <summary>
+        /// قلب الحصن أعلى الوسط: صحّته شرط الخسارة (§5)، فهي أهمّ رقم على
+        /// الشاشة ومكانها هو الذي لا تفوته العين.
+        /// </summary>
+        private void UpdateKeep()
+        {
+            if (_keep == null)
+            {
+                _keep = Keep.Instance;
+                if (_keep == null)
+                {
+                    return;
+                }
+            }
+
+            int now = Mathf.CeilToInt(_keep.Health);
+            if (now != _shownKeepHealth)
+            {
+                _shownKeepHealth = now;
+                int max = Mathf.RoundToInt(_keep.MaxHealth);
+                _keepBar.fillAmount = max > 0 ? Mathf.Clamp01((float)now / max) : 0f;
+                _keepBar.color = Color.Lerp(hordeColor, dawnColor, _keepBar.fillAmount);
+                _keepHealth.SetCharArray(_digits, 0, ArabicNumber.WritePair(now, max, _digits));
+            }
+
+            if (_keep.Tier != _shownKeepTier)
+            {
+                // أربع مرّات في الجولة كلّها: بناء سلسلة هنا لا يُحسب قمامةَ إطار
+                _shownKeepTier = _keep.Tier;
+                int length = ArabicNumber.Write(_shownKeepTier, _digits, 0);
+                _keepTier.text = ArabicShaper.Shape("المستوى " + new string(_digits, 0, length));
+            }
+        }
+
+        /// <summary>
+        /// الفضّة والمكافأة المعلّقة. المعلّقة تُعرض بعلامة زائد: هي **ليست**
+        /// في الرصيد بعد، وعرضها مضمومةً إليه يجعل اللاعب يبني بما لا يملك
+        /// ثم يُرفض بناؤه بلا سبب ظاهر (§10: تُصرف عند نهاية الموجة).
+        /// </summary>
+        private void UpdateSilver()
+        {
+            if (_treasury == null)
+            {
+                return;
+            }
+
+            if (_treasury.Silver != _shownSilver)
+            {
+                _shownSilver = _treasury.Silver;
+                _silver.SetCharArray(_digits, 0, ArabicNumber.Write(_shownSilver, _digits, 0));
+            }
+
+            int pending = _treasury.PendingBounty;
+            if (pending != _shownBounty)
+            {
+                _shownBounty = pending;
+                if (pending > 0)
+                {
+                    _digits[0] = '+';
+                    int length = ArabicNumber.Write(pending, _digits, 1);
+                    _bounty.SetCharArray(_digits, 0, length + 1);
+                }
+                else
+                {
+                    _bounty.SetCharArray(_digits, 0, 0);
+                }
+            }
         }
 
         /// <summary>مخزون النور وعدد المنارات المضيئة — قراءة §11 على الشاشة.</summary>
@@ -320,6 +414,8 @@ namespace Dawnkeep.UI
 
             BuildWavePanel(root);
             BuildCountsPanel(root);
+            BuildKeepBar(root);
+            BuildSilverPanel(root);
             BuildLightPanel(root);
             BuildHeroPanel(root);
             BuildBanner(root);
@@ -405,6 +501,67 @@ namespace Dawnkeep.UI
         }
 
         /// <summary>
+        /// شريط قلب الحصن أعلى الوسط: مستواه وصحّته وشريطها.
+        /// </summary>
+        private void BuildKeepBar(RectTransform root)
+        {
+            RectTransform panel = MakePanel("KeepBar", root,
+                new Vector2(0.5f, 1f), new Vector2(0f, -18f), new Vector2(560f, 66f));
+
+            Label("Caption", panel, "قلب الحصن", 26f, goldColor,
+                new Vector2(1f, 1f), new Vector2(-16f, -6f), new Vector2(180f, 32f),
+                TextAlignmentOptions.MidlineRight);
+
+            _keepHealth = Numeral("Health", panel, 22f, inkColor,
+                new Vector2(0f, 1f), new Vector2(16f, -6f), new Vector2(160f, 32f),
+                TextAlignmentOptions.MidlineLeft);
+
+            // «المستوى ٤» نصّاً واحداً في وسط الصفّ: عنوانٌ ورقمٌ منفصلان
+            // يتزاحمان مع «قلب الحصن» يميناً وعدّاد الصحّة يساراً.
+            _keepTier = Numeral("Tier", panel, 22f, dawnColor,
+                new Vector2(0.5f, 1f), new Vector2(0f, -6f), new Vector2(200f, 32f),
+                TextAlignmentOptions.Midline);
+
+            RectTransform track = MakeRect("BarTrack", panel,
+                new Vector2(0.5f, 0f), new Vector2(0f, 10f), new Vector2(528f, 18f));
+            Image trackImage = track.gameObject.AddComponent<Image>();
+            trackImage.color = new Color(0.078f, 0.086f, 0.094f, 0.92f);
+            trackImage.raycastTarget = false;
+
+            RectTransform fill = MakeRect("BarFill", track,
+                new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(520f, 11f));
+            _keepBar = fill.gameObject.AddComponent<Image>();
+            _keepBar.color = dawnColor;
+            _keepBar.raycastTarget = false;
+            _keepBar.type = Image.Type.Filled;
+            _keepBar.fillMethod = Image.FillMethod.Horizontal;
+            _keepBar.fillOrigin = (int)Image.OriginHorizontal.Right;
+            _keepBar.fillAmount = 1f;
+        }
+
+        /// <summary>
+        /// لوحة الفضّة أعلى اليسار فوق لوحة النور: هي الرقم الذي يُنظَر إليه
+        /// قبل كل بناء، فيجب أن يكون في مكان ثابت لا يتنقّل.
+        /// </summary>
+        private void BuildSilverPanel(RectTransform root)
+        {
+            RectTransform panel = MakePanel("SilverPanel", root,
+                new Vector2(0f, 1f), new Vector2(24f, -260f), new Vector2(340f, 62f));
+
+            Label("Caption", panel, "الفضّة", 26f, goldColor,
+                new Vector2(1f, 0.5f), new Vector2(-18f, 0f), new Vector2(120f, 40f),
+                TextAlignmentOptions.MidlineRight);
+
+            _silver = Numeral("Amount", panel, 32f, inkColor,
+                new Vector2(0f, 0.5f), new Vector2(18f, 0f), new Vector2(120f, 40f),
+                TextAlignmentOptions.MidlineLeft);
+
+            _bounty = Numeral("Bounty", panel, 22f, kingdomColor,
+                new Vector2(0.5f, 0.5f), new Vector2(14f, 0f), new Vector2(110f, 40f),
+                TextAlignmentOptions.MidlineLeft);
+        }
+
+        /// <summary>
         /// لوحة النور تحت لوحة الأعداد: المخزون وعدد المنارات المضيئة.
         /// المنارات المضيئة بلون الخطر إن صفرت — انطفاؤها كلّها يعني أنّ درع
         /// الظلام يعمل بكامله في كل الساحة.
@@ -414,7 +571,7 @@ namespace Dawnkeep.UI
             // 340 لا 300: «شحنات النور» و«منارات مضيئة» أطول من عناوين لوحة
             // الأعداد، ولوحةٌ يفيض نصّها عنها أسوأ من لوحة أعرض بقليل.
             RectTransform panel = MakePanel("LightPanel", root,
-                new Vector2(0f, 1f), new Vector2(24f, -142f), new Vector2(340f, 108f));
+                new Vector2(0f, 1f), new Vector2(24f, -334f), new Vector2(340f, 108f));
 
             Label("StockCaption", panel, "شحنات النور", 24f, dawnColor,
                 new Vector2(1f, 1f), new Vector2(-18f, -12f), new Vector2(220f, 34f),
@@ -491,7 +648,7 @@ namespace Dawnkeep.UI
         private void BuildBanner(RectTransform root)
         {
             RectTransform rect = MakeRect("Banner", root,
-                new Vector2(0.5f, 1f), new Vector2(0f, -110f), new Vector2(720f, 76f));
+                new Vector2(0.5f, 1f), new Vector2(0f, -104f), new Vector2(720f, 76f));
 
             _banner = rect.gameObject.AddComponent<CanvasGroup>();
             _banner.blocksRaycasts = false;

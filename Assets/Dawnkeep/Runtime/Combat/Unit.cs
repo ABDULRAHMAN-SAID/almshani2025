@@ -24,6 +24,7 @@ namespace Dawnkeep.Combat
         private float _nextAttack;
         private Unit _target;
         private Dawnkeep.Light.Beacon _beaconTarget;
+        private Dawnkeep.Building.Building _structureTarget;
         private Vector3 _home;
         private bool _hasHome;
         private float _light;
@@ -80,6 +81,23 @@ namespace Dawnkeep.Combat
         /// </summary>
         public float LightLevel { get { return _light; } set { _light = value; } }
 
+        /// <summary>
+        /// المبنى الذي يضربه الآن. منفصل عن `Target` كما انفصلت المنارة: مبنى
+        /// لا يتحرّك ولا يُحسب في الأحياء، وخلط الأنواع في حقل واحد يعني فحص
+        /// نوع في كل إطار.
+        /// </summary>
+        public Dawnkeep.Building.Building StructureTarget
+        {
+            get { return _structureTarget; }
+            set { _structureTarget = value; }
+        }
+
+        /// <summary>
+        /// صُرفت مكافأة قتله. عَلَمٌ لا حدث: الجثّة تبقى ثوانيَ قبل إعادتها إلى
+        /// المجمّع، فبلا هذا العَلَم تُصرف مكافأتها في كل إطار منها.
+        /// </summary>
+        public bool BountyPaid { get; set; }
+
         /// <summary>موضع المرابطة: تعود إليه الحامية إذا لم يبقَ لها هدف.</summary>
         public Vector3 Home { get { return _home; } }
 
@@ -107,6 +125,8 @@ namespace Dawnkeep.Combat
             DeadFor = 0f;
             _target = null;
             _beaconTarget = null;
+            _structureTarget = null;
+            BountyPaid = false;
             _light = 0f;
             _nextThink = 0f;
             _nextAttack = 0f;
@@ -136,6 +156,8 @@ namespace Dawnkeep.Combat
             DeadFor = 0f;
             _target = null;
             _beaconTarget = null;
+            _structureTarget = null;
+            BountyPaid = false;
             _light = 0f;
             _nextThink = 0f;
             _nextAttack = 0f;

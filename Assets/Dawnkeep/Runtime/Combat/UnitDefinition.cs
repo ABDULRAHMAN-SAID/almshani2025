@@ -60,6 +60,9 @@ namespace Dawnkeep.Combat
         [Tooltip("أبعد ما يبحث فيه عن هدف بالمتر.")]
         [SerializeField] private float sightRange = 26f;
 
+        [Tooltip("فضّة يضيفها قتله إلى المكافأة المعلّقة، تُصرف عند الفجر (§10).")]
+        [SerializeField] private int bounty = 6;
+
         public string DisplayName { get { return displayName; } }
 
         public Faction Faction { get { return faction; } }
@@ -99,5 +102,8 @@ namespace Dawnkeep.Combat
         public float RetargetInterval { get { return retargetInterval; } }
 
         public float SightRange { get { return sightRange; } }
+
+        /// <summary>مكافأة قتله بالفضّة (§10: تُحسب عند نهاية الموجة لا تتساقط).</summary>
+        public int Bounty { get { return bounty; } }
     }
 }

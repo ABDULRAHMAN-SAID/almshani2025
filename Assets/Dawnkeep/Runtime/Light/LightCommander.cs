@@ -1,7 +1,6 @@
 using Dawnkeep.Combat;
+using Dawnkeep.Interaction;
 using UnityEngine;
-using UnityEngine.EventSystems;
-using UnityEngine.InputSystem;
 
 namespace Dawnkeep.Light
 {
@@ -16,8 +15,8 @@ namespace Dawnkeep.Light
     /// متّسع أضافت، وإلّا أعادت واحدة إلى المخزون. فلا يحتاج اللاعب زرّين ولا
     /// وضعَين، وكل خطوة قابلة للتراجع بلمسة أخرى.
     ///
-    /// الإدخال بالنظام الجديد وحده (§1). ولا لمسة تُحسب إن كانت فوق الواجهة
-    /// أو كانت سحباً لتحريك الكاميرا.
+    /// تمييز النقرة عن السحب في `TapDetector` المشترك: آمر البناء يحتاج المنطق
+    /// نفسه، ونسختان منه تفترقان عند أوّل تعديل.
     /// </summary>
     [DisallowMultipleComponent]
     public class LightCommander : MonoBehaviour
@@ -25,19 +24,15 @@ namespace Dawnkeep.Light
         [Tooltip("أبعد مسافة بالمتر بين نقطة اللمس وقاعدة المنارة لتُحسب لها.")]
         [SerializeField] private float pickRadius = 9f;
 
-        [Tooltip("أطول زمن بالثانية تُعدّ اللمسة بعده سحباً لا نقرة.")]
-        [SerializeField] private float tapSeconds = 0.45f;
-
-        [Tooltip("أبعد إزاحة بالبكسل تبقى معها اللمسة نقرة.")]
-        [SerializeField] private float tapSlack = 26f;
-
         private LightField _field;
         private WaveDirector _waves;
         private Camera _camera;
+        private TapDetector _tap;
 
-        private Vector2 _pressAt;
-        private float _pressTime;
-        private bool _pressed;
+        private void Awake()
+        {
+            _tap = TapDetector.Default();
+        }
 
         private void Start()
         {
@@ -63,50 +58,18 @@ namespace Dawnkeep.Light
                 return;
             }
 
-            Pointer pointer = Pointer.current;
-            if (pointer == null)
-            {
-                return;
-            }
-
-            if (pointer.press.wasPressedThisFrame)
-            {
-                _pressed = true;
-                _pressAt = pointer.position.ReadValue();
-                _pressTime = Time.unscaledTime;
-                return;
-            }
-
-            if (!pointer.press.wasReleasedThisFrame || !_pressed)
-            {
-                return;
-            }
-
-            _pressed = false;
-
             if (!Planning())
             {
                 return;
             }
 
-            Vector2 releaseAt = pointer.position.ReadValue();
-            if ((releaseAt - _pressAt).sqrMagnitude > tapSlack * tapSlack)
-            {
-                return;      // سحب لتحريك الكاميرا، لا نقرة على منارة
-            }
-
-            if (Time.unscaledTime - _pressTime > tapSeconds)
-            {
-                return;      // ضغطة مطوّلة: ليست أمر نور
-            }
-
-            // النقر على الواجهة لا يمرّ إلى العالم تحتها
-            if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
+            Vector2 screen;
+            if (!_tap.Poll(out screen))
             {
                 return;
             }
 
-            Beacon beacon = Pick(releaseAt);
+            Beacon beacon = Pick(screen);
             if (beacon != null)
             {
                 _field.ToggleCharge(beacon);
@@ -131,8 +94,6 @@ namespace Dawnkeep.Light
                 return null;
             }
 
-            Ray ray = _camera.ScreenPointToRay(screen);
-
             Beacon best = null;
             float bestSqr = pickRadius * pickRadius;
 
@@ -144,21 +105,13 @@ namespace Dawnkeep.Light
                     continue;
                 }
 
-                Vector3 basePoint = beacon.Position;
-                float denominator = ray.direction.y;
-                if (Mathf.Abs(denominator) < 0.0001f)
+                Vector3 hit;
+                if (!TapDetector.GroundPoint(_camera, screen, beacon.Position.y, out hit))
                 {
-                    continue;      // الشعاع موازٍ لمستوى القاعدة: لا تقاطع
+                    continue;
                 }
 
-                float t = (basePoint.y - ray.origin.y) / denominator;
-                if (t <= 0f)
-                {
-                    continue;      // المستوى خلف الكاميرا
-                }
-
-                Vector3 hit = ray.origin + (ray.direction * t);
-                Vector3 delta = hit - basePoint;
+                Vector3 delta = hit - beacon.Position;
                 delta.y = 0f;
 
                 float distSqr = delta.sqrMagnitude;

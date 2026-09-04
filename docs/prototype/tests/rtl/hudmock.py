@@ -35,6 +35,23 @@ def box(r): return [r.x, H-(r.y+r.h), r.x+r.w, H-r.y]
 def panelrect(parent,anchor,offset,size,fill=panel):
     r=rect(parent,anchor,offset,size); d.rectangle(box(r),fill=fill); return r
 
+def wrapped(parent,anchor,offset,size,text,sz,color,align):
+    """يلفّ النصّ كما يلفّه TMP: يقاس بالخطّ نفسه لا بعدد المحارف."""
+    r=rect(parent,anchor,offset,size)
+    d.rectangle(box(r),outline=(255,0,255,70))
+    fnt=f(sz); words=text.split(' '); lines=[]; cur=''
+    for w in words:
+        trial=(cur+' '+w).strip()
+        if d.textlength(shape(trial),font=fnt) <= r.w-8 or not cur:
+            cur=trial
+        else:
+            lines.append(cur); cur=w
+    if cur: lines.append(cur)
+    top=H-(r.y+r.h)+4
+    for i,ln in enumerate(lines):
+        d.text((r.x+r.w-4, top+i*(sz+6)), shape(ln), font=fnt, fill=color, anchor='ra')
+    return len(lines), r.h, (sz+6)*len(lines)
+
 def label(parent,anchor,offset,size,s,sz,color,align,shaped=True):
     r=rect(parent,anchor,offset,size)
     d.rectangle(box(r),outline=(255,0,255,70))     # حدّ المستطيل للتشخيص
@@ -63,8 +80,23 @@ label(cnt,(0,1),(18,-12),(96,34),'١٤',30,ink,'l',False)
 label(cnt,(1,0),(-18,14),(160,34),'المهاجمون',24,horde,'r')
 label(cnt,(0,0),(18,14),(96,34),'٨',30,ink,'l',False)
 
+# ── شريط قلب الحصن
+keep=panelrect(ROOT,(0.5,1),(0,-18),(560,66))
+label(keep,(1,1),(-16,-6),(180,32),'قلب الحصن',26,gold,'r')
+label(keep,(0,1),(16,-6),(160,32),'١٢٤٠ / ١٦٠٠',22,ink,'l',False)
+label(keep,(0.5,1),(0,-6),(200,32),'المستوى ٢',22,gold,'c')
+kt=rect(keep,(0.5,0),(0,10),(528,18)); d.rectangle(box(kt),fill=(20,22,24,235))
+kf=rect(kt,(0.5,0.5),(0,0),(520,11)); kb=box(kf); kb[0]=kb[2]-520*0.775
+d.rectangle(kb,fill=(224,191,115))
+
+# ── لوحة الفضّة
+slv=panelrect(ROOT,(0,1),(24,-260),(340,62))
+label(slv,(1,0.5),(-18,0),(120,40),'الفضّة',26,gold,'r')
+label(slv,(0,0.5),(18,0),(120,40),'٣٨٥',32,ink,'l',False)
+label(slv,(0.5,0.5),(14,0),(110,40),'+٤٨',22,king,'l',False)
+
 # ── لوحة النور
-lit=panelrect(ROOT,(0,1),(24,-142),(340,108))
+lit=panelrect(ROOT,(0,1),(24,-334),(340,108))
 label(lit,(1,1),(-18,-12),(220,34),'شحنات النور',24,gold,'r')
 label(lit,(0,1),(18,-12),(86,34),'٢',30,gold,'l',False)
 label(lit,(1,0),(-18,14),(220,34),'منارات مضيئة',24,ink,'r')
@@ -84,8 +116,23 @@ ratio=348/520
 fb=box(fill); fb[0]=fb[2]-356*ratio
 d.rectangle(fb,fill=(150,180,90))
 
+# ── بطاقات البناء
+cards=rect(ROOT,(0.5,0),(0,92),(300*3+16*2,200+54))
+label(ROOT,(0.5,0),(0,92+200+27),(620,40),'ابنِ على عقدة اقتصاد',26,gold,'c')
+CARDS=[('كوخ','٤٥ فضّة','أرخص دخل ثابت. أساس أي اقتصاد.','دخل الفجر ١٦'),
+       ('مزرعة','٩٠ فضّة','دخل عالٍ وصحّة زهيدة — اقتصاد يحتاج حماية.','دخل الفجر ٣٢'),
+       ('برج مراقبة','٧٥ فضّة','أرخص ضرر بعيد. يرمي ما دخل مداه بلا أمر.','ضرر/ث ٢٠ · مدى ٣٤')]
+for i,(nm,cs,sm,st) in enumerate(CARDS):
+    off=((3-1)*0.5-i)*(300+16)
+    c=panelrect(cards,(0.5,0),(off,0),(300,200),(14,16,19,235))
+    label(c,(1,1),(-14,-10),(180,36),nm,26,gold,'r')
+    label(c,(0,1),(14,-10),(120,36),cs,22,ink,'l')
+    n,boxh,used=wrapped(c,(0.5,0.5),(0,-4),(300-28,86),sm,20,ink,'r')
+    if used>boxh: print(f'  ⚠ «{nm}»: الوصف {n} أسطر ({used}px) يتجاوز صندوقه ({boxh}px)')
+    label(c,(0.5,0),(0,12),(300-28,34),st,22,ink,'r')
+
 # ── اللافتة
-ban=rect(ROOT,(0.5,1),(0,-110),(720,76))
+ban=rect(ROOT,(0.5,1),(0,-104),(720,76))
 label(ban,(0.5,0.5),(0,0),(720,76),'الموجة الثالثة',48,gold,'c')
 
 img.save(os.path.join(os.path.dirname(os.path.abspath(__file__)),'hudmock.png')); print('saved')

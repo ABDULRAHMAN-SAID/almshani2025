@@ -58,19 +58,19 @@ namespace Dawnkeep.EditorTools
                 CharacterMeshFactory.Kind.Swordsman, new Color(0.243f, 0.271f, 0.318f),
                 health: 110f, armour: 0.10f, speed: 3.6f, damage: 12f,
                 range: 1.9f, interval: 1.10f, ranged: false, sight: 24f, retarget: 0.5f,
-                targetClass: TargetClass.Nearest, darkArmour: 0.18f);
+                targetClass: TargetClass.Nearest, darkArmour: 0.18f, bounty: 6);
 
             UnitDefinition brute = MakeUnit("Unit_Brute", "غاشم مدرّع", Faction.Horde,
                 CharacterMeshFactory.Kind.Spearman, new Color(0.318f, 0.271f, 0.243f),
                 health: 260f, armour: 0.34f, speed: 2.4f, damage: 22f,
                 range: 2.6f, interval: 1.45f, ranged: false, sight: 22f, retarget: 0.7f,
-                targetClass: TargetClass.Nearest, darkArmour: 0.22f);
+                targetClass: TargetClass.Nearest, darkArmour: 0.22f, bounty: 14);
 
             UnitDefinition nightArcher = MakeUnit("Unit_NightArcher", "رامي الليل", Faction.Horde,
                 CharacterMeshFactory.Kind.Archer, new Color(0.353f, 0.239f, 0.416f),
                 health: 80f, armour: 0.05f, speed: 3.2f, damage: 16f,
                 range: 15f, interval: 1.75f, ranged: true, sight: 24f, retarget: 0.6f,
-                targetClass: TargetClass.Ranged, darkArmour: 0.15f);
+                targetClass: TargetClass.Ranged, darkArmour: 0.15f, bounty: 9);
 
             // وحدتا §11: الأولى تذوب في النور، والثانية تُطفئه.
             // درع ظلام عالٍ وصحّة زهيدة: خارج النور تصمد، وداخله تتساقط —
@@ -79,7 +79,7 @@ namespace Dawnkeep.EditorTools
                 CharacterMeshFactory.Kind.Swordsman, new Color(0.286f, 0.243f, 0.376f),
                 health: 55f, armour: 0.02f, speed: 4.7f, damage: 9f,
                 range: 1.8f, interval: 0.85f, ranged: false, sight: 26f, retarget: 0.45f,
-                targetClass: TargetClass.Nearest, darkArmour: 0.62f);
+                targetClass: TargetClass.Nearest, darkArmour: 0.62f, bounty: 4);
 
             // يمرّ بالمقاتلين إلى المنارة فيُطفئها ثماني ثوانٍ (§11). ضربه لا
             // يجرح أحداً: خطره أنّه يسلب المنطقة، فيوجب على اللاعب فكّ خطّه.
@@ -87,7 +87,7 @@ namespace Dawnkeep.EditorTools
                 CharacterMeshFactory.Kind.Spearman, new Color(0.208f, 0.196f, 0.271f),
                 health: 165f, armour: 0.16f, speed: 3.5f, damage: 6f,
                 range: 3.4f, interval: 1.60f, ranged: false, sight: 40f, retarget: 0.8f,
-                targetClass: TargetClass.Beacon, darkArmour: 0.30f);
+                targetClass: TargetClass.Beacon, darkArmour: 0.30f, bounty: 12);
 
             WaveDefinition wave = MakeWave("Wave_01", "الموجة الأولى", 10f, new[]
             {
@@ -293,7 +293,7 @@ namespace Dawnkeep.EditorTools
         private static UnitDefinition MakeUnit(string assetName, string display, Faction faction,
             CharacterMeshFactory.Kind kind, Color livery, float health, float armour, float speed,
             float damage, float range, float interval, bool ranged, float sight, float retarget,
-            TargetClass targetClass, float darkArmour = 0f)
+            TargetClass targetClass, float darkArmour = 0f, int bounty = 6)
         {
             string path = CombatFolder + "/" + assetName + ".asset";
             UnitDefinition def = AssetDatabase.LoadAssetAtPath<UnitDefinition>(path);
@@ -312,6 +312,7 @@ namespace Dawnkeep.EditorTools
             SetPrivate(def, "maxHealth", health);
             SetPrivate(def, "armour", armour);
             SetPrivate(def, "darkArmour", darkArmour);
+            SetPrivate(def, "bounty", bounty);
             SetPrivate(def, "moveSpeed", speed);
             SetPrivate(def, "damage", damage);
             SetPrivate(def, "attackRange", range);

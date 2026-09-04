@@ -38,6 +38,9 @@ namespace Dawnkeep.Combat
         [Tooltip("أقصى جيران يُفحصون في استعلام واحد.")]
         [SerializeField] private int maxNeighbours = 64;
 
+        /// <summary>نصف القطر التقريبي للمبنى: يُضاف إلى مدى الضرب عليه.</summary>
+        private const float StructureReach = 4.2f;
+
         private readonly List<Unit> _units = new List<Unit>(512);
 
         private Vector3[] _positions;
@@ -45,6 +48,9 @@ namespace Dawnkeep.Combat
         private SpatialHash _hash;
         private ProjectilePool _projectiles;
         private Dawnkeep.Light.LightField _light;
+        private Dawnkeep.Building.BuildingDirector _buildings;
+        private Dawnkeep.Economy.Treasury _treasury;
+        private Dawnkeep.Building.Keep _keep;
         private bool _ready;
 
         public int LiveCount { get; private set; }
@@ -81,6 +87,9 @@ namespace Dawnkeep.Combat
             // يُلتقط هنا لا في Awake: ترتيب إيقاظ الكائنات غير مضمون، وحقل
             // النور قد لا يكون سجّل نفسه بعد.
             _light = Dawnkeep.Light.LightField.Instance;
+            _buildings = Dawnkeep.Building.BuildingDirector.Instance;
+            _treasury = Dawnkeep.Economy.Treasury.Instance;
+            _keep = Dawnkeep.Building.Keep.Instance;
 
             // تسجيل الحامية الموضوعة في المشهد مرّة واحدة عند الإقلاع.
             // البحث في المشهد مسموح هنا وحده — وممنوع داخل حلقة الإطار (§1).
@@ -116,6 +125,16 @@ namespace Dawnkeep.Combat
             _units.Add(unit);
         }
 
+        /// <summary>
+        /// يشطب وحدة من القائمة. **واجب قبل هدم كائنها**: الحلقة تقرأ
+        /// `unit.Body.position` لكل مسجَّلة، ومرجعٌ إلى كائن مهدوم يرمي
+        /// MissingReference لا يُلتقط بفحص `== null` وحده.
+        /// </summary>
+        public void Unregister(Unit unit)
+        {
+            _units.Remove(unit);
+        }
+
         private void Update()
         {
             if (!_ready)
@@ -125,6 +144,16 @@ namespace Dawnkeep.Combat
 
             float dt = Time.deltaTime;
             float now = Time.time;
+
+            // تنظيف المهدوم قبل أي قراءة: قد يُهدم حارسُ مبنى بين إطارين من
+            // خارج هذه الحلقة، فيبقى مرجعه هنا وتنكسر قراءة موضعه.
+            for (int i = _units.Count - 1; i >= 0; i--)
+            {
+                if (_units[i] == null)
+                {
+                    _units.RemoveAt(i);
+                }
+            }
 
             int count = _units.Count;
             for (int i = 0; i < count; i++)
@@ -146,6 +175,7 @@ namespace Dawnkeep.Combat
                     TickCorpse(unit, dt);
                     continue;
                 }
+
 
                 live++;
 
@@ -185,6 +215,23 @@ namespace Dawnkeep.Combat
                 return;
             }
 
+            // المكافأة تُصرف مرّة: لا تتساقط عملات في الساحة، بل يزيد عدّاد
+            // معلّق يُصرف كلّه عند الفجر (§10).
+            if (!unit.BountyPaid && unit.Faction == Faction.Horde)
+            {
+                unit.BountyPaid = true;
+                if (_treasury == null)
+                {
+                    _treasury = Dawnkeep.Economy.Treasury.Instance;
+            _keep = Dawnkeep.Building.Keep.Instance;
+                }
+
+                if (_treasury != null && unit.Definition != null)
+                {
+                    _treasury.AddBounty(unit.Definition.Bounty);
+                }
+            }
+
             unit.DeadFor += dt;
         }
 
@@ -221,12 +268,30 @@ namespace Dawnkeep.Combat
                 }
 
                 unit.Target = FindTarget(index, unit, def);
+
+                // المبنى هدف احتياطي لا أصلي: يُقصد إن لم يعترض المهاجمَ مقاتلٌ،
+                // أو إن كانت فئته `Structure` أصلاً. وإلّا صار الجند يتجاهلون
+                // بعضهم ويضربون الحجر بينما الخصم يضربهم في ظهورهم.
+                bool wantsStructure = def.TargetClass == TargetClass.Structure;
+                unit.StructureTarget = (wantsStructure || unit.Target == null)
+                    && unit.Faction == Faction.Horde
+                    ? FindStructure(unit, def)
+                    : null;
+
                 unit.NextThink = now + def.RetargetInterval;
             }
 
             Unit target = ResolveTarget(unit);
             Dawnkeep.Light.Beacon beacon = ResolveBeacon(unit, def);
+            Dawnkeep.Building.Building structure = ResolveStructure(unit, target, def);
             Vector3 position = unit.Body.position;
+
+            // قلب الحصن هدفٌ أخير: من بلغ آخر مساره ولم يجد مقاتلاً ولا مبنى
+            // يقصده. هو شرط الخسارة (§5)، فلا يجوز أن يقف المهاجمون حوله بلا
+            // فعل لأنّ قائمة المباني خلت.
+            bool aimKeep = target == null && structure == null && beacon == null
+                && unit.Faction == Faction.Horde && !unit.HasPath
+                && _keep != null && !_keep.Fallen;
             Vector3 desired;
             bool inRange = false;
 
@@ -248,6 +313,17 @@ namespace Dawnkeep.Combat
                 inRange = distance <= range;
                 desired = inRange ? Vector3.zero : toBeacon / Mathf.Max(0.0001f, distance);
             }
+            else if (structure != null)
+            {
+                Vector3 toStructure = structure.Body.position - position;
+                toStructure.y = 0f;
+                float distance = toStructure.magnitude;
+
+                // المبنى جسم عريض لا نقطة: يُضاف نصف قطره التقريبي إلى المدى
+                // وإلّا وقف المهاجم يضرب الهواء عند جداره.
+                inRange = distance <= range + StructureReach;
+                desired = inRange ? Vector3.zero : toStructure / Mathf.Max(0.0001f, distance);
+            }
             else if (target != null)
             {
                 Vector3 toTarget = target.Body.position - position;
@@ -255,6 +331,14 @@ namespace Dawnkeep.Combat
                 float distance = toTarget.magnitude;
                 inRange = distance <= range;
                 desired = inRange ? Vector3.zero : toTarget / Mathf.Max(0.0001f, distance);
+            }
+            else if (aimKeep)
+            {
+                Vector3 toKeep = _keep.transform.position - position;
+                toKeep.y = 0f;
+                float distance = toKeep.magnitude;
+                inRange = distance <= range + StructureReach;
+                desired = inRange ? Vector3.zero : toKeep / Mathf.Max(0.0001f, distance);
             }
             else if (unit.HasPath)
             {
@@ -295,10 +379,15 @@ namespace Dawnkeep.Combat
                 Quaternion look = Quaternion.LookRotation(desired, Vector3.up);
                 unit.Body.rotation = Quaternion.RotateTowards(unit.Body.rotation, look, def.TurnSpeed * dt);
             }
-            else if (target != null || beacon != null)
+            else if (target != null || beacon != null || structure != null || aimKeep)
             {
                 // واقف يضرب: لا بدّ أن يلتفت إلى خصمه وإلا ضرب الهواء جانباً
-                Vector3 face = (beacon != null ? beacon.Position : target.Body.position) - position;
+                Vector3 aim = beacon != null ? beacon.Position
+                    : structure != null ? structure.Body.position
+                    : aimKeep ? _keep.transform.position
+                    : target.Body.position;
+
+                Vector3 face = aim - position;
                 face.y = 0f;
                 if (face.sqrMagnitude > 0.0001f)
                 {
@@ -312,7 +401,8 @@ namespace Dawnkeep.Combat
                 unit.Animator.Walk = speed > 0f ? 1f : 0f;
             }
 
-            if ((target != null || beacon != null) && inRange && now >= unit.NextAttack)
+            if ((target != null || beacon != null || structure != null || aimKeep)
+                && inRange && now >= unit.NextAttack)
             {
                 unit.NextAttack = now + def.AttackInterval;
                 if (unit.Animator != null)
@@ -328,7 +418,78 @@ namespace Dawnkeep.Combat
                 }
             }
 
-            ResolveHits(unit, def, target, beacon);
+            ResolveHits(unit, def, target, beacon, structure, aimKeep);
+        }
+
+        /// <summary>
+        /// المبنى المقصود إن بقي قائماً — ويُترك فوراً إن اعترض المهاجمَ مقاتلٌ
+        /// حيّ، فلا يقف يهدم جداراً وسيفٌ في ظهره.
+        /// </summary>
+        private Dawnkeep.Building.Building ResolveStructure(Unit unit, Unit target, UnitDefinition def)
+        {
+            Dawnkeep.Building.Building structure = unit.StructureTarget;
+            if (structure == null || !structure.Alive)
+            {
+                unit.StructureTarget = null;
+                return null;
+            }
+
+            if (target != null && def.TargetClass != TargetClass.Structure)
+            {
+                return null;      // مقاتل حاضر: هو الأولى
+            }
+
+            return structure;
+        }
+
+        /// <summary>
+        /// أقرب مبنى داخل مدى البصر. المرور على المباني مباشرةً: هي عشرات لا
+        /// مئات، ولا تدخل شبكة تجزئة الوحدات أصلاً.
+        /// </summary>
+        private Dawnkeep.Building.Building FindStructure(Unit unit, UnitDefinition def)
+        {
+            if (_buildings == null)
+            {
+                _buildings = Dawnkeep.Building.BuildingDirector.Instance;
+                if (_buildings == null)
+                {
+                    return null;
+                }
+            }
+
+            System.Collections.Generic.IReadOnlyList<Dawnkeep.Building.Building> list = _buildings.Buildings;
+            Vector3 position = unit.Body.position;
+
+            // فئة `Structure` تقصد المباني من بعيد؛ غيرها لا يلتفت إليها إلّا
+            // إن كانت في طريقه فعلاً.
+            float sight = def.TargetClass == TargetClass.Structure ? def.SightRange * 3f : def.SightRange;
+            float sightSqr = sight * sight;
+
+            Dawnkeep.Building.Building best = null;
+            float bestSqr = float.MaxValue;
+
+            for (int i = 0; i < list.Count; i++)
+            {
+                Dawnkeep.Building.Building candidate = list[i];
+                if (candidate == null || !candidate.Alive)
+                {
+                    continue;
+                }
+
+                Vector3 delta = candidate.Body.position - position;
+                delta.y = 0f;
+
+                float distSqr = delta.sqrMagnitude;
+                if (distSqr > sightSqr || distSqr >= bestSqr)
+                {
+                    continue;
+                }
+
+                bestSqr = distSqr;
+                best = candidate;
+            }
+
+            return best;
         }
 
         /// <summary>
@@ -358,7 +519,7 @@ namespace Dawnkeep.Combat
         /// المُحرِّك يرفع رايته في منتصف الهويّ، والسهم ينطلق عند الإفلات.
         /// </summary>
         private void ResolveHits(Unit unit, UnitDefinition def, Unit target,
-            Dawnkeep.Light.Beacon beacon)
+            Dawnkeep.Light.Beacon beacon, Dawnkeep.Building.Building structure, bool aimKeep)
         {
             if (unit.Animator == null)
             {
@@ -372,6 +533,26 @@ namespace Dawnkeep.Combat
                 if (unit.Animator.AttackLandedThisFrame && _light != null && _light.Settings != null)
                 {
                     beacon.Snuff(_light.Settings.SnuffSeconds);
+                }
+
+                return;
+            }
+
+            if (structure != null)
+            {
+                if (unit.Animator.AttackLandedThisFrame)
+                {
+                    structure.TakeDamage(def.Damage);
+                }
+
+                return;
+            }
+
+            if (aimKeep)
+            {
+                if (unit.Animator.AttackLandedThisFrame && _keep != null)
+                {
+                    _keep.TakeDamage(def.Damage);
                 }
 
                 return;
