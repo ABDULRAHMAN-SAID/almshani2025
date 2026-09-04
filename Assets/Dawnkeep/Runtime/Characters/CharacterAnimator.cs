@@ -70,6 +70,18 @@ namespace Dawnkeep.Characters
         /// <summary>لحظة وقوع الضربة داخل حركة الهجوم — عندها يُطبَّق الضرر.</summary>
         public bool AttackLandedThisFrame { get; private set; }
 
+        /// <summary>لحظة انطلاق السهم داخل حركة الرمي — عندها يُطلَق المقذوف.</summary>
+        public bool ShotReleasedThisFrame { get; private set; }
+
+        /// <summary>يعيد الوحدة إلى الوقوف. يُستدعى عند الخروج من المجمّع.</summary>
+        public void Revive()
+        {
+            _action = Action.None;
+            _actionElapsed = 0f;
+            ApplyFloat(ActionId, 0f);
+            ApplyFloat(ActionTimeId, 0f);
+        }
+
         public void Attack()
         {
             Play(Action.Attack, attackDuration);
@@ -138,6 +150,7 @@ namespace Dawnkeep.Characters
         private void Update()
         {
             AttackLandedThisFrame = false;
+            ShotReleasedThisFrame = false;
 
             if (_action != Action.None)
             {
@@ -149,6 +162,12 @@ namespace Dawnkeep.Characters
                 if (_action == Action.Attack && before < 0.44f && u >= 0.44f)
                 {
                     AttackLandedThisFrame = true;
+                }
+
+                // انطلاق السهم عند لحظة الإفلات في المُظلِّل (u ≈ 0.62)
+                if (_action == Action.Shoot && before < 0.62f && u >= 0.62f)
+                {
+                    ShotReleasedThisFrame = true;
                 }
 
                 if (u >= 1f)

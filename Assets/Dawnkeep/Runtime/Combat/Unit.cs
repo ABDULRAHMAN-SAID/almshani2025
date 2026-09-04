@@ -1,0 +1,206 @@
+using Dawnkeep.Characters;
+using UnityEngine;
+
+namespace Dawnkeep.Combat
+{
+    /// <summary>
+    /// وحدة مقاتلة: بيانات وحالة فقط.
+    ///
+    /// **لا `Update` هنا عمداً.** مئة وحدة تعني مئة استدعاء `Update` من المحرّك،
+    /// وكلٌّ منها قفزة إلى كود مُدار. `CombatDirector` يمرّ عليها كلّها في حلقة
+    /// واحدة، وهذا أسرع بمراتب على الجوّال. والمراجع تُخزَّن عند التهيئة لا في
+    /// كل إطار.
+    /// </summary>
+    [DisallowMultipleComponent]
+    public class Unit : MonoBehaviour
+    {
+        [SerializeField] private UnitDefinition definition;
+
+        private Transform _transform;
+        private CharacterAnimator _animator;
+
+        private float _health;
+        private float _nextThink;
+        private float _nextAttack;
+        private int _targetIndex = -1;
+
+        private Vector3[] _path;
+        private int _pathIndex;
+
+        // كتلة خصائص واحدة مشتركة: إنشاؤها عند كل خروج من المجمّع يولّد قمامة
+        private static MaterialPropertyBlock _liveryBlock;
+
+        /// <summary>الوحدة حيّة وقابلة للاستهداف.</summary>
+        public bool Alive { get; private set; }
+
+        /// <summary>ماتت وتُشغّل سقوطها؛ تُعاد إلى المجمّع بعده.</summary>
+        public float DeadFor { get; set; }
+
+        public UnitDefinition Definition { get { return definition; } }
+
+        public Faction Faction { get { return definition != null ? definition.Faction : Faction.Neutral; } }
+
+        public CharacterAnimator Animator { get { return _animator; } }
+
+        public Transform Body { get { return _transform; } }
+
+        public float Health { get { return _health; } }
+
+        public float NextThink { get { return _nextThink; } set { _nextThink = value; } }
+
+        public float NextAttack { get { return _nextAttack; } set { _nextAttack = value; } }
+
+        public int TargetIndex { get { return _targetIndex; } set { _targetIndex = value; } }
+
+        private void Awake()
+        {
+            _transform = transform;
+            _animator = GetComponentInChildren<CharacterAnimator>();
+        }
+
+        /// <summary>
+        /// تهيئة وحدة **موضوعة في المشهد** (حامية القلعة) بتعريفها المضبوط في
+        /// المفتش. لا تنقلها ولا تغيّر اتّجاهها: موضعها جزء من تصميم المشهد.
+        /// </summary>
+        public void Awaken()
+        {
+            if (_transform == null)
+            {
+                Awake();
+            }
+
+            _health = definition != null ? definition.MaxHealth : 1f;
+            Alive = true;
+            DeadFor = 0f;
+            _targetIndex = -1;
+            _nextThink = 0f;
+            _nextAttack = 0f;
+            _pathIndex = 0;
+        }
+
+        /// <summary>يضبط تعريف الوحدة من محرّر المشهد.</summary>
+        public void SetDefinition(UnitDefinition value)
+        {
+            definition = value;
+        }
+
+        /// <summary>تهيئة عند الخروج من المجمّع. تُستدعى مرّة لا في كل إطار.</summary>
+        public void Spawn(UnitDefinition def, Vector3 position, float headingDegrees, Vector3[] path)
+        {
+            definition = def;
+            if (_transform == null)
+            {
+                Awake();
+            }
+
+            _transform.SetPositionAndRotation(position, Quaternion.Euler(0f, headingDegrees, 0f));
+            _health = def != null ? def.MaxHealth : 1f;
+            Alive = true;
+            DeadFor = 0f;
+            _targetIndex = -1;
+            _nextThink = 0f;
+            _nextAttack = 0f;
+            _path = path;
+            _pathIndex = 0;
+
+            if (_animator != null)
+            {
+                _animator.Revive();
+                _animator.Walk = 0f;
+            }
+
+            gameObject.SetActive(true);
+            ApplyLivery(def != null ? def.Livery : Color.white);
+        }
+
+        /// <summary>الضرر بعد الدرع. يعيد true إن قتلت هذه الضربة الوحدة.</summary>
+        public bool TakeDamage(float amount)
+        {
+            if (!Alive)
+            {
+                return false;
+            }
+
+            float armour = definition != null ? definition.Armour : 0f;
+            _health -= amount * (1f - armour);
+
+            if (_health > 0f)
+            {
+                if (_animator != null)
+                {
+                    _animator.Flinch();
+                }
+
+                return false;
+            }
+
+            _health = 0f;
+            Alive = false;
+            DeadFor = 0f;
+            if (_animator != null)
+            {
+                _animator.Die();
+            }
+
+            return true;
+        }
+
+        /// <summary>الوجهة التالية على المسار، أو الموضع نفسه إن انتهى المسار.</summary>
+        public Vector3 PathPoint(Vector3 fallback)
+        {
+            if (_path == null || _pathIndex >= _path.Length)
+            {
+                return fallback;
+            }
+
+            return _path[_pathIndex];
+        }
+
+        public void AdvancePath()
+        {
+            if (_path != null && _pathIndex < _path.Length)
+            {
+                _pathIndex++;
+            }
+        }
+
+        public bool HasPath
+        {
+            get { return _path != null && _pathIndex < _path.Length; }
+        }
+
+        public void Despawn()
+        {
+            Alive = false;
+            gameObject.SetActive(false);
+        }
+
+        /// <summary>
+        /// لون الراية على مُصيِّر القماش وحده. الكتابة على الجذر تصبغ الجلد
+        /// والفولاذ معه فيصير الجندي كتلة ملوّنة بلا ملامح.
+        /// </summary>
+        private void ApplyLivery(Color livery)
+        {
+            Transform cloth = _transform.Find("Cloth");
+            if (cloth == null)
+            {
+                return;
+            }
+
+            MeshRenderer renderer = cloth.GetComponent<MeshRenderer>();
+            if (renderer == null)
+            {
+                return;
+            }
+
+            if (_liveryBlock == null)
+            {
+                _liveryBlock = new MaterialPropertyBlock();
+            }
+
+            renderer.GetPropertyBlock(_liveryBlock);
+            _liveryBlock.SetColor("_BaseColor", livery);
+            renderer.SetPropertyBlock(_liveryBlock);
+        }
+    }
+}
