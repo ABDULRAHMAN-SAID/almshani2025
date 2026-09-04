@@ -135,6 +135,49 @@ namespace Dawnkeep.Combat
             _units.Remove(unit);
         }
 
+        /// <summary>
+        /// وحدات فصيلة معيّنة داخل نصف قطر، تُكتب في مخزن المنادي.
+        /// **يملك المنادي مخزنه**: مخزنٌ مشترك هنا يعني أنّ استعلاماً متداخلاً
+        /// (انفجارٌ يستدعي سلسلةً) يمسح نتيجة سابقه تحت قدميه.
+        /// </summary>
+        public int QueryFaction(Vector3 centre, float radius, Faction faction, Unit[] results)
+        {
+            if (results == null || !_ready)
+            {
+                return 0;
+            }
+
+            int found = _hash.Query(centre, radius, _neighbours);
+            float radiusSqr = radius * radius;
+            int count = 0;
+
+            for (int n = 0; n < found && count < results.Length; n++)
+            {
+                int j = _neighbours[n];
+                if (j >= _units.Count)
+                {
+                    continue;
+                }
+
+                Unit unit = _units[j];
+                if (unit == null || !unit.Alive || unit.Faction != faction)
+                {
+                    continue;
+                }
+
+                Vector3 delta = unit.Body.position - centre;
+                delta.y = 0f;
+                if (delta.sqrMagnitude > radiusSqr)
+                {
+                    continue;
+                }
+
+                results[count++] = unit;
+            }
+
+            return count;
+        }
+
         private void Update()
         {
             if (!_ready)
@@ -367,7 +410,9 @@ namespace Dawnkeep.Combat
 
             desired += Separation(index, position, def.SeparationRadius);
 
-            float speed = desired.sqrMagnitude > 0.0001f ? def.MoveSpeed : 0f;
+            // الإبطاء يضرب السرعة هنا لا في التعريف: التعريف أصلٌ مشترك بين
+            // كل نسخ الوحدة، وتعديله يبطئ الجيش كلّه.
+            float speed = desired.sqrMagnitude > 0.0001f ? def.MoveSpeed * unit.SpeedMultiplier : 0f;
             if (speed > 0f)
             {
                 desired.y = 0f;

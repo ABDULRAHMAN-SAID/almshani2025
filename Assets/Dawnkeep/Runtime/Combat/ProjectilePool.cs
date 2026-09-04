@@ -3,6 +3,45 @@ using UnityEngine;
 namespace Dawnkeep.Combat
 {
     /// <summary>
+    /// أثر المقذوف عند الإصابة (§10): اختراق درع، وانفجار، وإبطاء، وسلسلة.
+    ///
+    /// بنيةٌ لا صنف: تُمرَّر بالقيمة وتُخزَّن في مصفوفة، فلا تخصيص لكل طلقة.
+    /// و`None` هو سهم الرامي العادي — بلا أثر زائد.
+    /// </summary>
+    public struct ProjectileEffect
+    {
+        /// <summary>ما يتجاوزه من الدرع، من صفر إلى واحد.</summary>
+        public float ArmourPierce;
+
+        /// <summary>نصف قطر الانفجار بالمتر. صفر يعني إصابة مفردة.</summary>
+        public float BlastRadius;
+
+        /// <summary>معامل سرعة المصاب (0.68 يعني بطء 32%). واحد يعني بلا إبطاء.</summary>
+        public float SlowFactor;
+
+        /// <summary>مدّة الإبطاء بالثواني.</summary>
+        public float SlowSeconds;
+
+        /// <summary>كم هدفاً إضافيّاً تقفز إليه السلسلة.</summary>
+        public int ChainTargets;
+
+        /// <summary>ما يبقى من الضرر عند كل قفزة (0.8 يعني تناقص 20%).</summary>
+        public float ChainFalloff;
+
+        /// <summary>أثرٌ خالٍ — سهم عادي.</summary>
+        public static ProjectileEffect None
+        {
+            get
+            {
+                ProjectileEffect e = default(ProjectileEffect);
+                e.SlowFactor = 1f;
+                e.ChainFalloff = 1f;
+                return e;
+            }
+        }
+    }
+
+    /// <summary>
     /// سهام مجمّعة. **ممنوع `Instantiate` في مسار اللعب** (§1): إنشاء سهم لكل
     /// طلقة يولّد قمامة تُوقف الإطار عند تجميعها. تُنشأ كلّها مرّة ثم تُعاد.
     ///
@@ -30,7 +69,12 @@ namespace Dawnkeep.Combat
         private float[] _damage;
         private float[] _life;
         private bool[] _active;
+        private ProjectileEffect[] _effect;
         private int _next;
+
+        // مخزن الجيران يملكه المجمّع وحده — انظر `CombatDirector.QueryFaction`
+        private Unit[] _splash;
+        private CombatDirector _combat;
 
         private void Awake()
         {
@@ -40,6 +84,8 @@ namespace Dawnkeep.Combat
             _damage = new float[capacity];
             _life = new float[capacity];
             _active = new bool[capacity];
+            _effect = new ProjectileEffect[capacity];
+            _splash = new Unit[32];
 
             Mesh mesh = BuildArrowMesh();
             Material material = BuildArrowMaterial();
@@ -62,8 +108,14 @@ namespace Dawnkeep.Combat
             }
         }
 
-        /// <summary>يطلق سهماً نحو وحدة. إن نفد المجمّع يُعاد استعمال أقدم سهم.</summary>
+        /// <summary>يطلق سهماً عاديّاً بلا أثر زائد.</summary>
         public void Fire(Vector3 from, Unit target, float damage, float speed)
+        {
+            Fire(from, target, damage, speed, ProjectileEffect.None);
+        }
+
+        /// <summary>يطلق مقذوفاً بأثره. إن نفد المجمّع يُعاد استعمال أقدم سهم.</summary>
+        public void Fire(Vector3 from, Unit target, float damage, float speed, ProjectileEffect effect)
         {
             if (_shafts == null || target == null)
             {
@@ -97,9 +149,86 @@ namespace Dawnkeep.Combat
             _velocity[slot] = direction * speed;
             _target[slot] = target;
             _damage[slot] = damage;
+            _effect[slot] = effect;
             _life[slot] = 0f;
             _active[slot] = true;
         }
+
+        /// <summary>
+        /// وقوع الأثر: المصاب أوّلاً، ثمّ الانفجار، ثمّ السلسلة.
+        ///
+        /// الانفجار **لا يضرب المصاب مرّتين**: هو داخل نصف قطره حتماً، وضربه
+        /// بالضررين يضاعف ما تقوله البطاقة.
+        /// </summary>
+        private void Land(int index, Unit target)
+        {
+            ProjectileEffect effect = _effect[index];
+            float damage = _damage[index];
+
+            target.TakeDamage(damage, effect.ArmourPierce);
+
+            if (effect.SlowSeconds > 0f)
+            {
+                target.ApplySlow(effect.SlowFactor, effect.SlowSeconds);
+            }
+
+            if (effect.BlastRadius <= 0f && effect.ChainTargets <= 0)
+            {
+                return;
+            }
+
+            if (_combat == null)
+            {
+                _combat = CombatDirector.Instance;
+                if (_combat == null)
+                {
+                    return;
+                }
+            }
+
+            Vector3 centre = target.Body.position;
+
+            if (effect.BlastRadius > 0f)
+            {
+                int found = _combat.QueryFaction(centre, effect.BlastRadius, target.Faction, _splash);
+                for (int i = 0; i < found; i++)
+                {
+                    if (_splash[i] == target)
+                    {
+                        continue;
+                    }
+
+                    _splash[i].TakeDamage(damage, effect.ArmourPierce);
+                    if (effect.SlowSeconds > 0f)
+                    {
+                        _splash[i].ApplySlow(effect.SlowFactor, effect.SlowSeconds);
+                    }
+                }
+            }
+
+            if (effect.ChainTargets > 0)
+            {
+                // السلسلة تقفز إلى أقرب من لم تُصبه، بتناقص عند كل قفزة
+                int found = _combat.QueryFaction(centre, ChainReach, target.Faction, _splash);
+                float carried = damage;
+                int jumped = 0;
+
+                for (int i = 0; i < found && jumped < effect.ChainTargets; i++)
+                {
+                    if (_splash[i] == target)
+                    {
+                        continue;
+                    }
+
+                    carried *= effect.ChainFalloff;
+                    _splash[i].TakeDamage(carried, effect.ArmourPierce);
+                    jumped++;
+                }
+            }
+        }
+
+        /// <summary>أبعد ما تقفز إليه السلسلة بالمتر.</summary>
+        private const float ChainReach = 9f;
 
         private void Update()
         {
@@ -132,7 +261,7 @@ namespace Dawnkeep.Combat
 
                 if (distance < 0.6f)
                 {
-                    target.TakeDamage(_damage[i]);
+                    Land(i, target);
                     Retire(i);
                     continue;
                 }

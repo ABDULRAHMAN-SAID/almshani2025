@@ -173,9 +173,18 @@ namespace Dawnkeep.UI
             }
 
             BuildingDefinition[] catalogue = _director.Catalogue;
-            for (int i = 0; i < catalogue.Length && filled < CardCount; i++)
+            if (catalogue.Length == 0)
             {
-                BuildingDefinition def = catalogue[i];
+                return 0;
+            }
+
+            // المسح يبدأ من بذرة العقدة ويلتفّ: بلا هذا تعرض كل العقد الداخلية
+            // أوّل ثلاثة تقبلها من الكتالوج، فلا تُبنى مسلّة ولا ورشة أبداً.
+            int start = ((node.OfferSeed % catalogue.Length) + catalogue.Length) % catalogue.Length;
+
+            for (int step = 0; step < catalogue.Length && filled < CardCount; step++)
+            {
+                BuildingDefinition def = catalogue[(start + step) % catalogue.Length];
                 if (def == null || !def.Fits(node.Kind))
                 {
                     continue;

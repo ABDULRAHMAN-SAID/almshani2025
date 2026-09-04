@@ -119,6 +119,81 @@ namespace Dawnkeep.EditorTools
                 cost: 110, health: 420, guards: 4, guard: archerGuard,
                 upgrades: new[] { camp2 }, shape: BuildingShape.ArcherCamp);
 
+            // ── المسلّات: ضرر سحري يتجاوز جزءاً من الدرع (§10) ──────────────
+            BuildingDefinition stormObelisk = Obelisk("Build_StormObelisk", "مسلّة العاصفة",
+                "صاعقة تقفز إلى أربعة، وتضعف عشرين في المئة عند كل قفزة.",
+                cost: 195, health: 420, damage: 72f, rate: 0.7f, rangeUnits: 6f,
+                pierce: 0.45f, chain: 4, chainFalloff: 0.8f);
+
+            BuildingDefinition frostObelisk = Obelisk("Build_FrostObelisk", "مسلّة الصقيع",
+                "ضرر أقلّ، لكنّها تُبطئ المصاب اثنين وثلاثين في المئة.",
+                cost: 185, health: 440, damage: 46f, rate: 0.7f, rangeUnits: 6f,
+                pierce: 0.45f, slowFactor: 0.68f, slowSeconds: 1.8f);
+
+            BuildingDefinition obelisk2 = Obelisk("Build_Obelisk2", "مسلّة عليا",
+                "نفس السحر بضرر مضاعف.",
+                cost: 165, health: 410, damage: 72f, rate: 0.7f, rangeUnits: 5.8f,
+                pierce: 0.40f, upgrades: new[] { stormObelisk, frostObelisk });
+
+            BuildingDefinition obelisk = Obelisk("Build_Obelisk", "مسلّة سحرية",
+                "ضربات بطيئة ثقيلة تتجاوز جزءاً من الدرع.",
+                cost: 145, health: 380, damage: 44f, rate: 0.7f, rangeUnits: 5.8f,
+                pierce: 0.40f, upgrades: new[] { obelisk2 });
+
+            // ── القواذف: ضرر مساحة ضدّ الحشود (§10) ────────────────────────
+            BuildingDefinition emberMortar = Bombard("Build_EmberMortar", "هاون الجمر",
+                "انفجار أوسع يحرق ما حوله.",
+                cost: 205, health: 500, damage: 78f, rate: 0.36f, rangeUnits: 7f,
+                blastUnits: 2.1f, minUnits: 2.2f);
+
+            BuildingDefinition breakerCannon = Bombard("Build_BreakerCannon", "مدفع الكاسر",
+                "انفجار أضيق وضربة أثقل بكثير على المدرَّع.",
+                cost: 215, health: 520, damage: 148f, rate: 0.36f, rangeUnits: 7f,
+                blastUnits: 0.9f, minUnits: 2.2f, pierce: 0.35f);
+
+            BuildingDefinition bombard = Bombard("Build_Bombard", "قاذف",
+                "ضربة مساحة على الحشد. لا يصيب من اقترب منه.",
+                cost: 170, health: 460, damage: 78f, rate: 0.36f, rangeUnits: 6.8f,
+                blastUnits: 1.5f, minUnits: 2.2f,
+                upgrades: new[] { emberMortar, breakerCannon });
+
+            // ── الورش: دعمٌ يُبقي البناء واقفاً (§10) ──────────────────────
+            BuildingDefinition engineerGuild = Workshop("Build_EngineerGuild", "نقابة المهندسين",
+                "إصلاح أقوى وأوسع مدى.",
+                cost: 190, health: 460, repair: 75f, targets: 4);
+
+            BuildingDefinition trapworks = Workshop("Build_Trapworks", "دار الأفخاخ",
+                "إصلاح أخفّ، ويزرع ما يُبطئ المهاجمين حولها.",
+                cost: 180, health: 440, repair: 45f, targets: 3);
+
+            BuildingDefinition workshop2 = Workshop("Build_Workshop2", "ورشة كبرى",
+                "تصلح ثلاثة مبانٍ بخمسٍ وخمسين صحّة.",
+                cost: 160, health: 420, repair: 55f, targets: 3,
+                upgrades: new[] { engineerGuild, trapworks });
+
+            BuildingDefinition workshop = Workshop("Build_Workshop", "ورشة",
+                "تصلح أقرب مبنيين خمساً وثلاثين صحّة كل أربع ثوانٍ.",
+                cost: 130, health: 380, repair: 35f, targets: 2,
+                upgrades: new[] { workshop2 });
+
+            // ── منارات الفجر كمبانٍ (§10 و§11) ────────────────────────────
+            BuildingDefinition sanctuary = BeaconDef("Build_Sanctuary", "الملاذ",
+                "منارة بثلاث شحنات — أوسع دائرة أمان في اللعبة.",
+                cost: 210, health: 400, charges: 3);
+
+            BuildingDefinition sunlance = BeaconDef("Build_Sunlance", "رمح الشمس",
+                "منارة بشحنتين، وعمودها يقذف من يقترب.",
+                cost: 200, health: 380, charges: 2);
+
+            BuildingDefinition beacon2 = BeaconDef("Build_Beacon2", "منارة موسّعة",
+                "شحنتان: دائرة أوسع وقضمٌ أعمق لدرع الظلام.",
+                cost: 170, health: 360, charges: 2,
+                upgrades: new[] { sanctuary, sunlance });
+
+            BuildingDefinition beacon = BeaconDef("Build_Beacon", "منارة فجر",
+                "دائرة نور جديدة حيث تحتاجها — تذيب درع الظلام.",
+                cost: 140, health: 340, charges: 1, upgrades: new[] { beacon2 });
+
             // ── الجدران ─────────────────────────────────────────────────────
             BuildingDefinition wall2 = WallDef("Build_Wall2", "جدار مضاعف",
                 "حجرٌ مضاعف يصبر أطول.", cost: 80, health: 1250);
@@ -133,6 +208,10 @@ namespace Dawnkeep.EditorTools
             catalogue.Add(watchtower);
             catalogue.Add(barracks);
             catalogue.Add(camp);
+            catalogue.Add(obelisk);
+            catalogue.Add(bombard);
+            catalogue.Add(workshop);
+            catalogue.Add(beacon);
             catalogue.Add(wall);
 
             AssetDatabase.SaveAssets();
@@ -179,6 +258,69 @@ namespace Dawnkeep.EditorTools
                 new[] { NodeKind.Inner, NodeKind.Gate });
             SetPrivate(def, "guardCount", guards);
             SetPrivate(def, "guard", guard);
+            EditorUtility.SetDirty(def);
+            return def;
+        }
+
+        private static BuildingDefinition Obelisk(string asset, string name, string summary,
+            int cost, float health, float damage, float rate, float rangeUnits, float pierce,
+            int chain = 0, float chainFalloff = 0.8f, float slowFactor = 1f, float slowSeconds = 0f,
+            BuildingDefinition[] upgrades = null)
+        {
+            BuildingDefinition def = Make(asset);
+            Common(def, name, summary, BuildingRole.Tower, cost, health, upgrades,
+                BuildingShape.Obelisk, new[] { NodeKind.Inner, NodeKind.Outer });
+            SetPrivate(def, "damage", damage);
+            SetPrivate(def, "shotsPerSecond", rate);
+            SetPrivate(def, "range", rangeUnits * RangeUnit);
+            SetPrivate(def, "armourPierce", pierce);
+            SetPrivate(def, "chainTargets", chain);
+            SetPrivate(def, "chainFalloff", chainFalloff);
+            SetPrivate(def, "slowFactor", slowFactor);
+            SetPrivate(def, "slowSeconds", slowSeconds);
+            EditorUtility.SetDirty(def);
+            return def;
+        }
+
+        private static BuildingDefinition Bombard(string asset, string name, string summary,
+            int cost, float health, float damage, float rate, float rangeUnits,
+            float blastUnits, float minUnits, float pierce = 0f,
+            BuildingDefinition[] upgrades = null)
+        {
+            BuildingDefinition def = Make(asset);
+            Common(def, name, summary, BuildingRole.Tower, cost, health, upgrades,
+                BuildingShape.Bombard, new[] { NodeKind.Inner, NodeKind.Outer });
+            SetPrivate(def, "damage", damage);
+            SetPrivate(def, "shotsPerSecond", rate);
+            SetPrivate(def, "range", rangeUnits * RangeUnit);
+            SetPrivate(def, "blastRadius", blastUnits * RangeUnit);
+            SetPrivate(def, "minimumRange", minUnits * RangeUnit);
+            SetPrivate(def, "armourPierce", pierce);
+            EditorUtility.SetDirty(def);
+            return def;
+        }
+
+        private static BuildingDefinition Workshop(string asset, string name, string summary,
+            int cost, float health, float repair, int targets,
+            BuildingDefinition[] upgrades = null)
+        {
+            BuildingDefinition def = Make(asset);
+            Common(def, name, summary, BuildingRole.Support, cost, health, upgrades,
+                BuildingShape.Workshop, new[] { NodeKind.Inner, NodeKind.Economy });
+            SetPrivate(def, "repairAmount", repair);
+            SetPrivate(def, "repairTargets", targets);
+            SetPrivate(def, "repairInterval", 4f);
+            EditorUtility.SetDirty(def);
+            return def;
+        }
+
+        private static BuildingDefinition BeaconDef(string asset, string name, string summary,
+            int cost, float health, int charges, BuildingDefinition[] upgrades = null)
+        {
+            BuildingDefinition def = Make(asset);
+            Common(def, name, summary, BuildingRole.Beacon, cost, health, upgrades,
+                BuildingShape.Beacon, new[] { NodeKind.Beacon, NodeKind.Inner, NodeKind.Outer });
+            SetPrivate(def, "lightCharges", charges);
             EditorUtility.SetDirty(def);
             return def;
         }
@@ -416,7 +558,8 @@ namespace Dawnkeep.EditorTools
                 node = go.AddComponent<BuildNode>();
             }
 
-            node.Configure(kind, tier);
+            // البذرة من ترتيب العقدة: ثابتة بين التشغيلات، ومختلفة بين العقد
+            node.Configure(kind, tier, index * 3);
             EditorUtility.SetDirty(node);
             return index + 1;
         }

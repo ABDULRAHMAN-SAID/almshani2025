@@ -28,6 +28,8 @@ namespace Dawnkeep.Combat
         private Vector3 _home;
         private bool _hasHome;
         private float _light;
+        private float _slowUntil;
+        private float _slowFactor = 1f;
 
         private Vector3[] _path;
         private int _pathIndex;
@@ -98,6 +100,36 @@ namespace Dawnkeep.Combat
         /// </summary>
         public bool BountyPaid { get; set; }
 
+        /// <summary>
+        /// معامل السرعة الآن: واحد إن لم يُبطَّأ. الإبطاء **لا يتراكم بل يغلب
+        /// أقواه**: ثلاث مسلّات صقيع على عدوّ واحد تُجمّده تماماً لو ضُرب
+        /// المعامل في نفسه، فيصير البرج الواحد بلا قيمة والثلاثة كسراً للّعبة.
+        /// </summary>
+        public float SpeedMultiplier
+        {
+            get { return Time.time < _slowUntil ? _slowFactor : 1f; }
+        }
+
+        /// <summary>يُبطئ الوحدة. `factor` معامل السرعة (0.68 يعني بطء 32%).</summary>
+        public void ApplySlow(float factor, float seconds)
+        {
+            if (seconds <= 0f || factor >= 1f)
+            {
+                return;
+            }
+
+            float until = Time.time + seconds;
+            if (factor < _slowFactor || Time.time >= _slowUntil)
+            {
+                _slowFactor = factor;
+            }
+
+            if (until > _slowUntil)
+            {
+                _slowUntil = until;
+            }
+        }
+
         /// <summary>موضع المرابطة: تعود إليه الحامية إذا لم يبقَ لها هدف.</summary>
         public Vector3 Home { get { return _home; } }
 
@@ -128,6 +160,8 @@ namespace Dawnkeep.Combat
             _structureTarget = null;
             BountyPaid = false;
             _light = 0f;
+            _slowUntil = 0f;
+            _slowFactor = 1f;
             _nextThink = 0f;
             _nextAttack = 0f;
             _pathIndex = 0;
@@ -159,6 +193,8 @@ namespace Dawnkeep.Combat
             _structureTarget = null;
             BountyPaid = false;
             _light = 0f;
+            _slowUntil = 0f;
+            _slowFactor = 1f;
             _nextThink = 0f;
             _nextAttack = 0f;
             _path = path;
@@ -178,6 +214,16 @@ namespace Dawnkeep.Combat
         /// <summary>الضرر بعد الدرع. يعيد true إن قتلت هذه الضربة الوحدة.</summary>
         public bool TakeDamage(float amount)
         {
+            return TakeDamage(amount, 0f);
+        }
+
+        /// <summary>
+        /// ضررٌ يتجاوز جزءاً من الدرع (§10: المسلّة السحرية). الاختراق يُطبَّق
+        /// على **مجموع** الدرعين — العاديّ ودرع الظلام — فمسلّةٌ تخترق نصف
+        /// الدرع تنفع على المدرَّع في الظلام كما تنفع عليه في النور.
+        /// </summary>
+        public bool TakeDamage(float amount, float armourPierce)
+        {
             if (!Alive)
             {
                 return false;
@@ -191,7 +237,8 @@ namespace Dawnkeep.Combat
                 armour += definition.DarkArmour * (1f - Mathf.Clamp01(_light));
             }
 
-            _health -= amount * (1f - Mathf.Clamp(armour, 0f, 0.9f));
+            armour = Mathf.Clamp(armour, 0f, 0.9f) * (1f - Mathf.Clamp01(armourPierce));
+            _health -= amount * (1f - armour);
 
             if (_health > 0f)
             {

@@ -29,6 +29,7 @@ namespace Dawnkeep.Light
         [SerializeField] private float bowlHeight = 4.2f;
 
         private Transform _transform;
+        private Transform _parts;
         private Transform _ring;
         private Material _ringMaterial;
         private UnityEngine.Light _lamp;
@@ -38,6 +39,7 @@ namespace Dawnkeep.Light
 
         private float _snuffedUntil;
         private float _shownRadius = -1f;
+        private bool _movable = true;
         private int _shownCharges = -1;
         private bool _shownLit;
 
@@ -65,6 +67,13 @@ namespace Dawnkeep.Light
 
         public LightSettings Settings { get { return settings; } }
 
+        /// <summary>
+        /// هل ينقل اللاعب شحناتها بيده؟ منارات الخريطة نعم، والمبنيّة لا:
+        /// شحناتُ المبنيّة من مستواه، ولمسةٌ واحدة على موضعها كانت تنقل شحنةً
+        /// **وتفتح بطاقات البناء معاً** لأنّ المنارة والعقدة في نفس النقطة.
+        /// </summary>
+        public bool Movable { get { return _movable; } }
+
         /// <summary>نصف قطر دائرتها الآن. صفر إن كانت مطفأة.</summary>
         public float Radius
         {
@@ -83,6 +92,12 @@ namespace Dawnkeep.Light
         {
             settings = value;
             charges = startCharges;
+        }
+
+        /// <summary>يثبّت شحناتها: منارةُ مبنىً لا تُنقل شحناتها باللمس.</summary>
+        public void Fix()
+        {
+            _movable = false;
         }
 
         /// <summary>
@@ -130,6 +145,13 @@ namespace Dawnkeep.Light
         {
             _transform = transform;
             _pipBlock = new MaterialPropertyBlock();
+
+            // كل ما تبنيه المنارة تحت ابن واحد تملكه: قد تشارك كائناً مع مبنى
+            // يبني شكله هو الآخر، فلا يجوز أن يهدم أحدهما أبناء الآخر.
+            GameObject holder = new GameObject("BeaconParts");
+            holder.transform.SetParent(_transform, false);
+            _parts = holder.transform;
+
             BuildBrazier();
             BuildRing();
             BuildPips();
@@ -152,6 +174,33 @@ namespace Dawnkeep.Light
             {
                 field.Unregister(this);
             }
+        }
+
+        /// <summary>
+        /// يطوي المنارة: يشطبها من الحقل ويهدم ما بناه وحده. يُنادى حين يُرقّى
+        /// مبنى المنارة إلى دورٍ آخر، فلا يبقى عمودٌ يتيم بلا مكوّن يحرّكه.
+        /// </summary>
+        public void Teardown()
+        {
+            LightField field = LightField.Instance;
+            if (field != null)
+            {
+                field.Unregister(this);
+            }
+
+            if (_parts != null)
+            {
+                _parts.gameObject.SetActive(false);
+                Destroy(_parts.gameObject);
+                _parts = null;
+            }
+
+            // التعطيل فوريّ و`Destroy` مؤجَّل إلى آخر الإطار: بلا هذا يعمل
+            // `LateUpdate` مرّةً بعد الطيّ على أبناءَ مهدومين فينكسر.
+            _ring = null;
+            _pipRenderers = null;
+            _lamp = null;
+            enabled = false;
         }
 
         private void LateUpdate()
@@ -240,7 +289,7 @@ namespace Dawnkeep.Light
         private void AddPiece(string name, Mesh mesh, Color color, bool unlit)
         {
             GameObject go = new GameObject(name);
-            go.transform.SetParent(_transform, false);
+            go.transform.SetParent(_parts, false);
             go.AddComponent<MeshFilter>().sharedMesh = mesh;
 
             MeshRenderer renderer = go.AddComponent<MeshRenderer>();
@@ -269,7 +318,7 @@ namespace Dawnkeep.Light
             const float Span = 120f;      // أوسع من أيّ نصف قطر ممكن
 
             GameObject go = new GameObject("Ring");
-            go.transform.SetParent(_transform, false);
+            go.transform.SetParent(_parts, false);
             go.transform.localPosition = new Vector3(0f, 0.12f, 0f);
             go.AddComponent<MeshFilter>().sharedMesh = FlatQuad("Dawnkeep_Beacon_Ring", Span);
 
@@ -312,7 +361,7 @@ namespace Dawnkeep.Light
             for (int i = 0; i < max; i++)
             {
                 GameObject go = new GameObject("Pip_" + i);
-                go.transform.SetParent(_transform, false);
+                go.transform.SetParent(_parts, false);
 
                 float offset = (i - ((max - 1) * 0.5f)) * 0.54f;
                 go.transform.localPosition = new Vector3(offset, bowlHeight + 1.95f, 0f);
@@ -356,7 +405,7 @@ namespace Dawnkeep.Light
         private void BuildLamp()
         {
             GameObject go = new GameObject("Lamp");
-            go.transform.SetParent(_transform, false);
+            go.transform.SetParent(_parts, false);
             go.transform.localPosition = new Vector3(0f, bowlHeight + 0.6f, 0f);
 
             _lamp = go.AddComponent<UnityEngine.Light>();

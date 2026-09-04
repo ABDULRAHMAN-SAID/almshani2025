@@ -20,6 +20,9 @@ namespace Dawnkeep.Building
         [Tooltip("مستوى قلب الحصن الذي تُفتح عنده هذه العقدة (§10).")]
         [SerializeField] private int unlockTier = 1;
 
+        [Tooltip("من أين يبدأ مسح الكتالوج لهذه العقدة — يُنوِّع بطاقاتها.")]
+        [SerializeField] private int offerSeed;
+
         private Transform _transform;
         private Transform _marker;
         private Building _building;
@@ -27,6 +30,14 @@ namespace Dawnkeep.Building
         public NodeKind Kind { get { return kind; } }
 
         public int UnlockTier { get { return unlockTier; } }
+
+        /// <summary>
+        /// بذرة بطاقات هذه العقدة. §10 تعرض **ثلاثاً في المرّة**، ومسحُ
+        /// الكتالوج من أوّله دائماً يعني أنّ المسلّة والورشة والقاذف لا تظهر
+        /// أبداً على عقدة داخلية — يسبقها الكوخ والمزرعة والبرج. البذرة تُدوّر
+        /// نقطة البدء فتختلف العقد فيما تعرضه، وتبقى ثابتة لكل عقدة.
+        /// </summary>
+        public int OfferSeed { get { return offerSeed; } }
 
         /// <summary>
         /// فُتحت بمستوى قلب الحصن الحالي. المقفلة لا تُلمس ولا تُعلَّم: عقدةٌ
@@ -48,10 +59,11 @@ namespace Dawnkeep.Building
 
         public bool IsEmpty { get { return _building == null || !_building.Alive; } }
 
-        public void Configure(NodeKind value, int tier)
+        public void Configure(NodeKind value, int tier, int seed)
         {
             kind = value;
             unlockTier = tier;
+            offerSeed = seed;
         }
 
         private void Awake()

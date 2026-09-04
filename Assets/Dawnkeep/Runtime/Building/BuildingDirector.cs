@@ -125,9 +125,18 @@ namespace Dawnkeep.Building
                     continue;
                 }
 
-                if (building.Definition.Role == BuildingRole.Tower && !building.Raising)
+                if (building.Raising)
+                {
+                    continue;
+                }
+
+                if (building.Definition.Role == BuildingRole.Tower)
                 {
                     TickTower(building, now);
+                }
+                else if (building.Definition.Role == BuildingRole.Support)
+                {
+                    TickWorkshop(building, now);
                 }
             }
 
@@ -203,7 +212,52 @@ namespace Dawnkeep.Building
             building.NextShot = now + (1f / Mathf.Max(0.05f, def.ShotsPerSecond));
 
             Vector3 muzzle = building.Body.position + (Vector3.up * muzzleHeight);
-            _projectiles.Fire(muzzle, target, def.Damage, 46f);
+            _projectiles.Fire(muzzle, target, def.Damage, 46f, def.Effect);
+        }
+
+        /// <summary>
+        /// الورشة تصلح جيرانها الجرحى (§10). **الجرحى وحدهم**: إصلاح مبنىً
+        /// سليم يُهدر النوبة ويترك الجريح ينهار وهو في مداها.
+        /// </summary>
+        private void TickWorkshop(Building workshop, float now)
+        {
+            if (now < workshop.NextShot)
+            {
+                return;
+            }
+
+            BuildingDefinition def = workshop.Definition;
+            workshop.NextShot = now + Mathf.Max(0.25f, def.RepairInterval);
+
+            if (def.RepairAmount <= 0f)
+            {
+                return;
+            }
+
+            Vector3 centre = workshop.Body.position;
+            float rangeSqr = def.RepairRange * def.RepairRange;
+            int healed = 0;
+
+            for (int i = 0; i < _buildings.Count && healed < def.RepairTargets; i++)
+            {
+                Building other = _buildings[i];
+                if (other == null || other == workshop || !other.Alive)
+                {
+                    continue;
+                }
+
+                Vector3 delta = other.Body.position - centre;
+                delta.y = 0f;
+                if (delta.sqrMagnitude > rangeSqr)
+                {
+                    continue;
+                }
+
+                if (other.Repair(def.RepairAmount))
+                {
+                    healed++;
+                }
+            }
         }
 
         /// <summary>
@@ -298,6 +352,7 @@ namespace Dawnkeep.Building
             _buildings.Add(building);
 
             SpawnGuards(building, definition);
+            EnsureBeacon(building, definition);
             return building;
         }
 
@@ -321,6 +376,7 @@ namespace Dawnkeep.Building
 
             building.UpgradeTo(into, into.Cost, NextSeed());
             SpawnGuards(building, into);
+            EnsureBeacon(building, into);
             return true;
         }
 
@@ -401,6 +457,45 @@ namespace Dawnkeep.Building
                 {
                     _combat.Register(unit);
                 }
+            }
+        }
+
+        /// <summary>
+        /// منارة الفجر كمبنى (§10): يحمل الكائنُ نفسه مكوّنَ `Beacon`، فيبني
+        /// عمودها ودائرتها بنفسه ويسجّل نفسه في حقل النور.
+        ///
+        /// المكوّن يُعاد ضبطه لا يُضاف ثانيةً عند الترقية: `DisallowMultiple`
+        /// يمنع الثاني، والشحنات هي ما يتغيّر.
+        /// </summary>
+        private void EnsureBeacon(Building building, BuildingDefinition definition)
+        {
+            Dawnkeep.Light.Beacon beacon = building.GetComponent<Dawnkeep.Light.Beacon>();
+
+            if (definition.Role != BuildingRole.Beacon)
+            {
+                if (beacon != null)
+                {
+                    // رُقّي إلى دور آخر: تُطوى المنارة بما بنته لا مكوّنها وحده
+                    beacon.Teardown();
+                    Destroy(beacon);
+                }
+
+                return;
+            }
+
+            Dawnkeep.Light.LightField field = Dawnkeep.Light.LightField.Instance;
+
+            if (beacon == null)
+            {
+                beacon = building.gameObject.AddComponent<Dawnkeep.Light.Beacon>();
+            }
+
+            beacon.Configure(field != null ? field.Settings : null, definition.LightCharges);
+            beacon.Fix();
+
+            if (field != null)
+            {
+                field.Register(beacon);
             }
         }
 

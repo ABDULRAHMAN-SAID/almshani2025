@@ -12,6 +12,12 @@ namespace Dawnkeep.Building
         Barracks = 3,
         ArcherCamp = 4,
         Wall = 5,
+        Obelisk = 6,
+        Bombard = 7,
+        Workshop = 8,
+
+        /// <summary>بلا كتلة: `Beacon` يبني عمودها ومِجمَرتها بنفسه.</summary>
+        Beacon = 9,
     }
 
     /// <summary>
@@ -56,6 +62,10 @@ namespace Dawnkeep.Building
                 case BuildingShape.Barracks: Barracks(parts, ref rng); break;
                 case BuildingShape.ArcherCamp: ArcherCamp(parts, ref rng); break;
                 case BuildingShape.Wall: Wall(parts, ref rng); break;
+                case BuildingShape.Obelisk: Obelisk(parts, ref rng); break;
+                case BuildingShape.Bombard: Bombard(parts, ref rng); break;
+                case BuildingShape.Workshop: Workshop(parts, ref rng); break;
+                case BuildingShape.Beacon: break;      // المنارة تبني نفسها
                 default: Cottage(parts, ref rng); break;
             }
 
@@ -174,6 +184,72 @@ namespace Dawnkeep.Building
             // منصّة الرمي على الحافّة الأمامية
             p.Timber.AddBox(new Vector3(0f, 0.95f, 3.05f), new Vector3(7.2f, 0.70f, 1.30f), 0f, 0.45f);
             p.Timber.AddBox(new Vector3(0f, 1.75f, 3.62f), new Vector3(7.2f, 0.90f, 0.22f), 0f, 0.55f);
+        }
+
+        /// <summary>
+        /// مسلّة: قاعدة مدرّجة وعمود رباعي ينحسر إلى قمّة حادّة، وطوق عائم.
+        /// شكلها الحادّ يميّزها عن البرج المستدير على بُعد كاميرا الاستراتيجية.
+        /// </summary>
+        private static void Obelisk(Parts p, ref TexRandom rng)
+        {
+            p.Stone.AddBox(new Vector3(0f, 0.40f, 0f), new Vector3(4.60f, 0.80f, 4.60f), 0f, 0.35f);
+            p.Stone.AddBox(new Vector3(0f, 1.10f, 0f), new Vector3(3.40f, 0.60f, 3.40f), 0.20f, 0.35f);
+
+            // العمود أربعة أضلاع لا ثمانية: الحدّة هي ما يقول «سحر» لا «حجر»
+            p.Stone.AddCylinder(new Vector3(0f, 1.40f, 0f), 1.42f, 0.62f, 7.60f, 4, 0.4f, false);
+            p.Stone.AddCylinder(new Vector3(0f, 9.00f, 0f), 0.62f, 0.02f, 1.50f, 4, 0.4f, true);
+
+            // طوق عائم حول العمود: يبرز ظلّه فيُقرأ المبنى من فوق
+            p.Timber.AddCylinder(new Vector3(0f, 5.20f, 0f), 2.05f, 2.05f, 0.26f, 8, 0.6f, true);
+        }
+
+        /// <summary>
+        /// قاذف: منصّة حجرية عريضة وماسورة مائلة على مهد خشبي.
+        /// الميل هو ما يقول إنّه يقذف فوق الرؤوس لا يرمي أمامه.
+        /// </summary>
+        private static void Bombard(Parts p, ref TexRandom rng)
+        {
+            float rot = (rng.Next() - 0.5f) * 0.4f;
+
+            p.Stone.AddBox(new Vector3(0f, 0.55f, 0f), new Vector3(6.40f, 1.10f, 6.40f), rot, 0.32f);
+            p.Timber.AddBox(new Vector3(0f, 1.55f, 0f), new Vector3(4.60f, 0.90f, 4.60f), rot, 0.45f);
+
+            // مهدان يحملان الماسورة
+            p.Timber.AddBox(new Vector3(-1.55f, 2.60f, 0f), new Vector3(0.55f, 2.10f, 2.60f), rot, 0.5f);
+            p.Timber.AddBox(new Vector3(1.55f, 2.60f, 0f), new Vector3(0.55f, 2.10f, 2.60f), rot, 0.5f);
+
+            // الماسورة: أسطوانة مائلة تُبنى بنقطتين لا بدوران كائن
+            p.Stone.AddTube(new Vector3(0f, 2.35f, -1.85f), new Vector3(0f, 5.30f, 1.95f),
+                0.86f, 0.68f, 8, 0.5f, 0f, 0f, 0f);
+            p.Stone.AddTube(new Vector3(0f, 5.30f, 1.95f), new Vector3(0f, 5.55f, 2.27f),
+                0.92f, 0.88f, 8, 0.5f, 0f, 0f, 0f);
+        }
+
+        /// <summary>
+        /// ورشة: سقيفة مفتوحة الجانب، سندان ومنضدة ومدخنة قصيرة.
+        /// انفتاح جانبها هو ما يقول «تُصلح» لا «تُخزّن».
+        /// </summary>
+        private static void Workshop(Parts p, ref TexRandom rng)
+        {
+            const float W = 7.6f;
+            const float D = 5.4f;
+            float rot = (rng.Next() - 0.5f) * 0.26f;
+
+            p.Stone.AddBox(new Vector3(0f, 0.30f, 0f), new Vector3(W + 0.6f, 0.60f, D + 0.6f), rot, 0.35f);
+
+            // ثلاثة جدران فقط: الرابع مفتوح
+            p.Stone.AddBox(new Vector3(0f, 1.85f, -D * 0.5f), new Vector3(W, 2.50f, 0.50f), rot, 0.32f);
+            p.Stone.AddBox(new Vector3(-W * 0.5f, 1.85f, 0f), new Vector3(0.50f, 2.50f, D), rot, 0.32f);
+            p.Stone.AddBox(new Vector3(W * 0.5f, 1.85f, 0f), new Vector3(0.50f, 2.50f, D), rot, 0.32f);
+
+            p.Timber.AddBox(new Vector3(0f, 3.18f, 0f), new Vector3(W + 0.3f, 0.26f, D + 0.3f), rot, 0.5f);
+            p.Thatch.AddGableRoof(new Vector3(0f, 3.32f, 0f), W, D, 1.60f, rot, 0.32f, 0.55f);
+            p.Thatch.AddGableEnd(new Vector3(0f, 3.32f, 0f), W, 1.60f, rot, -D * 0.5f, 0.32f);
+
+            // سندان ومنضدة داخل الفتحة
+            p.Stone.AddBox(new Vector3(-1.60f, 0.95f, 1.20f), new Vector3(1.10f, 0.70f, 0.80f), rot, 0.6f);
+            p.Timber.AddBox(new Vector3(1.50f, 1.05f, 1.10f), new Vector3(2.20f, 0.24f, 1.10f), rot, 0.55f);
+            p.Stone.AddBox(new Vector3(W * 0.32f, 4.35f, -D * 0.30f), new Vector3(0.85f, 2.20f, 0.85f), rot, 0.6f);
         }
 
         /// <summary>جدار: مقطع سور قصير بشرفات — يُبنى على عقد البوّابة وحدها.</summary>

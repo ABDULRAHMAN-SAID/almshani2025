@@ -31,7 +31,8 @@ SELL    = num(TR, 'sellFraction', float)
 
 # ── المباني من باني الأصول
 buildings = {}
-for m in re.finditer(r'(Economy|Tower|Garrison|WallDef)\("(\w+)",\s*"([^"]+)",\s*\n?\s*"[^"]*",\s*\n?\s*cost:\s*(\d+)(?:,\s*income:\s*(\d+))?', BS):
+KINDS = r'(Economy|Tower|Garrison|WallDef|Obelisk|Bombard|Workshop|BeaconDef)'
+for m in re.finditer(KINDS + r'\("(\w+)",\s*"([^"]+)",\s*\n?\s*"[^"]*",\s*\n?\s*cost:\s*(\d+)(?:,\s*income:\s*(\d+))?', BS):
     kind, asset, name, cost, income = m.groups()
     buildings[asset] = dict(kind=kind, name=name, cost=int(cost), income=int(income or 0))
 
@@ -75,23 +76,27 @@ NODE_LIST = [(k.strip().split('.')[-1], int(t))
              for k, t in zip([x for x in _kinds.replace('\n',' ').split(',') if x.strip()],
                              [x for x in _tiers.split(',') if x.strip()])]
 FITS = {                       # ما يقبله كل نوع عقدة، كما في DawnkeepBuildSetup
-    'Economy': ('Economy', 'Inner'),
-    'Tower':   ('Outer', 'Inner'),
-    'Garrison':('Inner', 'Gate'),
-    'WallDef': ('Gate',),
+    'Economy':  ('Economy', 'Inner'),
+    'Tower':    ('Outer', 'Inner'),
+    'Garrison': ('Inner', 'Gate'),
+    'WallDef':  ('Gate',),
+    'Obelisk':  ('Inner', 'Outer'),
+    'Bombard':  ('Inner', 'Outer'),
+    'Workshop': ('Inner', 'Economy'),
+    'BeaconDef':('Beacon', 'Inner', 'Outer'),
 }
 
 # سلاسل الترقية: أصلٌ ← ما يمكن أن يصير إليه
 UPGRADES = {}
-for m in re.finditer(r'(Economy|Tower|Garrison|WallDef)\("(\w+)".*?upgrades:\s*new\[\]\s*\{([^}]*)\}', BS, re.S):
+for m in re.finditer(KINDS + r'\("(\w+)".*?upgrades:\s*new\[\]\s*\{([^}]*)\}', BS, re.S):
     kids = [k.strip() for k in m.group(3).split(',') if k.strip()]
     UPGRADES[m.group(2)] = kids
 VAR = {}
-for m in re.finditer(r'BuildingDefinition (\w+) = (?:Economy|Tower|Garrison|WallDef)\("(\w+)"', BS):
+for m in re.finditer(r'BuildingDefinition (\w+) = (?:Economy|Tower|Garrison|WallDef|Obelisk|Bombard|Workshop|BeaconDef)\("(\w+)"', BS):
     VAR[m.group(1)] = m.group(2)
 UPGRADES = {k: [VAR.get(c, c) for c in v] for k, v in UPGRADES.items()}
 
-last_rows, last_saturated, last_actions = [], None, 0
+last_rows, last_saturated, last_actions, last_placed = [], None, 0, 0
 
 ROOTS = [k for k in buildings
          if not any(k in kids for kids in UPGRADES.values())]
@@ -178,14 +183,14 @@ def run(label, econ_share):
     for w, tr, n, a, inc, pay, sv in rows:
         print(f'{w:>5}{tr:>7}{n:>8}{a:>9}{inc:>7}{pay:>8}{sv:>8}')
     print(f'امتلأ كل شيء عند الموجة: {saturated if saturated else "لم يمتلئ خلال عشر موجات"}')
-    global last_rows, last_saturated, last_actions
-    last_rows, last_saturated, last_actions = rows, saturated, actions
+    global last_rows, last_saturated, last_actions, last_placed
+    last_rows, last_saturated, last_actions, last_placed = rows, saturated, actions, len(placed)
     return actions
 
-results = {}
-for label, share in [('اقتصاد ثقيل', 0.75), ('متوازن', 0.5), ('دفاع ثقيل', 0.25)]:
-    results[label] = run(label, share)
-    print()
+# جولة واحدة لا ثلاث: الاستراتيجيات الثلاث تعطي النتيجة نفسها لأنّ العقد
+# — لا الفضّة ولا الكتالوج — هي القيد، والأرخص يملؤها بنفس الترتيب دائماً.
+run('المسار الأرخص أوّلاً', 0.5)
+print()
 
 print('── مقابل §10 ────────────────────────────')
 
@@ -205,21 +210,30 @@ check('قلب الحصن يتدرّج ولا يقفز', tiers[0] == 1 and tiers[
       f'  (المستوى 1 → {tiers[-1]} على {len(rows)} موجات)')
 check('لا يمتلئ كل شيء قبل الموجة السادسة', sat is None or sat >= 6,
       f'  (امتلأ عند {sat if sat else "لم يمتلئ"})')
-cheapest = min(v['cost'] for v in buildings.values())
-tight = all(sv < 900 for sv in silver[:6])
-check('الفضّة ضيّقة في الموجات الستّ الأولى', tight,
+check('الفضّة ضيّقة في الموجات الستّ الأولى', all(sv < 900 for sv in silver[:6]),
       f'  (أقصى رصيد {max(silver[:6])})')
+check('كل عقدة مفتوحة تُملأ فعلاً', last_placed == len(NODE_LIST),
+      f'  ({last_placed} من {len(NODE_LIST)})')
 
 print()
-print('── ملاحظة مفتوحة ─────────────────────────')
-print('§10 تستهدف «10 إلى 14 بناءً أو ترقية كبرى في الموجة العاشرة»، والمقيس'
-      f' {last_actions}.')
-print('السبب ليس سخاء الاقتصاد: خفض مكافأة القتل إلى واحد لكل عدوّ يُنزل الرقم')
-print('إلى 28 فقط — لأنّ دخل §10 نفسه (35 + 10×الموجة) يكفي لكل شيء.')
-print('السبب أنّ المنفَّذ ستّ عائلات مبانٍ من عشر، وشجرة ترقياتها أقصر. الهدف')
-print('يُعاد قياسه حين تكتمل العائلات الأربع الباقية (المسلّة، القاذف، الورشة،')
-print('منارة الفجر كمبنى) وفروع المستوى الثالث لكلٍّ منها.')
+print('── تناقض مقيس داخل §10 ───────────────────')
+print(f'§10 تستهدف «10 إلى 14 بناءً أو ترقية كبرى في الموجة العاشرة»، والمقيس {last_actions}.')
 print()
-print('يفيض الرصيد بعد الموجة الثامنة (%d فضّة) — وهذا هو الفراغ نفسه.' % silver[-1])
+print('جُرِّب سببان واستُبعدا بالقياس:')
+print('  ١. مكافأة القتل — خفضها إلى واحد لكل عدوّ ينزل الرقم إلى 28 فقط.')
+print(f'  ٢. قلّة المحتوى — الكتالوج اليوم {len(buildings)} تعريفاً (عشر عائلات كاملة)')
+print('     والنتيجة لم تتغيّر عن ستّ عائلات: 33 إجراءً في الحالتين.')
+print()
+print(f'فالقيد هو **عدد العقد** ({len(NODE_LIST)}) وعمق الترقية، لا الفضّة ولا الخيارات.')
+print('و§10 نفسها تحدّد العقد (5+3+4+4) والأثمان والدخل — وهذه الثلاثة لا')
+print('تُنتج هدفها: دخلها (35 + 10×الموجة) مع دخل المباني المركّب يموّل ملء')
+print('العقد كلّها وترقيتها مرّةً في ثماني موجات.')
+print()
+print('لم تُعدَّل أرقام §10 هنا. التوفيق قرار تصميم لصاحب المشروع، وأمامه ثلاثة:')
+print('  • تقليل العقد إلى نحو ستٍّ — يوافق الهدف ويخالف جدول §10.')
+print('  • مضاعفة أثمان الترقية — يوافق الهدف ويخالف جدول الأثمان.')
+print('  • قبول 33 وتعديل الهدف — يبقي كل رقم في §10 كما هو.')
+print()
+print(f'الرصيد يفيض بعد الموجة الثامنة ({silver[-1]} فضّة) — وهذا أثر التناقض نفسه.')
 
 sys.exit(0 if ok else 1)

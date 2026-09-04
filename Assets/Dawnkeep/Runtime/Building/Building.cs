@@ -23,6 +23,7 @@ namespace Dawnkeep.Building
         private float _builtAt;
 
         private Renderer[] _renderers;
+        private Transform _shape;
         private MaterialPropertyBlock _block;
 
         /// <summary>
@@ -167,6 +168,19 @@ namespace Dawnkeep.Building
             return true;
         }
 
+        /// <summary>يعيد صحّةً بحدّ سقفه. يعيد true إن كان جريحاً فعلاً.</summary>
+        public bool Repair(float amount)
+        {
+            if (!Alive || _definition == null || _health >= _definition.MaxHealth)
+            {
+                return false;
+            }
+
+            _health = Mathf.Min(_definition.MaxHealth, _health + amount);
+            TintByHealth();
+            return true;
+        }
+
         /// <summary>يزيل المبنى ويترك عقدته خالية.</summary>
         public void Remove()
         {
@@ -185,14 +199,21 @@ namespace Dawnkeep.Building
 
         private void BuildShape(BuildingDefinition definition, uint seed)
         {
-            for (int i = _transform.childCount - 1; i >= 0; i--)
+            // كتلة الشكل تحت ابن واحد يملكه هذا المكوّن وحده. مسحُ كل الأبناء
+            // بدل ذلك يهدم ما تبنيه مكوّنات أخرى على الكائن نفسه — ومنارة
+            // الفجر تبني عمودها ودائرتها هناك، فكانت الترقية تمحوها وتترك
+            // مكوّنها يشير إلى كائنات مهدومة.
+            if (_shape != null)
             {
                 // الإخفاء فوري والهدم مؤجَّل إلى آخر الإطار: بلا الإخفاء يُرسم
                 // الشكل القديم فوق الجديد إطاراً كاملاً عند الترقية.
-                GameObject old = _transform.GetChild(i).gameObject;
-                old.SetActive(false);
-                Destroy(old);
+                _shape.gameObject.SetActive(false);
+                Destroy(_shape.gameObject);
             }
+
+            GameObject holder = new GameObject("Shape");
+            holder.transform.SetParent(_transform, false);
+            _shape = holder.transform;
 
             BuildingMeshFactory.Parts parts = BuildingMeshFactory.Build(definition.Shape, seed);
 
@@ -217,7 +238,7 @@ namespace Dawnkeep.Building
             }
 
             GameObject go = new GameObject(name);
-            go.transform.SetParent(_transform, false);
+            go.transform.SetParent(_shape, false);
             go.AddComponent<MeshFilter>().sharedMesh = builder.ToMesh("Dawnkeep_Build_" + name, true);
 
             MeshRenderer renderer = go.AddComponent<MeshRenderer>();

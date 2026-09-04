@@ -100,9 +100,9 @@ namespace Dawnkeep.Light
             for (int i = 0; i < beacons.Count; i++)
             {
                 Beacon beacon = beacons[i];
-                if (beacon == null)
+                if (beacon == null || !beacon.Movable)
                 {
-                    continue;
+                    continue;      // منارةُ مبنىً: شحناتها من مستواه لا من يد اللاعب
                 }
 
                 Vector3 hit;

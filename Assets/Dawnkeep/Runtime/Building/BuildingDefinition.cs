@@ -36,6 +36,12 @@ namespace Dawnkeep.Building
 
         /// <summary>يعترض الطريق ويمتصّ الضرب.</summary>
         Wall = 3,
+
+        /// <summary>يصلح جيرانه أثناء القتال (§10: الورشة).</summary>
+        Support = 4,
+
+        /// <summary>منارة نور تُبنى على عقدة (§10 و§11).</summary>
+        Beacon = 5,
     }
 
     /// <summary>
@@ -86,6 +92,44 @@ namespace Dawnkeep.Building
 
         [SerializeField] private TargetClass targetClass = TargetClass.Nearest;
 
+        [Header("أثر المقذوف")]
+        [Tooltip("ما يتجاوزه من درع الهدف (§10: المسلّة السحرية).")]
+        [Range(0f, 1f)]
+        [SerializeField] private float armourPierce;
+
+        [Tooltip("نصف قطر الانفجار بالمتر. صفر يعني إصابة مفردة (§10: القاذف).")]
+        [SerializeField] private float blastRadius;
+
+        [Tooltip("معامل سرعة المصاب. واحد يعني بلا إبطاء (§10: مسلّة الصقيع 0.68).")]
+        [Range(0.2f, 1f)]
+        [SerializeField] private float slowFactor = 1f;
+
+        [SerializeField] private float slowSeconds;
+
+        [Tooltip("كم هدفاً إضافيّاً تقفز إليه السلسلة (§10: مسلّة العاصفة).")]
+        [SerializeField] private int chainTargets;
+
+        [Tooltip("ما يبقى من الضرر عند كل قفزة (§10: تناقص 20% ⇐ 0.8).")]
+        [Range(0.1f, 1f)]
+        [SerializeField] private float chainFalloff = 0.8f;
+
+        [Header("الدعم")]
+        [Tooltip("كم صحّة يعيد لكل مبنى (§10: الورشة 35).")]
+        [SerializeField] private float repairAmount;
+
+        [Tooltip("كل كم ثانية يصلح (§10: 4).")]
+        [SerializeField] private float repairInterval = 4f;
+
+        [Tooltip("كم مبنى يصلح في المرّة (§10: 2).")]
+        [SerializeField] private int repairTargets = 2;
+
+        [Tooltip("أبعد مسافة يصل إليها الإصلاح بالمتر.")]
+        [SerializeField] private float repairRange = 40f;
+
+        [Header("النور")]
+        [Tooltip("شحنات المنارة التي يقيمها هذا المبنى (§10 و§11).")]
+        [SerializeField] private int lightCharges = 1;
+
         [Header("الحامية")]
         [Tooltip("عدد الحرّاس الذين يُخرجهم عند البناء.")]
         [SerializeField] private int guardCount;
@@ -126,6 +170,44 @@ namespace Dawnkeep.Building
         public float MinimumRange { get { return minimumRange; } }
 
         public TargetClass TargetClass { get { return targetClass; } }
+
+        public float ArmourPierce { get { return armourPierce; } }
+
+        public float BlastRadius { get { return blastRadius; } }
+
+        public float SlowFactor { get { return slowFactor; } }
+
+        public float SlowSeconds { get { return slowSeconds; } }
+
+        public int ChainTargets { get { return chainTargets; } }
+
+        public float ChainFalloff { get { return chainFalloff; } }
+
+        public float RepairAmount { get { return repairAmount; } }
+
+        public float RepairInterval { get { return repairInterval; } }
+
+        public int RepairTargets { get { return repairTargets; } }
+
+        public float RepairRange { get { return repairRange; } }
+
+        public int LightCharges { get { return lightCharges; } }
+
+        /// <summary>أثر مقذوف هذا المبنى، جاهزاً لـ`ProjectilePool`.</summary>
+        public Combat.ProjectileEffect Effect
+        {
+            get
+            {
+                Combat.ProjectileEffect e;
+                e.ArmourPierce = armourPierce;
+                e.BlastRadius = blastRadius;
+                e.SlowFactor = slowFactor;
+                e.SlowSeconds = slowSeconds;
+                e.ChainTargets = chainTargets;
+                e.ChainFalloff = chainFalloff;
+                return e;
+            }
+        }
 
         public int GuardCount { get { return guardCount; } }
 
