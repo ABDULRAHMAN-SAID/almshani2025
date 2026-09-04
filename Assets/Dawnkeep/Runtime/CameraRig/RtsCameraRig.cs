@@ -90,6 +90,9 @@ namespace Dawnkeep.CameraRig
             followTarget = value;
         }
 
+        /// <summary>ما تلاحقه الآن. تقرؤه الواجهة لتعيده بعد التثبيت (§6).</summary>
+        public Transform FollowTarget { get { return followTarget; } }
+
         /// <summary>هل الكاميرا في لقطة الآن؟ الواجهة تخفي أزرارها حينها.</summary>
         public bool InCinematic { get { return _cinemaUntil > 0f; } }
 

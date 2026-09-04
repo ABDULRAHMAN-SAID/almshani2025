@@ -39,8 +39,38 @@ namespace Dawnkeep.UI
         private int _shownSpirit = -1;
         private bool _spiritOpen;
 
+        private readonly System.Collections.Generic.List<RectTransform> _mirrorRoots =
+            new System.Collections.Generic.List<RectTransform>(6);
+
+        private bool _mirrored;
+
+        /// <summary>
+        /// يعكس مجموعة هذا العنصر لنمط الأعسر (§7). الأبناء يُعكسون معه:
+        /// عكسُ الأب وحده يترك أرقام القدرات ونصوصها على جانبها القديم.
+        /// </summary>
+        private void ApplyHandedness()
+        {
+            bool want = Handedness.LeftHanded;
+            if (want == _mirrored)
+            {
+                return;
+            }
+
+            _mirrored = want;
+            for (int i = 0; i < _mirrorRoots.Count; i++)
+            {
+                Handedness.MirrorTree(_mirrorRoots[i]);
+            }
+        }
+
+        private void OnDestroy()
+        {
+            Handedness.Changed -= ApplyHandedness;
+        }
+
         private void Awake()
         {
+            Handedness.Changed += ApplyHandedness;
             Build();
         }
 
@@ -171,15 +201,15 @@ namespace Dawnkeep.UI
             _fill = new Image[3];
             _back = new Image[3];
 
-            // **انحراف موثّق عن §7**: تضع §7 أزرار القدرات يميناً مع زرّ
-            // الأوامر. لكنّ قوس الأوامر يفتح صاعداً فوق زرّه، ومحاكاة التخطيط
-            // بيّنت أنّه يقع على أزرار القدرات تماماً. واليسار خالٍ لأنّ عصا
-            // §7 الافتراضية لم تُبنَ بعد (الإدخال بالمفاتيح ويد التحكّم).
-            // فالقدرات يساراً حتى تُبنى العصا، وحينها تعود يميناً ويصير القوس
-            // منبثقاً فوق زرّه لا صاعداً عنه.
-            MakeButton(parent, 0, LocKeys.AbilityVolley, "Q", 24f, 24f, Volley);
-            MakeButton(parent, 1, LocKeys.AbilityRally, "E", 154f, 24f, Rally);
-            MakeButton(parent, 2, LocKeys.AbilityUltimate, "R", 284f, 24f, Ultimate);
+            // **عادت القدرات يميناً كما تضع §7** بعد أن بُنيت العصا العائمة
+            // فصار اليسار لها. والأزرار من المرساة اليمنى إلى اليسار: أوّلها
+            // أقرب إلى الإبهام، وهي «رشقة الفجر» أكثرها استعمالاً.
+            //
+            // والصفّ في الأسفل (y = 24) وزرّا الأوامر والبناء فوقه (y = 170)،
+            // فقوسُ الأوامر يفتح من هناك صاعداً ولا يقع على القدرات.
+            MakeButton(parent, 0, LocKeys.AbilityVolley, "Q", -24f, 24f, Volley);
+            MakeButton(parent, 1, LocKeys.AbilityRally, "E", -154f, 24f, Rally);
+            MakeButton(parent, 2, LocKeys.AbilityUltimate, "R", -284f, 24f, Ultimate);
 
             RectTransform spirit = MakeRect("SpiritPanel", parent,
                 new Vector2(0.5f, 0.5f), new Vector2(0f, -40f), new Vector2(460f, 96f));
@@ -198,13 +228,36 @@ namespace Dawnkeep.UI
 
             _spiritPanel = spirit.gameObject;
             _spiritPanel.SetActive(false);
+
+            // الاختيار محفوظ: من قلب التحكّم مرّةً يجده مقلوباً في كل جولة
+            ApplyHandedness();
+        }
+
+        /// <summary>
+        /// مستطيلات أزرار القدرات — تقرؤها العصا الافتراضية فلا تنشأ تحت
+        /// إصبعٍ يضغط قدرة. القراءة من هنا لا بالبحث في المشهد بالاسم:
+        /// إعادةُ تسميةٍ لا تُكسر ما لا يعتمد على الأسماء.
+        /// </summary>
+        public RectTransform[] TouchTargets()
+        {
+            RectTransform[] rects = new RectTransform[_back.Length];
+            for (int i = 0; i < _back.Length; i++)
+            {
+                rects[i] = _back[i] != null
+                    ? _back[i].GetComponent<RectTransform>()
+                    : null;
+            }
+
+            return rects;
         }
 
         private void MakeButton(Transform parent, int index, string captionKey, string hotkey,
             float x, float y, UnityEngine.Events.UnityAction action)
         {
             RectTransform rect = MakeRect("Ability_" + index, parent,
-                new Vector2(0f, 0f), new Vector2(x, y), new Vector2(122f, 122f));
+                new Vector2(1f, 0f), new Vector2(x, y), new Vector2(122f, 122f));
+
+            _mirrorRoots.Add(rect);
 
             Image back = rect.gameObject.AddComponent<Image>();
             back.color = chargingColor;

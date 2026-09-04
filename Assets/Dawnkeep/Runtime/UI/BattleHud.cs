@@ -68,6 +68,10 @@ namespace Dawnkeep.UI
         private TextMeshProUGUI _keepTier;
         private CanvasGroup _heroPanel;
         private CanvasGroup _banner;
+        private Dawnkeep.CameraRig.RtsCameraRig _rig;
+        private Transform _focusReturn;
+        private TextMeshProUGUI _focusLabel;
+        private bool _focusedKeep;
         private GameObject _hastenButton;
 
         private readonly char[] _digits = new char[ArabicNumber.MaxLength];
@@ -459,8 +463,84 @@ namespace Dawnkeep.UI
             BuildSilverPanel(root);
             BuildLightPanel(root);
             BuildHeroPanel(root);
+            BuildFocusButton(root);
             BuildBanner(root);
             BuildHint(root);
+        }
+
+        /// <summary>
+        /// زرّ تثبيت الكاميرا على الحصن ثمّ العودة إلى القائد (§6).
+        ///
+        /// **لا زرّ خريطة مصغّرة**: تضعه §7 أعلى الشاشة، ولا خريطة مصغّرة في
+        /// هذا البناء بعد — وزرٌّ يفتح ما لا وجود له زرٌّ شكليّ، وهي ممنوعة
+        /// (§17). فوُضع مكانه ما تطلبه §6 ويعمل فعلاً، ويُسجَّل الناقص في
+        /// `IMPLEMENTATION_PLAN.md` لا في زرٍّ كاذب.
+        /// </summary>
+        private void BuildFocusButton(RectTransform root)
+        {
+            RectTransform rect = MakePanel("FocusButton", root,
+                new Vector2(0f, 1f), new Vector2(24f, -24f), new Vector2(190f, 58f));
+
+            Image face = rect.GetComponent<Image>();
+            if (face != null)
+            {
+                face.raycastTarget = true;
+            }
+
+            Button button = rect.gameObject.AddComponent<Button>();
+            button.targetGraphic = face;
+            button.onClick.AddListener(ToggleFocus);
+
+            _focusLabel = Label("Caption", rect, LocKeys.FocusKeep, 24f, goldColor,
+                new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(182f, 44f),
+                TextAlignmentOptions.Midline);
+        }
+
+        /// <summary>
+        /// يثبّت الكاميرا على الحصن، ثمّ يعيدها إلى القائد. الحفظ للهدف
+        /// السابق لا افتراضُ البطل: قد تكون مفكوكةً حين يُضغط الزرّ، فإعادتها
+        /// إلى البطل حينئذ تسرق موضعاً اختاره اللاعب.
+        /// </summary>
+        private void ToggleFocus()
+        {
+            if (_rig == null)
+            {
+                _rig = FindAnyObjectByType<Dawnkeep.CameraRig.RtsCameraRig>();
+                if (_rig == null)
+                {
+                    return;
+                }
+            }
+
+            if (_focusedKeep)
+            {
+                _rig.SetFollowTarget(_focusReturn);
+                _focusedKeep = false;
+            }
+            else
+            {
+                _focusReturn = _rig.FollowTarget;
+                Dawnkeep.Building.Keep keep = _keep != null
+                    ? _keep
+                    : Dawnkeep.Building.Keep.Instance;
+
+                if (keep == null)
+                {
+                    return;
+                }
+
+                _rig.SetFollowTarget(keep.transform);
+                _focusedKeep = true;
+            }
+
+            if (_focusLabel != null)
+            {
+                LocalizedLabel bound = _focusLabel.GetComponent<LocalizedLabel>();
+                if (bound != null)
+                {
+                    bound.Bind(_focusLabel, _focusedKeep ? LocKeys.FocusHero : LocKeys.FocusKeep);
+                }
+            }
         }
 
         /// <summary>لوحة الموجة: الزاوية اليمنى العليا — أوّل ما تقع عليه العين.</summary>
@@ -652,8 +732,11 @@ namespace Dawnkeep.UI
         /// <summary>لوحة البطل أسفل اليمين: قريبة من الإبهام على الجوّال.</summary>
         private void BuildHeroPanel(RectTransform root)
         {
+            // **انتقلت لوحة البطل إلى الوسط أعلى** تحت شريط الحصن: أسفل
+            // اليمين صار لأزرار القدرات كما تضع §7. ووضعُها تحت شريط الحصن
+            // مقصود: هما وحدهما ما تخسر بهما الليلة، فيُقرآن معاً بنظرة.
             RectTransform panel = MakePanel("HeroPanel", root,
-                new Vector2(1f, 0f), new Vector2(-24f, 24f), new Vector2(400f, 96f));
+                new Vector2(0.5f, 1f), new Vector2(0f, -92f), new Vector2(400f, 96f));
 
             _heroPanel = panel.gameObject.AddComponent<CanvasGroup>();
             _heroPanel.alpha = 0.35f;      // تبهت حتى يدخل البطل الساحة

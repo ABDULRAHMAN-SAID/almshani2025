@@ -56,6 +56,12 @@ namespace Dawnkeep.UI
         private Image[] _languageButton;
         private Image[] _difficultyButton;
         private Image _healthBarsButton;
+        private Image _stickSizeButton;
+        private Image _stickFadeButton;
+        private Image _handedButton;
+        private TextMeshProUGUI _stickSizeValue;
+        private TextMeshProUGUI _stickFadeValue;
+        private TextMeshProUGUI _handedValue;
         private TextMeshProUGUI _healthBarsValue;
 
         private WaveDirector _waves;
@@ -88,6 +94,7 @@ namespace Dawnkeep.UI
             PaintLanguage();
             PaintHealthBars();
             PaintDifficulty();
+            PaintStick();
         }
 
         private void Update()
@@ -472,6 +479,93 @@ namespace Dawnkeep.UI
             }
         }
 
+        /// <summary>
+        /// حجم العصا يدور على ثلاث درجات (§7). دورةٌ لا شريط: الشريط يحتاج
+        /// سحباً دقيقاً على لوحةٍ موقوفة الزمن، والدورة ضغطةٌ واحدة تُرى
+        /// نتيجتها فوراً عند المتابعة.
+        /// </summary>
+        private void CycleStickSize()
+        {
+            VirtualJoystick stick = VirtualJoystick.Instance;
+            if (stick == null)
+            {
+                return;
+            }
+
+            float[] steps = { 0.8f, 1f, 1.3f };
+            int next = 0;
+            for (int i = 0; i < steps.Length; i++)
+            {
+                if (Mathf.Abs(steps[i] - stick.Scale) < 0.05f)
+                {
+                    next = (i + 1) % steps.Length;
+                    break;
+                }
+            }
+
+            stick.SetScale(steps[next]);
+            PaintStick();
+        }
+
+        private void CycleStickFade()
+        {
+            VirtualJoystick stick = VirtualJoystick.Instance;
+            if (stick == null)
+            {
+                return;
+            }
+
+            float[] steps = { 1f, 0.6f, 0.3f };
+            int next = 0;
+            for (int i = 0; i < steps.Length; i++)
+            {
+                if (Mathf.Abs(steps[i] - stick.Opacity) < 0.05f)
+                {
+                    next = (i + 1) % steps.Length;
+                    break;
+                }
+            }
+
+            stick.SetOpacity(steps[next]);
+            PaintStick();
+        }
+
+        private void ToggleHanded()
+        {
+            Handedness.LeftHanded = !Handedness.LeftHanded;
+            PaintStick();
+        }
+
+        private void PaintStick()
+        {
+            VirtualJoystick stick = VirtualJoystick.Instance;
+
+            if (_stickSizeValue != null)
+            {
+                _stickSizeValue.text = stick != null
+                    ? Loc.Format(LocKeys.SettingStickSize, Digits(Mathf.RoundToInt(stick.Scale * 100f)))
+                    : Loc.Text(LocKeys.SettingOff);
+            }
+
+            if (_stickFadeValue != null)
+            {
+                _stickFadeValue.text = stick != null
+                    ? Loc.Format(LocKeys.SettingStickFade, Digits(Mathf.RoundToInt(stick.Opacity * 100f)))
+                    : Loc.Text(LocKeys.SettingOff);
+            }
+
+            if (_handedValue != null)
+            {
+                _handedValue.text = Loc.Text(Handedness.LeftHanded
+                    ? LocKeys.SettingLeftHanded : LocKeys.SettingRightHanded);
+            }
+
+            if (_handedButton != null)
+            {
+                _handedButton.color = Handedness.LeftHanded ? goldColor * 0.34f : dimColor;
+            }
+        }
+
         private void ToggleHealthBars()
         {
             if (_healthBars == null)
@@ -697,6 +791,24 @@ namespace Dawnkeep.UI
                 _difficultyButton[i] = MakeChoice(body, "Level_" + i, levelKeys[i],
                     -250f - (i * 162f), -138f, delegate { SetDifficulty(captured); });
             }
+
+            // ── إعدادات العصا (§7): «حساسية عصا وتحجيمها وشفافيتها» ──
+            Label("StickCaption", body, LocKeys.SettingStick, 26f, goldColor,
+                new Vector2(1f, 1f), new Vector2(-16f, -202f), new Vector2(220f, 40f),
+                TextAlignmentOptions.MidlineRight);
+
+            _stickSizeButton = MakeChoice(body, "StickSize", null, -250f, -202f, CycleStickSize);
+            _stickSizeValue = _stickSizeButton.GetComponentInChildren<TextMeshProUGUI>();
+
+            _stickFadeButton = MakeChoice(body, "StickFade", null, -412f, -202f, CycleStickFade);
+            _stickFadeValue = _stickFadeButton.GetComponentInChildren<TextMeshProUGUI>();
+
+            Label("HandCaption", body, LocKeys.SettingHanded, 26f, goldColor,
+                new Vector2(1f, 1f), new Vector2(-16f, -266f), new Vector2(220f, 40f),
+                TextAlignmentOptions.MidlineRight);
+
+            _handedButton = MakeChoice(body, "Handed", null, -250f, -266f, ToggleHanded);
+            _handedValue = _handedButton.GetComponentInChildren<TextMeshProUGUI>();
 
             // السرعة أزرارها في الصفّ العلوي (§7): تكرار عنوانها هنا بلا قيمة
             // يعرضها لصقٌ لا إعداد.

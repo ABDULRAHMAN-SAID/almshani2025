@@ -47,8 +47,51 @@ namespace Dawnkeep.UI
         private string _wordDefend;
         private string _wordRetreat;
 
+        /// <summary>
+        /// مستطيلا زرّ الأوامر وصفّ المرشِّح — تقرؤهما العصا فلا تنشأ تحتهما.
+        /// </summary>
+        public RectTransform[] TouchTargets()
+        {
+            return new[]
+            {
+                _openBackground != null ? _openBackground.GetComponent<RectTransform>() : null,
+                _filterRow != null ? _filterRow.GetComponent<RectTransform>() : null,
+                _ring != null ? _ring.GetComponent<RectTransform>() : null,
+            };
+        }
+
+        private readonly System.Collections.Generic.List<RectTransform> _mirrorRoots =
+            new System.Collections.Generic.List<RectTransform>(6);
+
+        private bool _mirrored;
+
+        /// <summary>
+        /// يعكس مجموعة هذا العنصر لنمط الأعسر (§7). الأبناء يُعكسون معه:
+        /// عكسُ الأب وحده يترك أرقام القدرات ونصوصها على جانبها القديم.
+        /// </summary>
+        private void ApplyHandedness()
+        {
+            bool want = Handedness.LeftHanded;
+            if (want == _mirrored)
+            {
+                return;
+            }
+
+            _mirrored = want;
+            for (int i = 0; i < _mirrorRoots.Count; i++)
+            {
+                Handedness.MirrorTree(_mirrorRoots[i]);
+            }
+        }
+
+        private void OnDestroy()
+        {
+            Handedness.Changed -= ApplyHandedness;
+        }
+
         private void Awake()
         {
+            Handedness.Changed += ApplyHandedness;
             _wordFollow = LocKeys.OrderAckFollow;
             _wordHold = LocKeys.OrderAckHold;
             _wordDefend = LocKeys.OrderAckDefend;
@@ -240,9 +283,10 @@ namespace Dawnkeep.UI
                 return;
             }
 
-            // زرّ الفتح: أسفل اليمين فوق لوحة البطل
+            // زرّ الفتح: أسفل اليمين **فوق صفّ القدرات** (§7). القدرات تشغل
+            // ‏24…146 ارتفاعاً، فالصفّ الثاني يبدأ من 170 بفجوة 24 بكسلاً.
             RectTransform open = MakeRect("OrderButton", parent,
-                new Vector2(1f, 0f), new Vector2(-24f, 138f), new Vector2(132f, 96f));
+                new Vector2(1f, 0f), new Vector2(-24f, 170f), new Vector2(132f, 96f));
 
             _openBackground = open.gameObject.AddComponent<Image>();
             _openBackground.color = panelColor;
@@ -250,6 +294,8 @@ namespace Dawnkeep.UI
 
             // لا `Button` هنا: نقرته تقع عند الرفع مهما طالت الضغطة، فيصدر
             // الأمران معاً — تُفتح الدائرة ويُفتح المرشِّح في لمسة واحدة.
+            _mirrorRoots.Add(open);
+
             _openPress = open.gameObject.AddComponent<LongPressButton>();
             _openPress.Clicked += Toggle;
             _openPress.LongPressed += ToggleFilter;
@@ -258,33 +304,39 @@ namespace Dawnkeep.UI
                 new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(124f, 44f),
                 TextAlignmentOptions.Midline);
 
-            // الدائرة: قوسٌ يساراً وأعلى من زرّ الفتح
-            // مرتكز القوس مزاح يساراً عن زرّ الفتح: على محاذاته تلتصق أوّل
-            // بطاقة بالزرّ فيصعب فصلهما بالإبهام.
+            // **قوسٌ منبثق فوق زرّه** (§7: «دائرة صغيرة»). مرتكزه رأس الزرّ
+            // نفسه لا مزاحاً عنه: البطاقات تصعد منه وتنحرف يساراً درجةً درجة،
+            // فتُقرأ قوساً حول الإبهام لا عموداً بجانبه.
+            //
+            // وارتفاعُ أوّل بطاقة 42 عن رأس الزرّ: أقلُّ من ذلك يلصقها به
+            // فيصعب فصلهما، وأكثرُ يخرجها عن مدى الإبهام.
             RectTransform ring = MakeRect("Ring", parent,
-                new Vector2(1f, 0f), new Vector2(-136f, 138f), new Vector2(10f, 10f));
+                new Vector2(1f, 0f), new Vector2(-90f, 266f), new Vector2(10f, 10f));
             _ring = ring.gameObject;
+            _mirrorRoots.Add(ring);
 
-            MakeOption(ring, "Follow", LocKeys.OrderFollow, new Vector2(-120f, 24f), Follow);
-            MakeOption(ring, "Hold", LocKeys.OrderHold, new Vector2(-108f, 126f), Hold);
-            MakeOption(ring, "Defend", LocKeys.OrderDefend, new Vector2(-62f, 222f), Defend);
+            // التباعد 104 = ارتفاع البطاقة 92 وفجوة 12
+            MakeOption(ring, "Follow", LocKeys.OrderFollow, new Vector2(0f, 56f), Follow);
+            MakeOption(ring, "Hold", LocKeys.OrderHold, new Vector2(-44f, 160f), Hold);
+            MakeOption(ring, "Defend", LocKeys.OrderDefend, new Vector2(-88f, 264f), Defend);
 
             // «تراجع» أبعد البطاقات عن الإبهام: لا يُضغط بالخطأ بدل «دافع»
-            _retreatButton = MakeOption(ring, "Retreat", LocKeys.OrderRetreat, new Vector2(-166f, 306f), Retreat);
+            _retreatButton = MakeOption(ring, "Retreat", LocKeys.OrderRetreat, new Vector2(-132f, 368f), Retreat);
             _retreatButton.SetActive(false);
 
             // التلميح **داخل القوس** لا خارجه: خارجه يقع على بطاقة «اثبت»،
             // وداخله يظهر ويختفي معه — واللاعب لا يحتاجه إلّا وهو يفكّر في أمر.
             Label("FilterHint", ring, LocKeys.FilterHint, 20f, inkColor,
-                new Vector2(0.5f, 0.5f), new Vector2(-166f, 372f), new Vector2(420f, 32f),
+                new Vector2(0.5f, 0.5f), new Vector2(-132f, 440f), new Vector2(420f, 32f),
                 TextAlignmentOptions.Midline);
 
             _ring.SetActive(false);
 
             // صفّ المرشِّح: يقع على قوس الدائرة، ولذلك لا يُفتحان معاً
             RectTransform filter = MakeRect("FilterRow", parent,
-                new Vector2(1f, 0f), new Vector2(-24f, 470f), new Vector2(396f, 56f));
+                new Vector2(1f, 0f), new Vector2(-24f, 700f), new Vector2(396f, 56f));
             _filterRow = filter.gameObject;
+            _mirrorRoots.Add(filter);
             _filterBack = new Image[3];
 
             _filterBack[0] = MakeFilter(filter, "All", LocKeys.FilterAll, -8f, SquadFilter.All);
@@ -295,8 +347,11 @@ namespace Dawnkeep.UI
 
             // سطر التأكيد فوق الصفّ والقوس معاً: على ارتفاع أيّهما يحجبه
             _toast = MakeText("Toast", parent, 26f, goldColor,
-                new Vector2(1f, 0f), new Vector2(-24f, 600f), new Vector2(420f, 40f),
+                new Vector2(1f, 0f), new Vector2(-24f, 790f), new Vector2(420f, 40f),
                 TextAlignmentOptions.MidlineRight);
+
+            _mirrorRoots.Add(_toast.GetComponent<RectTransform>());
+            ApplyHandedness();
         }
 
         /// <summary>بطاقة مرشِّح واحدة. تعيد خلفيّتها لتُلوَّن بحسب المختار.</summary>
@@ -326,8 +381,11 @@ namespace Dawnkeep.UI
         private GameObject MakeOption(Transform parent, string name, string captionKey,
             Vector2 offset, UnityEngine.Events.UnityAction action)
         {
+            // ‏160×92 لا 150×76: قاس `touchcheck.py` أنّ 76 دون أقلّ مقاسٍ
+            // يُصاب بالإبهام بثقة (88)، وأنّ تباعد 68 يترك البطاقات متراكبةً
+            // بثمانية بكسلات — رقمٌ لا تراه العين وتجده الإصبع.
             RectTransform rect = MakeRect(name, parent,
-                new Vector2(0.5f, 0.5f), offset, new Vector2(150f, 76f));
+                new Vector2(0.5f, 0.5f), offset, new Vector2(160f, 92f));
 
             Image background = rect.gameObject.AddComponent<Image>();
             background.color = panelColor;

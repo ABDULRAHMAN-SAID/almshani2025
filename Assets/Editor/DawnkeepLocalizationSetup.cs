@@ -51,6 +51,8 @@ namespace Dawnkeep.EditorTools
                 DawnkeepLocale.Row(LocKeys.PhaseRespite, "استراحة", "Respite"),
                 DawnkeepLocale.Row(LocKeys.PhaseIdle, "سكون", "Idle"),
                 DawnkeepLocale.Row(LocKeys.HastenButton, "ابدأ الآن", "Start now"),
+                DawnkeepLocale.Row(LocKeys.FocusKeep, "إلى الحصن", "To the keep"),
+                DawnkeepLocale.Row(LocKeys.FocusHero, "إلى القائد", "To the commander"),
 
                 // لوحة الأعداد
                 DawnkeepLocale.Row(LocKeys.DefendersCaption, "المدافعون", "Defenders"),
@@ -143,6 +145,12 @@ namespace Dawnkeep.EditorTools
                 DawnkeepLocale.Row(LocKeys.SettingArabic, "العربية", "Arabic"),
                 DawnkeepLocale.Row(LocKeys.SettingEnglish, "الإنجليزية", "English"),
                 DawnkeepLocale.Row(LocKeys.SettingHealthBars, "أشرطة الصحّة", "Health bars"),
+                DawnkeepLocale.Row(LocKeys.SettingStick, "العصا", "Joystick"),
+                DawnkeepLocale.Row(LocKeys.SettingStickSize, "حجم {0}٪", "Size {0}%"),
+                DawnkeepLocale.Row(LocKeys.SettingStickFade, "وضوح {0}٪", "Opacity {0}%"),
+                DawnkeepLocale.Row(LocKeys.SettingHanded, "اليد", "Handedness"),
+                DawnkeepLocale.Row(LocKeys.SettingRightHanded, "يُمنى", "Right-handed"),
+                DawnkeepLocale.Row(LocKeys.SettingLeftHanded, "يُسرى", "Left-handed"),
                 DawnkeepLocale.Row(LocKeys.SettingOn, "تعمل", "On"),
                 DawnkeepLocale.Row(LocKeys.SettingOff, "مطفأة", "Off"),
                 DawnkeepLocale.Row(LocKeys.SpeedCaption, "السرعة", "Speed"),

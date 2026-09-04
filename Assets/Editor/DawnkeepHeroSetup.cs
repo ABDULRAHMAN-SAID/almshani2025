@@ -156,6 +156,11 @@ namespace Dawnkeep.EditorTools
             SetPrivate(Require<ResultPanel>(canvas), "font", font);
             SetPrivate(Require<PauseMenu>(canvas), "font", font);
 
+            // العصا الافتراضية (§7) ومواضع الأزرار التي تتجاهلها. تُبنى هنا
+            // لا في القائمة 7: مواضعها تأتي من `AbilityBar` و`OrderRing`،
+            // وهما يُبنيان مع البطل لا مع لوحة الحالة.
+            WireJoystick(canvas);
+
             EditorUtility.SetDirty(canvas);
         }
 
@@ -168,6 +173,51 @@ namespace Dawnkeep.EditorTools
             }
 
             return component;
+        }
+
+        /// <summary>
+        /// يضع العصا على اللوحة ويعطيها مستطيلات الأزرار التي لا تُنشئ عصا
+        /// تحتها. الترتيب مقصود: العصا **قبل** بقيّة العناصر في شجرة اللوحة
+        /// فترسم تحتها، فلا تحجب الحلقةُ زرَّ قدرةٍ يقع تحتها.
+        /// </summary>
+        private static void WireJoystick(GameObject canvas)
+        {
+            VirtualJoystick stick = canvas.GetComponent<VirtualJoystick>();
+            if (stick == null)
+            {
+                stick = canvas.AddComponent<VirtualJoystick>();
+            }
+
+            System.Collections.Generic.List<RectTransform> blockers =
+                new System.Collections.Generic.List<RectTransform>(8);
+
+            AbilityBar bar = canvas.GetComponent<AbilityBar>();
+            if (bar != null)
+            {
+                RectTransform[] rects = bar.TouchTargets();
+                for (int i = 0; i < rects.Length; i++)
+                {
+                    if (rects[i] != null)
+                    {
+                        blockers.Add(rects[i]);
+                    }
+                }
+            }
+
+            OrderRing ring = canvas.GetComponent<OrderRing>();
+            if (ring != null)
+            {
+                RectTransform[] rects = ring.TouchTargets();
+                for (int i = 0; i < rects.Length; i++)
+                {
+                    if (rects[i] != null)
+                    {
+                        blockers.Add(rects[i]);
+                    }
+                }
+            }
+
+            stick.Configure(blockers.ToArray());
         }
 
         private static void SetPrivate(object target, string field, object value)

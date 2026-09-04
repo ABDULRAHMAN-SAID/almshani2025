@@ -15,6 +15,8 @@ namespace Dawnkeep.Localization
         public const string PhaseRespite = "hud.phase.respite";
         public const string PhaseIdle = "hud.phase.idle";
         public const string HastenButton = "hud.hasten";
+        public const string FocusKeep = "hud.focus.keep";
+        public const string FocusHero = "hud.focus.hero";
 
         // لوحة الأعداد
         public const string DefendersCaption = "hud.defenders";
@@ -99,6 +101,12 @@ namespace Dawnkeep.Localization
         public const string SettingArabic = "settings.language.ar";
         public const string SettingEnglish = "settings.language.en";
         public const string SettingHealthBars = "settings.healthbars";
+        public const string SettingStick = "settings.stick";
+        public const string SettingStickSize = "settings.stick.size";
+        public const string SettingStickFade = "settings.stick.fade";
+        public const string SettingHanded = "settings.handed";
+        public const string SettingRightHanded = "settings.handed.right";
+        public const string SettingLeftHanded = "settings.handed.left";
         public const string SettingOn = "settings.on";
         public const string SettingOff = "settings.off";
         public const string SpeedCaption = "pause.speed";

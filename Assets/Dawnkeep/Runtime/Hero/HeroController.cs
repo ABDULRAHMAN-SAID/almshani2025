@@ -250,6 +250,18 @@ namespace Dawnkeep.Hero
                 raw = pad.leftStick.ReadValue();
             }
 
+            // العصا الافتراضية (§7) آخر ما يُقرأ ولا يُلغيها شيء: هي وحدها
+            // مضبوطةٌ بمنطقتها الميتة قبل أن تصل هنا، فتُؤخذ كما هي ولا تمرّ
+            // بالقصّ ثانيةً — قصّها مرّتين يقضم أوّل 23% من مدى الإبهام.
+            if (raw.sqrMagnitude < 0.0001f)
+            {
+                Vector2 stick = Dawnkeep.UI.VirtualJoystick.Value;
+                if (stick.sqrMagnitude > 0.0001f)
+                {
+                    return Project(stick);
+                }
+            }
+
             float magnitude = raw.magnitude;
             if (magnitude <= deadZone)
             {
@@ -257,10 +269,16 @@ namespace Dawnkeep.Hero
             }
 
             raw = (raw / magnitude) * Mathf.Clamp01((magnitude - deadZone) / (1f - deadZone));
+            return Project(raw);
+        }
 
-            // الحركة على مستوى العالم لا مستوى الكاميرا يجعل «فوق» تعني شمالاً
-            // مهما دارت الكاميرا؛ والصحيح أن تعني «بعيداً عن اللاعب» فتُسقَط
-            // على محورَي الكاميرا.
+        /// <summary>
+        /// يُسقِط متّجه العصا على محورَي الكاميرا. الحركة على مستوى العالم لا
+        /// مستوى الكاميرا تجعل «فوق» تعني شمالاً مهما دارت الكاميرا؛ والصحيح
+        /// أن تعني «بعيداً عن اللاعب».
+        /// </summary>
+        private static Vector3 Project(Vector2 raw)
+        {
             Camera camera = Camera.main;
             if (camera == null)
             {
