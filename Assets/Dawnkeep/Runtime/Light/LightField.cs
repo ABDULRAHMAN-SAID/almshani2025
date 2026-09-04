@@ -54,9 +54,19 @@ namespace Dawnkeep.Light
 
         public IReadOnlyList<Beacon> Beacons { get { return _beacons; } }
 
+        /// <summary>
+        /// مضاعفٌ عامّ على أنصاف أقطار المنارات كلّها. يسحبه آكل الفجر في
+        /// طوره الأخير (§13)، فتضيق الدوائر أمام عين اللاعب.
+        ///
+        /// هنا لا في `LightSettings`: ذاك أصلٌ في المشروع يبقى بعد الجولة،
+        /// فسحبٌ يُكتب فيه يظلّ ساري المفعول في المرحلة التالية.
+        /// </summary>
+        public float RadiusMultiplier { get; set; }
+
         private void Awake()
         {
             Instance = this;
+            RadiusMultiplier = 1f;
             if (!_stockReady)
             {
                 _stock = settings != null ? settings.StartingCharges : 2;
@@ -133,6 +143,12 @@ namespace Dawnkeep.Light
         /// مضاعفاً بل منطقة واحدة أوسع. ومرورٌ واحد يخدم كل الاستعلامات، فلا
         /// تُمشَّط المنارات أربع مرّات لكل وحدة في كل إطار.
         /// </summary>
+        /// <summary>المضاعف مقصوصاً — صفرٌ أو سالبٌ يعني قسمة على صفر أدناه.</summary>
+        private float Multiplier
+        {
+            get { return Mathf.Clamp(RadiusMultiplier <= 0f ? 1f : RadiusMultiplier, 0.05f, 4f); }
+        }
+
         private void Sample(Vector3 point, out int charges, out float falloff)
         {
             charges = 0;
@@ -149,7 +165,7 @@ namespace Dawnkeep.Light
                     continue;
                 }
 
-                float radius = beacon.Radius;
+                float radius = beacon.Radius * Multiplier;
                 Vector3 delta = point - beacon.Position;
                 delta.y = 0f;
 

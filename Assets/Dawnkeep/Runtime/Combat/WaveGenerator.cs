@@ -50,6 +50,28 @@ namespace Dawnkeep.Combat
         /// <summary>أعلى مستوى بلغته مجموعة في هذه الموجة — للمعاينة وللفحص.</summary>
         public int TopTier { get; private set; }
 
+        /// <summary>
+        /// كم مجموعةً في الموجة عدا الزعيم. سقف المجموعات يُقاس بهذا: زعيمٌ
+        /// يبتلع خانةً من الخمس يجعل ليلته **أفقر** تركيباً من التي قبلها،
+        /// وهي التي يُنتظر أن تكون أغناها.
+        /// </summary>
+        private int BodyGroups
+        {
+            get
+            {
+                int count = 0;
+                for (int i = 0; i < _entries.Count; i++)
+                {
+                    if (_entries[i].Unit != null && _entries[i].Unit.ThreatClass != ThreatClass.Boss)
+                    {
+                        count++;
+                    }
+                }
+
+                return count;
+            }
+        }
+
         /// <summary>هل في هذه الموجة زعيم كامل؟ (§14: كل عشر موجات)</summary>
         public bool HasBoss { get; private set; }
 
@@ -121,11 +143,11 @@ namespace Dawnkeep.Combat
             // كلّما زادت الميزانية، عكس المقصود تماماً.
             int start = rng.Next(PickableClasses);
             int guard = 0;
-            while (_entries.Count < settings.MaxGroups && remaining > 0 && guard++ < 16)
+            while (BodyGroups < settings.MaxGroups && remaining > 0 && guard++ < 16)
             {
                 int before = remaining;
 
-                for (int c = 0; c < PickableClasses && _entries.Count < settings.MaxGroups; c++)
+                for (int c = 0; c < PickableClasses && BodyGroups < settings.MaxGroups; c++)
                 {
                     ThreatClass group = (ThreatClass)((start + c) % PickableClasses);
                     remaining -= PlaceOne(group, remaining, ceiling, rng, settings);
@@ -162,31 +184,51 @@ namespace Dawnkeep.Combat
                 return 0;
             }
 
-            int share = Mathf.Max(1, Mathf.RoundToInt(remaining * settings.BossShare));
+            Dawnkeep.Bosses.BossRank wanted = HasBoss
+                ? Dawnkeep.Bosses.BossRank.Full
+                : Dawnkeep.Bosses.BossRank.Mini;
 
-            // الزعيم الكامل أغلى ما تحتمله الحصّة، والصغير أرخص ما يتجاوز نصفها
+            // المرشّحون: من رتبة الليلة، وثمنُه يتّسع فيما بقي.
+            // الرتبة **بيان في التعريف** لا اشتقاق من الثمن: لو حُسمت بالأغلى
+            // لخرج زعيم الحملة في كل ليلةٍ كاملة ولم يُرَ غيره أبداً.
+            int count = 0;
+            for (int i = 0; i < _eligible.Count; i++)
+            {
+                if (Ranked(_eligible[i], wanted) && _eligible[i].ThreatCost <= remaining)
+                {
+                    count++;
+                }
+            }
+
+            if (count == 0)
+            {
+                HasBoss = false;
+                HasMiniBoss = false;
+                return 0;
+            }
+
+            // الدور بالتناوب لا بالقرعة: القرعة تكرّر زعيماً وتُهمل آخر على
+            // عشرين ليلة، والتناوب يرى اللاعبُ به كلَّ من بُني له.
+            int cycle = HasBoss
+                ? (settings.BossEvery > 0 ? (waveNumber / settings.BossEvery) - 1 : 0)
+                : (settings.MiniBossEvery > 0 ? (waveNumber / settings.MiniBossEvery) - 1 : 0);
+
+            int choice = ((cycle % count) + count) % count;
+
             UnitDefinition pick = null;
+            int seen = 0;
             for (int i = 0; i < _eligible.Count; i++)
             {
                 UnitDefinition candidate = _eligible[i];
-                if (candidate.ThreatCost > remaining)
+                if (!Ranked(candidate, wanted) || candidate.ThreatCost > remaining)
                 {
                     continue;
                 }
 
-                if (pick == null)
+                if (seen++ == choice)
                 {
                     pick = candidate;
-                    continue;
-                }
-
-                bool better = HasBoss
-                    ? candidate.ThreatCost > pick.ThreatCost
-                    : Mathf.Abs(candidate.ThreatCost - share) < Mathf.Abs(pick.ThreatCost - share);
-
-                if (better)
-                {
-                    pick = candidate;
+                    break;
                 }
             }
 
@@ -199,6 +241,12 @@ namespace Dawnkeep.Combat
 
             Add(pick, 1, settings, rng);
             return pick.ThreatCost;
+        }
+
+        private static bool Ranked(UnitDefinition def, Dawnkeep.Bosses.BossRank wanted)
+        {
+            Dawnkeep.Bosses.BossDefinition boss = def as Dawnkeep.Bosses.BossDefinition;
+            return boss != null && boss.Rank == wanted;
         }
 
         /// <summary>يضع مجموعة من صنف بعينه. يعيد ما أُنفق.</summary>
@@ -317,6 +365,13 @@ namespace Dawnkeep.Combat
                 {
                     WaveDefinition.Entry entry = _entries[i];
                     if (entry.Unit == null || entry.Tier >= settings.MaxTier)
+                    {
+                        continue;
+                    }
+
+                    // الزعيم لا يُرقّى: أرقامه في §13 موضوعةٌ بعينها، ورفعُها
+                    // بميزانيةٍ فائضة يجعل ليلته تختلف عن نفسها بلا سبب مقروء.
+                    if (entry.Unit.ThreatClass == ThreatClass.Boss)
                     {
                         continue;
                     }

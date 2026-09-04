@@ -488,10 +488,65 @@ namespace Dawnkeep.Combat
                 profile.HealthScale * tierHealth,
                 profile.DamageScale * tierDamage);
 
+            // الزعيم يُسجَّل عند قائده (§13). الفحص بـ`as` على **التعريف** لا
+            // بـ`GetComponent` على كل وحدة: الأخير يُدفع ثمنه في كل صيحة من
+            // آلاف الصيحات مقابل أربع وحدات في الجولة كلّها.
+            if (def is Dawnkeep.Bosses.BossDefinition)
+            {
+                Dawnkeep.Bosses.Boss boss = unit.GetComponent<Dawnkeep.Bosses.Boss>();
+                Dawnkeep.Bosses.BossDirector bossDirector = Dawnkeep.Bosses.BossDirector.Instance;
+
+                if (boss != null && bossDirector != null)
+                {
+                    boss.SetDefinition((Dawnkeep.Bosses.BossDefinition)def);
+                    bossDirector.Register(boss);
+                }
+            }
+
             CombatDirector director = CombatDirector.Instance;
             if (director != null)
             {
                 director.Register(unit);
+            }
+        }
+
+        /// <summary>
+        /// يُخرج وحداتٍ عند نقطة بعينها من **مجمّعات هذا القائد نفسها** —
+        /// يستعملها الزعماء لاستدعاء حاشيتهم (§13). مجمّعٌ ثانٍ للاستدعاء
+        /// يعني نسختين من كل نوع في الذاكرة وقمامةً عند أوّل استدعاء.
+        /// </summary>
+        public void SummonAt(UnitDefinition def, Vector3 centre, float spread, int count, int frontIndex)
+        {
+            if (def == null || count <= 0)
+            {
+                return;
+            }
+
+            Front front = FrontAt(frontIndex);
+            Vector3[] path = front != null ? front.Path : null;
+            DifficultySettings.Profile profile = ActiveProfile();
+
+            for (int i = 0; i < count; i++)
+            {
+                Unit unit = Take(def);
+                if (unit == null)
+                {
+                    return;
+                }
+
+                float angle = (i / Mathf.Max(1f, count)) * Mathf.PI * 2f;
+                Vector3 position = centre
+                    + new Vector3(Mathf.Cos(angle) * spread, 0f, Mathf.Sin(angle) * spread);
+                position.y = GroundHeight(position.x, position.z, centre.y);
+
+                unit.Spawn(def, position, angle * Mathf.Rad2Deg, path,
+                    profile.HealthScale, profile.DamageScale);
+
+                CombatDirector director = CombatDirector.Instance;
+                if (director != null)
+                {
+                    director.Register(unit);
+                }
             }
         }
 

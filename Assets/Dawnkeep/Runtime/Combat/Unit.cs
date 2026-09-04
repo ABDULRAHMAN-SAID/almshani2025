@@ -252,6 +252,7 @@ namespace Dawnkeep.Combat
             // المئة من صحّتها لو قُرئت قبل `Spawn` أو `Awaken`.
             HealthScale = 1f;
             DamageScale = 1f;
+            DamageTakenScale = 1f;
         }
 
         /// <summary>
@@ -267,6 +268,7 @@ namespace Dawnkeep.Combat
 
             HealthScale = 1f;
             DamageScale = 1f;
+            DamageTakenScale = 1f;
             _health = MaxHealth;
             Alive = true;
             DeadFor = 0f;
@@ -302,6 +304,13 @@ namespace Dawnkeep.Combat
 
         public float DamageScale { get; private set; }
 
+        /// <summary>
+        /// ما تتلقّاه هذه الوحدة من الضرر، مضروباً. طور الظلّ في §13 يخفضه،
+        /// وهو **بعد** الدرع لا معه: الدرع نسبةٌ تُقتصّ عند 0.9 فلا شيء يصير
+        /// منيعاً، وطور الظلّ يجب أن ينزل تحت ذلك ليُقرأ.
+        /// </summary>
+        public float DamageTakenScale { get; set; }
+
         /// <summary>سقف الصحّة بعد مضاعف الصعوبة — تقرؤه أشرطة الصحّة والفرق.</summary>
         public float MaxHealth
         {
@@ -327,6 +336,7 @@ namespace Dawnkeep.Combat
             definition = def;
             HealthScale = Mathf.Max(0.01f, healthScale);
             DamageScale = Mathf.Max(0f, damageScale);
+            DamageTakenScale = 1f;
             if (_transform == null)
             {
                 Awake();
@@ -397,7 +407,7 @@ namespace Dawnkeep.Combat
             }
 
             armour = Mathf.Clamp(armour, 0f, 0.9f) * (1f - Mathf.Clamp01(armourPierce));
-            _health -= amount * (1f - armour);
+            _health -= amount * (1f - armour) * Mathf.Max(0f, DamageTakenScale);
 
             if (_health > 0f)
             {

@@ -250,11 +250,16 @@ namespace Dawnkeep.EditorTools
                 return mesh;
             }
 
+            // القناة الثانية (uv2) تحمل **رقم المفصل** لكل رأس، وعليها وحدها
+            // يحرّك المُظلِّل الشخصية. إسقاطها هنا كان يعني أنّ إعادة تشغيل
+            // القائمة 4 تُفقد كل شخصية مفاصلها بصمت: أوّل توليدٍ يعمل، والثاني
+            // يجمّد الجميع في وضع الراحة.
             existing.Clear();
             existing.indexFormat = mesh.indexFormat;
             existing.vertices = mesh.vertices;
             existing.normals = mesh.normals;
             existing.uv = mesh.uv;
+            existing.uv2 = mesh.uv2;
             existing.colors = mesh.colors;
             existing.triangles = mesh.triangles;
             existing.RecalculateTangents();

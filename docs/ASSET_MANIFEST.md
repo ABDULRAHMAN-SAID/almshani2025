@@ -44,6 +44,20 @@
 | `Dawnkeep_Horse_Free_*` | `HorseMeshFactory.Build(barded: false)` | أصلي |
 | `Dawnkeep_FolkBody.mat` · `Dawnkeep_FolkCloth.mat` | مادّتان بلا خامة صورية — اللون من ألوان الرؤوس | أصلي |
 
+## الزعماء (§13)
+
+أربع صور ظلّية أصلية من أدوات البناء نفسها، على **أرقام مفاصل**
+`CharacterMeshFactory` فيحرّكها المُحرِّك القائم. لا أصل مأخوذ من أي مصدر.
+
+| الأصل | المولِّد | الترخيص |
+|---|---|---|
+| `Dawnkeep_Boss_BellRam_*` | `BossMeshFactory.Build(Kind.BellRam)` — أفقيّ على أربع، قرنان لولبيّان، جرسٌ متدلٍّ | أصلي — هذا المستودع |
+| `Dawnkeep_Boss_MireMatron_*` | `BossMeshFactory.Build(Kind.MireMatron)` — قاعدة عريضة وبطنٌ منتفخ وأكياس بيضٍ على الظهر | أصلي |
+| `Dawnkeep_Boss_AshCrown_*` | `BossMeshFactory.Build(Kind.AshCrown)` — عمودٌ نحيل بلا رجلين، وتاجٌ من سبع شُعبٍ غير متساوية | أصلي |
+| `Dawnkeep_Boss_EaterOfDawn_*` | `BossMeshFactory.Build(Kind.EaterOfDawn)` — فمٌ عريض أفقيّ وهلالٌ من الأنياب وذراعان تبلغان الأرض | أصلي |
+| `Dawnkeep_BossEgg` | كرة مشوّهة على قاعدة — لونها يتدرّج إلى الأحمر كلّما قرب الفقس | أصلي |
+| `Dawnkeep_PoisonPool` | قرصٌ بنصف قطر **واحد** يتّسع بالمقياس لا بشبكةٍ جديدة | أصلي |
+
 ## خامات النبات الشفّافة
 
 | الأصل | المولِّد | الترخيص |

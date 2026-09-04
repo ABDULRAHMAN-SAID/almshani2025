@@ -49,6 +49,8 @@ namespace Dawnkeep.CameraRig
         private Vector3 _smoothPivot;
         private float _smoothDistance;
         private float _smoothYaw;
+        private float _cinemaUntil;
+        private Transform _cinemaReturn;
 #if !DAWNKEEP_INPUT
         private bool _warnedNoInput;
 #endif
@@ -88,6 +90,48 @@ namespace Dawnkeep.CameraRig
             followTarget = value;
         }
 
+        /// <summary>هل الكاميرا في لقطة الآن؟ الواجهة تخفي أزرارها حينها.</summary>
+        public bool InCinematic { get { return _cinemaUntil > 0f; } }
+
+        /// <summary>
+        /// لقطة قصيرة على هدف ثمّ عودة إلى ما كانت تلاحقه (§6: ظهور الزعيم).
+        ///
+        /// **تحفظ الهدف السابق ولا تفترض البطل**: قد تكون الكاميرا مثبَّتة على
+        /// الحصن أو مفكوكةً حين يظهر الزعيم، وإعادتها إلى البطل حينئذ تسرق
+        /// من اللاعب موضعاً اختاره هو.
+        /// </summary>
+        public void BeginCinematic(Transform target, float seconds)
+        {
+            if (target == null || seconds <= 0f)
+            {
+                return;
+            }
+
+            if (_cinemaUntil <= 0f)
+            {
+                _cinemaReturn = followTarget;
+            }
+
+            followTarget = target;
+
+            // بالزمن غير المقيَّس: اللقطة لا تتمدّد بسرعة اللعب ولا تختفي
+            // عند إيقافها — وسقفها 1.2 ث من §6 لا يُتجاوز مهما مُرِّر.
+            _cinemaUntil = Time.unscaledTime + Mathf.Min(1.2f, seconds);
+        }
+
+        /// <summary>يُنهي اللقطة فوراً — التخطّي الذي توجبه §6.</summary>
+        public void EndCinematic()
+        {
+            if (_cinemaUntil <= 0f)
+            {
+                return;
+            }
+
+            _cinemaUntil = 0f;
+            followTarget = _cinemaReturn;
+            _cinemaReturn = null;
+        }
+
         /// <summary>مسافة الكاميرا الحالية عن مركز نظرها — لا تتغيّر إلا بالتقريب.</summary>
         public float Distance
         {
@@ -96,6 +140,13 @@ namespace Dawnkeep.CameraRig
 
         private void LateUpdate()
         {
+            // اللقطة تنتهي بمضيّ مدّتها أو بأوّل لمسةٍ من اللاعب. قراءة الإدخال
+            // تأتي بعدها: تخطٍّ في الإطار نفسه يجب أن يحرّك الكاميرا فوراً.
+            if (_cinemaUntil > 0f && (Time.unscaledTime >= _cinemaUntil || Skipped()))
+            {
+                EndCinematic();
+            }
+
             ReadInput();
 
             // الملاحقة تحرّك **مركز النظر** فقط؛ المسافة تبقى كما ضبطها اللاعب،
@@ -140,6 +191,31 @@ namespace Dawnkeep.CameraRig
             _transform.SetPositionAndRotation(
                 _smoothPivot - (rotation * Vector3.forward * _smoothDistance),
                 rotation);
+        }
+
+        /// <summary>هل طلب اللاعب تخطّي اللقطة؟ أيّ لمسة أو مفتاح يكفي (§6).</summary>
+        private bool Skipped()
+        {
+#if DAWNKEEP_INPUT
+            Keyboard keyboard = Keyboard.current;
+            if (keyboard != null && keyboard.anyKey.wasPressedThisFrame)
+            {
+                return true;
+            }
+
+            Mouse mouse = Mouse.current;
+            if (mouse != null && mouse.leftButton.wasPressedThisFrame)
+            {
+                return true;
+            }
+
+            Touchscreen touch = Touchscreen.current;
+            if (touch != null && touch.primaryTouch.press.wasPressedThisFrame)
+            {
+                return true;
+            }
+#endif
+            return false;
         }
 
         private void ReadInput()

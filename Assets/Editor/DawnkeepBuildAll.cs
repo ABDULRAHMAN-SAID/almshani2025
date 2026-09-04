@@ -9,7 +9,7 @@ namespace Dawnkeep.EditorTools
     /// </summary>
     public static class DawnkeepBuildAll
     {
-        [MenuItem("مملكة الرماد/بناء كل شيء (2 ← 12)", false, 20)]
+        [MenuItem("مملكة الرماد/بناء كل شيء (2 ← 13)", false, 20)]
         public static void BuildEverything()
         {
             if (!DawnkeepAssetPaths.TypeExists("UnityEngine.Rendering.Universal.UniversalRenderPipelineAsset"))
@@ -32,6 +32,7 @@ namespace Dawnkeep.EditorTools
             DawnkeepBuildSetup.Setup();
             DawnkeepSquadSetup.Setup();
             DawnkeepHeroSetup.Setup();
+            DawnkeepBossSetup.Setup();
         }
 
         [MenuItem("مملكة الرماد/فتح إعدادات توليد العالم", false, 40)]

@@ -298,8 +298,17 @@ namespace Dawnkeep.Hero
                 _nextRetarget = now + definition.RetargetInterval;
             }
 
-            if (_target == null || now < _nextAttack)
+            if (now < _nextAttack)
             {
+                return;
+            }
+
+            // لا عدوّ في المدى: البيضة هدفٌ صالح (§13). البيضة ليست `Unit`
+            // فلا يجدها `FindTarget`، ولو لم يصلها ضربُ البطل لَما كان لجملة
+            // §13 «يجب تدمير البيض قبل الفقس» طريقٌ يُنفَّذ به أصلاً.
+            if (_target == null)
+            {
+                StrikeEggNear(now);
                 return;
             }
 
@@ -318,6 +327,33 @@ namespace Dawnkeep.Hero
             }
 
             Strike(_target, damage);
+        }
+
+        /// <summary>
+        /// يضرب أقرب بيضة إن لم يكن ثمّة عدوّ. الضربة كاملة بلا حرِج: البيضة
+        /// لا تتفادى ولا تتدرّع، وحرِجٌ عليها رقمٌ يطفو بلا معنى.
+        /// </summary>
+        private void StrikeEggNear(float now)
+        {
+            Dawnkeep.Bosses.BossDirector bosses = Dawnkeep.Bosses.BossDirector.Instance;
+            if (bosses == null)
+            {
+                return;
+            }
+
+            float reach = definition.WeaponRange;
+            if (!bosses.StrikeEgg(_transform.position, reach, definition.Damage))
+            {
+                return;
+            }
+
+            _nextAttack = now + definition.AttackInterval;
+            _attackSlowUntil = now + (definition.AttackInterval * 0.5f);
+
+            if (_animator != null)
+            {
+                _animator.Shoot();
+            }
         }
 
         /// <summary>
@@ -546,6 +582,14 @@ namespace Dawnkeep.Hero
             for (int i = 0; i < hostile; i++)
             {
                 _scan[i].TakeDamage(definition.UltimateDamage);
+            }
+
+            // «الضوء الأوّل» يصل البيض أيضاً (§13): قدرةٌ تُفني ما حولها ثمّ
+            // تترك البيضة سليمة بينها تُقرأ عطباً لا قاعدة.
+            Dawnkeep.Bosses.BossDirector bosses = Dawnkeep.Bosses.BossDirector.Instance;
+            if (bosses != null)
+            {
+                bosses.StrikeEgg(me, definition.UltimateRadius, definition.UltimateDamage);
             }
 
             int friendly = _combat.QueryFaction(me, definition.UltimateRadius, Faction.Kingdom, _scan);

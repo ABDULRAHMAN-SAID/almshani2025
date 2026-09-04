@@ -406,10 +406,25 @@ namespace Dawnkeep.UI
                 return;
             }
 
-            _bannerText.text = Loc.Shape(title);
+            Announce(title, bannerHold + bannerFade);
+        }
+
+        /// <summary>
+        /// يعرض لافتةً بنصٍّ منطقيّ مدّةً معلومة. تستعملها لقطة ظهور الزعيم
+        /// (§6) كما تستعملها لافتة الموجة — لافتتان متطابقتان في مكانين
+        /// تفترقان عند أوّل تعديل.
+        /// </summary>
+        public void Announce(string logicalTitle, float seconds)
+        {
+            if (_banner == null || _bannerText == null || string.IsNullOrEmpty(logicalTitle))
+            {
+                return;
+            }
+
+            _bannerText.text = Loc.Shape(logicalTitle);
             _banner.gameObject.SetActive(true);
             _banner.alpha = 1f;
-            _bannerLeft = bannerHold + bannerFade;
+            _bannerLeft = Mathf.Max(0.1f, seconds);
         }
 
         private string PhaseWord(WavePhase phase)

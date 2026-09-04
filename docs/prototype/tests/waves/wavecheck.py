@@ -53,6 +53,16 @@ for m in re.finditer(r'Threat\((\w+),\s*cost:\s*(\d+),\s*taughtOn:\s*(\d+),\s*'
     units[var] = dict(cost=int(cost), taught=int(taught), group=group,
                       minp=int(mn), maxp=int(mx))
 
+# الزعماء: بياناتهم في باني الزعماء لا في باني القتال. قراءتهم هنا تجعل
+# سقف الموجة وحساب التشبّع يعكسان المحتوى كلّه لا نصفه.
+BOSS = read('Assets/Editor/DawnkeepBossSetup.cs')
+for m in re.finditer(r'Make\("(\w+)",\s*"([^"]+)",\s*"[^"]+",\s*\n\s*BossKind\.\w+,'
+                     r'.*?threat:\s*(\d+),\s*taughtOn:\s*(\d+),\s*rank:\s*BossRank\.(\w+)',
+                     BOSS, re.S):
+    asset, arabic, cost, taught, rank = m.groups()
+    units[asset] = dict(cost=int(cost), taught=int(taught), group='Boss',
+                        minp=1, maxp=1, name=arabic, rank=rank)
+
 # اسم كل متغيّر كما يظهر للّاعب
 for m in re.finditer(r'UnitDefinition (\w+) = MakeUnit\("(\w+)",\s*"([^"]+)"', CS):
     if m.group(1) in units:
@@ -113,14 +123,33 @@ def generate(wave, profile):
     """يعيد (مجموعات، ميزانية، منفَق). المجموعة: (متغيّر، عدد، مستوى)."""
     b = budget(wave, profile['threat'])
     rng = Rng(SEED + wave * 7919)
+    # الزعيم يُوضع أوّلاً بحصّته، ثمّ تُوزَّع البقيّة على الحاشية (§14)
+    full = BOSSEVERY > 0 and wave % BOSSEVERY == 0
+    mini = not full and MINIBOSS > 0 and wave % MINIBOSS == 0
+    boss_spent = 0
+    boss_group = None
+    if full or mini:
+        want = 'Full' if full else 'Mini'
+        cands = sorted((v for v, u in units.items()
+                        if u['group'] == 'Boss' and u.get('rank') == want
+                        and u['taught'] <= wave and u['cost'] <= b),
+                       key=lambda v: units[v]['taught'])
+        if cands:
+            every = BOSSEVERY if full else MINIBOSS
+            pick = cands[((wave // every) - 1) % len(cands)]
+            boss_group = (pick, 1, 0)
+            boss_spent = units[pick]['cost']
+
     eligible = {v: u for v, u in units.items()
                 if u['cost'] > 0 and u['taught'] <= wave and u['group'] != 'Boss'}
     if not eligible:
-        return [], b, 0
+        return ([tuple(boss_group)] if boss_group else []), b, boss_spent
     ceiling = max(1, round(b * profile['ceiling']))
     spent_by = {}
     groups = []
-    remaining = b
+    if boss_group is not None:
+        groups.append(list(boss_group))
+    remaining = b - boss_spent
 
     def place(want):
         nonlocal remaining
@@ -155,11 +184,16 @@ def generate(wave, profile):
     CLASSES = ['Melee', 'Ranged', 'Armoured', 'Saboteur', 'Swarm']
     start = rng.next(len(CLASSES))
     guard = 0
-    while len(groups) < MAXGRP and remaining > 0 and guard < 16:
+
+    # الزعيم لا يبتلع خانةً من سقف المجموعات
+    def bodies():
+        return sum(1 for g in groups if units[g[0]]['group'] != 'Boss')
+
+    while bodies() < MAXGRP and remaining > 0 and guard < 16:
         guard += 1
         before = remaining
         for c in range(len(CLASSES)):
-            if len(groups) >= MAXGRP:
+            if bodies() >= MAXGRP:
                 break
             place(CLASSES[(start + c) % len(CLASSES)])
         if remaining == before:
@@ -171,7 +205,7 @@ def generate(wave, profile):
         guard += 1
         best, best_cost = -1, None
         for i, (v, c, t) in enumerate(groups):
-            if t >= MAXTIER:
+            if t >= MAXTIER or units[v]['group'] == 'Boss':
                 continue
             cost = max(1, round(c * units[v]['cost'] * TIERCOST))
             if cost <= remaining and (best_cost is None or cost < best_cost):
@@ -240,7 +274,11 @@ check('في كل ليلة خطٌّ أماميّ', not noMelee or not REQ_MELEE,
       '' if not noMelee else f'  (بلا مشاة: {noMelee})')
 
 # عدد المجموعات ضمن الحدّين
-badGroups = [(w, g) for w, _, _, g, _, _, _ in rows if g < MINGRP or g > MAXGRP]
+def bodyCount(gs):
+    return sum(1 for v, _, _ in gs if units[v]['group'] != 'Boss')
+
+badGroups = [(w, bodyCount(gs)) for w, _, _, _, _, gs, _ in rows
+             if bodyCount(gs) < MINGRP or bodyCount(gs) > MAXGRP]
 check(f'المجموعات بين {MINGRP} و{MAXGRP}', not badGroups,
       '' if not badGroups else f'  (الليلة {badGroups[0][0]}: {badGroups[0][1]})')
 
@@ -343,7 +381,12 @@ print()
 print('── الزعماء (§14: صغير كل خمس، كامل كل عشر) ─')
 bosses = [v for v, u in units.items() if u['group'] == 'Boss']
 if bosses:
-    check('ثمّة زعماء معرَّفون', True, f'  ({len(bosses)})')
+    check('ثمّة زعماء معرَّفون', True, f'  ({len(bosses)}؛ تفصيلهم في bosscheck.py)')
+    bossNights = [w for w, _, _, _, _, gs, _ in rows
+                  if any(units[v]['group'] == 'Boss' for v, _, _ in gs)]
+    want = sorted(set([w for w in range(1, 21) if w % MINIBOSS == 0 or w % BOSSEVERY == 0]))
+    check('كل ليلة خمسٍ أو عشرٍ فيها زعيم', bossNights == want,
+          f'  (خرج في {bossNights} · والمنتظر {want})')
 else:
     print('  · لا زعيم معرَّف بعد (§13 مرحلة تالية). المولّد يسقط إلى موجة')
     print(f'    عادية أثقل في الليالي {MINIBOSS} و{BOSSEVERY}، ولا يقف.')
@@ -358,8 +401,9 @@ print(f'أثقل ما تحتمله موجة اليوم: {capacity} تهديدا�
 print(f'مستوى {MAXTIER}. والميزانية تتجاوزه عند الليلة {sat if sat else "—"}، فما بعدها')
 print('يصعد على الورق ولا يصعد في الساحة.')
 print()
-print(f'السبب مقيس: الكتالوج {len(units)} مهاجمين من خمسة عشر في §12، ولا زعيم')
-print('بعد (§13). كل نوع يُضاف يرفع السقف بحاصل ثمنه في سربه الأقصى، وكل')
+print(f'السبب مقيس: الكتالوج {len([u for u in units.values() if u["group"] != "Boss"])} '
+      f'مهاجمين من خمسة عشر في §12، و{len(bosses)} زعماء')
+print('(§13). كل نوع يُضاف يرفع السقف بحاصل ثمنه في سربه الأقصى، وكل')
 print('زعيم يرفعه بحصّته. فالسقف يتبع المحتوى لا الصيغة، ورفعه بتضخيم')
 print('الأسراب وحدها يكسر الإطار على الجوّال (§30).')
 print()

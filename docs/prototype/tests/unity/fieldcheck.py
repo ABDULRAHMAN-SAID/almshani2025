@@ -38,6 +38,22 @@ for path in glob.glob(os.path.join(ASSETS, '**', '*.cs'), recursive=True):
     for cm in re.finditer(r'\bclass\s+(\w+)', src):
         classes.setdefault(cm.group(1), set()).update(fields)
 
+# الوراثة: `BossDefinition : UnitDefinition` يرث حقول أصله، وبدونها يصيح
+# الفحص على كل حقل موروث يضبطه البنّاء — وهي حقول موجودة فعلاً.
+parents = {}
+for path in glob.glob(os.path.join(ASSETS, '**', '*.cs'), recursive=True):
+    src = io.open(path, encoding='utf-8').read()
+    for cm in re.finditer(r'\bclass\s+(\w+)\s*:\s*([\w.]+)', src):
+        parents[cm.group(1)] = cm.group(2).split('.')[-1]
+
+for child in list(classes):
+    seen = set()
+    p = parents.get(child)
+    while p and p in classes and p not in seen:
+        seen.add(p)
+        classes[child].update(classes[p])
+        p = parents.get(p)
+
 bad = 0
 total = 0
 for path in glob.glob(os.path.join(ASSETS, 'Editor', '*.cs')):
