@@ -594,7 +594,9 @@ const rockPool=[], cliffPool=[];
 }
 
 /* ═══ العشب ═══ */
-const grassMat=new THREE.MeshStandardMaterial({map:grassTex, alphaTest:0.35, side:THREE.DoubleSide, roughness:0.94, metalness:0.0, vertexColors:true});
+// نفاذ ضوء عبر النصل: بدونه تصير الخصلة المعاكسة للشمس مربّعاً أسود على العشب —
+// وهو ما كان يحدث. الورق عولج بهذا نفسه، والعشب كان قد فاتنا.
+const grassMat=translucent(new THREE.MeshStandardMaterial({map:grassTex, alphaTest:0.35, side:THREE.DoubleSide, roughness:0.94, metalness:0.0, vertexColors:true}), 0.58);
 const bladeGeo=(()=>{
   const mb=new MB();
   mb.card([0,0.30,0],[1,0,0],[0,1,0], 0.92, 0.66, 1, 0);
@@ -694,7 +696,8 @@ function populate(cx, cz, treeR, rockR, grassR, grassN){
       list.forEach((it,n)=>{
         anim[n*4]   = it.phase!==undefined ? it.phase : 0;
         anim[n*4+1] = it.walk!==undefined ? it.walk : 0;
-        anim[n*4+2] = 1; anim[n*4+3] = 0;
+        anim[n*4+2] = it.action!==undefined ? it.action : 0;   // 1 ضربة، 2 رمي، 3 ارتداد، 4 موت
+        anim[n*4+3] = it.actionT!==undefined ? it.actionT : 0;
       });
       const attr=new THREE.InstancedBufferAttribute(anim, 4);
       addInstanced(FOLK[key].body,  bodyMat,  list, place, true, false, attr);
@@ -778,7 +781,7 @@ const villP = routes[0] ? (()=>{ const r=routes[0].path.find(p=>Math.hypot(p.x,p
 // سمت الشمس اختير بالقياس لا بالتخمين: مُسحت ستّ زوايا عالمية على لقطتَي
 // الجبال والقلعة، و149° وحدها تخدم الاثنين — جدار الجبل مضاء وأضلاعه تُقرأ،
 // والقلعة تُلقي ظلالاً طويلة عبر العشب. الارتفاع 620 على بُعد 1400 ≈ 24°.
-let SUN_AZ=2.60, SUN_H=620, LAST_SHOT='far';
+let SUN_AZ=2.60, SUN_H=620, LAST_SHOT='far', ACT_T=0;
 const GA = GATE_ANGLE*180/Math.PI;
 // موضع البوّابة بإحداثيات التوليد (القلعة نصف قطرها 150 وحدة توليد)
 const GATE_R = 150;
@@ -861,22 +864,112 @@ const ANIM_CHUNK = `
     return vec3(p.x*cz - p.y*sz, p.x*sz + p.y*cz, p.z);
   }
 
+  /* ═══ الحركات المنفصلة ═══
+     كل حركة دالّة من تقدّمها u في [0,1]، وتُمزج فوق الأساس (وقوف/مشي) بوزن
+     يصعد وينزل عند الطرفين فلا تقع قفزة. الموت وحده لا يعود: يثبت عند نهايته.
+
+     الشكل مبنيّ على smoothstep متتابعة لا على جيب واحد: الضربة لا بدّ أن
+     تكون **بطيئة في الشدّ وسريعة في الهويّ**، والجيب المتماثل يجعلها رخوة. */
+  vec3 dkActionEuler(int limb, int action, float u){
+    if(action == 1){                      // ضربة سيف/رمح
+      // شدّ إلى الخلف ثم هويّ سريع ثم عودة
+      float sw = -1.30*smoothstep(0.0, 0.32, u)
+               +  2.10*smoothstep(0.32, 0.50, u)
+               -  0.80*smoothstep(0.50, 1.0, u);
+      float el = -0.55 - 0.50*smoothstep(0.0, 0.32, u) + 0.90*smoothstep(0.32, 0.52, u);
+      float tw = -0.34*smoothstep(0.0, 0.32, u) + 0.62*smoothstep(0.32, 0.52, u)
+               -  0.28*smoothstep(0.52, 1.0, u);
+      if(limb == 1) return vec3(0.10*smoothstep(0.32,0.52,u), tw, 0.0);
+      if(limb == 2) return vec3(0.12*smoothstep(0.32,0.52,u), -tw*0.5, 0.0);
+      if(limb == 5) return vec3(sw, 0.0, -0.28);
+      if(limb == 6) return vec3(el, 0.0, 0.0);
+      if(limb == 3) return vec3(-0.42, 0.0, 0.34);      // ذراع الدرع ترتفع للحماية
+      if(limb == 4) return vec3(-0.62, 0.0, 0.0);
+      if(limb == 7) return vec3(-0.30*smoothstep(0.28,0.52,u), 0.0, 0.0);
+      if(limb == 9) return vec3( 0.34*smoothstep(0.28,0.52,u), 0.0, 0.0);
+      if(limb == 10) return vec3(-0.30*smoothstep(0.28,0.52,u), 0.0, 0.0);
+      return vec3(0.0);
+    }
+    if(action == 2){                      // رمي بالقوس
+      float draw = smoothstep(0.05, 0.55, u);
+      float rel  = smoothstep(0.58, 0.66, u);
+      float back = draw - rel;
+      if(limb == 1) return vec3(0.0, -0.30*draw + 0.12*rel, 0.0);
+      if(limb == 2) return vec3(0.0, -0.16*draw, 0.0);
+      if(limb == 3) return vec3(-1.42*draw, 0.0, 0.30*draw);   // ذراع القوس تمتدّ أماماً
+      if(limb == 4) return vec3(0.16*draw, 0.0, 0.0);
+      if(limb == 5) return vec3(-1.05*draw, 0.0, -0.42*draw);  // ذراع الوتر تُسحب
+      if(limb == 6) return vec3(-1.55*back, 0.0, 0.0);
+      return vec3(0.0);
+    }
+    if(action == 3){                      // ارتداد من ضربة
+      float b = sin(u*3.14159265);
+      b = b*b;
+      if(limb == 1) return vec3(-0.42*b, 0.10*b, 0.0);
+      if(limb == 2) return vec3(-0.52*b, 0.0, 0.0);
+      if(limb == 3) return vec3( 0.55*b, 0.0, 0.42*b);
+      if(limb == 5) return vec3( 0.48*b, 0.0, -0.42*b);
+      if(limb == 7) return vec3(-0.24*b, 0.0, 0.0);
+      if(limb == 9) return vec3(-0.18*b, 0.0, 0.0);
+      return vec3(0.0);
+    }
+    if(action == 4){                      // موت: الأطراف تسترخي ثم يهوي الجسد
+      float e = smoothstep(0.0, 0.62, u);
+      if(limb == 1) return vec3(-0.30*e, 0.16*e, 0.0);
+      if(limb == 2) return vec3(-0.42*e, 0.0, 0.0);
+      if(limb == 3) return vec3( 0.68*e, 0.0, 0.55*e);
+      if(limb == 4) return vec3( 0.40*e, 0.0, 0.0);
+      if(limb == 5) return vec3( 0.62*e, 0.0, -0.60*e);
+      if(limb == 6) return vec3( 0.46*e, 0.0, 0.0);
+      if(limb == 7) return vec3(-0.55*e, 0.0, 0.0);
+      if(limb == 8) return vec3(-0.85*e, 0.0, 0.0);
+      if(limb == 9) return vec3(-0.30*e, 0.0, 0.0);
+      if(limb == 10) return vec3(-0.62*e, 0.0, 0.0);
+      if(limb == 11) return vec3(0.42*e, 0.0, 0.0);
+      return vec3(0.0);
+    }
+    return vec3(0.0);
+  }
+
+  /* وزن الحركة: يصعد بسرعة وينزل بلطف. الموت يثبت عند واحد فلا يقوم القتيل. */
+  float dkActionWeight(int action, float u){
+    if(action == 4) return smoothstep(0.0, 0.22, u);
+    return smoothstep(0.0, 0.14, u) * (1.0 - smoothstep(0.80, 1.0, u));
+  }
+
   vec3 dkPose(vec3 pos, float limbF){
     int limb = int(limbF + 0.5);
     float walk = clamp(aAnim.y, 0.0, 1.0);
+    int action = int(aAnim.z + 0.5);
+    float u = clamp(aAnim.w, 0.0, 1.0);
+    float aw = (action > 0) ? dkActionWeight(action, u) : 0.0;
     float t = uTime * mix(1.35, 5.6, walk) + aAnim.x;
 
     // السلسلة: المفصل ثم أبوه ثم جدّه — عمقها ثلاثة (ساعد ← عضد ← صدر)
     int cur = limb;
     for(int step=0; step<3; step++){
       if(cur < 0) break;
-      pos = dkRotEuler(pos - dkPivot(cur), dkLimbEuler(cur, t, walk)) + dkPivot(cur);
+      vec3 e = mix(dkLimbEuler(cur, t, walk), dkActionEuler(cur, action, u), aw);
+      pos = dkRotEuler(pos - dkPivot(cur), e) + dkPivot(cur);
       cur = dkParent(cur);
     }
 
-    // ارتداد الجسم: خطوتان في الدورة الواحدة، وميل بطيء عند الوقوف
-    pos.y += walk * 0.022 * abs(cos(t));
-    pos = dkRotEuler(pos, vec3(0.0, (1.0-walk)*0.035*sin(uTime*0.42 + aAnim.x), 0.0));
+    // ارتداد الجسم: خطوتان في الدورة، وميل بطيء عند الوقوف
+    pos.y += walk * (1.0-aw) * 0.022 * abs(cos(t));
+    pos = dkRotEuler(pos, vec3(0.0, (1.0-walk)*(1.0-aw)*0.035*sin(uTime*0.42 + aAnim.x), 0.0));
+
+    // اندفاع الطعنة إلى الأمام: الضربة بلا خطوة تبدو معلّقة في الهواء
+    if(action == 1){
+      pos.z += 0.075 * aw * (smoothstep(0.20,0.48,u) - smoothstep(0.55,1.0,u));
+    }
+    // السقوط: دوران الجسد كلّه حول القدمين — لا يمكن أن يُسنَد إلى مفصل واحد
+    if(action == 4){
+      float f = smoothstep(0.16, 0.92, u);
+      f = f*f*(3.0-2.0*f);
+      vec3 foot = vec3(0.0, 0.045, 0.0);
+      pos = dkRotEuler(pos - foot, vec3(-1.46*f, 0.0, 0.22*f)) + foot;
+      pos.y -= 0.018*f;
+    }
     return pos;
   }
 `;
@@ -932,6 +1025,7 @@ const LIVERY = {
 
 const folkPool=[];       // {x,z,r,v,s,tr,tg,tb,phase,walk}
 let MARCH_AT=null;       // موضع أول جندي زاحف واتّجاهه — منه تُوجَّه لقطة المشي
+let DEMO_AT=null;        // مركز ميدان عرض الحركات
 {
   const rnd=rngFrom(SEED*7717+31);
   const put=(v, x, z, rot, liv, scale, walk)=>{
@@ -1008,6 +1102,25 @@ let MARCH_AT=null;       // موضع أول جندي زاحف واتّجاهه �
     }
   }
 
+  // ٤ج) ميدان عرض الحركات: صفٌّ أمام البوّابة كلّ فرد في حركة مختلفة،
+  //     ليُقاس كل وضع على حدة بدل تخمينها. تقدّم الحركة يُضبط من `__d.setAct`.
+  {
+    // خلف القلعة على أرض خالية: أمام البوّابة يحجبه تشكيل الاستعراض
+    const da=gA+Math.PI;
+    const dx=Math.cos(da)*(ringR+72), dz=Math.sin(da)*(ringR+72);
+    const sx=-Math.sin(da), sz=Math.cos(da);
+    const cast=[['sword',1],['spear',1],['archer',2],['sword2',3],['spear2',4],['hero',0]];
+    for(let i=0;i<cast.length;i++){
+      const off=(i-(cast.length-1)/2)*13;
+      const x=dx+sx*off, z=dz+sz*off;
+      folkPool.push({ v:cast[i][0], x, z, r:-da+Math.PI/2, s:1, y:groundY(x,z),
+                      tr:LIVERY.hero[0], tg:LIVERY.hero[1], tb:LIVERY.hero[2],
+                      phase:rnd()*6.2832, walk:0,
+                      action:cast[i][1], actionT:0, demo:true });
+    }
+    DEMO_AT=[dx, dz];
+  }
+
   // ٥) قرويّون حول القرية وعلى الطريق
   if(villP){
     for(let i=0;i<14;i++){
@@ -1030,6 +1143,7 @@ let MARCH_AT=null;       // موضع أول جندي زاحف واتّجاهه �
    `look` تقيس السمت من محور +Z نحو +X، واتّجاه الطريق يُقاس من +X — فالتحويل
    هو 90 ناقص الاتّجاه، ثم 90 أخرى لننظر إلى الرتل من جانبه لا من خلفه. */
 const marchP = MARCH_AT ? MARCH_AT.p : [gatePos[0]*1.9, gatePos[1]*1.9];
+const demoP = DEMO_AT || gatePos;
 const MARCH_YAW = MARCH_AT ? (180 - (MARCH_AT.heading*180/Math.PI)) : 90;
 const SHOTS={
   mountain: ()=>{ populate(-560, 700, 1500, 1400, 260, 16000);
@@ -1057,6 +1171,9 @@ const SHOTS={
   // من +Z نحو +X، فوضع الكاميرا بين الشمس والهدف يكون عند 90−149 = −59.
   stride: ()=>{ populate(marchP[0], marchP[1], 520, 420, 190, 13000);
                 look(marchP, 23, -59, 11, 2, 0.8); },
+  // ميدان الحركات: من جهة الشمس لتُقرأ الأوضاع
+  combat: ()=>{ populate(demoP[0], demoP[1], 560, 460, 200, 14000);
+                look(demoP, 62, -59, 16, 3, 1.5); },
   army:   ()=>{ populate(gatePos[0], gatePos[1], 700, 560, 260, 16000);
                 look([Math.cos(GATE_ANGLE)*(150+62), Math.sin(GATE_ANGLE)*(150+62)], 92, YAW_OUT+18, 12, 4); },
   hero2:  ()=>{ populate(gatePos[0], gatePos[1], 620, 480, 200, 14000);
@@ -1302,6 +1419,12 @@ window.__d = {
     tgt:[Math.round(sun.target.position.x),Math.round(sun.target.position.y),Math.round(sun.target.position.z)],
     smEnabled: renderer.shadowMap.enabled }; },
   setTime(t){ ANIM_UNIFORMS.uTime.value=t; render(); return true; },
+  setAct(u){ ACT_T=u; for(const o of live){
+      const a=o.geometry && o.geometry.getAttribute && o.geometry.getAttribute('aAnim');
+      if(!a) continue;
+      for(let i=0;i<a.count;i++) if(a.getZ(i)>0.5) a.setW(i, u);
+      a.needsUpdate=true; }
+    render(); return true; },
   setAO(v){ if(terShaderRef) terShaderRef.uniforms.uAOAmt.value=v; render(); return true; },
   setNrm(v){ if(terShaderRef) terShaderRef.uniforms.uNrmAmt.value=v; render(); return true; },
   shot(name){ LAST_SHOT=SHOTS[name]?name:'far'; SHOTS[LAST_SHOT](); render(); render(); return true; },

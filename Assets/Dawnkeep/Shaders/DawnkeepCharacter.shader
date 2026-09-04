@@ -23,6 +23,8 @@ Shader "Dawnkeep/Character"
         _AnimWalk ("وزن المشي (0 وقوف، 1 مشي)", Range(0, 1)) = 0
         _AnimIdleRate ("سرعة نبض الوقوف", Float) = 1.35
         _AnimWalkRate ("سرعة دورة المشي", Float) = 5.6
+        _AnimAction ("الحركة (0 لا شيء، 1 ضربة، 2 رمي، 3 ارتداد، 4 موت)", Float) = 0
+        _AnimActionTime ("تقدّم الحركة 0..1", Range(0, 1)) = 0
     }
 
     SubShader
@@ -45,6 +47,8 @@ Shader "Dawnkeep/Character"
             float _AnimWalk;
             float _AnimIdleRate;
             float _AnimWalkRate;
+            float _AnimAction;
+            float _AnimActionTime;
         CBUFFER_END
 
         // محاور المفاصل بوحدات البناء (ارتفاع الشخصية 1.0). واحدة لكل الأصناف
@@ -89,6 +93,94 @@ Shader "Dawnkeep/Character"
             return float3(0.0, 0.0, 0.0);
         }
 
+        // ═══ الحركات المنفصلة ═══
+        // كل حركة دالّة من تقدّمها u في [0,1]، وتُمزج فوق الأساس (وقوف/مشي) بوزن
+        // يصعد وينزل عند الطرفين فلا تقع قفزة. الموت وحده لا يعود: يثبت عند نهايته.
+        //
+        // الشكل مبنيّ على smoothstep متتابعة لا على جيب واحد: الضربة لا بدّ أن
+        // تكون بطيئة في الشدّ وسريعة في الهويّ، والجيب المتماثل يجعلها رخوة.
+        float3 DawnkeepActionEuler(int limb, int action, float u)
+        {
+            if (action == 1)                    // ضربة سيف/رمح
+            {
+                float sw = (-1.30 * smoothstep(0.0, 0.32, u))
+                         + ( 2.10 * smoothstep(0.32, 0.50, u))
+                         - ( 0.80 * smoothstep(0.50, 1.0, u));
+                float el = -0.55 - (0.50 * smoothstep(0.0, 0.32, u)) + (0.90 * smoothstep(0.32, 0.52, u));
+                float tw = (-0.34 * smoothstep(0.0, 0.32, u)) + (0.62 * smoothstep(0.32, 0.52, u))
+                         - ( 0.28 * smoothstep(0.52, 1.0, u));
+
+                if (limb == 1)  return float3(0.10 * smoothstep(0.32, 0.52, u), tw, 0.0);
+                if (limb == 2)  return float3(0.12 * smoothstep(0.32, 0.52, u), -tw * 0.5, 0.0);
+                if (limb == 5)  return float3(sw, 0.0, -0.28);
+                if (limb == 6)  return float3(el, 0.0, 0.0);
+                if (limb == 3)  return float3(-0.42, 0.0, 0.34);     // ذراع الدرع ترتفع للحماية
+                if (limb == 4)  return float3(-0.62, 0.0, 0.0);
+                if (limb == 7)  return float3(-0.30 * smoothstep(0.28, 0.52, u), 0.0, 0.0);
+                if (limb == 9)  return float3( 0.34 * smoothstep(0.28, 0.52, u), 0.0, 0.0);
+                if (limb == 10) return float3(-0.30 * smoothstep(0.28, 0.52, u), 0.0, 0.0);
+                return float3(0.0, 0.0, 0.0);
+            }
+
+            if (action == 2)                    // رمي بالقوس
+            {
+                float draw = smoothstep(0.05, 0.55, u);
+                float rel = smoothstep(0.58, 0.66, u);
+                float back = draw - rel;
+
+                if (limb == 1) return float3(0.0, (-0.30 * draw) + (0.12 * rel), 0.0);
+                if (limb == 2) return float3(0.0, -0.16 * draw, 0.0);
+                if (limb == 3) return float3(-1.42 * draw, 0.0, 0.30 * draw);   // ذراع القوس تمتدّ
+                if (limb == 4) return float3(0.16 * draw, 0.0, 0.0);
+                if (limb == 5) return float3(-1.05 * draw, 0.0, -0.42 * draw);  // ذراع الوتر تُسحب
+                if (limb == 6) return float3(-1.55 * back, 0.0, 0.0);
+                return float3(0.0, 0.0, 0.0);
+            }
+
+            if (action == 3)                    // ارتداد من ضربة
+            {
+                float b = sin(u * 3.14159265);
+                b = b * b;
+                if (limb == 1) return float3(-0.42 * b, 0.10 * b, 0.0);
+                if (limb == 2) return float3(-0.52 * b, 0.0, 0.0);
+                if (limb == 3) return float3( 0.55 * b, 0.0, 0.42 * b);
+                if (limb == 5) return float3( 0.48 * b, 0.0, -0.42 * b);
+                if (limb == 7) return float3(-0.24 * b, 0.0, 0.0);
+                if (limb == 9) return float3(-0.18 * b, 0.0, 0.0);
+                return float3(0.0, 0.0, 0.0);
+            }
+
+            if (action == 4)                    // موت: الأطراف تسترخي ثم يهوي الجسد
+            {
+                float e = smoothstep(0.0, 0.62, u);
+                if (limb == 1)  return float3(-0.30 * e, 0.16 * e, 0.0);
+                if (limb == 2)  return float3(-0.42 * e, 0.0, 0.0);
+                if (limb == 3)  return float3( 0.68 * e, 0.0, 0.55 * e);
+                if (limb == 4)  return float3( 0.40 * e, 0.0, 0.0);
+                if (limb == 5)  return float3( 0.62 * e, 0.0, -0.60 * e);
+                if (limb == 6)  return float3( 0.46 * e, 0.0, 0.0);
+                if (limb == 7)  return float3(-0.55 * e, 0.0, 0.0);
+                if (limb == 8)  return float3(-0.85 * e, 0.0, 0.0);
+                if (limb == 9)  return float3(-0.30 * e, 0.0, 0.0);
+                if (limb == 10) return float3(-0.62 * e, 0.0, 0.0);
+                if (limb == 11) return float3( 0.42 * e, 0.0, 0.0);
+                return float3(0.0, 0.0, 0.0);
+            }
+
+            return float3(0.0, 0.0, 0.0);
+        }
+
+        // وزن الحركة: يصعد بسرعة وينزل بلطف. الموت يثبت عند واحد فلا يقوم القتيل.
+        float DawnkeepActionWeight(int action, float u)
+        {
+            if (action == 4)
+            {
+                return smoothstep(0.0, 0.22, u);
+            }
+
+            return smoothstep(0.0, 0.14, u) * (1.0 - smoothstep(0.80, 1.0, u));
+        }
+
         float3 DawnkeepRotEuler(float3 p, float3 e)
         {
             float sx = sin(e.x); float cx = cos(e.x);
@@ -104,6 +196,9 @@ Shader "Dawnkeep/Character"
         {
             int limb = (int)(limbF + 0.5);
             float walk = saturate(_AnimWalk);
+            int action = (int)(_AnimAction + 0.5);
+            float u = saturate(_AnimActionTime);
+            float aw = action > 0 ? DawnkeepActionWeight(action, u) : 0.0;
             float t = (_Time.y * lerp(_AnimIdleRate, _AnimWalkRate, walk)) + _AnimPhase;
 
             int cur = limb;
@@ -113,14 +208,33 @@ Shader "Dawnkeep/Character"
                 if (cur >= 0)
                 {
                     float3 pv = DK_PIVOT[cur];
-                    pos = DawnkeepRotEuler(pos - pv, DawnkeepLimbEuler(cur, t, walk)) + pv;
+                    float3 e = lerp(DawnkeepLimbEuler(cur, t, walk), DawnkeepActionEuler(cur, action, u), aw);
+                    pos = DawnkeepRotEuler(pos - pv, e) + pv;
                     cur = DK_PARENT[cur];
                 }
             }
 
             // ارتداد الجسم: خطوتان في الدورة الواحدة. وعند الوقوف ميل بطيء.
-            pos.y += walk * 0.022 * abs(cos(t));
-            pos = DawnkeepRotEuler(pos, float3(0.0, (1.0 - walk) * 0.035 * sin((_Time.y * 0.42) + _AnimPhase), 0.0));
+            pos.y += walk * (1.0 - aw) * 0.022 * abs(cos(t));
+            pos = DawnkeepRotEuler(pos, float3(0.0,
+                (1.0 - walk) * (1.0 - aw) * 0.035 * sin((_Time.y * 0.42) + _AnimPhase), 0.0));
+
+            // اندفاع الطعنة: الضربة بلا خطوة تبدو معلّقة في الهواء
+            if (action == 1)
+            {
+                pos.z += 0.075 * aw * (smoothstep(0.20, 0.48, u) - smoothstep(0.55, 1.0, u));
+            }
+
+            // السقوط: دوران الجسد كلّه حول القدمين — لا يمكن أن يُسنَد إلى مفصل واحد
+            if (action == 4)
+            {
+                float f = smoothstep(0.16, 0.92, u);
+                f = f * f * (3.0 - (2.0 * f));
+                float3 foot = float3(0.0, 0.045, 0.0);
+                pos = DawnkeepRotEuler(pos - foot, float3(-1.46 * f, 0.0, 0.22 * f)) + foot;
+                pos.y -= 0.018 * f;
+            }
+
             return pos;
         }
 

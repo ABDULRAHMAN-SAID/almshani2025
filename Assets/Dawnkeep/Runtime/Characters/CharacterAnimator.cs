@@ -17,6 +17,18 @@ namespace Dawnkeep.Characters
     {
         private static readonly int PhaseId = Shader.PropertyToID("_AnimPhase");
         private static readonly int WalkId = Shader.PropertyToID("_AnimWalk");
+        private static readonly int ActionId = Shader.PropertyToID("_AnimAction");
+        private static readonly int ActionTimeId = Shader.PropertyToID("_AnimActionTime");
+
+        /// <summary>الحركات المنفصلة. أرقامها هي ما يقرؤه المُظلِّل.</summary>
+        public enum Action
+        {
+            None = 0,
+            Attack = 1,
+            Shoot = 2,
+            Flinch = 3,
+            Death = 4,
+        }
 
         [Tooltip("وزن المشي: صفر وقوف، واحد مشي كامل. يُضبط من منطق الوحدة.")]
         [Range(0f, 1f)]
@@ -28,10 +40,78 @@ namespace Dawnkeep.Characters
         [Tooltip("طور ثابت يُضاف إلى الطور المشتقّ من الموضع.")]
         [SerializeField] private float phaseOffset;
 
+        [Header("مدد الحركات بالثواني")]
+        [SerializeField] private float attackDuration = 0.72f;
+        [SerializeField] private float shootDuration = 1.05f;
+        [SerializeField] private float flinchDuration = 0.42f;
+        [SerializeField] private float deathDuration = 1.15f;
+
         private MeshRenderer[] _renderers;
         private MaterialPropertyBlock _block;
         private float _current = -1f;
         private float _velocity;
+
+        private Action _action = Action.None;
+        private float _actionElapsed;
+        private float _actionDuration;
+
+        /// <summary>الحركة الجارية الآن. None يعني وقوفاً أو مشياً فقط.</summary>
+        public Action Current
+        {
+            get { return _action; }
+        }
+
+        /// <summary>هل انتهت الشخصية؟ القتيل لا يقوم ولا يقبل حركة جديدة.</summary>
+        public bool IsDead
+        {
+            get { return _action == Action.Death; }
+        }
+
+        /// <summary>لحظة وقوع الضربة داخل حركة الهجوم — عندها يُطبَّق الضرر.</summary>
+        public bool AttackLandedThisFrame { get; private set; }
+
+        public void Attack()
+        {
+            Play(Action.Attack, attackDuration);
+        }
+
+        public void Shoot()
+        {
+            Play(Action.Shoot, shootDuration);
+        }
+
+        public void Flinch()
+        {
+            Play(Action.Flinch, flinchDuration);
+        }
+
+        public void Die()
+        {
+            Play(Action.Death, deathDuration);
+        }
+
+        /// <summary>
+        /// يبدأ حركة. الموت لا يُلغى بشيء: القتيل لا يقوم ليضرب.
+        /// وحركة جارية لا تُقطع إلا بالموت أو بالارتداد من ضربة.
+        /// </summary>
+        private void Play(Action action, float duration)
+        {
+            if (_action == Action.Death)
+            {
+                return;
+            }
+
+            if (_action != Action.None && action != Action.Death && action != Action.Flinch)
+            {
+                return;
+            }
+
+            _action = action;
+            _actionDuration = Mathf.Max(0.05f, duration);
+            _actionElapsed = 0f;
+            ApplyFloat(ActionId, (float)(int)action);
+            ApplyFloat(ActionTimeId, 0f);
+        }
 
         /// <summary>وزن المشي المطلوب. يُنعَّم إلى القيمة الفعلية عبر blendTime.</summary>
         public float Walk
@@ -57,6 +137,34 @@ namespace Dawnkeep.Characters
 
         private void Update()
         {
+            AttackLandedThisFrame = false;
+
+            if (_action != Action.None)
+            {
+                float before = _actionElapsed / _actionDuration;
+                _actionElapsed += Time.deltaTime;
+                float u = _actionElapsed / _actionDuration;
+
+                // لحظة وقوع الضربة: منتصف الهويّ في المُظلِّل (u ≈ 0.44)
+                if (_action == Action.Attack && before < 0.44f && u >= 0.44f)
+                {
+                    AttackLandedThisFrame = true;
+                }
+
+                if (u >= 1f)
+                {
+                    u = 1f;
+                    // الموت يثبت عند نهايته: لا يُصفَّر فيقوم القتيل واقفاً
+                    if (_action != Action.Death)
+                    {
+                        _action = Action.None;
+                        ApplyFloat(ActionId, 0f);
+                    }
+                }
+
+                ApplyFloat(ActionTimeId, u);
+            }
+
             if (Mathf.Abs(_current - walk) < 0.001f)
             {
                 return;             // لا شيء تغيّر: لا لمس للمُصيِّرات أصلاً
