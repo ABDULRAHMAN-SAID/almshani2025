@@ -3,6 +3,22 @@ using UnityEngine;
 
 namespace Dawnkeep.Combat
 {
+    /// <summary>طور الموجة الجارية — تقرؤه الواجهة لتقول للّاعب أين هو.</summary>
+    public enum WavePhase
+    {
+        /// <summary>لم تبدأ بعد، أو لا موجات مضبوطة.</summary>
+        Idle,
+
+        /// <summary>مهلة الاستعداد قبل الخروج: وقت اللاعب للبناء والتموضع.</summary>
+        Prepare,
+
+        /// <summary>المهاجمون خارجون أو مشتبكون.</summary>
+        Assault,
+
+        /// <summary>طُهِّرت الساحة، والموجة التالية على الطريق.</summary>
+        Respite,
+    }
+
     /// <summary>
     /// يُخرج الموجات من تعريفاتها ويجمّع الوحدات.
     ///
@@ -38,11 +54,64 @@ namespace Dawnkeep.Combat
         private float _nextEvent;
         private bool _running;
         private System.Random _rng;
+        private WavePhase _phase = WavePhase.Idle;
 
         /// <summary>رقم الموجة الجارية بدءاً من واحد. صفر يعني لم تبدأ بعد.</summary>
         public int WaveNumber { get { return _waveIndex + 1; } }
 
         public int WaveCount { get { return waves != null ? waves.Length : 0; } }
+
+        /// <summary>طور الموجة الآن — للواجهة.</summary>
+        public WavePhase Phase { get { return _phase; } }
+
+        /// <summary>اسم الموجة الجارية كما في أصلها، أو نصّ فارغ.</summary>
+        public string WaveTitle
+        {
+            get
+            {
+                if (waves == null || _waveIndex < 0 || _waveIndex >= waves.Length || waves[_waveIndex] == null)
+                {
+                    return string.Empty;
+                }
+
+                return waves[_waveIndex].Title;
+            }
+        }
+
+        /// <summary>
+        /// الثواني المتبقّية من مهلة موقوتة (استعداد أو استراحة). صفر في غيرها،
+        /// فالاشتباك لا يُقاس بساعة بل بمن يبقى واقفاً.
+        /// </summary>
+        public float Countdown
+        {
+            get
+            {
+                if (_phase != WavePhase.Prepare && _phase != WavePhase.Respite)
+                {
+                    return 0f;
+                }
+
+                return Mathf.Max(0f, _nextEvent - Time.time);
+            }
+        }
+
+        /// <summary>هل المهلة قابلة للتعجيل الآن؟ الزرّ يظهر بهذا وحده.</summary>
+        public bool CanHasten
+        {
+            get { return _phase == WavePhase.Prepare || _phase == WavePhase.Respite; }
+        }
+
+        /// <summary>
+        /// «ابدأ الآن»: يُنهي المهلة فوراً. لا يُقحم موجة فوق موجة — إن لم تكن
+        /// المهلة جارية فلا أثر له، والزرّ نفسه مخفيّ حينها.
+        /// </summary>
+        public void Hasten()
+        {
+            if (CanHasten)
+            {
+                _nextEvent = Time.time;
+            }
+        }
 
         public void Configure(Transform spawn, Vector3[] path)
         {
@@ -71,6 +140,11 @@ namespace Dawnkeep.Combat
                 return;
             }
 
+            if (_running)
+            {
+                return;      // موجة جارية: لا تُركَّب فوقها أخرى
+            }
+
             _waveIndex++;
             if (_waveIndex >= waves.Length)
             {
@@ -83,9 +157,11 @@ namespace Dawnkeep.Combat
                 return;
             }
 
+            // ممنوع StopAllCoroutines هنا: RunWave تستدعي هذه الدالّة في نهايتها،
+            // فتوقف نفسها في منتصف تنفيذها. الحارس في أوّل الدالّة يكفي.
             _running = true;
+            _phase = WavePhase.Prepare;
             _nextEvent = Time.time + wave.PrepareTime;
-            StopAllCoroutines();
             StartCoroutine(RunWave(wave));
         }
 
@@ -97,6 +173,7 @@ namespace Dawnkeep.Combat
                 yield return null;
             }
 
+            _phase = WavePhase.Assault;
             WaveDefinition.Entry[] entries = wave.Entries;
             for (int e = 0; e < entries.Length; e++)
             {
@@ -121,8 +198,16 @@ namespace Dawnkeep.Combat
                 yield return new WaitForSeconds(0.5f);
             }
 
+            // الاستراحة تُقاس بالساعة نفسها لا بـWaitForSeconds: الواجهة تقرأ
+            // ما بقي منها، والزرّ «ابدأ الآن» يقصّها.
+            _phase = WavePhase.Respite;
+            _nextEvent = Time.time + betweenWaves;
+            while (Time.time < _nextEvent)
+            {
+                yield return null;
+            }
+
             _running = false;
-            yield return new WaitForSeconds(betweenWaves);
             BeginNextWave();
         }
 
@@ -146,10 +231,14 @@ namespace Dawnkeep.Combat
             }
         }
 
+        /// <summary>
+        /// المهاجمون وحدهم. الاعتماد على عدّاد الأحياء الكلّي يجعل الشرط صحيحاً
+        /// أبداً — الحامية لا تفنى — فلا تنتهي موجة ولا تبدأ التالية.
+        /// </summary>
         private bool HordeAlive()
         {
             CombatDirector director = CombatDirector.Instance;
-            return director != null && director.LiveCount > 0 && _running;
+            return director != null && director.LiveHorde > 0;
         }
 
         private void SpawnOne(UnitDefinition def)

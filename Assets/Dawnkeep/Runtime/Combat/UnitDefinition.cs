@@ -20,6 +20,9 @@ namespace Dawnkeep.Combat
         [Tooltip("لون الراية على قطعة القماش وحدها.")]
         [SerializeField] private Color livery = new Color(0.647f, 0.180f, 0.180f);
 
+        [Tooltip("بطل اللاعب: واحد فقط في الساحة، تتبعه الكاميرا وتعرض الواجهة صحّته.")]
+        [SerializeField] private bool champion;
+
         [Header("البقاء")]
         [SerializeField] private float maxHealth = 100f;
         [Tooltip("تخفيض الضرر الوارد نسبةً. 0.25 يعني ربع الضرر يُمتصّ.")]
@@ -61,6 +64,9 @@ namespace Dawnkeep.Combat
         public GameObject Prefab { get { return prefab; } }
 
         public Color Livery { get { return livery; } }
+
+        /// <summary>هل هذه وحدة البطل؟ الواجهة تسأل التعريف لا اسم الجاهزة.</summary>
+        public bool Champion { get { return champion; } }
 
         public float MaxHealth { get { return maxHealth; } }
 

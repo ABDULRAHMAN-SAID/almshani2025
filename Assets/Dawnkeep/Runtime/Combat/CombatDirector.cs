@@ -48,6 +48,23 @@ namespace Dawnkeep.Combat
 
         public int LiveCount { get; private set; }
 
+        /// <summary>
+        /// أحياء كل فصيلة على حدة. عدّاد واحد للجميع لا يصلح: `WaveDirector`
+        /// ينتظر فناء **المهاجمين** لا فناء الحامية معهم، فلا تنتهي موجة أبداً.
+        /// </summary>
+        public int LiveKingdom { get; private set; }
+
+        public int LiveHorde { get; private set; }
+
+        /// <summary>الوحدات المسجّلة — للقراءة فقط، تستعملها الواجهة.</summary>
+        public System.Collections.Generic.IReadOnlyList<Unit> Units { get { return _units; } }
+
+        /// <summary>
+        /// بطل اللاعب إن كان حيّاً. يُلتقط في نفس مرور الإطار الذي يعدّ الأحياء
+        /// فلا تحتاج الواجهة بحثاً في المشهد كل إطار (قاعدة 5).
+        /// </summary>
+        public Unit Champion { get; private set; }
+
         private void Awake()
         {
             Instance = this;
@@ -62,7 +79,7 @@ namespace Dawnkeep.Combat
         {
             // تسجيل الحامية الموضوعة في المشهد مرّة واحدة عند الإقلاع.
             // البحث في المشهد مسموح هنا وحده — وممنوع داخل حلقة الإطار (§1).
-            Unit[] placed = FindObjectsOfType<Unit>(true);
+            Unit[] placed = FindObjectsByType<Unit>(FindObjectsInactive.Include, FindObjectsSortMode.None);
             for (int i = 0; i < placed.Length; i++)
             {
                 Unit unit = placed[i];
@@ -113,6 +130,9 @@ namespace Dawnkeep.Combat
             _hash.Rebuild(_positions, count);
 
             int live = 0;
+            int kingdom = 0;
+            int horde = 0;
+            Unit champion = null;
             for (int i = 0; i < count; i++)
             {
                 Unit unit = _units[i];
@@ -123,10 +143,26 @@ namespace Dawnkeep.Combat
                 }
 
                 live++;
+                if (unit.Faction == Faction.Kingdom)
+                {
+                    kingdom++;
+                    if (champion == null && unit.Definition != null && unit.Definition.Champion)
+                    {
+                        champion = unit;
+                    }
+                }
+                else if (unit.Faction == Faction.Horde)
+                {
+                    horde++;
+                }
+
                 TickUnit(i, unit, dt, now);
             }
 
+            Champion = champion;
             LiveCount = live;
+            LiveKingdom = kingdom;
+            LiveHorde = horde;
             SweepDead();
         }
 
@@ -167,7 +203,7 @@ namespace Dawnkeep.Combat
             // إعادة تقييم الهدف على فترتها، لا في كل إطار
             if (now >= unit.NextThink)
             {
-                unit.TargetIndex = FindTarget(index, unit, def);
+                unit.Target = FindTarget(index, unit, def);
                 unit.NextThink = now + def.RetargetInterval;
             }
 
@@ -197,6 +233,13 @@ namespace Dawnkeep.Combat
 
                 desired = toWaypoint.sqrMagnitude > 0.0001f ? toWaypoint.normalized : Vector3.zero;
             }
+            else if (unit.HasHome)
+            {
+                // الحامية ترابط: تعود إلى موقعها بدل أن تنجرّ خلف كل مهاجم
+                Vector3 toHome = unit.Home - position;
+                toHome.y = 0f;
+                desired = toHome.sqrMagnitude > 4f ? toHome.normalized : Vector3.zero;
+            }
             else
             {
                 desired = Vector3.zero;
@@ -215,6 +258,17 @@ namespace Dawnkeep.Combat
 
                 Quaternion look = Quaternion.LookRotation(desired, Vector3.up);
                 unit.Body.rotation = Quaternion.RotateTowards(unit.Body.rotation, look, def.TurnSpeed * dt);
+            }
+            else if (target != null)
+            {
+                // واقف يضرب: لا بدّ أن يلتفت إلى خصمه وإلا ضرب الهواء جانباً
+                Vector3 face = target.Body.position - position;
+                face.y = 0f;
+                if (face.sqrMagnitude > 0.0001f)
+                {
+                    Quaternion look = Quaternion.LookRotation(face.normalized, Vector3.up);
+                    unit.Body.rotation = Quaternion.RotateTowards(unit.Body.rotation, look, def.TurnSpeed * dt);
+                }
             }
 
             if (unit.Animator != null)
@@ -269,10 +323,10 @@ namespace Dawnkeep.Combat
         /// اختيار الهدف بوزن يجمع المسافة وفئة الهدف (§12) — لا أقرب هدف فحسب.
         /// الفحص محصور في خلايا الشبكة داخل مدى البصر.
         /// </summary>
-        private int FindTarget(int selfIndex, Unit unit, UnitDefinition def)
+        private Unit FindTarget(int selfIndex, Unit unit, UnitDefinition def)
         {
             int found = _hash.Query(unit.Body.position, def.SightRange, _neighbours);
-            int best = -1;
+            Unit best = null;
             float bestScore = float.MaxValue;
             float sightSqr = def.SightRange * def.SightRange;
 
@@ -310,7 +364,7 @@ namespace Dawnkeep.Combat
                 if (score < bestScore)
                 {
                     bestScore = score;
-                    best = j;
+                    best = other;
                 }
             }
 
@@ -319,16 +373,10 @@ namespace Dawnkeep.Combat
 
         private Unit ResolveTarget(Unit unit)
         {
-            int index = unit.TargetIndex;
-            if (index < 0 || index >= _units.Count)
-            {
-                return null;
-            }
-
-            Unit target = _units[index];
+            Unit target = unit.Target;
             if (target == null || !target.Alive || target.Faction == unit.Faction)
             {
-                unit.TargetIndex = -1;
+                unit.Target = null;
                 unit.NextThink = 0f;      // الهدف مات: يُعاد التقييم فوراً (§12)
                 return null;
             }

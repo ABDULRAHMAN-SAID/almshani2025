@@ -14,6 +14,9 @@ namespace Dawnkeep.EditorTools
         public const string TerrainLayers = Generated + "/TerrainLayers";
         public const string Meshes = Generated + "/Meshes";
         public const string Prefabs = Generated + "/Prefabs";
+        public const string Art = Root + "/Art";
+        public const string Fonts = Art + "/Fonts";
+        public const string FontAssets = Generated + "/Fonts";
         public const string Settings = Root + "/Settings";
         public const string Scenes = "Assets/Scenes";
         public const string WorldScene = Scenes + "/Dawnkeep_World.unity";
@@ -24,7 +27,8 @@ namespace Dawnkeep.EditorTools
         {
             string[] folders =
             {
-                Root, Generated, Textures, Materials, TerrainLayers, Meshes, Prefabs, Settings, Scenes,
+                Root, Generated, Textures, Materials, TerrainLayers, Meshes, Prefabs,
+                Art, Fonts, FontAssets, Settings, Scenes,
             };
 
             for (int i = 0; i < folders.Length; i++)

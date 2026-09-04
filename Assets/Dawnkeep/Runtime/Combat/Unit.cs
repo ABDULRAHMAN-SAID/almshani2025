@@ -22,7 +22,9 @@ namespace Dawnkeep.Combat
         private float _health;
         private float _nextThink;
         private float _nextAttack;
-        private int _targetIndex = -1;
+        private Unit _target;
+        private Vector3 _home;
+        private bool _hasHome;
 
         private Vector3[] _path;
         private int _pathIndex;
@@ -50,7 +52,16 @@ namespace Dawnkeep.Combat
 
         public float NextAttack { get { return _nextAttack; } set { _nextAttack = value; } }
 
-        public int TargetIndex { get { return _targetIndex; } set { _targetIndex = value; } }
+        /// <summary>
+        /// الهدف **بالمرجع لا بالفهرس**: قائمة الوحدات تتقلّص عند إزالة القتلى،
+        /// فأي فهرس مخزَّن يصير مشيراً إلى وحدة أخرى في الإطار التالي.
+        /// </summary>
+        public Unit Target { get { return _target; } set { _target = value; } }
+
+        /// <summary>موضع المرابطة: تعود إليه الحامية إذا لم يبقَ لها هدف.</summary>
+        public Vector3 Home { get { return _home; } }
+
+        public bool HasHome { get { return _hasHome; } }
 
         private void Awake()
         {
@@ -72,10 +83,12 @@ namespace Dawnkeep.Combat
             _health = definition != null ? definition.MaxHealth : 1f;
             Alive = true;
             DeadFor = 0f;
-            _targetIndex = -1;
+            _target = null;
             _nextThink = 0f;
             _nextAttack = 0f;
             _pathIndex = 0;
+            _home = _transform.position;
+            _hasHome = true;      // الحامية ترابط: تعود إلى موقعها بعد الاشتباك
         }
 
         /// <summary>يضبط تعريف الوحدة من محرّر المشهد.</summary>
@@ -97,11 +110,12 @@ namespace Dawnkeep.Combat
             _health = def != null ? def.MaxHealth : 1f;
             Alive = true;
             DeadFor = 0f;
-            _targetIndex = -1;
+            _target = null;
             _nextThink = 0f;
             _nextAttack = 0f;
             _path = path;
             _pathIndex = 0;
+            _hasHome = false;      // المهاجم لا يرابط: يمضي على مساره
 
             if (_animator != null)
             {
