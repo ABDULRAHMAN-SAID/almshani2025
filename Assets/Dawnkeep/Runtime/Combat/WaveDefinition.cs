@@ -22,6 +22,12 @@ namespace Dawnkeep.Combat
 
             [Tooltip("ثوانٍ تأخير قبل بدء هذه الدفعة من بداية الموجة.")]
             public float Delay;
+
+            [Tooltip("جهة الدخول (§14). صفر هي جهة الطريق الرئيسة.")]
+            public int Front;
+
+            [Tooltip("مستوى العدوّ (§14). صفر هو الأساس، وكل درجة تشدّه.")]
+            public int Tier;
         }
 
         [Tooltip("مفتاح العنوان في جدول النصوص. فارغاً يُستعمل `title` كما هو.")]
@@ -49,6 +55,29 @@ namespace Dawnkeep.Combat
         public float PrepareTime { get { return prepareTime; } }
 
         public Entry[] Entries { get { return entries; } }
+
+        /// <summary>
+        /// يملأ هذا الأصل بموجة مولَّدة (§14). يُستعمل على **نسخة تشغيل واحدة**
+        /// يعاد ملؤها كل موجة، لا على أصلٍ في المشروع: إنشاء `ScriptableObject`
+        /// لكل ليلة يترك عشرات الأصول اليتيمة في الذاكرة حتى نهاية الجولة.
+        /// </summary>
+        public void Fill(string generatedTitleKey, float prepare,
+            System.Collections.Generic.List<Entry> source)
+        {
+            titleKey = generatedTitleKey;
+            prepareTime = prepare;
+
+            int count = source != null ? source.Count : 0;
+            if (entries == null || entries.Length != count)
+            {
+                entries = new Entry[count];
+            }
+
+            for (int i = 0; i < count; i++)
+            {
+                entries[i] = source[i];
+            }
+        }
 
         /// <summary>مجموع ما ستُخرجه هذه الموجة — لواجهة اللاعب ولشرط الفوز.</summary>
         public int TotalUnits

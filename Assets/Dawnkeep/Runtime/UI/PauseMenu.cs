@@ -43,6 +43,7 @@ namespace Dawnkeep.UI
         private TextMeshProUGUI[] _rows;
         private Image[] _speedButton;
         private Image[] _languageButton;
+        private Image[] _difficultyButton;
         private Image _healthBarsButton;
         private TextMeshProUGUI _healthBarsValue;
 
@@ -75,6 +76,7 @@ namespace Dawnkeep.UI
             PaintSpeed();
             PaintLanguage();
             PaintHealthBars();
+            PaintDifficulty();
         }
 
         private void Update()
@@ -185,6 +187,43 @@ namespace Dawnkeep.UI
             _rows[row++].text = Loc.Shape(wave.Title);
 
             WaveDefinition.Entry[] entries = wave.Entries;
+
+            // جهتان في هذه الليلة؟ يُقال قبل الجدول: هو أهمّ ما في المعاينة —
+            // من يبني كل شيء على جهة واحدة يخسر الليلة قبل أن تبدأ.
+            bool twoFronts = false;
+            for (int i = 0; i < entries.Length; i++)
+            {
+                if (entries[i].Front != 0)
+                {
+                    twoFronts = true;
+                    break;
+                }
+            }
+
+            if (twoFronts && row < MaxRows)
+            {
+                _rows[row++].text = Loc.Text(LocKeys.WaveSecondFront);
+            }
+
+            // §14: المعاينة الكاملة لدرجة «حكاية» وحدها. وما اشتبك فقد رُئي،
+            // فحجبه بعد خروجه سرٌّ عن شيء أمام عين اللاعب.
+            bool reveal = _waves.FullPreview || _waves.Phase == WavePhase.Assault;
+            if (!reveal)
+            {
+                if (row < MaxRows)
+                {
+                    _rows[row++].text = Loc.Format(LocKeys.WavePreviewRow,
+                        Loc.Text(LocKeys.AttackersCaption), Digits(wave.TotalUnits));
+                }
+
+                if (row < MaxRows)
+                {
+                    _rows[row++].text = Loc.Text(LocKeys.WavePreviewHidden);
+                }
+
+                return row;
+            }
+
             for (int i = 0; i < entries.Length && row < MaxRows; i++)
             {
                 if (entries[i].Unit == null)
@@ -192,7 +231,7 @@ namespace Dawnkeep.UI
                     continue;
                 }
 
-                _rows[row++].text = Loc.Format(LocKeys.SquadOrderLabel,
+                _rows[row++].text = Loc.Format(LocKeys.WavePreviewRow,
                     entries[i].Unit.DisplayName, Digits(entries[i].Count));
             }
 
@@ -315,6 +354,35 @@ namespace Dawnkeep.UI
             for (int i = 0; i < _languageButton.Length; i++)
             {
                 _languageButton[i].color = (int)Loc.Current == i ? goldColor * 0.34f : dimColor;
+            }
+        }
+
+        /// <summary>
+        /// يبدّل الدرجة (§14). أثرها على الموجة **التالية**: تبديلها في منتصف
+        /// اشتباكٍ يجعل نصف المهاجمين أقوى من نصفهم الآخر بلا سبب مرئيّ.
+        /// </summary>
+        private void SetDifficulty(Difficulty level)
+        {
+            if (_waves != null)
+            {
+                _waves.SetDifficulty(level);
+            }
+
+            PaintDifficulty();
+            Fill();
+        }
+
+        private void PaintDifficulty()
+        {
+            if (_difficultyButton == null)
+            {
+                return;
+            }
+
+            int active = _waves != null ? (int)_waves.Level : (int)Difficulty.Normal;
+            for (int i = 0; i < _difficultyButton.Length; i++)
+            {
+                _difficultyButton[i].color = i == active ? goldColor * 0.34f : dimColor;
             }
         }
 
@@ -515,6 +583,26 @@ namespace Dawnkeep.UI
             // مفتاحه عند تبديل اللغة فيطمس «مطفأة» ويعيدها «تعمل».
             _healthBarsButton = MakeChoice(body, "Bars", null, -250f, -74f, ToggleHealthBars);
             _healthBarsValue = _healthBarsButton.GetComponentInChildren<TextMeshProUGUI>();
+
+            Label("DifficultyCaption", body, LocKeys.SettingDifficulty, 26f, goldColor,
+                new Vector2(1f, 1f), new Vector2(-16f, -138f), new Vector2(220f, 40f),
+                TextAlignmentOptions.MidlineRight);
+
+            string[] levelKeys =
+            {
+                LocKeys.DifficultyStory, LocKeys.DifficultyNormal,
+                LocKeys.DifficultyVeteran, LocKeys.DifficultyNightmare,
+            };
+
+            _difficultyButton = new Image[levelKeys.Length];
+            for (int i = 0; i < levelKeys.Length; i++)
+            {
+                Difficulty captured = (Difficulty)i;
+                // ١٦٢ لا ١٣٨: الزرّ عرضه ١٥٢، فتباعدٌ أقلّ منه يجعلهما
+                // يتراكبان بأربعة عشر بكسلاً — وهو إيقاع صفّ اللغة نفسه.
+                _difficultyButton[i] = MakeChoice(body, "Level_" + i, levelKeys[i],
+                    -250f - (i * 162f), -138f, delegate { SetDifficulty(captured); });
+            }
 
             // السرعة أزرارها في الصفّ العلوي (§7): تكرار عنوانها هنا بلا قيمة
             // يعرضها لصقٌ لا إعداد.

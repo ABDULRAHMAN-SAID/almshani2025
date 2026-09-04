@@ -46,6 +46,9 @@ namespace Dawnkeep.Light
         [Range(0.02f, 0.5f)]
         [SerializeField] private float edgeSoftness = 0.16f;
 
+        [Tooltip("درجات الصعوبة (§14). فارغاً لا يُضيَّق النور.")]
+        [SerializeField] private Dawnkeep.Combat.DifficultySettings difficulty;
+
         public int StartingCharges { get { return startingCharges; } }
 
         public int MaxChargesPerBeacon { get { return maxChargesPerBeacon; } }
@@ -76,10 +79,18 @@ namespace Dawnkeep.Light
 
         public float EdgeSoftness { get { return edgeSoftness; } }
 
-        /// <summary>نصف قطر منارة بعدد شحنات معلوم.</summary>
+        /// <summary>
+        /// نصف قطر منارة بعدد شحنات معلوم، بعد مضاعف الدرجة (§14: «ضوء أقل»
+        /// في الكابوس). المضاعف هنا لا في `Beacon`: كل منارة تقرأ هذا الأصل،
+        /// فوضعه هنا يضبطهنّ جميعاً بمكان واحد.
+        /// </summary>
         public float RadiusFor(int charges)
         {
-            return baseRadius * (1f + (radiusPerCharge * Mathf.Max(0, charges)));
+            float scale = difficulty != null
+                ? Mathf.Max(0.1f, difficulty.Active.LightScale)
+                : 1f;
+
+            return baseRadius * (1f + (radiusPerCharge * Mathf.Max(0, charges))) * scale;
         }
     }
 }

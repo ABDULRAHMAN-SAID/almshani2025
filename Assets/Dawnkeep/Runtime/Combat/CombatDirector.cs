@@ -602,7 +602,7 @@ namespace Dawnkeep.Combat
             {
                 if (unit.Animator.AttackLandedThisFrame)
                 {
-                    structure.TakeDamage(def.Damage);
+                    structure.TakeDamage(unit.Damage);
                 }
 
                 return;
@@ -612,7 +612,7 @@ namespace Dawnkeep.Combat
             {
                 if (unit.Animator.AttackLandedThisFrame && _keep != null)
                 {
-                    _keep.TakeDamage(def.Damage);
+                    _keep.TakeDamage(unit.Damage);
                 }
 
                 return;
@@ -625,14 +625,14 @@ namespace Dawnkeep.Combat
 
             if (!def.Ranged && unit.Animator.AttackLandedThisFrame)
             {
-                target.TakeDamage(def.Damage);
+                target.TakeDamage(unit.Damage);
                 return;
             }
 
             if (def.Ranged && unit.Animator.ShotReleasedThisFrame && _projectiles != null)
             {
                 Vector3 from = unit.Body.position + (Vector3.up * 1.35f);
-                _projectiles.Fire(from, target, def.Damage, def.ProjectileSpeed);
+                _projectiles.Fire(from, target, unit.Damage, def.ProjectileSpeed);
             }
         }
 

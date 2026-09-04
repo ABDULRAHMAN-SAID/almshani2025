@@ -551,10 +551,11 @@ namespace Dawnkeep.Hero
             int friendly = _combat.QueryFaction(me, definition.UltimateRadius, Faction.Kingdom, _scan);
             for (int i = 0; i < friendly; i++)
             {
-                UnitDefinition def = _scan[i].Definition;
-                if (def != null)
+                // من سقف **الوحدة** لا من سقف تعريفها: مضاعف الصعوبة (§14)
+                // يرفع السقف، وشفاءٌ بنسبة من الرقم الخام يشفي أقلّ ممّا وُعد.
+                if (_scan[i].Definition != null)
                 {
-                    _scan[i].Heal(def.MaxHealth * definition.UltimateHeal);
+                    _scan[i].Heal(_scan[i].MaxHealth * definition.UltimateHeal);
                 }
             }
 

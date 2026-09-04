@@ -99,7 +99,7 @@ namespace Dawnkeep.UI
                     continue;
                 }
 
-                float ratio = unit.Health / Mathf.Max(1f, unit.Definition.MaxHealth);
+                float ratio = unit.Health / Mathf.Max(1f, unit.MaxHealth);
                 if (ratio >= showBelow)
                 {
                     continue;

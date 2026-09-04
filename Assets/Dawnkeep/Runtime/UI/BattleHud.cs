@@ -363,7 +363,7 @@ namespace Dawnkeep.UI
                 return;
             }
 
-            int max = Mathf.RoundToInt(hero.Definition.MaxHealth);
+            int max = Mathf.RoundToInt(hero.MaxHealth);
             int now = Mathf.CeilToInt(hero.Health);
             if (now == _shownHeroHealth && max == _shownHeroMax)
             {

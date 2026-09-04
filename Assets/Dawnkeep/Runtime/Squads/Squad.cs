@@ -127,7 +127,7 @@ namespace Dawnkeep.Squads
                         continue;
                     }
 
-                    max += unit.Definition.MaxHealth;
+                    max += unit.MaxHealth;
                     if (unit.Alive)
                     {
                         now += unit.Health;

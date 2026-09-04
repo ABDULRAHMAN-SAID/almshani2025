@@ -179,7 +179,7 @@ namespace Dawnkeep.Combat
                 return;
             }
 
-            _health = Mathf.Clamp01(fraction) * definition.MaxHealth;
+            _health = Mathf.Clamp01(fraction) * MaxHealth;
             Alive = _health > 0f;
         }
 
@@ -192,7 +192,7 @@ namespace Dawnkeep.Combat
             }
 
             float before = _health;
-            _health = Mathf.Min(definition.MaxHealth, _health + amount);
+            _health = Mathf.Min(MaxHealth, _health + amount);
             return _health - before;
         }
 
@@ -247,6 +247,11 @@ namespace Dawnkeep.Combat
         {
             _transform = transform;
             _animator = GetComponentInChildren<CharacterAnimator>();
+
+            // مضاعفان محايدان قبل أيّ تهيئة: صفرٌ هنا يعني وحدةً بواحد في
+            // المئة من صحّتها لو قُرئت قبل `Spawn` أو `Awaken`.
+            HealthScale = 1f;
+            DamageScale = 1f;
         }
 
         /// <summary>
@@ -260,7 +265,9 @@ namespace Dawnkeep.Combat
                 Awake();
             }
 
-            _health = definition != null ? definition.MaxHealth : 1f;
+            HealthScale = 1f;
+            DamageScale = 1f;
+            _health = MaxHealth;
             Alive = true;
             DeadFor = 0f;
             _target = null;
@@ -287,17 +294,46 @@ namespace Dawnkeep.Combat
             definition = value;
         }
 
+        /// <summary>
+        /// مضاعفا الصعوبة (§14). الحامية تبقى على واحد: الدرجة ترفع المهاجمين
+        /// لا المدافعين، ورفع الطرفين معاً يُلغي أثرها.
+        /// </summary>
+        public float HealthScale { get; private set; }
+
+        public float DamageScale { get; private set; }
+
+        /// <summary>سقف الصحّة بعد مضاعف الصعوبة — تقرؤه أشرطة الصحّة والفرق.</summary>
+        public float MaxHealth
+        {
+            get { return (definition != null ? definition.MaxHealth : 1f) * Mathf.Max(0.01f, HealthScale); }
+        }
+
+        /// <summary>ضرر الضربة بعد مضاعف الصعوبة.</summary>
+        public float Damage
+        {
+            get { return (definition != null ? definition.Damage : 0f) * Mathf.Max(0f, DamageScale); }
+        }
+
         /// <summary>تهيئة عند الخروج من المجمّع. تُستدعى مرّة لا في كل إطار.</summary>
         public void Spawn(UnitDefinition def, Vector3 position, float headingDegrees, Vector3[] path)
         {
+            Spawn(def, position, headingDegrees, path, 1f, 1f);
+        }
+
+        /// <summary>تهيئة بمضاعفَي درجة الصعوبة (§14).</summary>
+        public void Spawn(UnitDefinition def, Vector3 position, float headingDegrees, Vector3[] path,
+            float healthScale, float damageScale)
+        {
             definition = def;
+            HealthScale = Mathf.Max(0.01f, healthScale);
+            DamageScale = Mathf.Max(0f, damageScale);
             if (_transform == null)
             {
                 Awake();
             }
 
             _transform.SetPositionAndRotation(position, Quaternion.Euler(0f, headingDegrees, 0f));
-            _health = def != null ? def.MaxHealth : 1f;
+            _health = MaxHealth;
             Alive = true;
             DeadFor = 0f;
             _target = null;

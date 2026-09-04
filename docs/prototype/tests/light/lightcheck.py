@@ -65,11 +65,23 @@ for c in range(0, maxCharges + 1):
 print()
 print('── الزمن حتى القتل (السيّاف: 17 ضرراً كل 1.05 ث) ──')
 HIT, IVL = 17.0, 1.05
+# القراءة **بتقطيع النصّ عند كل MakeUnit** لا بتعبير يمتدّ بينها: التعبير
+# القديم كان يشترط `)` بعد darkArmour مباشرة، وكل وحدة تنتهي بـ`bounty:`،
+# فلم يطابق شيئاً وبقي الجدول فارغاً بلا صياح — وهذا أسوأ من فحصٍ يسقط.
 units = {}
-for m in re.finditer(r'MakeUnit\("(\w+)",\s*"([^"]+)".*?health:\s*([0-9.]+)f,\s*armour:\s*([0-9.]+)f.*?darkArmour:\s*([0-9.]+)f\)', CS, re.S):
-    units[m.group(2)] = (float(m.group(3)), float(m.group(4)), float(m.group(5)))
-for m in re.finditer(r'MakeUnit\("(\w+)",\s*"([^"]+)".*?health:\s*([0-9.]+)f,\s*armour:\s*([0-9.]+)f', CS, re.S):
-    units.setdefault(m.group(2), (float(m.group(3)), float(m.group(4)), 0.0))
+for chunk in CS.split('MakeUnit(')[1:]:
+    body = chunk.split(');', 1)[0]
+    name = re.search(r'"(\w+)",\s*"([^"]+)"', body)
+    hp   = re.search(r'health:\s*([0-9.]+)f', body)
+    arm  = re.search(r'armour:\s*([0-9.]+)f', body)
+    if not (name and hp and arm):
+        continue
+    dark = re.search(r'darkArmour:\s*([0-9.]+)f', body)
+    units[name.group(2)] = (float(hp.group(1)), float(arm.group(1)),
+                            float(dark.group(1)) if dark else 0.0)
+
+if not any(d > 0 for _, _, d in units.values()):
+    print('  ✗ لم تُقرأ وحدة واحدة بدرع ظلام — تغيّر توقيع MakeUnit؟')
 
 print(f'{"الوحدة":<16}{"في الظلام":>12}{"شحنة":>9}{"شحنتان":>9}{"ثلاث":>9}{"الفارق":>9}')
 for name, (hp, arm, dark) in units.items():

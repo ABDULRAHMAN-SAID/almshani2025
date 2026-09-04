@@ -15,8 +15,11 @@ ROOT = os.path.normpath(os.path.join(HERE, '..', '..', '..', '..'))
 
 KEYS = io.open(os.path.join(ROOT, 'Assets/Dawnkeep/Runtime/Localization/LocKeys.cs'),
                encoding='utf-8').read()
-SETUP = io.open(os.path.join(ROOT, 'Assets/Editor/DawnkeepLocalizationSetup.cs'),
-                encoding='utf-8').read()
+# كل بنّاءي المحرّر لا واحداً: صفوف الدرجات (§14) تُضاف من باني القتال،
+# وقصر المسح على باني الجدول كان يعدّها مفاتيح بلا صفوف.
+EDITOR = os.path.join(ROOT, 'Assets/Editor')
+SETUP = ''.join(io.open(os.path.join(EDITOR, f), encoding='utf-8').read()
+                for f in sorted(os.listdir(EDITOR)) if f.endswith('.cs'))
 
 declared = dict(re.findall(r'public const string (\w+)\s*=\s*"([^"]+)"', KEYS))
 

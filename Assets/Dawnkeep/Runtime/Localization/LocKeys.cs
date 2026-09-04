@@ -105,5 +105,19 @@ namespace Dawnkeep.Localization
         public const string TabEmpty = "pause.empty";
         public const string SquadOrderLabel = "pause.squad.order";
         public const string OrderGarrisonName = "orders.garrison";
+
+        // توليد الموجات ودرجات الصعوبة (§14)
+        public const string WaveNight = "wave.night";
+        public const string WaveMiniBoss = "wave.miniboss";
+        public const string WaveBoss = "wave.boss";
+        public const string WavePreviewTitle = "wave.preview";
+        public const string WavePreviewHidden = "wave.preview.hidden";
+        public const string WavePreviewRow = "wave.preview.row";
+        public const string WaveSecondFront = "wave.front.second";
+        public const string SettingDifficulty = "settings.difficulty";
+        public const string DifficultyStory = "difficulty.story";
+        public const string DifficultyNormal = "difficulty.normal";
+        public const string DifficultyVeteran = "difficulty.veteran";
+        public const string DifficultyNightmare = "difficulty.nightmare";
     }
 }

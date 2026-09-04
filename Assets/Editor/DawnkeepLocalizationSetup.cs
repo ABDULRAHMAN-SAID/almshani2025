@@ -149,6 +149,22 @@ namespace Dawnkeep.EditorTools
                 DawnkeepLocale.Row(LocKeys.TabEmpty, "لا شيء بعد", "Nothing yet"),
                 DawnkeepLocale.Row(LocKeys.SquadOrderLabel, "{0} — {1} حيّاً", "{0} — {1} alive"),
                 DawnkeepLocale.Row(LocKeys.OrderGarrisonName, "مرابطة", "Garrison"),
+
+                // توليد الموجات (§14)
+                DawnkeepLocale.Row(LocKeys.WaveNight, "ليلة الرماد", "Ashen Night"),
+                DawnkeepLocale.Row(LocKeys.WaveMiniBoss, "طليعة ثقيلة", "Heavy Vanguard"),
+                DawnkeepLocale.Row(LocKeys.WaveBoss, "ليلة الزعيم", "Warlord's Night"),
+                DawnkeepLocale.Row(LocKeys.WavePreviewTitle, "ما يأتي الليلة", "Tonight's attack"),
+                DawnkeepLocale.Row(LocKeys.WavePreviewHidden,
+                    "لا كشف قبل الصيحة على هذه الدرجة",
+                    "No forewarning at this difficulty"),
+                DawnkeepLocale.Row(LocKeys.WavePreviewRow, "{0} × {1}", "{0} × {1}"),
+                DawnkeepLocale.Row(LocKeys.WaveSecondFront, "من جهتين", "Two fronts"),
+                DawnkeepLocale.Row(LocKeys.SettingDifficulty, "الصعوبة", "Difficulty"),
+                DawnkeepLocale.Row(LocKeys.DifficultyStory, "حكاية", "Story"),
+                DawnkeepLocale.Row(LocKeys.DifficultyNormal, "قياسي", "Normal"),
+                DawnkeepLocale.Row(LocKeys.DifficultyVeteran, "مخضرم", "Veteran"),
+                DawnkeepLocale.Row(LocKeys.DifficultyNightmare, "كابوس", "Nightmare"),
             };
         }
 

@@ -67,6 +67,23 @@ namespace Dawnkeep.Combat
         [Tooltip("فضّة يضيفها قتله إلى المكافأة المعلّقة، تُصرف عند الفجر (§10).")]
         [SerializeField] private int bounty = 6;
 
+        [Header("توليد الموجات (§14)")]
+
+        [Tooltip("ثمن هذا العدوّ من ميزانية التهديد. صفر يمنعه من التوليد.")]
+        [SerializeField] private int threatCost;
+
+        [Tooltip("أوّل ليلة يجوز أن يظهر فيها. §14: لا يظهر عدوّ قبل تعليمه.")]
+        [SerializeField] private int taughtOnWave = 1;
+
+        [Tooltip("صنفه في قسمة الموجة: لا تُصرف الميزانية كلّها على صنف واحد.")]
+        [SerializeField] private ThreatClass threatClass = ThreatClass.Melee;
+
+        [Tooltip("أقلّ عدد يخرج منه إن اختير — واحدٌ من سربٍ ليس سرباً.")]
+        [SerializeField] private int minPack = 1;
+
+        [Tooltip("أكبر عدد يخرج منه في الموجة الواحدة.")]
+        [SerializeField] private int maxPack = 12;
+
         /// <summary>
         /// الاسم **المنطقي** لا المشكَّل: الواجهة هي التي تشكّل، وتشكيلُه هنا
         /// يعني تشكيلاً مضاعفاً عند أوّل مستدعٍ يمرّ به على `Loc`.
@@ -121,5 +138,16 @@ namespace Dawnkeep.Combat
 
         /// <summary>مكافأة قتله بالفضّة (§10: تُحسب عند نهاية الموجة لا تتساقط).</summary>
         public int Bounty { get { return bounty; } }
+
+        /// <summary>ثمنه من ميزانية §14. صفر يعني «لا يُولَّد» لا «مجّاني».</summary>
+        public int ThreatCost { get { return threatCost; } }
+
+        public int TaughtOnWave { get { return taughtOnWave; } }
+
+        public ThreatClass ThreatClass { get { return threatClass; } }
+
+        public int MinPack { get { return Mathf.Max(1, minPack); } }
+
+        public int MaxPack { get { return Mathf.Max(MinPack, maxPack); } }
     }
 }
