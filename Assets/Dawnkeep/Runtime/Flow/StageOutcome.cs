@@ -59,6 +59,18 @@ namespace Dawnkeep.Flow
         /// <summary>هل سجّلت هذه الجولة رقماً جديداً في نمطها (§20)؟</summary>
         public bool NewRecord { get; private set; }
 
+        /// <summary>نجوم هذه الجولة (§21)، من ثلاث.</summary>
+        public int Stars { get; private set; }
+
+        /// <summary>الجديد منها — وهو ما يُثري (§21).</summary>
+        public int FreshStars { get; private set; }
+
+        /// <summary>
+        /// هل خرج زعيمٌ هذه الجولة؟ يزيد شظيّةً (§21: «حسب الأهداف
+        /// **والزعماء**»). يرفعه `BossDirector` عند التسجيل.
+        /// </summary>
+        public bool MetBoss { get; set; }
+
         private void Awake()
         {
             Instance = this;
@@ -143,10 +155,17 @@ namespace Dawnkeep.Flow
             // مكافأة التقدّم الدائم (§16) تُمنح **هنا** ومرّةً واحدة: `Resolve`
             // تُستدعى من فرعين (فوزٍ وخسارة) ولا تُستدعى مرّتين — و`_result`
             // يمنع دخولها ثانيةً على كل حال.
+            // النجوم أوّلاً (§21: «25 × عدد النجوم **الجديدة**»): تُحسب
+            // وتُسجَّل قبل المكافأة، فالمكافأة تقرأ الجديد منها.
+            bool won = result == StageResult.Victory;
+            Stars = Dawnkeep.Campaign.StageStars.Earned(won);
+            FreshStars = Dawnkeep.Campaign.StageStars.Record(
+                Dawnkeep.Campaign.CampaignDirector.Current, Stars);
+
             Dawnkeep.Meta.Progress progress = Dawnkeep.Meta.Progress.Instance;
             if (progress != null)
             {
-                progress.AwardStage(WavesCleared, result == StageResult.Victory);
+                progress.AwardStage(WavesCleared, won, FreshStars, MetBoss);
             }
 
             RecordCampaign(result);

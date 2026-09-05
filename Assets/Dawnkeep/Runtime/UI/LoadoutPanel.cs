@@ -60,7 +60,7 @@ namespace Dawnkeep.UI
         private EquipmentDefinition _chosen;
         private int _page;
 
-        private readonly char[] _digits = new char[12];
+        private readonly char[] _digits = new char[ArabicNumber.MaxLength];
 
         public void Configure(TMP_FontAsset value)
         {
@@ -219,7 +219,7 @@ namespace Dawnkeep.UI
                 _purse.text = progress != null
                     ? Loc.Format(LocKeys.MetaHeader, Digits(progress.AccountLevel),
                           Digits(progress.Gold))
-                      + "  ·  " + Loc.Format(LocKeys.ForgeEssence, Digits(progress.Essence))
+                      + "  ·  " + Loc.Format(LocKeys.ForgeShards, Digits(progress.Shards))
                     : string.Empty;
             }
 
@@ -360,7 +360,7 @@ namespace Dawnkeep.UI
 
             _upgradeCaption.text = ArabicShaper.Shape(Loc.Text(LocKeys.ForgeUpgrade)
                 + " — " + Loc.Format(LocKeys.ForgeCost,
-                    Digits(_chosen.GoldToLevel(level)), Digits(_chosen.EssenceToLevel(level))));
+                    Digits(_chosen.GoldToLevel(level)), Digits(_chosen.ShardsToLevel(level))));
 
             _upgradeFace.color = canUp
                 ? new Color(goldColor.r * 0.30f, goldColor.g * 0.26f, goldColor.b * 0.18f, 0.96f)
@@ -374,9 +374,10 @@ namespace Dawnkeep.UI
             _dismantleFace.color = canDown ? dimColor : lockedColor;
         }
 
+        /// <summary>رقمٌ للعرض. **مختصرٌ فوق العشرة آلاف** (§21).</summary>
         private string Digits(int value)
         {
-            int length = ArabicNumber.Write(value, _digits, 0);
+            int length = ArabicNumber.WriteShort(value, _digits, 0);
             return new string(_digits, 0, length);
         }
 

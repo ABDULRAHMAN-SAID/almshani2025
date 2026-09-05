@@ -62,8 +62,32 @@ namespace Dawnkeep.UI
 
             char[] buffer = new char[ArabicNumber.MaxLength];
             int length = ArabicNumber.Write(_outcome != null ? _outcome.WavesCleared : 0, buffer, 0);
-            _detail.text = Loc.Format(won ? LocKeys.ResultVictoryDetail : LocKeys.ResultDefeatDetail,
+
+            string detail = Loc.Format(
+                won ? LocKeys.ResultVictoryDetail : LocKeys.ResultDefeatDetail,
                 new string(buffer, 0, length));
+
+            // حصاد §21 على الشاشة: نجومٌ ومخطّط. **يُقال ما نيل** — مكافأةٌ
+            // تُضاف بلا خبرٍ ليست مكافأةً في نظر اللاعب.
+            if (_outcome != null)
+            {
+                length = ArabicNumber.Write(_outcome.Stars, buffer, 0);
+                detail += "   ·   " + ArabicShaper.Shape(
+                    Loc.Format(LocKeys.HarvestStars, new string(buffer, 0, length)));
+
+                if (_outcome.Blueprint != null)
+                {
+                    detail += "   ·   " + ArabicShaper.Shape(Loc.Format(
+                        LocKeys.HarvestBlueprint, _outcome.Blueprint.DisplayName));
+                }
+
+                if (_outcome.NewRecord)
+                {
+                    detail += "   ·   " + ArabicShaper.Shape(Loc.Text(LocKeys.ModeNewRecord));
+                }
+            }
+
+            _detail.text = detail;
 
             _root.SetActive(true);
         }

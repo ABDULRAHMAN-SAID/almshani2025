@@ -279,29 +279,46 @@ check('والجباية قبل الرفع لا بعده',
 
 # الحدّادة تقرأ الرصيد لتعرف أتقدر أم لا، ولا **تكتبه**: الكتابة كلّها
 # في `Progress`، وإلّا صارت العملة تُنقص من موضعين ويختلفان يوماً.
-mutates = re.findall(r'\b(?:Gold|Essence|Stars)\s*(?:=|\+=|-=|\+\+|--)', FORGE)
+mutates = re.findall(r'\b(?:Gold|Shards|Crystals)\s*(?:=|\+=|-=|\+\+|--)', FORGE)
 check('والحدّادة تقرأ الرصيد ولا تكتبه — الكتابة في `Progress` وحدها',
-      not mutates and 'SpendForge(' in FORGE and 'AddEssence(' in FORGE,
+      not mutates and 'SpendForge(' in FORGE and 'AddShards(' in FORGE,
       f'  ({len(mutates)} كتابةً في الحدّادة)' if mutates
-      else '  (`SpendForge` و`AddEssence` بابين لا أكثر)')
+      else '  (`SpendForge` و`AddShards` بابين لا أكثر)')
 
-# ── الجوهر: مصدرٌ من اللعب ────────────────────────────────────────────
+# ── الشظايا: مصدرٌ من اللعب، بأرقام §21 ───────────────────────────────
 print()
-essWave = int(re.search(r'essencePerWave = (\d+)', read(
-    'Assets/Dawnkeep/Runtime/Meta/ProgressSettings.cs')).group(1))
-essWin = int(re.search(r'essenceVictoryBonus = (\d+)', read(
-    'Assets/Dawnkeep/Runtime/Meta/ProgressSettings.cs')).group(1))
-run = essWave * 10 + essWin
-check('الجوهر يأتي من اللعب لا من التفكيك وحده',
-      essWave > 0, f'  (جولةٌ فائزة من عشر ليالٍ = {run} جوهراً)')
+PROGS = read('Assets/Dawnkeep/Runtime/Meta/ProgressSettings.cs')
+CAP = int(re.search(r'shardCap = (\d+)', PROGS).group(1))
 
-runs = 0
-pot = 0
-while pot < full and runs < 200:
-    pot += run
-    runs += 1
-check('وترقيةُ قطعةٍ إلى الأقصى تحتاج جولاتٍ لا واحدة (§16: تدرّجٌ)',
-      3 <= runs <= 60, f'  ({runs} جولةً فائزة لقطعةٍ واحدة إلى المستوى {MAXLVL})')
+# §21: «Dawn Shards: من 0 إلى 3 حسب الأهداف والزعماء». وأقصى ما تعطيه
+# مرحلةٌ واحدة هو السقف — ثلاثُ نجومٍ ولقاءُ زعيم.
+run = CAP
+check('الشظايا تأتي من اللعب لا من التفكيك وحده',
+      run > 0, f'  (مرحلةٌ بثلاث نجومٍ وزعيم = {run} شظايا — سقف §21)')
+
+# **والشظايا تُنفَق على البحث أيضاً** بعد دمج §21: فميزانية العتاد ليست
+# كلّ ما يُكسَب. النصفُ تقديرٌ صريح، مطبوعٌ لا مخفيّ.
+SHARE = 0.5
+campaign = 40 * run
+budget = campaign * SHARE
+print(f'حملةُ أربعين مرحلةً بثلاث نجومٍ لكلٍّ: {campaign} شظيّة.')
+print(f'ونصفُها للعتاد والنصفُ للبحث (§16 و§17 يتقاسمان الجيب): {budget:.0f}.')
+
+# إلى أيّ مستوىً تبلغ قطعةٌ بهذه الميزانية؟
+level, spent = 1, 0
+while level < MAXLVL:
+    step = essTo(pick['essence'], level)
+    if spent + step > budget:
+        break
+    spent += step
+    level += 1
+
+check('وميزانيةُ الحملة تبلغ بقطعةٍ مستوىً معقولاً',
+      8 <= level <= MAXLVL,
+      f'  ({pick["arabic"]} إلى المستوى {level} بـ{spent} شظيّة)')
+
+check('ولا تبلغ الأقصى من حملةٍ واحدة (§16: تدرّجٌ)', level < MAXLVL,
+      f'  (الأقصى {MAXLVL} يحتاج {full} شظيّة)')
 
 # ── §17 نصّاً ─────────────────────────────────────────────────────────
 print()

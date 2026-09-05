@@ -197,8 +197,9 @@ check('ولا تُلبَس بطاقةٌ في الفتحتين معاً',
 print()
 print('── سلّم الفتح، بمحاكاة عشرين جولة ────────')
 
-XPWAVE = int(re.search(r'xpPerWave = (\d+)', PROGS).group(1))
-XPWIN  = int(re.search(r'xpVictoryBonus = (\d+)', PROGS).group(1))
+# صيغة §21: Account XP = 80 + 12 × رقم المرحلة
+XPBASE_STAGE = int(re.search(r'accountXpBase = (\d+)', PROGS).group(1))
+XPPER_STAGE  = int(re.search(r'accountXpPerStage = (\d+)', PROGS).group(1))
 XPBASE = float(re.search(r'xpBase = ([\d.]+)f', PROGS).group(1))
 XPEXP  = float(re.search(r'xpExponent = ([\d.]+)f', PROGS).group(1))
 MAXACC = int(re.search(r'maxAccountLevel = (\d+)', PROGS).group(1))
@@ -221,7 +222,8 @@ xp = 0
 opened, upgraded = {}, {}
 
 for run in range(1, RUNS + 1):
-    xp += XPWAVE * CAMPAIGN + XPWIN
+    # لاعبٌ يتقدّم في الحملة مرحلةً في الجولة، فرقمُ المرحلة هو رقم الجولة
+    xp += XPBASE_STAGE + XPPER_STAGE * run
     state['AccountLevel'] = levelFor(xp)
     state['Victories'] += 1
     state['StagesPlayed'] += 1

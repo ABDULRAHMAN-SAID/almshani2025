@@ -139,7 +139,7 @@ SCENARIOS = [
     ('ملفّ تالف',             'CorruptPrimary'),
     ('الأصل والأولى تالفان',  'CorruptPrimaryAndFirst'),
     ('كلّها تالفة',           'CorruptAll'),
-    ('نسخة قديمة',            'OlderVersion'),
+    ('نسخة قديمة — والعملتان تُدمجان',  'OlderVersion'),
     ('نسخة من مستقبل',        'FutureVersion'),
     ('كتلٌ ناقصة',            'MissingBlocks'),
 ]

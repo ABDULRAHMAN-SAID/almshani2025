@@ -22,11 +22,12 @@ namespace Dawnkeep.EditorTools
     /// يُقرأ من ملفّ الحفظ. ولكلٍّ **ترقيةٌ واحدة** لا أكثر — تُبلَغ بالشرط
     /// نفسه أشدَّ.
     ///
-    /// والعتبات **معايَرةٌ على منحنيات مقيسة** لا مقدَّرة: مستوى الحساب يبلغ
-    /// ٣ في الجولة الأولى و١١ في العشرين (منحنى §16)، فعتبةٌ عند ١٢ لا
-    /// تُبلَغ أبداً. وأبعدُ ليلةٍ تتجاوز العشر من الجولة الأولى (الحملة عشرٌ
-    /// ثمّ Endless)، فعتبةٌ عند ٤ مفتوحةٌ من البداية بلا أن تُسمّى كذلك.
-    /// و`doctrinecheck.py` هو من قاس الاثنين.
+    /// والعتبات **معايَرةٌ على منحنيات مقيسة** لا مقدَّرة: بصيغة §21
+    /// (‏80 + 12 × رقم المرحلة) يبلغ مستوى الحساب **٧ في الجولة العشرين**،
+    /// فعتبةٌ عند ٨ لا تُبلَغ أبداً. وأبعدُ ليلةٍ تتجاوز العشر من الجولة
+    /// الأولى (الحملة عشرٌ ثمّ Endless)، فعتبةٌ عند ٤ مفتوحةٌ من البداية بلا
+    /// أن تُسمّى كذلك. و`doctrinecheck.py` هو من قاس الاثنين — ومرّتين:
+    /// قبل §21 وبعدها، إذ بدّلت §21 منحنى الخبرة كلَّه.
     /// </summary>
     public static class DawnkeepDoctrineSetup
     {
@@ -111,7 +112,7 @@ namespace Dawnkeep.EditorTools
             all.Add(Card("Doctrine_SwiftHand", "يدٌ عَجِلة", "Swift Hand",
                 "سرعة ضرب البطل أعلى ١٥٪، لكنّ ضرره أقلّ ٨٪.",
                 "Hero attacks 15% faster, but hits 8% weaker.",
-                DoctrineUnlock.AccountLevel, 4, 8,
+                DoctrineUnlock.AccountLevel, 2, 4,
                 DoctrineOpening.None, 0,
                 Change(BoonStat.HeroAttackSpeed, 1.15f),
                 Change(BoonStat.HeroDamage, 0.92f)));
@@ -119,7 +120,7 @@ namespace Dawnkeep.EditorTools
             all.Add(Card("Doctrine_HeavyHand", "يدٌ ثقيلة", "Heavy Hand",
                 "ضرر البطل أعلى ٢٠٪، لكنّ سرعة ضربه أقلّ ١٢٪.",
                 "Hero damage 20% higher, but attacks 12% slower.",
-                DoctrineUnlock.AccountLevel, 5, 9,
+                DoctrineUnlock.AccountLevel, 3, 5,
                 DoctrineOpening.None, 0,
                 Change(BoonStat.HeroDamage, 1.20f),
                 Change(BoonStat.HeroAttackSpeed, 0.88f)));
@@ -199,7 +200,7 @@ namespace Dawnkeep.EditorTools
             all.Add(Card("Doctrine_ScorchedEarth", "أرضٌ محروقة", "Scorched Earth",
                 "ما يردّه البيع أعلى ٢٥٪ والبناء أرخص ١٠٪، لكنّ صحّة المباني أقلّ ١٥٪.",
                 "Sell refunds 25% more and building costs 10% less, but buildings have 15% less health.",
-                DoctrineUnlock.AccountLevel, 7, 10,
+                DoctrineUnlock.AccountLevel, 4, 6,
                 DoctrineOpening.None, 0,
                 Change(BoonStat.SellRefund, 1.25f),
                 Change(BoonStat.BuildCost, 0.90f),

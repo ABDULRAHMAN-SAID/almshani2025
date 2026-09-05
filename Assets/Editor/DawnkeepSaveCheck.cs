@@ -203,6 +203,13 @@ namespace Dawnkeep.EditorTools
 
             SaveData data = Sample(555, 5);
             data.SaveVersion = SaveFormat.Oldest;
+
+            // رصيدٌ بالعملتين القديمتين: نجومُ بحثٍ وجوهرُ ترقية (§16 و§17
+            // قبل دمج §21). الترحيل يجب أن **يجمعهما** لا يأخذ الأكبر.
+            data.Currencies.ResearchStars = 20;
+            data.Currencies.Essence = 40;
+            data.Currencies.DawnShards = 0;
+
             WriteRaw(SaveFormat.FileName, SaveFormat.Oldest, JsonUtility.ToJson(data));
 
             SaveSource source;
@@ -212,6 +219,17 @@ namespace Dawnkeep.EditorTools
                 read != null && read.SaveVersion == SaveFormat.Current
                 && read.Profile.AccountXp == 555,
                 read == null ? "لم يُقرأ" : "الصيغة " + read.SaveVersion);
+
+            Check(report, "ونجومُ البحث وجوهرُ الترقية يصيران شظايا (§21)",
+                read != null && read.Currencies.DawnShards == 60,
+                read == null ? "لم يُقرأ"
+                    : read.Currencies.DawnShards + " شظيّة (المنتظر ٦٠)");
+
+            Check(report, "والمهجورتان تُصفَّران فلا تُجمعان مرّتين",
+                read != null && read.Currencies.ResearchStars == 0
+                && read.Currencies.Essence == 0,
+                read == null ? "لم يُقرأ"
+                    : read.Currencies.ResearchStars + " و" + read.Currencies.Essence);
         }
 
         /// <summary>

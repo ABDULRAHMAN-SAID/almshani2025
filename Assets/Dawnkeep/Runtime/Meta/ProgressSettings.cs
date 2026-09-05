@@ -35,28 +35,43 @@ namespace Dawnkeep.Meta
 
         [Header("مكافأة المرحلة")]
         [Tooltip("خبرة الحساب لكل ليلة نُجيَ منها.")]
-        [SerializeField] private int xpPerWave = 42;
+        // ── مكافأة المرحلة: أرقام §21 حرفياً ──────────────────────────────
+        //
+        //   Gold        = 100 + 18 × رقم المرحلة + 25 × النجوم الجديدة
+        //   Account XP  =  80 + 12 × رقم المرحلة
+        //   Hero XP     =  60 + 10 × رقم المرحلة
+        //
+        // وهي هنا مقابضُ لا ثوابتُ مدفونة (§1)، وقيمُها الافتراضية أرقام
+        // §21 كما هي.
 
-        [Tooltip("خبرة إضافية عند الفوز.")]
-        [SerializeField] private int xpVictoryBonus = 260;
+        [Tooltip("الذهب الأساس لكل مرحلة (§21: 100).")]
+        [SerializeField] private int goldBase = 100;
 
-        [Tooltip("ذهب لكل ليلة.")]
-        [SerializeField] private int goldPerWave = 28;
+        [Tooltip("ذهبٌ لكل رقم مرحلة (§21: 18).")]
+        [SerializeField] private int goldPerStage = 18;
 
-        [Tooltip("ذهب إضافي عند الفوز.")]
-        [SerializeField] private int goldVictoryBonus = 180;
+        [Tooltip("ذهبٌ لكل نجمةٍ جديدة (§21: 25).")]
+        [SerializeField] private int goldPerStar = 25;
 
-        [Tooltip("نجوم بحثٍ عند الفوز.")]
-        [Tooltip("جوهرٌ لكل موجة صُمدت (§17): مصدرُ ترقية العتاد من اللعب.")]
-        [SerializeField] private int essencePerWave = 3;
+        [Tooltip("خبرة الحساب الأساس (§21: 80).")]
+        [SerializeField] private int accountXpBase = 80;
 
-        [Tooltip("جوهرٌ إضافيّ عند الفوز.")]
-        [SerializeField] private int essenceVictoryBonus = 24;
+        [Tooltip("خبرة حسابٍ لكل رقم مرحلة (§21: 12).")]
+        [SerializeField] private int accountXpPerStage = 12;
 
-        [SerializeField] private int starsOnVictory = 2;
+        [Tooltip("خبرة البطل الأساس (§21: 60).")]
+        [SerializeField] private int heroXpBase = 60;
 
-        [Tooltip("نجمة عند بلوغ هذه الليلة ولو خُسرت المرحلة.")]
-        [SerializeField] private int starAtWave = 5;
+        [Tooltip("خبرة بطلٍ لكل رقم مرحلة (§21: 10).")]
+        [SerializeField] private int heroXpPerStage = 10;
+
+        [Tooltip("أقصى شظايا فجرٍ من مرحلة (§21: «من 0 إلى 3»).")]
+        [Range(0, 3)]
+        [SerializeField] private int shardCap = 3;
+
+        [Tooltip("حصّة الخاسر من المكافأة، نسبةً إلى ما صمد من ليالٍ.")]
+        [Range(0f, 1f)]
+        [SerializeField] private float defeatShare = 0.5f;
 
         [Header("ما يُفتح بالمستوى")]
         [Tooltip("مستوى الحساب الذي تُفتح عنده سرعة ٢×.")]
@@ -92,21 +107,23 @@ namespace Dawnkeep.Meta
 
         public int LevelsPerTalent { get { return Mathf.Max(1, levelsPerTalent); } }
 
-        public int XpPerWave { get { return xpPerWave; } }
+        public int GoldBase { get { return goldBase; } }
 
-        public int XpVictoryBonus { get { return xpVictoryBonus; } }
+        public int GoldPerStage { get { return goldPerStage; } }
 
-        public int GoldPerWave { get { return goldPerWave; } }
+        public int GoldPerStar { get { return goldPerStar; } }
 
-        public int GoldVictoryBonus { get { return goldVictoryBonus; } }
+        public int AccountXpBase { get { return accountXpBase; } }
 
-        public int EssencePerWave { get { return essencePerWave; } }
+        public int AccountXpPerStage { get { return accountXpPerStage; } }
 
-        public int EssenceVictoryBonus { get { return essenceVictoryBonus; } }
+        public int HeroXpBase { get { return heroXpBase; } }
 
-        public int StarsOnVictory { get { return starsOnVictory; } }
+        public int HeroXpPerStage { get { return heroXpPerStage; } }
 
-        public int StarAtWave { get { return starAtWave; } }
+        public int ShardCap { get { return Mathf.Clamp(shardCap, 0, 3); } }
+
+        public float DefeatShare { get { return Mathf.Clamp01(defeatShare); } }
 
         public int DoubleSpeedLevel { get { return doubleSpeedLevel; } }
 

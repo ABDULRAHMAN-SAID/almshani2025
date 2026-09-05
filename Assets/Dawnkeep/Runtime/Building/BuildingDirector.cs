@@ -39,6 +39,9 @@ namespace Dawnkeep.Building
 
         public IReadOnlyList<BuildNode> Nodes { get { return _nodes; } }
 
+        /// <summary>كم مبنىً سقط هذه الجولة — تقرؤه نجمةُ §21.</summary>
+        public int Lost { get; private set; }
+
         /// <summary>كتالوج المباني — تقرؤه لوحة البطاقات.</summary>
         public BuildingDefinition[] Catalogue { get { return catalogue; } }
 
@@ -146,6 +149,10 @@ namespace Dawnkeep.Building
 
                 if (!building.Alive)
                 {
+                    // يُعَدّ هنا لا في `Building`: هذا هو الموضع الوحيد الذي
+                    // يمرّ به كل ساقط **مرّةً واحدة** (§21: نجمةُ «لم يسقط
+                    // لك مبنى»). والعدُّ في المبنى يعني عدّاداً في كلٍّ.
+                    Lost++;
                     _buildings.RemoveAt(i);
                     building.Remove();
                     continue;

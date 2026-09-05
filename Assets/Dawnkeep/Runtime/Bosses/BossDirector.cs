@@ -83,6 +83,14 @@ namespace Dawnkeep.Bosses
             _bosses.Add(boss);
             Remember(boss);
 
+            // شظيّةُ §21 تزيد بلقاء زعيم — **عند الظهور لا عند القتل**،
+            // كالقاعدة نفسها في `Remember`: من رآه ثمّ خسر قد رآه.
+            Dawnkeep.Flow.StageOutcome outcome = Dawnkeep.Flow.StageOutcome.Instance;
+            if (outcome != null)
+            {
+                outcome.MetBoss = true;
+            }
+
             // تسخين البيوض **عند دخول الزعيم** لا عند أوّل وضعة (§31): أوّل
             // وضعةٍ تقع في ذروة الاشتباك، وتوليدُ ستّ بيضاتٍ فيها قفزةُ إطار.
             // ولا تُسخَّن عند الإقلاع: زعيمٌ لا يبيض قد لا يخرج أصلاً.

@@ -75,17 +75,24 @@ namespace Dawnkeep.Meta
             private set { Store.Currencies.Gold = value; }
         }
 
-        public int Stars
+        /// <summary>
+        /// شظايا الفجر: عملة البحث (§16) والصناعة (§17) معاً، كما تعدّها
+        /// §21. جيبٌ واحد لسبيلين — فترقيةُ سيفٍ ثمنُها تأجيلُ عقدة بحث.
+        /// </summary>
+        public int Shards
         {
-            get { return Store.Currencies.ResearchStars; }
-            private set { Store.Currencies.ResearchStars = value; }
+            get { return Store.Currencies.DawnShards; }
+            private set { Store.Currencies.DawnShards = value; }
         }
 
-        /// <summary>الجوهر: ثمن ترقية العتاد مع الذهب (§17).</summary>
-        public int Essence
+        /// <summary>
+        /// البلّورات: عملة ممتازة من الإنجازات (§21). لا تُصرف بعد — سبيلُها
+        /// المتجرُ المؤجَّل (§22 بترتيب §41).
+        /// </summary>
+        public int Crystals
         {
-            get { return Store.Currencies.Essence; }
-            private set { Store.Currencies.Essence = value; }
+            get { return Store.Currencies.Crystals; }
+            private set { Store.Currencies.Crystals = value; }
         }
 
         /// <summary>نقاط الموهبة المنفَقة — الباقي يُحسب من المستوى.</summary>
@@ -281,7 +288,7 @@ namespace Dawnkeep.Meta
                 return false;
             }
 
-            return Gold >= node.GoldFor(rank) && Stars >= node.StarsPerRank;
+            return Gold >= node.GoldFor(rank) && Shards >= node.StarsPerRank;
         }
 
         /// <summary>هل تتجاوز هذه المرتبة سقف §16 على هذا الرقم؟</summary>
@@ -317,7 +324,7 @@ namespace Dawnkeep.Meta
 
             int rank = RankOf(node);
             Gold -= node.GoldFor(rank);
-            Stars -= node.StarsPerRank;
+            Shards -= node.StarsPerRank;
             Store.Research.SetRank(node.Key, rank + 1);
 
             Rebuild();
@@ -358,7 +365,7 @@ namespace Dawnkeep.Meta
             }
 
             Gold += gold - settings.RespecGold;
-            Stars += stars;
+            Shards += stars;
             Store.Research.Clear();
 
             Rebuild();
@@ -460,35 +467,55 @@ namespace Dawnkeep.Meta
         /// تُمنح مرّةً لكل مرحلة — والاستدعاء المكرّر يُعيدها، فحارسها في
         /// `StageOutcome` لا هنا.
         /// </summary>
-        public void AwardStage(int wavesCleared, bool victory)
+        public void AwardStage(int wavesCleared, bool victory, int newStars, bool metBoss)
         {
             if (settings == null)
             {
                 return;
             }
 
-            int xp = (settings.XpPerWave * Mathf.Max(0, wavesCleared))
-                + (victory ? settings.XpVictoryBonus : 0);
+            // ── أرقام §21 حرفياً ──────────────────────────────────────
+            //
+            //   Gold        = 100 + 18 × رقم المرحلة + 25 × النجوم الجديدة
+            //   Account XP  =  80 + 12 × رقم المرحلة
+            //   Hero XP     =  60 + 10 × رقم المرحلة
+            //
+            // و«رقمُ المرحلة» في الحملة ترتيبُها من أربعين. وفي الأنماط
+            // الأخرى (§20) لا مرحلةَ لها رقم، فالليالي التي صُمدت هي رقمها —
+            // وإلّا صارت مكافأة «بلا نهاية» ثابتةً مهما طال الصمود.
+            int number = Mathf.Max(1, StageNumber(wavesCleared));
 
-            int gold = (settings.GoldPerWave * Mathf.Max(0, wavesCleared))
-                + (victory ? settings.GoldVictoryBonus : 0);
+            int gold = settings.GoldBase
+                + (settings.GoldPerStage * number)
+                + (settings.GoldPerStar * Mathf.Max(0, newStars));
 
-            int stars = victory ? settings.StarsOnVictory : 0;
-            if (!victory && wavesCleared >= settings.StarAtWave)
+            int accountXp = settings.AccountXpBase + (settings.AccountXpPerStage * number);
+            int heroXp = settings.HeroXpBase + (settings.HeroXpPerStage * number);
+
+            // شظايا: «من 0 إلى 3 حسب الأهداف والزعماء» (§21). نجمةٌ = شظيّة،
+            // ولقاءُ زعيمٍ يزيد واحدة — والسقف ثلاث.
+            int shards = Mathf.Clamp(
+                Mathf.Max(0, newStars) + (metBoss ? 1 : 0), 0, settings.ShardCap);
+
+            // الخاسر لا يخرج صفر اليدين: من صمد تسعاً ثمّ سقط تعلّم شيئاً.
+            // والحصّة **نسبةً إلى ما صمد** لا نصفاً ثابتاً — وإلّا استوى من
+            // سقط في الأولى ومن سقط في التاسعة.
+            if (!victory)
             {
-                stars += 1;      // الخسارة بعد صمودٍ طويل ليست صفراً
+                float share = settings.DefeatShare
+                    * Mathf.Clamp01(wavesCleared / Mathf.Max(1f, Dawnkeep.Modes.ModeDirector
+                        .NightsFor(Dawnkeep.Modes.ModeDirector.Current, 10)));
+
+                gold = Mathf.RoundToInt(gold * share);
+                accountXp = Mathf.RoundToInt(accountXp * share);
+                heroXp = Mathf.RoundToInt(heroXp * share);
+                shards = Mathf.RoundToInt(shards * share);
             }
 
-            // الجوهر من اللعب لا من التفكيك وحده (§17): لاعبٌ لا يفكّك شيئاً
-            // لا يجوز أن يُحرَم الترقية بالكلّية، وإلّا صار التفكيك إجباراً.
-            int essence = (settings.EssencePerWave * Mathf.Max(0, wavesCleared))
-                + (victory ? settings.EssenceVictoryBonus : 0);
-
-            AccountXp += xp;
-            HeroXp += xp;      // البطل يتقدّم مع حسابه: بطلٌ واحد في الإصدار الأوّل
+            AccountXp += accountXp;
+            HeroXp += heroXp;
             Gold += gold;
-            Stars += stars;
-            Essence += essence;
+            Shards += shards;
 
             Save();
             Raise();
@@ -543,29 +570,68 @@ namespace Dawnkeep.Meta
         /// كلّها في صنفٍ واحد، فمن أراد أن يعرف من أين تُنقَص وجدها في مكان.
         /// يعيد false ولا ينقص شيئاً إن لم يكفِ أحدهما.
         /// </summary>
-        public bool SpendForge(int gold, int essence)
+        public bool SpendForge(int gold, int shards)
         {
-            if (gold < 0 || essence < 0 || Gold < gold || Essence < essence)
+            if (gold < 0 || shards < 0 || Gold < gold || Shards < shards)
             {
                 return false;
             }
 
             Gold -= gold;
-            Essence -= essence;
+            Shards -= shards;
             Save();
             Raise();
             return true;
         }
 
-        /// <summary>يردّ جوهراً — من التفكيك (§17: ثمانون في المئة).</summary>
-        public void AddEssence(int amount)
+        /// <summary>يردّ شظايا — من التفكيك (§17: ثمانون في المئة).</summary>
+        public void AddShards(int amount)
         {
             if (amount <= 0)
             {
                 return;
             }
 
-            Essence += amount;
+            Shards += amount;
+            Save();
+            Raise();
+        }
+
+        /// <summary>
+        /// رقم المرحلة الذي تقرؤه صيغة §21. في الحملة ترتيبُها من أربعين،
+        /// وفي غيرها ما صُمد من ليالٍ.
+        /// </summary>
+        private static int StageNumber(int wavesCleared)
+        {
+            if (Dawnkeep.Modes.ModeDirector.Current != Dawnkeep.Modes.PlayMode.Campaign)
+            {
+                return wavesCleared;
+            }
+
+            Dawnkeep.Campaign.StageDefinition stage =
+                Dawnkeep.Campaign.CampaignDirector.Current;
+
+            if (stage == null || stage.Zone == null)
+            {
+                return 1;
+            }
+
+            return ((stage.Zone.Order - 1) * stage.Zone.Stages) + stage.Index;
+        }
+
+        /// <summary>
+        /// يضيف بلّورات — من الإنجازات وحدها (§21). ولا سبيلَ لصرفها بعد:
+        /// المتجر مؤجَّل (§22)، فهي تُجمَع ولا تُنفَق — وهذا مكتوبٌ لا مسكوتٌ
+        /// عنه في `TESTING.md`.
+        /// </summary>
+        public void AddCrystals(int amount)
+        {
+            if (amount <= 0)
+            {
+                return;
+            }
+
+            Crystals += amount;
             Save();
             Raise();
         }
@@ -576,8 +642,8 @@ namespace Dawnkeep.Meta
             AccountXp = 0;
             HeroXp = 0;
             Gold = 0;
-            Stars = 0;
-            Essence = 0;
+            Shards = 0;
+            Crystals = 0;
             TalentsSpent = 0;
             Store.Research.Clear();
             Rebuild();

@@ -99,7 +99,7 @@ namespace Dawnkeep.EditorTools
                 "‏شحنةُ نورٍ إضافية تبدأ بها كل جولة",
                 "Start every run with one extra light charge",
                 ResearchBranch.Dawncraft, BoonStat.None,
-                perRank: 0f, ranks: 1, gold: 420, unlock: 6, charges: 1, stars: 2));
+                perRank: 0f, ranks: 1, gold: 420, unlock: 6, charges: 1, stars: 6));
 
             nodes.Add(Node("Research_WiderLanterns", "قناديلُ أوسع", "Wider Lanterns",
                 "‏+٤٪ من نصف قطر المنارات لكل مرتبة", "+4% beacon radius per rank",
@@ -142,23 +142,28 @@ namespace Dawnkeep.EditorTools
             SetPrivate(settings, "heroHealthPerLevel", 0.015f);
             SetPrivate(settings, "heroDamagePerLevel", 0.01f);
             SetPrivate(settings, "levelsPerTalent", 5);      // §16 حرفياً
-            SetPrivate(settings, "xpPerWave", 42);
-            SetPrivate(settings, "xpVictoryBonus", 260);
-            SetPrivate(settings, "goldPerWave", 28);
-            SetPrivate(settings, "goldVictoryBonus", 180);
-            SetPrivate(settings, "starsOnVictory", 2);
-            SetPrivate(settings, "starAtWave", 5);
+            // مكافأة المرحلة: أرقام §21 حرفياً
+            //   Gold = 100 + 18 × رقم المرحلة + 25 × النجوم الجديدة
+            //   Account XP = 80 + 12 ×، وHero XP = 60 + 10 ×
+            SetPrivate(settings, "goldBase", 100);
+            SetPrivate(settings, "goldPerStage", 18);
+            SetPrivate(settings, "goldPerStar", 25);
+            SetPrivate(settings, "accountXpBase", 80);
+            SetPrivate(settings, "accountXpPerStage", 12);
+            SetPrivate(settings, "heroXpBase", 60);
+            SetPrivate(settings, "heroXpPerStage", 10);
+            SetPrivate(settings, "shardCap", 3);
             // سلّم الفتح مضبوطٌ على **قياس** لا على تقدير: قاس `metacheck.py`
             // أنّ الضبط الأوّل يفتح سرعة ٢× في الجولة الأولى — أي بلا تدرّج —
             // ويترك «الكابوس» خلف تسعٍ وعشرين جولة، فلا يُبلَغ أصلاً.
             //
             // بالأرقام الحالية (680 خبرةً للجولة الفائزة) يصير السلّم:
             //   الأبحاث الجولة 1 · ٢× الجولة 2 · مخضرم 3 · ٣× 7 · كابوس 14
-            SetPrivate(settings, "doubleSpeedLevel", 4);
-            SetPrivate(settings, "tripleSpeedLevel", 7);
-            SetPrivate(settings, "researchLevel", 2);
-            SetPrivate(settings, "veteranLevel", 5);
-            SetPrivate(settings, "nightmareLevel", 9);
+            SetPrivate(settings, "doubleSpeedLevel", 2);
+            SetPrivate(settings, "tripleSpeedLevel", 4);
+            SetPrivate(settings, "researchLevel", 1);
+            SetPrivate(settings, "veteranLevel", 3);
+            SetPrivate(settings, "nightmareLevel", 6);
             SetPrivate(settings, "researchCap", 0.30f);      // §16 حرفياً
             SetPrivate(settings, "respecGold", 300);
 
@@ -168,7 +173,7 @@ namespace Dawnkeep.EditorTools
 
         private static ResearchNode Node(string assetName, string arabic, string english,
             string summaryAr, string summaryEn, ResearchBranch branch, BoonStat stat,
-            float perRank, int ranks, int gold, int unlock, int charges = 0, int stars = 1)
+            float perRank, int ranks, int gold, int unlock, int charges = 0, int stars = 3)
         {
             string path = MetaFolder + "/" + assetName + ".asset";
             ResearchNode node = AssetDatabase.LoadAssetAtPath<ResearchNode>(path);

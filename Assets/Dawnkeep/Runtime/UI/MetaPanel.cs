@@ -170,7 +170,7 @@ namespace Dawnkeep.UI
 
             _header.text = Loc.Format(LocKeys.MetaHeader,
                 Digits(_progress.AccountLevel), Digits(_progress.Gold))
-                + "  ·  " + Loc.Format(LocKeys.MetaStars, Digits(_progress.Stars));
+                + "  ·  " + Loc.Format(LocKeys.MetaShards, Digits(_progress.Shards));
 
             for (int i = 0; i < _branchHead.Length; i++)
             {
@@ -265,7 +265,7 @@ namespace Dawnkeep.UI
 
         private string Digits(int value)
         {
-            int length = ArabicNumber.Write(value, _digits, 0);
+            int length = ArabicNumber.WriteShort(value, _digits, 0);
             return new string(_digits, 0, length);
         }
 

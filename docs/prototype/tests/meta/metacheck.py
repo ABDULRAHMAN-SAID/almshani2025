@@ -41,12 +41,15 @@ MAX_HERO  = setp('maxHeroLevel', int)
 HP_LVL    = setp('heroHealthPerLevel')
 DMG_LVL   = setp('heroDamagePerLevel')
 PER_TALENT= setp('levelsPerTalent', int)
-XP_WAVE   = setp('xpPerWave', int)
-XP_WIN    = setp('xpVictoryBonus', int)
-GOLD_WAVE = setp('goldPerWave', int)
-GOLD_WIN  = setp('goldVictoryBonus', int)
-STARS_WIN = setp('starsOnVictory', int)
-STAR_AT   = setp('starAtWave', int)
+# مكافأة §21 (بدّلتها المرحلة 33 عن «لكل ليلة» إلى «لكل مرحلة»):
+#   Gold = 100 + 18 × رقم المرحلة + 25 × النجوم الجديدة
+#   Account XP = 80 + 12 × رقم المرحلة   ·   Dawn Shards: 0..3
+GOLD_BASE = setp('goldBase', int)
+GOLD_STG  = setp('goldPerStage', int)
+GOLD_STAR = setp('goldPerStar', int)
+ACC_BASE  = setp('accountXpBase', int)
+ACC_STG   = setp('accountXpPerStage', int)
+SHARD_CAP = setp('shardCap', int)
 LVL_2X    = setp('doubleSpeedLevel', int)
 LVL_3X    = setp('tripleSpeedLevel', int)
 LVL_RES   = setp('researchLevel', int)
@@ -72,8 +75,8 @@ for m in re.finditer(r'Node\("(\w+)",\s*"([^"]+)",\s*"[^"]+",\s*\n\s*"([^"]*)",\
 print('── الأرقام المقروءة ──────────────────────')
 print(f'الخبرة = {XP_BASE:g} × المستوى^{XP_EXP:g} · الحساب حتى {MAX_ACC} · البطل حتى {MAX_HERO}')
 print(f'البطل +{HP_LVL*100:g}% صحّة و+{DMG_LVL*100:g}% ضرراً لكل مرتبة · موهبة كل {PER_TALENT}')
-print(f'المكافأة: {XP_WAVE} خبرة و{GOLD_WAVE} ذهباً لكل ليلة · '
-      f'+{XP_WIN} و+{GOLD_WIN} عند الفوز · {STARS_WIN} نجمة')
+print(f'المكافأة (§21): ذهبٌ {GOLD_BASE} + {GOLD_STG}×المرحلة + {GOLD_STAR}×النجوم · '
+      f'خبرةٌ {ACC_BASE} + {ACC_STG}×المرحلة · شظايا حتى {SHARD_CAP}')
 print(f'يُفتح: أبحاث عند {LVL_RES} · ٢× عند {LVL_2X} · مخضرم عند {LVL_VET} · '
       f'٣× عند {LVL_3X} · كابوس عند {LVL_NIGHT}')
 print(f'سقف الأبحاث {CAP*100:g}% · إعادة التوزيع {RESPEC} ذهباً · عقد: {len(nodes)}')
@@ -192,14 +195,16 @@ def level_of(xp, cap):
 
 print()
 print('── عشرون جولة (نجاةٌ من عشر ليالٍ في كلٍّ) ──')
-print(f'{"جولة":>5}{"خبرة":>9}{"مستوى":>7}{"ذهب":>8}{"نجوم":>7}   ما يُفتح')
+print(f'{"جولة":>5}{"خبرة":>9}{"مستوى":>7}{"ذهب":>8}{"شظايا":>7}   ما يُفتح')
 
 xp = gold = stars = 0
 firstAt = {}
 for run in range(1, 21):
-    xp += (XP_WAVE * 10) + XP_WIN
-    gold += (GOLD_WAVE * 10) + GOLD_WIN
-    stars += STARS_WIN
+    # لاعبٌ يتقدّم مرحلةً في الجولة وينال نجمتين من ثلاث
+    earned = 2
+    xp += ACC_BASE + (ACC_STG * run)
+    gold += GOLD_BASE + (GOLD_STG * run) + (GOLD_STAR * earned)
+    stars += min(earned + 1, SHARD_CAP)
     level = level_of(xp, MAX_ACC)
 
     opened = []

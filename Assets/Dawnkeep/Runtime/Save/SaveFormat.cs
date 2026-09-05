@@ -9,8 +9,14 @@ namespace Dawnkeep.Save
     /// </summary>
     public static class SaveFormat
     {
-        /// <summary>الصيغة الجارية.</summary>
-        public const int Current = 1;
+        /// <summary>
+        /// الصيغة الجارية.
+        ///
+        /// **٢**: دُمجت نجوم البحث (§16) وجوهر الترقية (§17) في «شظايا
+        /// الفجر» لتصير العملات ثلاثاً كما تشترط §21. وهذا **يكسر القراءة**
+        /// — حقلان يُقرآن ولا يُكتبان — فرُفع الرقم، وخطوةُ الترحيل تجمعهما.
+        /// </summary>
+        public const int Current = 2;
 
         /// <summary>أقدم صيغةٍ يعرف هذا البناء ترحيلها.</summary>
         public const int Oldest = 1;

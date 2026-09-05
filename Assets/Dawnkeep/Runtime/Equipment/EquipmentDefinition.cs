@@ -48,8 +48,8 @@ namespace Dawnkeep.Equipment
         [Tooltip("ذهبُ الترقية عند المستوى الأوّل. يصعد مع المستوى.")]
         [SerializeField] private int goldCost = 120;
 
-        [Tooltip("جوهرُ الترقية عند المستوى الأوّل.")]
-        [SerializeField] private int essenceCost = 8;
+        [Tooltip("شظايا الترقية عند المستوى الأوّل (§21: شظايا الفجر).")]
+        [SerializeField] private int shardCost = 8;
 
         [Tooltip("مفتوحةٌ من البداية — قطعُ الانطلاق لا تحتاج مخطّطاً.")]
         [SerializeField] private bool ownedFromStart;
@@ -60,7 +60,8 @@ namespace Dawnkeep.Equipment
         /// <summary>§17: «Level من 1 إلى 50».</summary>
         public const int MaxLevel = 50;
 
-        /// <summary>§17: «تفكيك القطع يعيد 80% من Essence المصروفة».</summary>
+        /// <summary>§17: «تفكيك القطع يعيد 80% من Essence المصروفة» — والجوهر
+        /// صار «شظايا الفجر» بنصّ §21 التي تحصر العملات في ثلاث.</summary>
         public const float DismantleReturn = 0.80f;
 
         public string NameKey { get { return nameKey; } }
@@ -83,7 +84,7 @@ namespace Dawnkeep.Equipment
 
         public int GoldCost { get { return goldCost; } }
 
-        public int EssenceCost { get { return essenceCost; } }
+        public int ShardCost { get { return shardCost; } }
 
         public bool OwnedFromStart { get { return ownedFromStart; } }
 
@@ -120,9 +121,9 @@ namespace Dawnkeep.Equipment
             return Mathf.RoundToInt(goldCost * (1f + GrowthPerLevel * (Mathf.Max(1, level) - 1)));
         }
 
-        public int EssenceToLevel(int level)
+        public int ShardsToLevel(int level)
         {
-            return Mathf.RoundToInt(essenceCost * (1f + GrowthPerLevel * (Mathf.Max(1, level) - 1)));
+            return Mathf.RoundToInt(shardCost * (1f + GrowthPerLevel * (Mathf.Max(1, level) - 1)));
         }
 
         /// <summary>الاسم المنطقيّ لا المشكَّل — الواجهة هي التي تشكّل.</summary>

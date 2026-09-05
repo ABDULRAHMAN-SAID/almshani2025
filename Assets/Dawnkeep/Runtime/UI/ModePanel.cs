@@ -42,7 +42,7 @@ namespace Dawnkeep.UI
         private readonly TextMeshProUGUI[] _rowNote = new TextMeshProUGUI[Rows];
         private readonly TextMeshProUGUI[] _rowState = new TextMeshProUGUI[Rows];
 
-        private readonly char[] _digits = new char[12];
+        private readonly char[] _digits = new char[ArabicNumber.MaxLength];
 
         public void Configure(TMP_FontAsset value)
         {

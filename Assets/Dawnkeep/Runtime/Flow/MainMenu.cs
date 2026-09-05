@@ -200,7 +200,7 @@ namespace Dawnkeep.Flow
                 {
                     _resources.text = Loc.Format(LocKeys.MetaHeader,
                         Digits(progress.AccountLevel), Digits(progress.Gold))
-                        + "  ·  " + Loc.Format(LocKeys.MetaStars, Digits(progress.Stars));
+                        + "  ·  " + Loc.Format(LocKeys.MetaShards, Digits(progress.Shards));
                 }
                 else
                 {
@@ -236,10 +236,11 @@ namespace Dawnkeep.Flow
             }
         }
 
+        /// <summary>رقمٌ للعرض. **مختصرٌ فوق العشرة آلاف** (§21).</summary>
         private string Digits(int value)
         {
             char[] buffer = new char[ArabicNumber.MaxLength];
-            int length = ArabicNumber.Write(value, buffer, 0);
+            int length = ArabicNumber.WriteShort(value, buffer, 0);
             return new string(buffer, 0, length);
         }
 

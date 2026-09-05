@@ -43,7 +43,7 @@ namespace Dawnkeep.UI
         private int _slot;
         private int _page;
 
-        private readonly char[] _digits = new char[12];
+        private readonly char[] _digits = new char[ArabicNumber.MaxLength];
 
         public void Configure(TMP_FontAsset value)
         {

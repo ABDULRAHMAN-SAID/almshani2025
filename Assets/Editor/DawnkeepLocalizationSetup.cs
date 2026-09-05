@@ -196,7 +196,7 @@ namespace Dawnkeep.EditorTools
                 DawnkeepLocale.Row(LocKeys.MetaClose, "إغلاق", "Close"),
                 DawnkeepLocale.Row(LocKeys.MetaHeader, "المستوى {0} · {1} ذهباً",
                     "Level {0} · {1} gold"),
-                DawnkeepLocale.Row(LocKeys.MetaStars, "{0} نجمة بحث", "{0} research stars"),
+                DawnkeepLocale.Row(LocKeys.MetaShards, "{0} شظيّة فجر", "{0} dawn shards"),
                 DawnkeepLocale.Row(LocKeys.MetaRank, "({0}/{1})", "({0}/{1})"),
                 DawnkeepLocale.Row(LocKeys.MetaDelta, "{0} ← {1}", "{0} → {1}"),
                 DawnkeepLocale.Row(LocKeys.MetaCost, "{0} ذهباً و{1} نجمة",
@@ -249,14 +249,14 @@ namespace Dawnkeep.EditorTools
                     "{0} gold and {1} essence"),
                 DawnkeepLocale.Row(LocKeys.ForgeReturns, "يعيد {0} جوهراً",
                     "Returns {0} essence"),
-                DawnkeepLocale.Row(LocKeys.ForgeEssence, "الجوهر {0}", "Essence {0}"),
+                DawnkeepLocale.Row(LocKeys.ForgeShards, "شظايا الفجر {0}", "Dawn Shards {0}"),
                 DawnkeepLocale.Row(LocKeys.ForgeNoGear, "لا قطعة مختارة", "No gear selected"),
                 DawnkeepLocale.Row(LocKeys.ForgeNotOwned, "لا تملكها بعد", "Not yours yet"),
                 DawnkeepLocale.Row(LocKeys.ForgeMaxLevel, "بلغت أقصى مستوى",
                     "Already at max level"),
                 DawnkeepLocale.Row(LocKeys.ForgeNoGold, "لا يكفي الذهب", "Not enough gold"),
-                DawnkeepLocale.Row(LocKeys.ForgeNoEssence, "لا يكفي الجوهر",
-                    "Not enough essence"),
+                DawnkeepLocale.Row(LocKeys.ForgeNoShards, "لا تكفي الشظايا",
+                    "Not enough shards"),
                 DawnkeepLocale.Row(LocKeys.ForgeStarterGear, "عتاد البداية لا يُفكَّك",
                     "Starter gear cannot be dismantled"),
 
@@ -335,6 +335,14 @@ namespace Dawnkeep.EditorTools
                 DawnkeepLocale.Row(LocKeys.ModeSeed, "البذرة {0}", "Seed {0}"),
                 DawnkeepLocale.Row(LocKeys.ModeReroll, "بذرة أخرى", "Reroll"),
                 DawnkeepLocale.Row(LocKeys.ModeNewRecord, "رقمٌ جديد", "New best"),
+
+                // حصاد الجولة (§21)
+                DawnkeepLocale.Row(LocKeys.HarvestStars, "نجوم {0} من ٣",
+                    "{0} of 3 stars"),
+                DawnkeepLocale.Row(LocKeys.HarvestGold, "‏+{0} ذهباً", "+{0} gold"),
+                DawnkeepLocale.Row(LocKeys.HarvestShards, "‏+{0} شظيّة", "+{0} shards"),
+                DawnkeepLocale.Row(LocKeys.HarvestBlueprint, "مخطّط: {0}",
+                    "Blueprint: {0}"),
             };
         }
 

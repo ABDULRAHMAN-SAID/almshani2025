@@ -149,7 +149,7 @@ namespace Dawnkeep.Localization
         public const string MetaOpen = "meta.open";
         public const string MetaClose = "meta.close";
         public const string MetaHeader = "meta.header";
-        public const string MetaStars = "meta.stars";
+        public const string MetaShards = "meta.shards";
         public const string MetaRank = "meta.rank";
         public const string MetaDelta = "meta.delta";
         public const string MetaCost = "meta.cost";
@@ -192,12 +192,12 @@ namespace Dawnkeep.Localization
         public const string ForgeDismantle = "forge.dismantle";
         public const string ForgeCost = "forge.cost";
         public const string ForgeReturns = "forge.returns";
-        public const string ForgeEssence = "forge.essence";
+        public const string ForgeShards = "forge.shards";
         public const string ForgeNoGear = "forge.no.gear";
         public const string ForgeNotOwned = "forge.not.owned";
         public const string ForgeMaxLevel = "forge.max.level";
         public const string ForgeNoGold = "forge.no.gold";
-        public const string ForgeNoEssence = "forge.no.essence";
+        public const string ForgeNoShards = "forge.no.shards";
         public const string ForgeStarterGear = "forge.starter";
 
         // بطاقات العقائد (§18)
@@ -251,5 +251,11 @@ namespace Dawnkeep.Localization
         public const string ModeSeed = "mode.seed";
         public const string ModeReroll = "mode.reroll";
         public const string ModeNewRecord = "mode.record";
+
+        // حصاد الجولة (§21)
+        public const string HarvestStars = "harvest.stars";
+        public const string HarvestGold = "harvest.gold";
+        public const string HarvestShards = "harvest.shards";
+        public const string HarvestBlueprint = "harvest.blueprint";
     }
 }

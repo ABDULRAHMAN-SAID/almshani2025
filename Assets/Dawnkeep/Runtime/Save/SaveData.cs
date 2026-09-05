@@ -77,14 +77,48 @@ namespace Dawnkeep.Save
     [Serializable]
     public class Currencies
     {
+        /// <summary>
+        /// §21 تحصر العملات الدائمة في **ثلاث**: ذهبٌ وشظايا فجرٍ وبلّورات.
+        /// والفضّة ليست منها — «تستخدم داخل المرحلة فقط».
+        /// </summary>
         public int Gold;
-        public int ResearchStars;
 
         /// <summary>
-        /// الجوهر: ثمن ترقية العتاد الثاني مع الذهب (§17). عملةٌ ثانية
-        /// **لأنّ الذهب وحده يجعل الترقية سباق ادّخارٍ لا اختياراً**: الجوهر
-        /// يأتي من التفكيك، فترقيةُ قطعةٍ ثمنُها التخلّي عن أخرى.
+        /// شظايا الفجر: عملة الصناعة والبحث معاً.
+        ///
+        /// **مصالحةٌ موثَّقة**: §16 تسمّي عملة البحث «Research Star»، و§17
+        /// تسمّي عملة الترقية «Essence»، و§21 تقول «استخدم **ثلاث** عملات
+        /// فقط» وتعدّها: ذهبٌ وشظايا فجرٍ وبلّورات. فأربعُ عملاتٍ في نصٍّ
+        /// يشترط ثلاثاً.
+        ///
+        /// والحلّ أنّ **الشظايا هي الاثنتان**: §21 تصفها بأنّها تأتي «من
+        /// النجوم والزعماء والأحداث» وتُصرف «لصناعة الندرات الأعلى» — وهذا
+        /// بعينه ما يفعله نجمُ البحث وجوهرُ الترقية. فالاسم من §21 لأنّها
+        /// هي التي تعدّ العملات، والميكانيكا من §16 و§17 كما هي.
+        ///
+        /// وأثرُ الدمج **مقصود**: البحث والعتاد يتنافسان على جيبٍ واحد،
+        /// فترقيةُ سيفٍ ثمنُها تأجيلُ عقدة بحث — وهو اختيارٌ لم يكن قائماً
+        /// حين كان لكلٍّ جيبُه.
         /// </summary>
+        public int DawnShards;
+
+        /// <summary>
+        /// البلّورات: عملة ممتازة **من الإنجازات** (§21). و«أو الشراء»
+        /// مؤجَّلٌ مع §22 بنصّ §41: «لا تبدأ المتجر قبل أن تصبح الحلقة
+        /// الأساسية ممتعة وتعمل».
+        /// </summary>
+        public int Crystals;
+
+        // ── مهجورةٌ: تُقرأ في الترحيل وحده (§27) ────────────────────────────
+        //
+        // لا تُحذف من الصنف: `JsonUtility` لا يقرأ حقلاً غائباً، فحذفُها
+        // يعني ضياع رصيد كل لاعبٍ حفظ بالصيغة الأولى. تُقرأ مرّةً في
+        // `SaveMigrations` ثمّ تُصفَّر.
+
+        /// <summary>مهجور — نجوم البحث قبل الدمج. انظر `DawnShards`.</summary>
+        public int ResearchStars;
+
+        /// <summary>مهجور — جوهر الترقية قبل الدمج. انظر `DawnShards`.</summary>
         public int Essence;
     }
 
@@ -106,6 +140,57 @@ namespace Dawnkeep.Save
         /// بعدها ولا يُمنَع منح مخطّطها مرّتين.
         /// </summary>
         public List<string> StagesCleared = new List<string>();
+
+        /// <summary>
+        /// نجوم كل مرحلة (§21). قائمتان متوازيتان لا قاموس: `JsonUtility`
+        /// لا يسلسل `Dictionary`. و**أفضلُ ما بُلغ** لا آخرُه: من نال ثلاثاً
+        /// ثمّ أعاد فنال واحدةً لم يتراجع.
+        /// </summary>
+        public List<string> StarKeys = new List<string>();
+
+        public List<int> StarValues = new List<int>();
+
+        public int StarsOf(string key)
+        {
+            int i = StarKeys.IndexOf(key);
+            return i >= 0 && i < StarValues.Count ? StarValues[i] : 0;
+        }
+
+        public void SetStars(string key, int stars)
+        {
+            int i = StarKeys.IndexOf(key);
+            if (i < 0)
+            {
+                StarKeys.Add(key);
+                StarValues.Add(stars);
+                return;
+            }
+
+            while (StarValues.Count <= i)
+            {
+                StarValues.Add(0);
+            }
+
+            if (stars > StarValues[i])
+            {
+                StarValues[i] = stars;
+            }
+        }
+
+        /// <summary>مجموع النجوم كلّها — تعرضه خريطة الحملة.</summary>
+        public int TotalStars
+        {
+            get
+            {
+                int total = 0;
+                for (int i = 0; i < StarValues.Count; i++)
+                {
+                    total += StarValues[i];
+                }
+
+                return total;
+            }
+        }
     }
 
     [Serializable]

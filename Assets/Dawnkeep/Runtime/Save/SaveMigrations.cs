@@ -69,11 +69,21 @@ namespace Dawnkeep.Save
         {
             switch (data.SaveVersion)
             {
-                // مثالٌ للخطوة التالية حين تأتي:
-                // case 1:
-                //     data.Hero.Talents = OldTalentsToNew(data);
-                //     data.SaveVersion = 2;
-                //     return data;
+                case 1:
+                    // ١ ← ٢: العملات ثلاثٌ بنصّ §21. نجمُ البحث (§16) وجوهرُ
+                    // الترقية (§17) يصيران «شظايا فجر».
+                    //
+                    // **يُجمعان ولا يُستبدل أحدهما**: لاعبٌ ادّخر عشرين نجمةً
+                    // وأربعين جوهراً يملك ستّين شظيّة. وأخذُ الأكبر وحده
+                    // يمحو ما دفع فيه ليالي.
+                    data.Currencies.DawnShards +=
+                        data.Currencies.ResearchStars + data.Currencies.Essence;
+
+                    data.Currencies.ResearchStars = 0;
+                    data.Currencies.Essence = 0;
+
+                    data.SaveVersion = 2;
+                    return data;
 
                 default:
                     return data;      // بلا تغيير: يكشفه الحارس أعلاه

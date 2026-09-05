@@ -47,9 +47,9 @@ namespace Dawnkeep.Equipment
                 return false;
             }
 
-            if (progress.Essence < gear.EssenceToLevel(level))
+            if (progress.Shards < gear.ShardsToLevel(level))
             {
-                reason = Dawnkeep.Localization.LocKeys.ForgeNoEssence;
+                reason = Dawnkeep.Localization.LocKeys.ForgeNoShards;
                 return false;
             }
 
@@ -71,7 +71,7 @@ namespace Dawnkeep.Equipment
 
             // الجباية أوّلاً ثم الرفع: لو رُفع أوّلاً وفشلت الجباية بقي المستوى
             // مرفوعاً مجّاناً — وهذا هو الترتيب الذي يمنعه.
-            if (!progress.SpendForge(gear.GoldToLevel(level), gear.EssenceToLevel(level)))
+            if (!progress.SpendForge(gear.GoldToLevel(level), gear.ShardsToLevel(level)))
             {
                 return false;
             }
@@ -80,9 +80,9 @@ namespace Dawnkeep.Equipment
         }
 
         /// <summary>
-        /// كم جوهراً يعيده تفكيك هذه القطعة؟ §17: «يعيد 80% من Essence
+        /// كم شظيّةً يعيدها تفكيك هذه القطعة؟ §17: «يعيد 80% من Essence
         /// المصروفة» — **المصروفة فعلاً**، فمجموعُ ما دُفع على مستوياتها.
-        /// وقطعةٌ لم تُرقَّ لا تعيد شيئاً: لم يُصرف عليها جوهر.
+        /// وقطعةٌ لم تُرقَّ لا تعيد شيئاً: لم يُصرف عليها شظيّة.
         /// </summary>
         public static int DismantleValue(EquipmentDefinition gear)
         {
@@ -96,7 +96,7 @@ namespace Dawnkeep.Equipment
             int level = loadout.LevelOf(gear);
             for (int i = 1; i < level; i++)
             {
-                spent += gear.EssenceToLevel(i);
+                spent += gear.ShardsToLevel(i);
             }
 
             return Mathf.FloorToInt(spent * EquipmentDefinition.DismantleReturn);
@@ -142,7 +142,7 @@ namespace Dawnkeep.Equipment
             Dawnkeep.Meta.Progress progress = Dawnkeep.Meta.Progress.Instance;
             if (progress != null)
             {
-                progress.AddEssence(back);
+                progress.AddShards(back);
             }
 
             return true;
