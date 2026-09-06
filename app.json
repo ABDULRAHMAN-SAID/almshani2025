@@ -5,7 +5,7 @@
     "scheme": "anshatati",
     "version": "0.1.0",
     "orientation": "portrait",
-    "icon": "./assets/images/logo/logo.png",
+    "icon": "./assets/images/logo/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
       "image": "./assets/images/logo/logo.png",

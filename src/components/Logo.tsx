@@ -1,7 +1,6 @@
 import { Image, StyleSheet, View, type ViewStyle } from "react-native";
-import { colors, radius } from "@/constants";
 
-const SIZES = { sm: 40, md: 56, lg: 96 } as const;
+const SIZES = { sm: 40, md: 56, lg: 124 } as const;
 
 interface LogoProps {
   size?: keyof typeof SIZES;
@@ -18,7 +17,7 @@ export function Logo({ size = "md", style }: LogoProps) {
     <View style={[styles.wrapper, { width: dimension, height: dimension }, style]}>
       <Image
         source={require("@assets/images/logo/logo.png")}
-        style={{ width: dimension, height: dimension, borderRadius: radius.sm }}
+        style={{ width: dimension, height: dimension }}
         resizeMode="contain"
       />
     </View>
@@ -29,6 +28,7 @@ const styles = StyleSheet.create({
   wrapper: {
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.surface,
+    // الشعار نفسه بخلفية شفافة، فيظهر بشكل صحيح فوق أي خلفية (كحلية أو فاتحة).
+    backgroundColor: "transparent",
   },
 });
