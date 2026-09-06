@@ -1,0 +1,41 @@
+{
+  "expo": {
+    "name": "أنشطتي",
+    "slug": "anshatati-salala",
+    "scheme": "anshatati",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/logo/logo.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/images/logo/logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0B2545"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.rafo.anshatati.salala",
+      "infoPlist": {
+        "CFBundleAllowMixedLocalizations": true
+      }
+    },
+    "android": {
+      "package": "com.rafo.anshatati.salala",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/logo/logo.png",
+        "backgroundColor": "#0B2545"
+      }
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static"
+    },
+    "plugins": ["expo-router", "expo-localization"],
+    "extra": {
+      "router": {
+        "origin": false
+      }
+    }
+  }
+}
