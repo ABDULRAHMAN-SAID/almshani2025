@@ -8,7 +8,9 @@ import { EmptyState } from "@/components/EmptyState";
 import { EventHero } from "@/components/EventHero";
 import { ActivitySkeletonCard } from "@/components/LoadingSkeleton";
 import { Logo } from "@/components/Logo";
+import { PointsBadge } from "@/components/PointsBadge";
 import { SectionHeader } from "@/components/SectionHeader";
+import { WeeklyQuizTeaserCard } from "@/components/WeeklyQuizTeaserCard";
 import { HOME_SECTIONS } from "@/constants/categories";
 import { colors, spacing, typography } from "@/constants";
 import { useAuth } from "@/hooks/useAuth";
@@ -19,6 +21,9 @@ import {
   useTodayAwareness,
   useUpcomingActivities,
 } from "@/hooks/useHomeData";
+import { usePointsBalance } from "@/hooks/usePoints";
+import { useWeeklyQuiz } from "@/hooks/useWeeklyQuiz";
+import { getAnsweredState } from "@/services/quizService";
 import { formatArabicWeekday } from "@/utils/date";
 import { showToast } from "@/store/toastStore";
 
@@ -29,14 +34,19 @@ export default function HomeScreen() {
   const announcements = useLatestAnnouncements();
   const awareness = useTodayAwareness();
   const thisWeek = useThisWeekActivities();
+  const points = usePointsBalance();
+  const weeklyQuiz = useWeeklyQuiz();
 
   const notImplementedYet = () => showToast("هذه الشاشة ستُضاف في مرحلة قادمة من التطبيق");
+  const answeredCount = weeklyQuiz.data?.questions.filter((q) => getAnsweredState(q.id)).length ?? 0;
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       <View style={styles.header}>
         <Logo size="sm" />
         <Text style={styles.brand}>أنشطتي</Text>
+        <View style={{ flex: 1 }} />
+        <PointsBadge points={points.data ?? 0} onPress={() => router.push("/points-history")} />
       </View>
 
       <View style={styles.greeting}>
@@ -78,6 +88,12 @@ export default function HomeScreen() {
           <EmptyState title="لا توجد أنشطة قادمة حاليًا" subtitle="سيتم إعلامك عند إضافة نشاط جديد" />
         )}
       </View>
+
+      {weeklyQuiz.data ? (
+        <View style={styles.section}>
+          <WeeklyQuizTeaserCard quiz={weeklyQuiz.data} answeredCount={answeredCount} onPress={() => router.push("/quiz")} />
+        </View>
+      ) : null}
 
       <View style={styles.section}>
         <SectionHeader title="الأقسام" />

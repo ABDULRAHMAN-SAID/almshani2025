@@ -6,11 +6,13 @@ import { BottomSheet } from "@/components/BottomSheet";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { colors, radius, spacing, typography } from "@/constants";
 import { useAuth } from "@/hooks/useAuth";
+import { usePointsBalance } from "@/hooks/usePoints";
 import { updateFullName } from "@/services/authService";
 import { showToast } from "@/store/toastStore";
 
 export default function ProfileScreen() {
   const { user, updateName, signOut } = useAuth();
+  const points = usePointsBalance();
   const [editing, setEditing] = useState(false);
   const [nameDraft, setNameDraft] = useState(user?.name ?? "");
   const [saving, setSaving] = useState(false);
@@ -59,6 +61,9 @@ export default function ProfileScreen() {
       </View>
 
       <View style={styles.list}>
+        <Row icon="star-outline" label="نقاطي" value={String(points.data ?? 0)} onPress={() => router.push("/points-history")} />
+        <Row icon="podium-outline" label="قائمة المتصدرين" onPress={() => router.push("/leaderboard")} />
+        <Row icon="qr-code-outline" label="تسجيل الحضور" onPress={() => router.push("/check-in")} />
         <Row icon="trophy-outline" label="الأنشطة المسجل فيها" />
         <Row icon="ribbon-outline" label="المسابقات التي شاركت فيها" />
         <Row icon="notifications-outline" label="الإشعارات" onPress={() => showToast("مركز الإشعارات قادم قريبًا")} />
@@ -86,7 +91,17 @@ export default function ProfileScreen() {
   );
 }
 
-function Row({ icon, label, onPress }: { icon: keyof typeof Ionicons.glyphMap; label: string; onPress?: () => void }) {
+function Row({
+  icon,
+  label,
+  value,
+  onPress,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  value?: string;
+  onPress?: () => void;
+}) {
   return (
     <Pressable
       accessibilityRole="button"
@@ -95,6 +110,7 @@ function Row({ icon, label, onPress }: { icon: keyof typeof Ionicons.glyphMap; l
     >
       <Ionicons name={icon} size={20} color={colors.primary} />
       <Text style={styles.rowLabel}>{label}</Text>
+      {value ? <Text style={styles.rowValue}>{value}</Text> : null}
       <Ionicons name="chevron-back" size={18} color={colors.textMuted} />
     </Pressable>
   );
@@ -134,6 +150,7 @@ const styles = StyleSheet.create({
   },
   rowPressed: { opacity: 0.85 },
   rowLabel: { ...typography.body, flex: 1 },
+  rowValue: { fontFamily: "Tajawal_700Bold", fontSize: 13, color: "#8a6d2c" },
   signOut: {
     flexDirection: "row",
     alignItems: "center",

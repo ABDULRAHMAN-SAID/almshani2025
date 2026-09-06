@@ -1,4 +1,11 @@
-import type { Activity, Announcement, AwarenessArticle } from "@/types/models";
+import type {
+  Activity,
+  Announcement,
+  AwarenessArticle,
+  LeaderboardEntry,
+  PointsTransaction,
+  WeeklyQuiz,
+} from "@/types/models";
 
 /**
  * بيانات تجريبية عربية واقعية (بدون Lorem Ipsum) لاختبار التصميم قبل ربط Supabase.
@@ -58,6 +65,7 @@ export const MOCK_ACTIVITIES: Activity[] = [
     registeredCount: 51,
     registrationStatus: "open",
     registrationDeadline: iso(0),
+    checkInCode: "CYBER26",
     createdAt: iso(-10),
   },
   {
@@ -184,4 +192,76 @@ export const MOCK_AWARENESS: AwarenessArticle[] = [
     category: "أمني",
     publishedAt: iso(-2),
   },
+];
+
+/** رمز الحضور التجريبي — أدخله في شاشة "تسجيل الحضور" لمحاكاة مسح QR فعلي. */
+export const DEMO_CHECK_IN_ACTIVITY_ID = "act-3";
+export const DEMO_CHECK_IN_CODE = "CYBER26";
+
+export const MOCK_WEEKLY_QUIZ: WeeklyQuiz = {
+  id: "quiz-2026-w37",
+  weekLabel: "الأسبوع 37 — سبتمبر 2026",
+  startDate: iso(-2),
+  endDate: iso(4),
+  status: "open",
+  questions: [
+    {
+      id: "q1",
+      quizId: "quiz-2026-w37",
+      text: "ما هي عاصمة سلطنة عمان؟",
+      options: ["صلالة", "مسقط", "نزوى", "صحار"],
+      category: "جغرافيا",
+      correctOptionIndex: 1,
+    },
+    {
+      id: "q2",
+      quizId: "quiz-2026-w37",
+      text: "في أي عام تولى السلطان هيثم بن طارق مقاليد الحكم؟",
+      options: ["2018", "2019", "2020", "2021"],
+      category: "تاريخ عمان",
+      correctOptionIndex: 2,
+    },
+    {
+      id: "q3",
+      quizId: "quiz-2026-w37",
+      text: "ما اسم أعلى قمة جبلية في عمان؟",
+      options: ["جبل شمس", "جبل الأخضر", "جبل سمحان", "جبل قارة"],
+      category: "جغرافيا",
+      correctOptionIndex: 0,
+    },
+  ],
+};
+
+export const MOCK_POINTS_TRANSACTIONS: PointsTransaction[] = [
+  {
+    id: "pt-1",
+    userId: "me",
+    reason: "lecture_attendance",
+    points: 10,
+    activityTitle: "محاضرة حماية المعلومات",
+    createdAt: iso(-6),
+  },
+  {
+    id: "pt-2",
+    userId: "me",
+    reason: "quiz_correct",
+    points: 10,
+    createdAt: iso(-2),
+  },
+  {
+    id: "pt-3",
+    userId: "me",
+    reason: "activity_participation",
+    points: 10,
+    activityTitle: "بطولة كرة القدم",
+    createdAt: iso(-1),
+  },
+];
+
+export const MOCK_LEADERBOARD: LeaderboardEntry[] = [
+  { userId: "u1", name: "سالم البلوشي", totalPoints: 180, rank: 1 },
+  { userId: "u2", name: "خالد الشيدي", totalPoints: 150, rank: 2 },
+  { userId: "u3", name: "أحمد الرواحي", totalPoints: 120, rank: 3 },
+  { userId: "u4", name: "ياسر الهنائي", totalPoints: 90, rank: 4 },
+  { userId: "u5", name: "بدر الكندي", totalPoints: 60, rank: 5 },
 ];

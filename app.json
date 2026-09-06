@@ -31,7 +31,16 @@
       "bundler": "metro",
       "output": "static"
     },
-    "plugins": ["expo-router", "expo-localization"],
+    "plugins": [
+      "expo-router",
+      "expo-localization",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "يستخدم التطبيق الكاميرا لمسح رمز الحضور (QR) عند المحاضرات والأنشطة فقط."
+        }
+      ]
+    ],
     "extra": {
       "router": {
         "origin": false
