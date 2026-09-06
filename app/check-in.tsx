@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { PatternOverlay } from "@/components/PatternOverlay";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { colors, radius, spacing, typography } from "@/constants";
 import { useRefreshPoints } from "@/hooks/usePoints";
@@ -47,6 +48,7 @@ export default function CheckInScreen() {
 
   return (
     <View style={styles.screen}>
+      <PatternOverlay opacity={0.06} />
       <View style={styles.header}>
         <Pressable accessibilityRole="button" onPress={() => router.back()} hitSlop={10}>
           <Ionicons name="chevron-forward" size={22} color={colors.textOnPrimary} />

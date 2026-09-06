@@ -7,6 +7,8 @@ export * from "./CalendarMonth";
 export * from "./CategoryCard";
 export * from "./EmptyState";
 export * from "./FilterChips";
+export * from "./HeaderBand";
+export * from "./PatternOverlay";
 export * from "./EventHero";
 export * from "./LeaderboardRow";
 export * from "./LoadingSkeleton";

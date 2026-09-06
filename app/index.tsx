@@ -1,7 +1,9 @@
 import { useEffect, useRef } from "react";
 import { Animated, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
 import { Logo } from "@/components/Logo";
+import { PatternOverlay } from "@/components/PatternOverlay";
 import { colors, spacing, typography } from "@/constants";
 import { useAuthStore } from "@/store/authStore";
 
@@ -33,13 +35,20 @@ export default function SplashScreen() {
   }, [hasHydrated, user]);
 
   return (
-    <View style={styles.container}>
+    <LinearGradient
+      colors={[colors.primaryLight, colors.primary, colors.primaryDark]}
+      start={{ x: 0.1, y: 0 }}
+      end={{ x: 0.9, y: 1 }}
+      style={styles.container}
+    >
+      <PatternOverlay opacity={0.08} />
       <Animated.View style={{ opacity, transform: [{ translateY }], alignItems: "center" }}>
         <Logo size="lg" style={styles.logo} />
         <Text style={styles.appName}>أنشطتي</Text>
-        <Text style={styles.subtitle}>قاعة صلالة الجوية</Text>
+        <View style={styles.rule} />
+        <Text style={styles.subtitle}>قاعدة صلالة الجوية</Text>
       </Animated.View>
-    </View>
+    </LinearGradient>
   );
 }
 
@@ -51,6 +60,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   logo: { backgroundColor: "transparent", marginBottom: spacing.lg },
-  appName: { ...typography.h1, color: colors.textOnPrimary, fontSize: 28, marginBottom: spacing.xs },
+  appName: { ...typography.h1, color: colors.textOnPrimary, fontSize: 28 },
+  rule: {
+    width: 46,
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: colors.gold,
+    marginVertical: spacing.sm,
+  },
   subtitle: { fontFamily: "Tajawal_400Regular", fontSize: 15, color: "rgba(255,255,255,0.75)" },
 });

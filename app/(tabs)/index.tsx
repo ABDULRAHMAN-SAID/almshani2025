@@ -6,6 +6,7 @@ import { AwarenessCard } from "@/components/AwarenessCard";
 import { CategoryCard } from "@/components/CategoryCard";
 import { EmptyState } from "@/components/EmptyState";
 import { EventHero } from "@/components/EventHero";
+import { HeaderBand } from "@/components/HeaderBand";
 import { ActivitySkeletonCard } from "@/components/LoadingSkeleton";
 import { Logo } from "@/components/Logo";
 import { PointsBadge } from "@/components/PointsBadge";
@@ -55,17 +56,19 @@ export default function HomeScreen() {
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-      <View style={styles.header}>
-        <Logo size="sm" />
-        <Text style={styles.brand}>أنشطتي</Text>
-        <View style={styles.spacer} />
-        <PointsBadge points={points.data ?? 0} onPress={() => router.push("/points-history")} />
-      </View>
+      <HeaderBand overlap={44}>
+        <View style={styles.header}>
+          <Logo size="sm" />
+          <Text style={styles.brand}>أنشطتي</Text>
+          <View style={styles.spacer} />
+          <PointsBadge points={points.data ?? 0} onPress={() => router.push("/points-history")} />
+        </View>
 
-      <View style={styles.greeting}>
-        <Text style={styles.greetingTitle}>مرحبًا، {user?.name ?? ""}</Text>
-        <Text style={styles.greetingSubtitle}>اطّلع على أحدث الأنشطة والفعاليات</Text>
-      </View>
+        <View style={styles.greeting}>
+          <Text style={styles.greetingTitle}>مرحبًا، {user?.name ?? ""}</Text>
+          <Text style={styles.greetingSubtitle}>اطّلع على أحدث الأنشطة والفعاليات</Text>
+        </View>
+      </HeaderBand>
 
       <View style={styles.grid}>
         {HOME_SECTIONS.map((section) => (
@@ -98,13 +101,23 @@ export default function HomeScreen() {
       <View style={styles.section}>
         <SectionHeader title="الأنشطة القادمة" actionLabel="التقويم" onPressAction={() => router.push("/calendar")} />
         {upcoming.isLoading ? (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hList}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.hScroll}
+            contentContainerStyle={styles.hList}
+          >
             {[1, 2].map((key) => (
               <ActivitySkeletonCard key={key} />
             ))}
           </ScrollView>
         ) : upcoming.data && upcoming.data.length > 0 ? (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hList}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.hScroll}
+            contentContainerStyle={styles.hList}
+          >
             {upcoming.data.slice(0, 8).map((activity) => (
               <ActivityCard key={activity.id} activity={activity} onPress={notImplementedYet} />
             ))}
@@ -162,17 +175,26 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.lg, paddingBottom: spacing.xxl },
-  header: { flexDirection: "row", alignItems: "center", gap: spacing.sm, marginBottom: spacing.lg },
+  content: { paddingBottom: spacing.xxl },
+  header: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   spacer: { flex: 1 },
-  brand: { ...typography.h2 },
-  greeting: { marginBottom: spacing.lg, gap: 2 },
-  greetingTitle: { ...typography.h1 },
-  greetingSubtitle: { ...typography.bodyMuted },
-  grid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.md },
+  brand: { ...typography.h2, color: colors.textOnPrimary },
+  greeting: { gap: 2 },
+  greetingTitle: { ...typography.h1, color: colors.textOnPrimary },
+  greetingSubtitle: { ...typography.bodyMuted, color: "rgba(255,255,255,0.72)" },
+  // شبكة الأقسام تتداخل مع أسفل الشريط الكحلي فتعطي إحساسًا بالعمق
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.md,
+    marginTop: -44,
+    paddingHorizontal: spacing.lg,
+  },
   gridItem: { width: "31%" },
-  section: { marginTop: spacing.xl },
-  hList: { gap: spacing.md, paddingEnd: spacing.lg },
+  section: { marginTop: spacing.xl, paddingHorizontal: spacing.lg },
+  // القائمة الأفقية تمتد إلى حافة الشاشة بدل أن تتوقف عند هامش القسم
+  hScroll: { marginHorizontal: -spacing.lg },
+  hList: { gap: spacing.md, paddingHorizontal: spacing.lg },
   weekCard: { backgroundColor: colors.surface, borderRadius: 16, padding: spacing.lg, gap: spacing.md },
   weekRow: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   weekDay: { ...typography.caption, width: 64 },

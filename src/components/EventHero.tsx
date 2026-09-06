@@ -1,9 +1,11 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { CATEGORY_META } from "@/constants/categories";
 import { colors, radius, spacing, typography } from "@/constants";
 import type { Activity } from "@/types/models";
 import { formatArabicTime, relativeDayLabel } from "@/utils/date";
+import { PatternOverlay } from "./PatternOverlay";
 import { PrimaryButton } from "./PrimaryButton";
 import { SecondaryButton } from "./SecondaryButton";
 
@@ -18,7 +20,13 @@ export function EventHero({ activity, onViewDetails, onRegister }: EventHeroProp
   const meta = CATEGORY_META[activity.category];
 
   return (
-    <View style={styles.card}>
+    <LinearGradient
+      colors={[colors.primaryLight, colors.primary, colors.primaryDark]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={styles.card}
+    >
+      <PatternOverlay opacity={0.08} />
       <View style={styles.badge}>
         <Text style={styles.badgeText}>{relativeDayLabel(activity.date)}</Text>
       </View>
@@ -47,7 +55,7 @@ export function EventHero({ activity, onViewDetails, onRegister }: EventHeroProp
         />
         <PrimaryButton label="التسجيل" onPress={onRegister} style={styles.registerButton} />
       </View>
-    </View>
+    </LinearGradient>
   );
 }
 
@@ -56,6 +64,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     borderRadius: radius.lg,
     padding: spacing.lg,
+    overflow: "hidden",
   },
   badge: {
     alignSelf: "flex-start",

@@ -43,7 +43,7 @@ export default function LoginScreen() {
         <View style={styles.header}>
           <Logo size="lg" />
           <Text style={styles.title}>أنشطتي</Text>
-          <Text style={styles.subtitle}>قاعة صلالة الجوية</Text>
+          <Text style={styles.subtitle}>قاعدة صلالة الجوية</Text>
         </View>
 
         <View style={styles.form}>
