@@ -1,0 +1,19 @@
+# Godot 4+ specific ignores
+.godot/
+/android/
+
+# Import cache / generated files
+*.translation
+
+# Export artifacts
+export_presets.cfg
+*.pck
+*.exe
+*.apk
+*.aab
+*.zip
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+*.tmp
