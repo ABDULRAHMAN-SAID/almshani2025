@@ -1,7 +1,9 @@
 extends Node
 ## Autoload: defines the default keyboard bindings in code instead of the
 ## project.godot InputMap section, so the bindings never depend on
-## hand-written key-code numbers.
+## hand-written key-code numbers. These exist purely for desktop testing —
+## the shipped mobile controls are the on-screen joystick and buttons
+## (virtual_joystick.gd, action_button.gd), which drive the same actions.
 
 func _ready() -> void:
 	_bind("move_forward", KEY_W)
@@ -9,7 +11,7 @@ func _ready() -> void:
 	_bind("move_left", KEY_A)
 	_bind("move_right", KEY_D)
 	_bind("jump", KEY_SPACE)
-	_bind("sprint", KEY_SHIFT)
+	_bind("ability_1", KEY_E)
 
 
 func _bind(action: StringName, keycode: Key) -> void:

@@ -10,15 +10,19 @@ config_version=5
 
 [application]
 
-config/name="Third Person Prototype"
-config/description="نموذج أولي للعبة أكشن/مغامرة بمنظور الشخص الثالث — Godot 4"
+config/name="Ember Vale"
+config/description="نموذج أولي للعبة أكشن/مغامرة فانتازيا بمنظور الشخص الثالث للجوال — Godot 4"
 run/main_scene="res://scenes/main.tscn"
-config/features=PackedStringArray("4.2", "Forward Plus")
+config/features=PackedStringArray("4.2")
 config/icon="res://icon.svg"
 
 [autoload]
 
 InputSetup="*res://scripts/input_setup.gd"
+
+[display]
+
+window/handheld/orientation="landscape"
 
 [physics]
 
@@ -26,5 +30,5 @@ InputSetup="*res://scripts/input_setup.gd"
 
 [rendering]
 
-renderer/rendering_method="forward_plus"
-anti_aliasing/quality/msaa_3d=2
+renderer/rendering_method="mobile"
+anti_aliasing/quality/msaa_3d=1

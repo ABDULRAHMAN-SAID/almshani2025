@@ -1,6 +1,9 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=14 format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="1_player"]
+[ext_resource type="Script" path="res://scripts/training_dummy.gd" id="2_dummy_script"]
+[ext_resource type="Script" path="res://scripts/virtual_joystick.gd" id="3_joystick_script"]
+[ext_resource type="Script" path="res://scripts/action_button.gd" id="4_action_button_script"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_1"]
 
@@ -14,8 +17,6 @@ tonemap_mode = 3
 glow_enabled = true
 glow_intensity = 0.8
 glow_bloom = 0.05
-ssao_enabled = true
-ssil_enabled = true
 
 [sub_resource type="BoxMesh" id="BoxMesh_ground"]
 size = Vector3(50, 1, 50)
@@ -26,6 +27,18 @@ roughness = 0.95
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_ground"]
 size = Vector3(50, 1, 50)
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_dummy"]
+radius = 0.5
+height = 2.2
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_dummy"]
+albedo_color = Color(0.5, 0.15, 0.15, 1)
+roughness = 0.7
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_dummy"]
+radius = 0.5
+height = 2.2
 
 [node name="Main" type="Node3D"]
 
@@ -62,6 +75,19 @@ position = Vector3(0, 0.5, -8)
 size = Vector3(6, 1, 1)
 use_collision = true
 
+[node name="TrainingDummy" type="StaticBody3D" parent="."]
+position = Vector3(0, 1.1, -6)
+collision_layer = 5
+collision_mask = 0
+script = ExtResource("2_dummy_script")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="TrainingDummy"]
+mesh = SubResource("CapsuleMesh_dummy")
+surface_material_override/0 = SubResource("StandardMaterial3D_dummy")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="TrainingDummy"]
+shape = SubResource("CapsuleShape3D_dummy")
+
 [node name="Player" parent="." instance=ExtResource("1_player")]
 position = Vector3(0, 1, 5)
 
@@ -70,7 +96,44 @@ position = Vector3(0, 1, 5)
 [node name="Hint" type="Label" parent="UI"]
 offset_left = 16.0
 offset_top = 16.0
-offset_right = 420.0
-offset_bottom = 70.0
-text = "WASD تحرك | Shift جري | Space قفز | الفأرة تدوير الكاميرا | Esc تحرير المؤشر"
+offset_right = 520.0
+offset_bottom = 80.0
+text = "اسحب أي مكان بالشاشة لتدوير الكاميرا — العصا يسار للحركة — قفز وقدرة يمين"
 horizontal_alignment = 2
+
+[node name="VirtualJoystick" type="Control" parent="UI"]
+anchor_left = 0.0
+anchor_top = 1.0
+anchor_right = 0.0
+anchor_bottom = 1.0
+offset_left = 40.0
+offset_top = -240.0
+offset_right = 240.0
+offset_bottom = -40.0
+script = ExtResource("3_joystick_script")
+
+[node name="JumpButton" type="Button" parent="UI"]
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -220.0
+offset_top = -110.0
+offset_right = -120.0
+offset_bottom = -40.0
+text = "قفز"
+script = ExtResource("4_action_button_script")
+action_name = &"jump"
+
+[node name="AbilityButton" type="Button" parent="UI"]
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -110.0
+offset_top = -110.0
+offset_right = -10.0
+offset_bottom = -40.0
+text = "قدرة"
+script = ExtResource("4_action_button_script")
+action_name = &"ability_1"
