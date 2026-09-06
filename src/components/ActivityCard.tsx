@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { CATEGORY_META } from "@/constants/categories";
+import { CATEGORY_META, tintBackground } from "@/constants/categories";
 import { colors, radius, shadow, spacing, typography } from "@/constants";
 import type { Activity } from "@/types/models";
 import { formatArabicDate, formatArabicTime } from "@/utils/date";
@@ -22,8 +22,8 @@ export function ActivityCard({ activity, onPress }: ActivityCardProps) {
       onPress={onPress}
       style={({ pressed }) => [styles.card, shadow.card, pressed && styles.pressed]}
     >
-      <View style={styles.thumb}>
-        <Ionicons name={meta.icon} size={28} color={colors.primary} />
+      <View style={[styles.thumb, { backgroundColor: tintBackground(meta.tint) }]}>
+        <Ionicons name={meta.icon} size={28} color={meta.tint} />
       </View>
       <Text style={styles.categoryLabel}>{meta.label}</Text>
       <Text style={styles.title} numberOfLines={2}>

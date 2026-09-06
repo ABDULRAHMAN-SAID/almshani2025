@@ -5,6 +5,15 @@ import { supabase } from "./supabase";
 
 const sortByDateAsc = (a: Activity, b: Activity) => a.date.localeCompare(b.date);
 
+/** كل الأنشطة (للتقويم الشهري والسنوي وشاشات الأقسام). */
+export async function fetchAllActivities(): Promise<Activity[]> {
+  if (USE_MOCK_DATA) {
+    return [...MOCK_ACTIVITIES].sort(sortByDateAsc);
+  }
+  const { data } = await supabase.from("activities").select("*").order("date", { ascending: true });
+  return (data as Activity[]) ?? [];
+}
+
 /** أقرب نشاط قادم (أو نشاط اليوم) لعرضه في Hero Card بالصفحة الرئيسية. */
 export async function fetchHeroActivity(): Promise<Activity | null> {
   if (USE_MOCK_DATA) {

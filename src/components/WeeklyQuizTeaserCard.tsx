@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, radius, spacing, typography } from "@/constants";
 import type { PublicWeeklyQuiz } from "@/services/quizService";
+import { QUESTION_FORMS, pluralizeAr } from "@/utils/arabic";
 
 interface WeeklyQuizTeaserCardProps {
   quiz: PublicWeeklyQuiz;
@@ -25,7 +26,9 @@ export function WeeklyQuizTeaserCard({ quiz, answeredCount, onPress }: WeeklyQui
         <Text style={styles.eyebrow}>{quiz.weekLabel}</Text>
         <Text style={styles.title}>الأسئلة الثقافية الأسبوعية</Text>
         <Text style={styles.subtitle}>
-          {remaining > 0 ? `${remaining} أسئلة بانتظارك — 10 نقاط لكل إجابة صحيحة` : "أجبت عن كل أسئلة هذا الأسبوع"}
+          {remaining > 0
+            ? `${pluralizeAr(remaining, QUESTION_FORMS)} بانتظارك — 10 نقاط لكل إجابة صحيحة`
+            : "أجبت عن كل أسئلة هذا الأسبوع"}
         </Text>
       </View>
       <Ionicons name="chevron-back" size={18} color={colors.textMuted} />

@@ -27,6 +27,13 @@ import { getAnsweredState } from "@/services/quizService";
 import { formatArabicWeekday } from "@/utils/date";
 import { showToast } from "@/store/toastStore";
 
+/** الأقسام التي لها شاشة فعلية الآن — الباقي يعرض رسالة "قريبًا". */
+const IMPLEMENTED_ROUTES: Record<string, string> = {
+  calendar: "/calendar",
+  security: "/(tabs)/awareness",
+  quiz: "/quiz",
+};
+
 export default function HomeScreen() {
   const { user } = useAuth();
   const hero = useHeroActivity();
@@ -38,14 +45,20 @@ export default function HomeScreen() {
   const weeklyQuiz = useWeeklyQuiz();
 
   const notImplementedYet = () => showToast("هذه الشاشة ستُضاف في مرحلة قادمة من التطبيق");
-  const answeredCount = weeklyQuiz.data?.questions.filter((q) => getAnsweredState(q.id)).length ?? 0;
+  const answeredCount = weeklyQuiz.data?.questions.filter((question) => getAnsweredState(question.id)).length ?? 0;
+
+  const openSection = (key: string) => {
+    const route = IMPLEMENTED_ROUTES[key];
+    if (route) router.push(route as never);
+    else notImplementedYet();
+  };
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       <View style={styles.header}>
         <Logo size="sm" />
         <Text style={styles.brand}>أنشطتي</Text>
-        <View style={{ flex: 1 }} />
+        <View style={styles.spacer} />
         <PointsBadge points={points.data ?? 0} onPress={() => router.push("/points-history")} />
       </View>
 
@@ -54,33 +67,45 @@ export default function HomeScreen() {
         <Text style={styles.greetingSubtitle}>اطّلع على أحدث الأنشطة والفعاليات</Text>
       </View>
 
-      {hero.isLoading ? (
-        <ActivitySkeletonCard />
-      ) : hero.data ? (
-        <EventHero
-          activity={hero.data}
-          onViewDetails={notImplementedYet}
-          onRegister={notImplementedYet}
-        />
-      ) : (
-        <EmptyState
-          icon="calendar-outline"
-          title="لا توجد أنشطة قادمة حاليًا"
-          subtitle="سيتم إعلامك عند إضافة نشاط جديد"
-        />
-      )}
+      <View style={styles.grid}>
+        {HOME_SECTIONS.map((section) => (
+          <View key={section.key} style={styles.gridItem}>
+            <CategoryCard
+              label={section.label}
+              icon={section.icon}
+              tint={section.tint}
+              onPress={() => openSection(section.key)}
+            />
+          </View>
+        ))}
+      </View>
 
       <View style={styles.section}>
-        <SectionHeader title="الأنشطة القادمة" />
+        <SectionHeader title="النشاط القادم" />
+        {hero.isLoading ? (
+          <ActivitySkeletonCard />
+        ) : hero.data ? (
+          <EventHero activity={hero.data} onViewDetails={notImplementedYet} onRegister={notImplementedYet} />
+        ) : (
+          <EmptyState
+            icon="calendar-outline"
+            title="لا توجد أنشطة قادمة حاليًا"
+            subtitle="سيتم إعلامك عند إضافة نشاط جديد"
+          />
+        )}
+      </View>
+
+      <View style={styles.section}>
+        <SectionHeader title="الأنشطة القادمة" actionLabel="التقويم" onPressAction={() => router.push("/calendar")} />
         {upcoming.isLoading ? (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hList}>
-            {[1, 2].map((k) => (
-              <ActivitySkeletonCard key={k} />
+            {[1, 2].map((key) => (
+              <ActivitySkeletonCard key={key} />
             ))}
           </ScrollView>
         ) : upcoming.data && upcoming.data.length > 0 ? (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hList}>
-            {upcoming.data.map((activity) => (
+            {upcoming.data.slice(0, 8).map((activity) => (
               <ActivityCard key={activity.id} activity={activity} onPress={notImplementedYet} />
             ))}
           </ScrollView>
@@ -91,20 +116,13 @@ export default function HomeScreen() {
 
       {weeklyQuiz.data ? (
         <View style={styles.section}>
-          <WeeklyQuizTeaserCard quiz={weeklyQuiz.data} answeredCount={answeredCount} onPress={() => router.push("/quiz")} />
+          <WeeklyQuizTeaserCard
+            quiz={weeklyQuiz.data}
+            answeredCount={answeredCount}
+            onPress={() => router.push("/quiz")}
+          />
         </View>
       ) : null}
-
-      <View style={styles.section}>
-        <SectionHeader title="الأقسام" />
-        <View style={styles.grid}>
-          {HOME_SECTIONS.map((section) => (
-            <View key={section.key} style={styles.gridItem}>
-              <CategoryCard label={section.label} icon={section.icon} onPress={notImplementedYet} />
-            </View>
-          ))}
-        </View>
-      </View>
 
       {thisWeek.data && thisWeek.data.length > 0 ? (
         <View style={styles.section}>
@@ -135,7 +153,7 @@ export default function HomeScreen() {
 
       {awareness.data ? (
         <View style={styles.section}>
-          <AwarenessCard article={awareness.data} onPress={notImplementedYet} />
+          <AwarenessCard article={awareness.data} onPress={() => router.push("/(tabs)/awareness")} />
         </View>
       ) : null}
     </ScrollView>
@@ -144,16 +162,17 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.lg, paddingBottom: spacing.xxl, gap: 0 },
+  content: { padding: spacing.lg, paddingBottom: spacing.xxl },
   header: { flexDirection: "row", alignItems: "center", gap: spacing.sm, marginBottom: spacing.lg },
+  spacer: { flex: 1 },
   brand: { ...typography.h2 },
   greeting: { marginBottom: spacing.lg, gap: 2 },
   greetingTitle: { ...typography.h1 },
   greetingSubtitle: { ...typography.bodyMuted },
+  grid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.md },
+  gridItem: { width: "31%" },
   section: { marginTop: spacing.xl },
   hList: { gap: spacing.md, paddingEnd: spacing.lg },
-  grid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.md },
-  gridItem: { width: "47%" },
   weekCard: { backgroundColor: colors.surface, borderRadius: 16, padding: spacing.lg, gap: spacing.md },
   weekRow: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   weekDay: { ...typography.caption, width: 64 },
