@@ -14,6 +14,15 @@ export async function fetchAllActivities(): Promise<Activity[]> {
   return (data as Activity[]) ?? [];
 }
 
+/** نشاط واحد بالمعرّف — لشاشة التفاصيل. */
+export async function fetchActivityById(id: string): Promise<Activity | null> {
+  if (USE_MOCK_DATA) {
+    return MOCK_ACTIVITIES.find((activity) => activity.id === id) ?? null;
+  }
+  const { data } = await supabase.from("activities").select("*").eq("id", id).maybeSingle();
+  return (data as Activity) ?? null;
+}
+
 /** أقرب نشاط قادم (أو نشاط اليوم) لعرضه في Hero Card بالصفحة الرئيسية. */
 export async function fetchHeroActivity(): Promise<Activity | null> {
   if (USE_MOCK_DATA) {

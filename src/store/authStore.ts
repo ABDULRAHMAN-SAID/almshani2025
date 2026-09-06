@@ -1,6 +1,6 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { create } from "zustand";
-import { createJSONStorage, persist } from "zustand/middleware";
+import { persist } from "zustand/middleware";
+import { persistStorage } from "./persistStorage";
 import type { User } from "@/types/models";
 
 interface AuthState {
@@ -29,7 +29,7 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: "anshatati-auth",
-      storage: createJSONStorage(() => AsyncStorage),
+      storage: persistStorage,
       partialize: (state) => ({ user: state.user }),
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated(true);

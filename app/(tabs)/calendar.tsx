@@ -7,7 +7,7 @@ import { FilterChips } from "@/components/FilterChips";
 import { CALENDAR_FILTERS } from "@/constants/categories";
 import { colors, radius, spacing, typography } from "@/constants";
 import { useAllActivities } from "@/hooks/useActivities";
-import { showToast } from "@/store/toastStore";
+import { router } from "expo-router";
 import { ACTIVITY_FORMS, pluralizeAr } from "@/utils/arabic";
 import { arabicMonthName, formatArabicDate, formatArabicWeekday } from "@/utils/date";
 import { TODAY_ISO, groupActivitiesByDate, groupActivitiesByMonth } from "@/utils/calendar";
@@ -45,7 +45,7 @@ export default function CalendarScreen() {
       monthIndex === 11 ? { year: year + 1, monthIndex: 0 } : { year, monthIndex: monthIndex + 1 }
     );
 
-  const openActivity = () => showToast("شاشة تفاصيل النشاط ستُضاف في المرحلة القادمة");
+  const openActivity = (activityId: string) => router.push(`/activity/${activityId}`);
 
   return (
     <View style={styles.screen}>
@@ -83,7 +83,7 @@ export default function CalendarScreen() {
               {selectedActivities.length > 0 ? (
                 <View style={{ gap: spacing.sm }}>
                   {selectedActivities.map((activity) => (
-                    <ActivityListRow key={activity.id} activity={activity} onPress={openActivity} />
+                    <ActivityListRow key={activity.id} activity={activity} onPress={() => openActivity(activity.id)} />
                   ))}
                 </View>
               ) : (
@@ -109,7 +109,7 @@ export default function CalendarScreen() {
                   {monthActivities.length > 0 ? (
                     <View style={{ gap: spacing.sm }}>
                       {monthActivities.map((activity) => (
-                        <ActivityListRow key={activity.id} activity={activity} showDate onPress={openActivity} />
+                        <ActivityListRow key={activity.id} activity={activity} showDate onPress={() => openActivity(activity.id)} />
                       ))}
                     </View>
                   ) : null}

@@ -26,12 +26,17 @@ import { usePointsBalance } from "@/hooks/usePoints";
 import { useWeeklyQuiz } from "@/hooks/useWeeklyQuiz";
 import { getAnsweredState } from "@/services/quizService";
 import { formatArabicWeekday } from "@/utils/date";
-import { showToast } from "@/store/toastStore";
 
-/** الأقسام التي لها شاشة فعلية الآن — الباقي يعرض رسالة "قريبًا". */
-const IMPLEMENTED_ROUTES: Record<string, string> = {
+/** وجهة كل قسم في شبكة الأيقونات. */
+const SECTION_ROUTES: Record<string, string> = {
+  competitions: "/sections/competitions",
+  lectures: "/sections/lectures",
   calendar: "/calendar",
+  sports: "/sections/sports",
+  shooting: "/sections/shooting",
   security: "/(tabs)/awareness",
+  safety: "/sections/safety",
+  announcements: "/announcements",
   quiz: "/quiz",
 };
 
@@ -45,13 +50,11 @@ export default function HomeScreen() {
   const points = usePointsBalance();
   const weeklyQuiz = useWeeklyQuiz();
 
-  const notImplementedYet = () => showToast("هذه الشاشة ستُضاف في مرحلة قادمة من التطبيق");
   const answeredCount = weeklyQuiz.data?.questions.filter((question) => getAnsweredState(question.id)).length ?? 0;
 
   const openSection = (key: string) => {
-    const route = IMPLEMENTED_ROUTES[key];
+    const route = SECTION_ROUTES[key];
     if (route) router.push(route as never);
-    else notImplementedYet();
   };
 
   return (
@@ -88,7 +91,11 @@ export default function HomeScreen() {
         {hero.isLoading ? (
           <ActivitySkeletonCard />
         ) : hero.data ? (
-          <EventHero activity={hero.data} onViewDetails={notImplementedYet} onRegister={notImplementedYet} />
+          <EventHero
+            activity={hero.data}
+            onViewDetails={() => router.push(`/activity/${hero.data!.id}`)}
+            onRegister={() => router.push(`/activity/${hero.data!.id}`)}
+          />
         ) : (
           <EmptyState
             icon="calendar-outline"
@@ -119,7 +126,11 @@ export default function HomeScreen() {
             contentContainerStyle={styles.hList}
           >
             {upcoming.data.slice(0, 8).map((activity) => (
-              <ActivityCard key={activity.id} activity={activity} onPress={notImplementedYet} />
+              <ActivityCard
+                key={activity.id}
+                activity={activity}
+                onPress={() => router.push(`/activity/${activity.id}`)}
+              />
             ))}
           </ScrollView>
         ) : (
@@ -155,10 +166,18 @@ export default function HomeScreen() {
 
       {announcements.data && announcements.data.length > 0 ? (
         <View style={styles.section}>
-          <SectionHeader title="آخر الإعلانات" actionLabel="عرض الكل" onPressAction={notImplementedYet} />
+          <SectionHeader
+            title="آخر الإعلانات"
+            actionLabel="عرض الكل"
+            onPressAction={() => router.push("/announcements")}
+          />
           <View style={{ gap: spacing.sm }}>
             {announcements.data.map((announcement) => (
-              <AnnouncementCard key={announcement.id} announcement={announcement} onPress={notImplementedYet} />
+              <AnnouncementCard
+                key={announcement.id}
+                announcement={announcement}
+                onPress={() => router.push("/announcements")}
+              />
             ))}
           </View>
         </View>

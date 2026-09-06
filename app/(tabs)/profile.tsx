@@ -7,12 +7,16 @@ import { PrimaryButton } from "@/components/PrimaryButton";
 import { colors, radius, spacing, typography } from "@/constants";
 import { useAuth } from "@/hooks/useAuth";
 import { usePointsBalance } from "@/hooks/usePoints";
+import { useUnreadCount } from "@/hooks/useNotifications";
+import { useRegistrationStore } from "@/store/registrationStore";
 import { updateFullName } from "@/services/authService";
 import { showToast } from "@/store/toastStore";
 
 export default function ProfileScreen() {
   const { user, updateName, signOut } = useAuth();
   const points = usePointsBalance();
+  const unread = useUnreadCount();
+  const registeredCount = useRegistrationStore((state) => state.registeredIds.length);
   const [editing, setEditing] = useState(false);
   const [nameDraft, setNameDraft] = useState(user?.name ?? "");
   const [saving, setSaving] = useState(false);
@@ -64,11 +68,31 @@ export default function ProfileScreen() {
         <Row icon="star-outline" label="نقاطي" value={String(points.data ?? 0)} onPress={() => router.push("/points-history")} />
         <Row icon="podium-outline" label="قائمة المتصدرين" onPress={() => router.push("/leaderboard")} />
         <Row icon="qr-code-outline" label="تسجيل الحضور" onPress={() => router.push("/check-in")} />
-        <Row icon="trophy-outline" label="الأنشطة المسجل فيها" />
-        <Row icon="ribbon-outline" label="المسابقات التي شاركت فيها" />
-        <Row icon="notifications-outline" label="الإشعارات" onPress={() => showToast("مركز الإشعارات قادم قريبًا")} />
-        <Row icon="settings-outline" label="الإعدادات" onPress={() => showToast("الإعدادات قادمة قريبًا")} />
+        <Row
+          icon="trophy-outline"
+          label="الأنشطة المسجل فيها"
+          value={String(registeredCount)}
+          onPress={() => router.push("/(tabs)/my-activities")}
+        />
+        <Row icon="search-outline" label="البحث" onPress={() => router.push("/search")} />
+        <Row
+          icon="notifications-outline"
+          label="الإشعارات"
+          value={unread > 0 ? String(unread) : undefined}
+          onPress={() => router.push("/notifications")}
+        />
+        <Row icon="settings-outline" label="الإعدادات" onPress={() => router.push("/settings")} />
       </View>
+
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="لوحة الإدارة"
+        onLongPress={() => router.push("/admin")}
+        delayLongPress={800}
+        style={styles.adminHint}
+      >
+        <Text style={styles.adminHintText}>أنشطتي — قاعدة صلالة الجوية</Text>
+      </Pressable>
 
       <Pressable accessibilityRole="button" onPress={handleSignOut} style={styles.signOut}>
         <Ionicons name="log-out-outline" size={18} color={colors.danger} />
@@ -159,6 +183,9 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
   },
   signOutLabel: { fontFamily: "Tajawal_500Medium", fontSize: 14, color: colors.danger },
+  // ضغطة مطوّلة على اسم التطبيق تفتح بوابة الإدارة — غير ظاهرة للمستخدم العادي
+  adminHint: { alignItems: "center", paddingVertical: spacing.sm },
+  adminHintText: { ...typography.caption, fontSize: 11 },
   sheetTitle: { ...typography.h2, marginBottom: spacing.lg, textAlign: "center" },
   sheetInput: {
     ...typography.body,
