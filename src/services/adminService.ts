@@ -1,5 +1,6 @@
 import type {
   Activity,
+  ActivityResult,
   Announcement,
   AwarenessArticle,
   QuizQuestion,
@@ -146,6 +147,35 @@ export async function fetchRegistrationCounts(): Promise<Record<string, number>>
   if (error) throw error;
   const rows = (data as { activity_id: string; registered: number }[]) ?? [];
   return Object.fromEntries(rows.map((row) => [row.activity_id, row.registered]));
+}
+
+/** نتائج النشاط (المراكز الثلاثة الأولى) — تظهر في شاشة التفاصيل بعد الاعتماد. */
+export async function setActivityResults(activityId: string, results: ActivityResult[]): Promise<void> {
+  const cleaned = results
+    .filter((result) => result.winnerName.trim().length > 0)
+    .map((result) => ({ ...result, winnerName: result.winnerName.trim() }));
+
+  if (!USE_MOCK_DATA) {
+    const { error: deleteError } = await supabase
+      .from("activity_results")
+      .delete()
+      .eq("activity_id", activityId);
+    if (deleteError) throw deleteError;
+    if (cleaned.length === 0) return;
+    const { error } = await supabase.from("activity_results").insert(
+      cleaned.map((result) => ({
+        activity_id: activityId,
+        rank: result.rank,
+        winner_name: result.winnerName,
+        note: result.note,
+      }))
+    );
+    if (error) throw error;
+    return;
+  }
+
+  const activity = MOCK_ACTIVITIES.find((item) => item.id === activityId);
+  if (activity) activity.results = cleaned.length ? cleaned : undefined;
 }
 
 /* ============ الإعلانات ============ */

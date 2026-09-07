@@ -60,6 +60,17 @@ export async function fetchAllAnnouncements(): Promise<Announcement[]> {
   return (data as Announcement[]) ?? [];
 }
 
+/** حذف إشعار مُرسَل — من لوحة الإدارة. */
+export async function deleteNotification(id: string): Promise<void> {
+  if (!USE_MOCK_DATA) {
+    const { error } = await supabase.from("notifications").delete().eq("id", id);
+    if (error) throw error;
+    return;
+  }
+  const index = mockInbox.findIndex((notification) => notification.id === id);
+  if (index >= 0) mockInbox.splice(index, 1);
+}
+
 /** يضيف إعلانًا محليًا — لوحة الإدارة في وضع البيانات التجريبية. */
 export function pushMockAnnouncement(announcement: Announcement): void {
   MOCK_ANNOUNCEMENTS.unshift(announcement);

@@ -1,12 +1,11 @@
 import { create } from "zustand";
+import { adminSettings } from "./adminSettingsStore";
 
 /**
  * وضع الإدارة. لا يُحفظ في التخزين عمدًا: يُطلب الرمز في كل جلسة،
- * ولا يظهر أي أثر للوحة الإدارة للمستخدم العادي.
- * عند ربط Supabase يُستبدل هذا بتحقق فعلي من صلاحية الحساب.
+ * وإغلاق التطبيق يقفل اللوحة. الرمز نفسه يُقرأ من إعدادات الإدارة
+ * (قابل للتغيير)، وعند ربط Supabase يُستبدل بتحقق فعلي من صلاحية الحساب.
  */
-const ADMIN_CODE = "1234";
-
 interface AdminState {
   isAdmin: boolean;
   unlock: (code: string) => boolean;
@@ -16,8 +15,11 @@ interface AdminState {
 export const useAdminStore = create<AdminState>((set) => ({
   isAdmin: false,
   unlock: (code) => {
-    const ok = code.trim() === ADMIN_CODE;
-    if (ok) set({ isAdmin: true });
+    const ok = code.trim() === adminSettings().code;
+    if (ok) {
+      set({ isAdmin: true });
+      adminSettings().logAction("فتح لوحة الإدارة");
+    }
     return ok;
   },
   lock: () => set({ isAdmin: false }),

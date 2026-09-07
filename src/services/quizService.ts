@@ -1,4 +1,5 @@
 import type { QuizQuestion, WeeklyQuiz } from "@/types/models";
+import { adminSettings } from "@/store/adminSettingsStore";
 import { USE_MOCK_DATA } from "./config";
 import { MOCK_WEEKLY_QUIZ } from "./mockData";
 import { recordMockPoints } from "./pointsService";
@@ -19,6 +20,8 @@ function stripAnswer(q: QuizQuestion): PublicQuizQuestion {
  * quiz_questions_public في Supabase. التحقق يتم فقط داخل submitQuizAnswer.
  */
 export async function fetchCurrentWeeklyQuiz(): Promise<PublicWeeklyQuiz | null> {
+  // الإدارة تستطيع تعطيل السؤال الأسبوعي كليًا من الإعدادات.
+  if (!adminSettings().quizEnabled) return null;
   if (USE_MOCK_DATA) {
     return { ...MOCK_WEEKLY_QUIZ, questions: MOCK_WEEKLY_QUIZ.questions.map(stripAnswer) };
   }
@@ -52,7 +55,8 @@ export async function submitQuizAnswer(
     }
     const question = MOCK_WEEKLY_QUIZ.questions.find((q) => q.id === questionId);
     const isCorrect = question?.correctOptionIndex === selectedOptionIndex;
-    const pointsEarned = isCorrect ? 10 : 0;
+    const award = adminSettings().pointsEnabled ? adminSettings().pointsPerAction : 0;
+    const pointsEarned = isCorrect ? award : 0;
     const result = { isCorrect, pointsEarned };
     answeredMock.set(questionId, result);
     if (isCorrect) {

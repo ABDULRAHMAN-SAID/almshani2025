@@ -8,6 +8,7 @@ import { ScreenHeader } from "@/components/ScreenHeader";
 import { SecondaryButton } from "@/components/SecondaryButton";
 import { colors, radius, spacing, typography } from "@/constants";
 import { addQuizQuestion, deleteQuizQuestion, fetchAdminQuiz, setQuizStatus } from "@/services/adminService";
+import { useAdminSettingsStore } from "@/store/adminSettingsStore";
 import { showToast } from "@/store/toastStore";
 import { pluralizeAr, QUESTION_FORMS } from "@/utils/arabic";
 
@@ -21,6 +22,7 @@ const OPTION_LABELS = ["الخيار الأول", "الخيار الثاني", "
 export default function AdminQuizScreen() {
   const client = useQueryClient();
   const { data: quiz, isLoading } = useQuery({ queryKey: ["admin-quiz"], queryFn: fetchAdminQuiz });
+  const logAction = useAdminSettingsStore((state) => state.logAction);
 
   const [text, setText] = useState("");
   const [category, setCategory] = useState("");
@@ -65,6 +67,7 @@ export default function AdminQuizScreen() {
       setOptions(["", "", "", ""]);
       setCorrectIndex(0);
       client.invalidateQueries();
+      logAction("إضافة سؤال ثقافي");
       showToast("تمت إضافة السؤال", "success");
     } finally {
       setSaving(false);
@@ -75,12 +78,14 @@ export default function AdminQuizScreen() {
     const next = quiz.status === "open" ? "closed" : "open";
     await setQuizStatus(quiz.id, next);
     client.invalidateQueries();
+    logAction(next === "open" ? "فتح أسبوع المسابقة" : "إغلاق أسبوع المسابقة");
     showToast(next === "open" ? "تم فتح أسبوع المسابقة" : "تم إغلاق أسبوع المسابقة", "success");
   };
 
   const handleDelete = async (id: string) => {
     await deleteQuizQuestion(id);
     client.invalidateQueries();
+    logAction("حذف سؤال ثقافي");
     showToast("تم حذف السؤال", "success");
   };
 

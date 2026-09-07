@@ -11,7 +11,7 @@ import { showToast } from "@/store/toastStore";
 export default function OtpScreen() {
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
-  const { pendingPhone } = useAuth();
+  const { pendingPhone, pendingRole } = useAuth();
 
   const handleVerify = async () => {
     if (!pendingPhone) {
@@ -23,6 +23,9 @@ export default function OtpScreen() {
       const { isNewUser, userId } = await verifyOtp(pendingPhone, code);
       if (isNewUser) {
         router.push({ pathname: "/(auth)/profile-setup", params: { userId, phone: pendingPhone } });
+      } else if (pendingRole === "admin") {
+        // دخول الإدارة يتطلب رمزًا ثانيًا بعد التحقق من الهاتف.
+        router.replace("/(auth)/admin-code");
       } else {
         router.replace("/(tabs)");
       }
@@ -43,6 +46,9 @@ export default function OtpScreen() {
     <View style={styles.container}>
       <Text style={styles.title}>التحقق من رقم الهاتف</Text>
       <Text style={styles.subtitle}>أدخل رمز التحقق المرسل إلى {pendingPhone ?? "رقمك"}</Text>
+      {pendingRole === "admin" ? (
+        <Text style={styles.roleNote}>الدخول كإدارة — سيُطلب رمز الإدارة بعد هذه الخطوة</Text>
+      ) : null}
 
       <TextInput
         value={code}
@@ -70,7 +76,13 @@ export default function OtpScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, padding: spacing.xl, justifyContent: "center", gap: spacing.lg },
   title: { ...typography.h1, textAlign: "center" },
-  subtitle: { ...typography.bodyMuted, textAlign: "center", marginBottom: spacing.lg },
+  subtitle: { ...typography.bodyMuted, textAlign: "center" },
+  roleNote: {
+    ...typography.caption,
+    textAlign: "center",
+    color: colors.primary,
+    marginBottom: spacing.lg,
+  },
   otpInput: {
     ...typography.h1,
     letterSpacing: 12,

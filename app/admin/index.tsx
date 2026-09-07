@@ -17,6 +17,7 @@ import { useAnnouncements, useNotifications } from "@/hooks/useNotifications";
 import { useLeaderboard } from "@/hooks/usePoints";
 import { deleteAnnouncement } from "@/services/adminService";
 import { fetchAwarenessLibrary } from "@/services/awarenessService";
+import { useAdminSettingsStore } from "@/store/adminSettingsStore";
 import { useAdminStore } from "@/store/adminStore";
 import { showToast } from "@/store/toastStore";
 import { REGISTRATION_COLOR, REGISTRATION_LABEL } from "@/utils/registration";
@@ -24,13 +25,14 @@ import { TODAY_ISO } from "@/utils/calendar";
 import { ACTIVITY_FORMS, pluralizeAr } from "@/utils/arabic";
 import type { Activity } from "@/types/models";
 
-type AdminTab = "overview" | "activities" | "content" | "people";
+type AdminTab = "overview" | "activities" | "content" | "people" | "settings";
 
 const TABS: { key: AdminTab; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
   { key: "overview", label: "نظرة عامة", icon: "speedometer-outline" },
   { key: "activities", label: "الأنشطة", icon: "calendar-outline" },
   { key: "content", label: "المحتوى", icon: "document-text-outline" },
   { key: "people", label: "المشاركون", icon: "people-outline" },
+  { key: "settings", label: "الإعدادات", icon: "settings-outline" },
 ];
 
 const ACTIVITY_FILTERS = [
@@ -90,6 +92,7 @@ export default function AdminScreen() {
       {tab === "activities" ? <ActivitiesTab /> : null}
       {tab === "content" ? <ContentTab /> : null}
       {tab === "people" ? <PeopleTab /> : null}
+      {tab === "settings" ? <SettingsTab /> : null}
     </View>
   );
 }
@@ -97,6 +100,7 @@ export default function AdminScreen() {
 /* ============ نظرة عامة ============ */
 
 function OverviewTab() {
+  const adminCount = useAdminSettingsStore((state) => state.admins.length);
   const { data: activities } = useAllActivities();
   const { data: notifications } = useNotifications();
   const { data: announcements } = useAnnouncements();
@@ -134,7 +138,7 @@ function OverviewTab() {
           value={(notifications ?? []).length}
           label="إشعارات مرسلة"
         />
-        <StatTile icon="shield-checkmark-outline" tint="#276749" value={1} label="حسابات إدارية" />
+        <StatTile icon="shield-checkmark-outline" tint="#276749" value={adminCount} label="حسابات إدارية" />
       </View>
 
       <Text style={styles.sectionLabel}>إجراءات سريعة</Text>
@@ -290,10 +294,12 @@ function ContentTab() {
     queryFn: fetchAwarenessLibrary,
   });
   const [pendingDelete, setPendingDelete] = useState<{ id: string; title: string } | null>(null);
+  const logAction = useAdminSettingsStore((state) => state.logAction);
 
   const confirmDelete = async () => {
     if (!pendingDelete) return;
     await deleteAnnouncement(pendingDelete.id);
+    logAction(`حذف إعلان: ${pendingDelete.title}`);
     setPendingDelete(null);
     client.invalidateQueries();
     showToast("تم حذف الإعلان", "success");
@@ -435,6 +441,80 @@ function PeopleTab() {
   );
 }
 
+/* ============ الإعدادات ============ */
+
+function SettingsTab() {
+  const settings = useAdminSettingsStore();
+
+  return (
+    <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <View style={styles.statsGrid}>
+        <StatTile
+          icon={settings.registrationEnabled ? "checkmark-circle-outline" : "close-circle-outline"}
+          tint={settings.registrationEnabled ? "#2F855A" : "#9B2C2C"}
+          value={settings.registrationEnabled ? 1 : 0}
+          label="التسجيل مفعّل"
+        />
+        <StatTile
+          icon={settings.quizEnabled ? "help-circle-outline" : "close-circle-outline"}
+          tint={settings.quizEnabled ? "#2C5282" : "#9B2C2C"}
+          value={settings.quizEnabled ? 1 : 0}
+          label="السؤال مفعّل"
+        />
+        <StatTile icon="ribbon-outline" tint="#C7A252" value={settings.pointsPerAction} label="نقاط لكل عملية" />
+      </View>
+
+      <Text style={styles.sectionLabel}>الإدارة</Text>
+      <View style={{ gap: spacing.sm }}>
+        <ActionRow
+          icon="options-outline"
+          label="إعدادات اللوحة"
+          hint="رمز الإدارة، مفاتيح التشغيل، وقيمة النقاط"
+          onPress={() => router.push("/admin/settings")}
+        />
+        <ActionRow
+          icon="people-circle-outline"
+          label={`الحسابات الإدارية (${settings.admins.length})`}
+          hint="من يملك صلاحية فتح لوحة التحكم"
+          onPress={() => router.push("/admin/admins")}
+        />
+        <ActionRow
+          icon="notifications-outline"
+          label="الإشعارات المرسلة"
+          hint="مراجعة وحذف وإعادة إرسال"
+          onPress={() => router.push("/admin/notifications")}
+        />
+        <ActionRow
+          icon="time-outline"
+          label={`سجل العمليات (${settings.log.length})`}
+          hint="كل ما تمّ من اللوحة بالترتيب الزمني"
+          onPress={() => router.push("/admin/log")}
+        />
+      </View>
+
+      <Text style={styles.sectionLabel}>آخر العمليات</Text>
+      {settings.log.length === 0 ? (
+        <EmptyState icon="time-outline" title="لم تُسجَّل عمليات بعد" />
+      ) : (
+        <View style={styles.listCard}>
+          {settings.log.slice(0, 5).map((entry, index) => (
+            <View key={entry.id}>
+              {index > 0 ? <View style={styles.divider} /> : null}
+              <View style={styles.manageRow}>
+                <View style={styles.logDot} />
+                <Text style={[styles.manageTitle, { flex: 1 }]} numberOfLines={1}>
+                  {entry.action}
+                </Text>
+                <Text style={styles.manageMeta}>{entry.at.slice(0, 10)}</Text>
+              </View>
+            </View>
+          ))}
+        </View>
+      )}
+    </ScrollView>
+  );
+}
+
 /* ============ عناصر مشتركة ============ */
 
 function StatTile({
@@ -502,12 +582,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 4,
+    gap: 3,
     paddingVertical: spacing.sm,
+    paddingHorizontal: 2,
     borderRadius: radius.pill,
   },
   tabActive: { backgroundColor: colors.primary },
-  tabLabel: { fontFamily: "Tajawal_500Medium", fontSize: 11.5, color: colors.textMuted },
+  tabLabel: { fontFamily: "Tajawal_500Medium", fontSize: 10.5, color: colors.textMuted },
   tabLabelActive: { color: colors.textOnPrimary },
   content: { padding: spacing.lg, paddingTop: 0, paddingBottom: spacing.xxl },
   statsGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.md },
@@ -565,6 +646,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.xl,
   },
   privacyText: { ...typography.caption, flex: 1, lineHeight: 20 },
+  logDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.primary },
   sheetTitle: { ...typography.h2, textAlign: "center" },
   sheetBody: { ...typography.bodyMuted, textAlign: "center", marginTop: spacing.sm, lineHeight: 22 },
   note: { ...typography.caption, lineHeight: 20, marginTop: spacing.xl, textAlign: "center" },

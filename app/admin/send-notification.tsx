@@ -7,10 +7,12 @@ import { ScreenHeader } from "@/components/ScreenHeader";
 import { colors, radius, spacing, typography } from "@/constants";
 import { useRefreshNotifications } from "@/hooks/useNotifications";
 import { sendNotification } from "@/services/adminService";
+import { useAdminSettingsStore } from "@/store/adminSettingsStore";
 import { showToast } from "@/store/toastStore";
 
 export default function SendNotificationScreen() {
   const refresh = useRefreshNotifications();
+  const logAction = useAdminSettingsStore((state) => state.logAction);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
@@ -22,6 +24,7 @@ export default function SendNotificationScreen() {
     try {
       await sendNotification(title.trim(), body.trim());
       refresh();
+      logAction(`إرسال إشعار: ${title.trim()}`);
       showToast("تم إرسال الإشعار", "success");
       router.back();
     } finally {

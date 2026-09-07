@@ -6,6 +6,7 @@ import { PrimaryButton } from "@/components/PrimaryButton";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { colors, radius, spacing, typography } from "@/constants";
 import { addAnnouncement } from "@/services/adminService";
+import { useAdminSettingsStore } from "@/store/adminSettingsStore";
 import { showToast } from "@/store/toastStore";
 import type { AnnouncementType } from "@/types/models";
 
@@ -13,6 +14,7 @@ const TYPES: AnnouncementType[] = ["تسجيل", "تنبيه", "نتائج", "ع
 
 export default function NewAnnouncementScreen() {
   const client = useQueryClient();
+  const logAction = useAdminSettingsStore((state) => state.logAction);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [type, setType] = useState<AnnouncementType>("عام");
@@ -25,6 +27,7 @@ export default function NewAnnouncementScreen() {
     try {
       await addAnnouncement({ title: title.trim(), description: description.trim(), type });
       client.invalidateQueries();
+      logAction(`نشر إعلان: ${title.trim()}`);
       showToast("تم نشر الإعلان", "success");
       router.back();
     } finally {

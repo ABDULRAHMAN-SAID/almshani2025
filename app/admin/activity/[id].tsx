@@ -14,14 +14,21 @@ import { fetchActivityById } from "@/services/activityService";
 import {
   deleteActivity,
   generateCheckInCode,
+  setActivityResults,
   setCheckInCode,
   updateActivity,
 } from "@/services/adminService";
+import { useAdminSettingsStore } from "@/store/adminSettingsStore";
 import { showToast } from "@/store/toastStore";
 import { REGISTRATION_COLOR, REGISTRATION_LABEL } from "@/utils/registration";
-import type { RegistrationState } from "@/types/models";
+import type { ActivityResult, RegistrationState } from "@/types/models";
 
 const STATUS_OPTIONS: RegistrationState[] = ["open", "upcoming", "closed", "full", "ended"];
+const RANKS: { rank: 1 | 2 | 3; label: string; tint: string }[] = [
+  { rank: 1, label: "المركز الأول", tint: "#C7A252" },
+  { rank: 2, label: "المركز الثاني", tint: "#75808F" },
+  { rank: 3, label: "المركز الثالث", tint: "#B7791F" },
+];
 
 /** إدارة نشاط واحد: تعديل بياناته، حالة التسجيل، رمز الحضور، أو حذفه. */
 export default function ManageActivityScreen() {
@@ -42,8 +49,10 @@ export default function ManageActivityScreen() {
   const [status, setStatus] = useState<RegistrationState>("open");
   const [isAnnual, setIsAnnual] = useState(false);
   const [code, setCode] = useState("");
+  const [winners, setWinners] = useState<string[]>(["", "", ""]);
   const [saving, setSaving] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const logAction = useAdminSettingsStore((state) => state.logAction);
 
   // تُملأ الحقول مرة واحدة عند وصول النشاط، ثم تبقى تحت سيطرة المستخدم.
   useEffect(() => {
@@ -58,6 +67,9 @@ export default function ManageActivityScreen() {
     setStatus(activity.registrationStatus);
     setIsAnnual(Boolean(activity.isAnnual));
     setCode(activity.checkInCode ?? "");
+    setWinners(
+      RANKS.map((entry) => activity.results?.find((r) => r.rank === entry.rank)?.winnerName ?? "")
+    );
   }, [activity]);
 
   if (isLoading) return <View style={styles.screen} />;
@@ -96,6 +108,7 @@ export default function ManageActivityScreen() {
         isAnnual,
       });
       client.invalidateQueries();
+      logAction(`تعديل نشاط: ${title.trim()}`);
       showToast("تم حفظ التعديلات", "success");
     } finally {
       setSaving(false);
@@ -110,13 +123,26 @@ export default function ManageActivityScreen() {
     const saved = await setCheckInCode(activity.id, code);
     setCode(saved);
     client.invalidateQueries();
+    logAction(`ضبط رمز حضور: ${activity.title}`);
     showToast("تم حفظ رمز الحضور", "success");
+  };
+
+  const handleSaveResults = async () => {
+    const results: ActivityResult[] = RANKS.map((entry, index) => ({
+      rank: entry.rank,
+      winnerName: winners[index],
+    }));
+    await setActivityResults(activity.id, results);
+    client.invalidateQueries();
+    logAction(`تحديث نتائج: ${activity.title}`);
+    showToast("تم حفظ النتائج", "success");
   };
 
   const handleDelete = async () => {
     await deleteActivity(activity.id);
     setConfirmingDelete(false);
     client.invalidateQueries();
+    logAction(`حذف نشاط: ${activity.title}`);
     showToast("تم حذف النشاط", "success");
     router.back();
   };
@@ -201,6 +227,31 @@ export default function ManageActivityScreen() {
             </Pressable>
           </View>
           <SecondaryButton label="حفظ الرمز" onPress={handleSaveCode} style={{ marginTop: spacing.md }} />
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>نتائج النشاط</Text>
+          <Text style={styles.cardHint}>
+            تُعرض في شاشة تفاصيل النشاط بعد اعتمادها. اترك الحقل فارغًا لإخفاء المركز.
+          </Text>
+          {RANKS.map((entry, index) => (
+            <View key={entry.rank} style={styles.winnerRow}>
+              <View style={[styles.winnerBadge, { backgroundColor: tintBackground(entry.tint, 0.14) }]}>
+                <Text style={[styles.winnerRank, { color: entry.tint }]}>{entry.rank}</Text>
+              </View>
+              <TextInput
+                value={winners[index]}
+                onChangeText={(text) =>
+                  setWinners((current) => current.map((w, i) => (i === index ? text : w)))
+                }
+                placeholder={entry.label}
+                placeholderTextColor={colors.textMuted}
+                style={styles.winnerInput}
+                textAlign="right"
+              />
+            </View>
+          ))}
+          <SecondaryButton label="حفظ النتائج" onPress={handleSaveResults} style={{ marginTop: spacing.md }} />
         </View>
 
         <Text style={styles.sectionLabel}>بيانات النشاط</Text>
@@ -357,6 +408,23 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     alignItems: "center",
     justifyContent: "center",
+  },
+  winnerRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, marginTop: spacing.sm },
+  winnerBadge: {
+    width: 34,
+    height: 34,
+    borderRadius: radius.sm,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  winnerRank: { fontFamily: "Tajawal_700Bold", fontSize: 14 },
+  winnerInput: {
+    flex: 1,
+    ...typography.body,
+    backgroundColor: colors.background,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    height: 44,
   },
   sectionLabel: { ...typography.h3, marginTop: spacing.xl, marginBottom: spacing.xs },
   field: { marginBottom: spacing.md },

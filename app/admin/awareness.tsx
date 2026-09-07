@@ -10,6 +10,7 @@ import { SecondaryButton } from "@/components/SecondaryButton";
 import { colors, radius, spacing, typography } from "@/constants";
 import { deleteAwarenessArticle, publishAwarenessArticle } from "@/services/adminService";
 import { fetchAwarenessLibrary } from "@/services/awarenessService";
+import { useAdminSettingsStore } from "@/store/adminSettingsStore";
 import { showToast } from "@/store/toastStore";
 
 const CATEGORIES = [
@@ -29,6 +30,7 @@ export default function AdminAwarenessScreen() {
   const [category, setCategory] = useState(CATEGORIES[0].key);
   const [saving, setSaving] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<{ id: string; title: string } | null>(null);
+  const logAction = useAdminSettingsStore((state) => state.logAction);
 
   const canPublish =
     title.trim().length > 3 && summary.trim().length > 10 && content.trim().length > 30;
@@ -50,6 +52,7 @@ export default function AdminAwarenessScreen() {
       setSummary("");
       setContent("");
       client.invalidateQueries();
+      logAction(`نشر مقال توعوي: ${title.trim()}`);
       showToast("تم نشر المقال التوعوي", "success");
     } finally {
       setSaving(false);
@@ -59,6 +62,7 @@ export default function AdminAwarenessScreen() {
   const confirmDelete = async () => {
     if (!pendingDelete) return;
     await deleteAwarenessArticle(pendingDelete.id);
+    logAction(`حذف مقال توعوي: ${pendingDelete.title}`);
     setPendingDelete(null);
     client.invalidateQueries();
     showToast("تم حذف المقال", "success");

@@ -11,7 +11,7 @@ export default function ProfileSetupScreen() {
   const { userId, phone } = useLocalSearchParams<{ userId: string; phone: string }>();
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
-  const { signIn } = useAuth();
+  const { signIn, pendingRole } = useAuth();
 
   const handleSubmit = async () => {
     if (name.trim().length < 3) {
@@ -22,7 +22,7 @@ export default function ProfileSetupScreen() {
     try {
       const user = await completeProfile(userId, phone, name.trim());
       signIn(user);
-      router.replace("/(tabs)");
+      router.replace(pendingRole === "admin" ? "/(auth)/admin-code" : "/(tabs)");
     } catch {
       showToast("حدث خطأ، حاول مرة أخرى", "error");
     } finally {

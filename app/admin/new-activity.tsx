@@ -7,6 +7,7 @@ import { ScreenHeader } from "@/components/ScreenHeader";
 import { CATEGORY_META, tintBackground, type ActivityCategory } from "@/constants/categories";
 import { colors, radius, spacing, typography } from "@/constants";
 import { addMockActivity } from "@/services/adminService";
+import { useAdminSettingsStore } from "@/store/adminSettingsStore";
 import { showToast } from "@/store/toastStore";
 import type { RegistrationState } from "@/types/models";
 
@@ -21,6 +22,8 @@ const STATUS_OPTIONS: { key: RegistrationState; label: string }[] = [
 /** نموذج إضافة نشاط — يغطي الحقول المطلوبة في المواصفة. */
 export default function NewActivityScreen() {
   const client = useQueryClient();
+  const defaultStatus = useAdminSettingsStore((state) => state.defaultRegistrationStatus);
+  const logAction = useAdminSettingsStore((state) => state.logAction);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState<ActivityCategory>("Cultural");
@@ -29,7 +32,7 @@ export default function NewActivityScreen() {
   const [endTime, setEndTime] = useState("");
   const [location, setLocation] = useState("");
   const [capacity, setCapacity] = useState("");
-  const [status, setStatus] = useState<RegistrationState>("open");
+  const [status, setStatus] = useState<RegistrationState>(defaultStatus);
   const [isAnnual, setIsAnnual] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -58,6 +61,7 @@ export default function NewActivityScreen() {
         isAnnual,
       });
       client.invalidateQueries();
+      logAction(`إضافة نشاط: ${title.trim()}`);
       showToast("تمت إضافة النشاط", "success");
       router.back();
     } finally {
