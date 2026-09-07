@@ -1,11 +1,13 @@
 import { useMemo, useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, ScrollView, StyleSheet, Text, View } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
 import { ActivityListRow } from "@/components/ActivityListRow";
 import { EmptyState } from "@/components/EmptyState";
 import { FilterChips } from "@/components/FilterChips";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { SECTION_DEFINITIONS } from "@/constants/sections";
+import { CATEGORY_COVER } from "@/constants/covers";
 import { colors, spacing, typography } from "@/constants";
 import { useAllActivities } from "@/hooks/useActivities";
 import { ACTIVITY_FORMS, pluralizeAr } from "@/utils/arabic";
@@ -47,8 +49,22 @@ export default function SectionScreen() {
 
   return (
     <View style={styles.screen}>
-      <ScreenHeader title={section.title} />
-      <Text style={styles.subtitle}>{section.subtitle}</Text>
+      <View style={styles.banner}>
+        <Image
+          source={CATEGORY_COVER[section.categories[0]]}
+          style={StyleSheet.absoluteFill}
+          resizeMode="cover"
+          accessibilityIgnoresInvertColors
+        />
+        <LinearGradient
+          colors={["rgba(11,37,69,0.30)", "rgba(11,37,69,0.78)"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+        <ScreenHeader title={section.title} onDark />
+        <Text style={styles.bannerSubtitle}>{section.subtitle}</Text>
+      </View>
 
       {section.filters.length > 1 ? (
         <View style={styles.filters}>
@@ -89,6 +105,21 @@ export default function SectionScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
+  banner: {
+    height: 132,
+    overflow: "hidden",
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    marginBottom: spacing.md,
+  },
+  bannerSubtitle: {
+    fontFamily: "Tajawal_400Regular",
+    fontSize: 13,
+    lineHeight: 20,
+    color: "rgba(255,255,255,0.85)",
+    paddingHorizontal: spacing.lg,
+    marginTop: spacing.xs,
+  },
   subtitle: { ...typography.bodyMuted, textAlign: "center", paddingHorizontal: spacing.xl, marginBottom: spacing.lg },
   filters: { paddingHorizontal: spacing.lg, marginBottom: spacing.md },
   content: { padding: spacing.lg, paddingTop: 0 },

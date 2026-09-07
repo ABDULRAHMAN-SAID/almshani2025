@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { CATEGORY_META, tintBackground } from "@/constants/categories";
+import { CATEGORY_COVER } from "@/constants/covers";
 import { colors, radius, spacing, typography } from "@/constants";
 import type { Activity } from "@/types/models";
 import { formatArabicDate, formatArabicTime } from "@/utils/date";
@@ -24,8 +25,16 @@ export function ActivityListRow({ activity, showDate, onPress }: ActivityListRow
       onPress={onPress}
       style={({ pressed }) => [styles.row, pressed && styles.pressed]}
     >
-      <View style={[styles.iconWrap, { backgroundColor: tintBackground(meta.tint) }]}>
-        <Ionicons name={meta.icon} size={19} color={meta.tint} />
+      <View style={styles.thumbWrap}>
+        <Image
+          source={CATEGORY_COVER[activity.category]}
+          style={StyleSheet.absoluteFill}
+          resizeMode="cover"
+          accessibilityIgnoresInvertColors
+        />
+        <View style={styles.thumbBadge}>
+          <Ionicons name={meta.icon} size={13} color={colors.textOnPrimary} />
+        </View>
       </View>
       <View style={styles.content}>
         <Text style={styles.title} numberOfLines={1}>
@@ -54,10 +63,20 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   pressed: { opacity: 0.85 },
-  iconWrap: {
-    width: 38,
-    height: 38,
+  thumbWrap: {
+    width: 44,
+    height: 44,
     borderRadius: radius.sm,
+    overflow: "hidden",
+    backgroundColor: colors.background,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  thumbBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "rgba(11,37,69,0.45)",
     alignItems: "center",
     justifyContent: "center",
   },

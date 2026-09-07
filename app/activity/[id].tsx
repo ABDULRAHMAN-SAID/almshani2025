@@ -1,15 +1,15 @@
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { BottomSheet } from "@/components/BottomSheet";
 import { EmptyState } from "@/components/EmptyState";
-import { PatternOverlay } from "@/components/PatternOverlay";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { SecondaryButton } from "@/components/SecondaryButton";
 import { CATEGORY_META, tintBackground } from "@/constants/categories";
+import { CATEGORY_COVER } from "@/constants/covers";
 import { colors, radius, spacing, typography } from "@/constants";
 import { useAuth } from "@/hooks/useAuth";
 import { fetchActivityById } from "@/services/activityService";
@@ -84,13 +84,19 @@ export default function ActivityDetailScreen() {
 
   return (
     <View style={styles.screen}>
-      <LinearGradient
-        colors={[colors.primaryLight, colors.primary, colors.primaryDark]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.cover}
-      >
-        <PatternOverlay opacity={0.08} />
+      <View style={styles.cover}>
+        <Image
+          source={CATEGORY_COVER[activity.category]}
+          style={StyleSheet.absoluteFill}
+          resizeMode="cover"
+          accessibilityIgnoresInvertColors
+        />
+        <LinearGradient
+          colors={["rgba(11,37,69,0.35)", "rgba(11,37,69,0.72)", "rgba(7,26,51,0.92)"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
         <TopBar onDark />
         <View style={styles.coverBody}>
           <View style={styles.coverIcon}>
@@ -102,7 +108,7 @@ export default function ActivityDetailScreen() {
             <Text style={styles.coverBadgeText}>{relativeDayLabel(activity.date)}</Text>
           </View>
         </View>
-      </LinearGradient>
+      </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.infoCard}>

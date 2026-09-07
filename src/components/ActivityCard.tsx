@@ -1,8 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
-import { PatternOverlay } from "./PatternOverlay";
-import { CATEGORY_META, tintBackground } from "@/constants/categories";
+import { CATEGORY_META } from "@/constants/categories";
+import { CATEGORY_COVER } from "@/constants/covers";
 import { colors, radius, shadow, spacing, typography } from "@/constants";
 import type { Activity } from "@/types/models";
 import { formatArabicDate, formatArabicTime } from "@/utils/date";
@@ -24,16 +23,16 @@ export function ActivityCard({ activity, onPress }: ActivityCardProps) {
       onPress={onPress}
       style={({ pressed }) => [styles.card, shadow.card, pressed && styles.pressed]}
     >
-      <LinearGradient
-        colors={[tintBackground(meta.tint, 0.22), tintBackground(meta.tint, 0.06)]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+      <Image
+        source={CATEGORY_COVER[activity.category]}
         style={styles.thumb}
-      >
-        <PatternOverlay opacity={0.22} color={meta.tint} />
-        <Ionicons name={meta.icon} size={30} color={meta.tint} />
-      </LinearGradient>
-      <Text style={styles.categoryLabel}>{meta.label}</Text>
+        resizeMode="cover"
+        accessibilityIgnoresInvertColors
+      />
+      <View style={styles.categoryRow}>
+        <Ionicons name={meta.icon} size={13} color={meta.tint} />
+        <Text style={styles.categoryLabel}>{meta.label}</Text>
+      </View>
       <Text style={styles.title} numberOfLines={2}>
         {activity.title}
       </Text>
@@ -61,14 +60,14 @@ const styles = StyleSheet.create({
   },
   pressed: { opacity: 0.85 },
   thumb: {
+    width: "100%",
     height: 88,
     borderRadius: radius.md,
-    alignItems: "center",
-    justifyContent: "center",
     marginBottom: spacing.sm,
-    overflow: "hidden",
+    backgroundColor: colors.background,
   },
-  categoryLabel: { ...typography.caption, marginBottom: 2 },
+  categoryRow: { flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 2 },
+  categoryLabel: { ...typography.caption },
   title: { ...typography.h3, marginBottom: spacing.sm, minHeight: 44 },
   metaRow: { flexDirection: "row", alignItems: "center", gap: 4, marginBottom: spacing.sm },
   metaText: { ...typography.caption },

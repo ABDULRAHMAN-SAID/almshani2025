@@ -1,4 +1,4 @@
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams } from "expo-router";
@@ -7,6 +7,8 @@ import { EmptyState } from "@/components/EmptyState";
 import { PatternOverlay } from "@/components/PatternOverlay";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { colors, radius, spacing, typography } from "@/constants";
+import { CATEGORY_COVER } from "@/constants/covers";
+import type { ActivityCategory } from "@/constants/categories";
 import { fetchAwarenessArticle } from "@/services/awarenessService";
 import { formatArabicDate } from "@/utils/date";
 
@@ -14,6 +16,13 @@ const CATEGORY_TINT: Record<string, string> = {
   "أمني": "#434190",
   "مكافحة المخدرات": "#276749",
   "السلامة": "#B7791F",
+};
+
+/** تصنيفات التوعية مكتوبة بالعربية، فنربط كلًّا منها بغلاف التصنيف المقابل. */
+const CATEGORY_COVER_KEY: Record<string, ActivityCategory> = {
+  "أمني": "SecurityAwareness",
+  "مكافحة المخدرات": "AntiDrugs",
+  "السلامة": "GeneralSafety",
 };
 
 export default function AwarenessArticleScreen() {
@@ -37,12 +46,19 @@ export default function AwarenessArticleScreen() {
 
   return (
     <View style={styles.screen}>
-      <LinearGradient
-        colors={[colors.primaryLight, colors.primary]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.cover}
-      >
+      <View style={styles.cover}>
+        <Image
+          source={CATEGORY_COVER[CATEGORY_COVER_KEY[article.category] ?? "SecurityAwareness"]}
+          style={StyleSheet.absoluteFill}
+          resizeMode="cover"
+          accessibilityIgnoresInvertColors
+        />
+        <LinearGradient
+          colors={["rgba(11,37,69,0.32)", "rgba(11,37,69,0.80)"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
         <PatternOverlay opacity={0.08} />
         <ScreenHeader title="التوعية" onDark />
         <View style={styles.coverBody}>
@@ -53,7 +69,7 @@ export default function AwarenessArticleScreen() {
           <Text style={styles.coverTitle}>{article.title}</Text>
           <Text style={styles.coverDate}>{formatArabicDate(article.publishedAt)}</Text>
         </View>
-      </LinearGradient>
+      </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={[styles.summaryCard, { borderRightColor: tint }]}>

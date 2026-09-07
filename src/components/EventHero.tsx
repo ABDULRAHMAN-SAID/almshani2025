@@ -1,7 +1,8 @@
-import { StyleSheet, Text, View } from "react-native";
+import { Image, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { CATEGORY_META } from "@/constants/categories";
+import { CATEGORY_COVER } from "@/constants/covers";
 import { colors, radius, spacing, typography } from "@/constants";
 import type { Activity } from "@/types/models";
 import { formatArabicTime, relativeDayLabel } from "@/utils/date";
@@ -20,12 +21,19 @@ export function EventHero({ activity, onViewDetails, onRegister }: EventHeroProp
   const meta = CATEGORY_META[activity.category];
 
   return (
-    <LinearGradient
-      colors={[colors.primaryLight, colors.primary, colors.primaryDark]}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={styles.card}
-    >
+    <View style={styles.card}>
+      <Image
+        source={CATEGORY_COVER[activity.category]}
+        style={StyleSheet.absoluteFill}
+        resizeMode="cover"
+        accessibilityIgnoresInvertColors
+      />
+      <LinearGradient
+        colors={["rgba(11,37,69,0.42)", "rgba(11,37,69,0.80)", "rgba(7,26,51,0.94)"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
       <PatternOverlay opacity={0.08} />
       <View style={styles.badge}>
         <Text style={styles.badgeText}>{relativeDayLabel(activity.date)}</Text>
@@ -55,7 +63,7 @@ export function EventHero({ activity, onViewDetails, onRegister }: EventHeroProp
         />
         <PrimaryButton label="التسجيل" onPress={onRegister} style={styles.registerButton} />
       </View>
-    </LinearGradient>
+    </View>
   );
 }
 

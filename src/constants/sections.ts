@@ -27,7 +27,7 @@ export const SECTION_DEFINITIONS: Record<string, SectionDefinition> = {
   lectures: {
     key: "lectures",
     title: "المحاضرات",
-    subtitle: "محاضرات توعوية وثقافية وتطوير ذات",
+    subtitle: "محاضرات توعوية وثقافية وتطوير الذات",
     categories: ["Lecture"],
     filters: [{ key: "all", label: "الكل", categories: [] }],
   },
