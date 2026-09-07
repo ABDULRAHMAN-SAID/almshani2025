@@ -119,7 +119,16 @@ create index if not exists points_transactions_user_idx on public.points_transac
 
 -- رمز حضور يُعرض في القاعة (QR أو يُدخل يدويًا) لتأكيد حضور محاضرة/نشاط فعليًا
 -- قبل منح نقاط 'lecture_attendance' / 'activity_participation'.
-alter table public.activities add column if not exists check_in_code text;
+--
+-- أمان: الرمز في جدول مستقل وليس عمودًا في activities، لأن activities مقروء
+-- للجميع؛ لو كان الرمز فيه لاستطاع أي مستخدم قراءته ومنح نفسه نقاط حضور دون
+-- أن يحضر. هذا الجدول عليه RLS بلا أي سياسة قراءة، فلا يصل إليه العميل إطلاقًا،
+-- ولا تقرأه إلا الدوال الموثوقة (security definer) أدناه.
+create table if not exists public.activity_checkin_codes (
+  activity_id uuid primary key references public.activities (id) on delete cascade,
+  code text not null,
+  updated_at timestamptz not null default now()
+);
 
 create table if not exists public.activity_checkins (
   id uuid primary key default gen_random_uuid(),
@@ -170,6 +179,8 @@ alter table public.awareness_articles enable row level security;
 alter table public.notifications enable row level security;
 alter table public.points_transactions enable row level security;
 alter table public.activity_checkins enable row level security;
+-- بلا أي سياسة: لا قراءة ولا كتابة من العميل مهما كان، فقط الدوال الموثوقة.
+alter table public.activity_checkin_codes enable row level security;
 alter table public.weekly_quizzes enable row level security;
 alter table public.quiz_questions enable row level security;
 alter table public.quiz_answers enable row level security;
@@ -269,7 +280,7 @@ declare
   v_expected text;
   v_points integer := 10;
 begin
-  select check_in_code into v_expected from activities where id = p_activity_id;
+  select code into v_expected from activity_checkin_codes where activity_id = p_activity_id;
   if v_expected is null or v_expected <> p_code then
     return query select false, 0;
     return;
@@ -291,3 +302,98 @@ begin
 end;
 $$;
 grant execute on function public.submit_check_in(uuid, text, points_reason) to authenticated;
+
+-- ============ صلاحية الإدارة ============
+-- رمز 1234 في التطبيق هو حاجز واجهة للنسخة التجريبية فقط، ولا يمنح أي صلاحية
+-- فعلية. الصلاحية الحقيقية هنا: الحساب مُدرج في جدول admins، وكل كتابة إدارية
+-- تمرّ عبر سياسة أو دالة تتحقق من ذلك على الخادم.
+create table if not exists public.admins (
+  user_id uuid primary key references public.users (id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+alter table public.admins enable row level security;
+create policy "admins read own row" on public.admins
+  for select using (auth.uid() = user_id);
+
+create or replace function public.is_admin()
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (select 1 from admins where user_id = auth.uid());
+$$;
+grant execute on function public.is_admin() to authenticated;
+
+-- كتابة المحتوى من لوحة الإدارة فقط
+create policy "activities admin write" on public.activities
+  for all using (public.is_admin()) with check (public.is_admin());
+create policy "activity_results admin write" on public.activity_results
+  for all using (public.is_admin()) with check (public.is_admin());
+create policy "announcements admin write" on public.announcements
+  for all using (public.is_admin()) with check (public.is_admin());
+create policy "awareness admin write" on public.awareness_articles
+  for all using (public.is_admin()) with check (public.is_admin());
+create policy "weekly_quizzes admin all" on public.weekly_quizzes
+  for all using (public.is_admin()) with check (public.is_admin());
+-- ملاحظة: quiz_questions تبقى بلا قراءة عامة (العميل يقرأ العرض الذي يخفي الإجابة)،
+-- والإدارة وحدها ترى الإجابة الصحيحة وتضيف الأسئلة.
+create policy "quiz_questions admin all" on public.quiz_questions
+  for all using (public.is_admin()) with check (public.is_admin());
+
+-- ============ دوال لوحة الإدارة ============
+-- ضبط رمز الحضور لنشاط. لا يُقرأ الرمز إلا من هنا حتى لا يتسرّب عبر جدول عام.
+create or replace function public.set_check_in_code(p_activity_id uuid, p_code text)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_admin() then
+    raise exception 'forbidden';
+  end if;
+  insert into activity_checkin_codes (activity_id, code)
+  values (p_activity_id, upper(trim(p_code)))
+  on conflict (activity_id) do update set code = excluded.code, updated_at = now();
+end;
+$$;
+grant execute on function public.set_check_in_code(uuid, text) to authenticated;
+
+create or replace function public.get_check_in_code(p_activity_id uuid)
+returns text language plpgsql security definer set search_path = public as $$
+declare v_code text;
+begin
+  if not public.is_admin() then
+    raise exception 'forbidden';
+  end if;
+  select code into v_code from activity_checkin_codes where activity_id = p_activity_id;
+  return v_code;
+end;
+$$;
+grant execute on function public.get_check_in_code(uuid) to authenticated;
+
+-- أعداد المسجّلين لكل نشاط — أرقام مجمّعة فقط، بلا أسماء أو أرقام هواتف.
+create or replace function public.admin_registration_counts()
+returns table (activity_id uuid, registered integer)
+language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_admin() then
+    raise exception 'forbidden';
+  end if;
+  return query
+    select r.activity_id, count(*)::int
+    from registrations r
+    where r.status = 'confirmed'
+    group by r.activity_id;
+end;
+$$;
+grant execute on function public.admin_registration_counts() to authenticated;
+
+-- إرسال إشعار لكل المستخدمين: صفّ لكل مستخدم في notifications.
+create or replace function public.broadcast_notification(p_title text, p_body text)
+returns integer language plpgsql security definer set search_path = public as $$
+declare v_count integer;
+begin
+  if not public.is_admin() then
+    raise exception 'forbidden';
+  end if;
+  insert into notifications (user_id, title, body)
+  select id, p_title, p_body from users;
+  get diagnostics v_count = row_count;
+  return v_count;
+end;
+$$;
+grant execute on function public.broadcast_notification(text, text) to authenticated;

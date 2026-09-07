@@ -1,153 +1,441 @@
-import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { useMemo, useState } from "react";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { PatternOverlay } from "@/components/PatternOverlay";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { BottomSheet } from "@/components/BottomSheet";
+import { EmptyState } from "@/components/EmptyState";
+import { FilterChips } from "@/components/FilterChips";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { tintBackground } from "@/constants/categories";
+import { SearchBar } from "@/components/SearchBar";
+import { SecondaryButton } from "@/components/SecondaryButton";
+import { CATEGORY_META, tintBackground } from "@/constants/categories";
 import { colors, radius, spacing, typography } from "@/constants";
 import { useAllActivities } from "@/hooks/useActivities";
-import { useNotifications } from "@/hooks/useNotifications";
+import { useAnnouncements, useNotifications } from "@/hooks/useNotifications";
+import { useLeaderboard } from "@/hooks/usePoints";
+import { deleteAnnouncement } from "@/services/adminService";
+import { fetchAwarenessLibrary } from "@/services/awarenessService";
 import { useAdminStore } from "@/store/adminStore";
-import { useRegistrationStore } from "@/store/registrationStore";
 import { showToast } from "@/store/toastStore";
+import { REGISTRATION_COLOR, REGISTRATION_LABEL } from "@/utils/registration";
 import { TODAY_ISO } from "@/utils/calendar";
+import { ACTIVITY_FORMS, pluralizeAr } from "@/utils/arabic";
+import type { Activity } from "@/types/models";
 
-/** لوحة الإدارة — لا يصل إليها المستخدم العادي، وتُفتح برمز في كل جلسة. */
+type AdminTab = "overview" | "activities" | "content" | "people";
+
+const TABS: { key: AdminTab; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+  { key: "overview", label: "نظرة عامة", icon: "speedometer-outline" },
+  { key: "activities", label: "الأنشطة", icon: "calendar-outline" },
+  { key: "content", label: "المحتوى", icon: "document-text-outline" },
+  { key: "people", label: "المشاركون", icon: "people-outline" },
+];
+
+const ACTIVITY_FILTERS = [
+  { key: "all", label: "الكل" },
+  { key: "open", label: "تسجيل مفتوح" },
+  { key: "upcoming", label: "قادمة" },
+  { key: "ended", label: "منتهية" },
+];
+
+/** لوحة تحكم الإدارة — الحاجز في app/admin/_layout.tsx، وهذه الشاشة هي اللوحة نفسها. */
 export default function AdminScreen() {
-  const isAdmin = useAdminStore((state) => state.isAdmin);
-  return isAdmin ? <Dashboard /> : <UnlockGate />;
-}
-
-function UnlockGate() {
-  const unlock = useAdminStore((state) => state.unlock);
-  const [code, setCode] = useState("");
-
-  const handleUnlock = () => {
-    if (unlock(code)) {
-      showToast("تم فتح لوحة الإدارة", "success");
-    } else {
-      showToast("الرمز غير صحيح", "error");
-      setCode("");
-    }
-  };
-
-  return (
-    <View style={styles.gateScreen}>
-      <PatternOverlay opacity={0.06} />
-      <ScreenHeader title="لوحة الإدارة" onDark />
-      <View style={styles.gateBody}>
-        <View style={styles.gateIcon}>
-          <Ionicons name="lock-closed-outline" size={28} color={colors.gold} />
-        </View>
-        <Text style={styles.gateTitle}>هذه الشاشة للإدارة فقط</Text>
-        <Text style={styles.gateHint}>أدخل رمز الإدارة للمتابعة</Text>
-        <TextInput
-          value={code}
-          onChangeText={setCode}
-          keyboardType="number-pad"
-          maxLength={6}
-          secureTextEntry
-          placeholder="••••"
-          placeholderTextColor={colors.textMuted}
-          style={styles.gateInput}
-          textAlign="center"
-        />
-        <PrimaryButton label="دخول" onPress={handleUnlock} disabled={!code} style={styles.gateButton} />
-        <Text style={styles.gateNote}>
-          في هذه النسخة التجريبية الرمز هو 1234؛ عند ربط Supabase يُستبدل بتحقق فعلي من صلاحية الحساب.
-        </Text>
-      </View>
-    </View>
-  );
-}
-
-function Dashboard() {
-  const { data: activities } = useAllActivities();
-  const { data: notifications } = useNotifications();
-  const registeredIds = useRegistrationStore((state) => state.registeredIds);
+  const [tab, setTab] = useState<AdminTab>("overview");
   const lock = useAdminStore((state) => state.lock);
-
-  const all = activities ?? [];
-  const upcoming = all.filter((activity) => activity.date >= TODAY_ISO);
-  const openRegistration = all.filter((activity) => activity.registrationStatus === "open");
-  const lectures = upcoming.filter((activity) => activity.category === "Lecture");
 
   return (
     <View style={styles.screen}>
       <ScreenHeader
-        title="لوحة الإدارة"
+        title="لوحة التحكم"
         action={
-          <Pressable accessibilityRole="button" onPress={lock} hitSlop={8}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="قفل لوحة الإدارة"
+            onPress={() => {
+              lock();
+              showToast("تم قفل لوحة الإدارة", "info");
+            }}
+            hitSlop={8}
+          >
             <Ionicons name="log-out-outline" size={20} color={colors.danger} />
           </Pressable>
         }
       />
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.statsGrid}>
-          <StatTile icon="calendar-outline" tint="#2C7A7B" value={String(upcoming.length)} label="أنشطة قادمة" />
-          <StatTile icon="checkmark-circle-outline" tint="#2F855A" value={String(openRegistration.length)} label="تسجيل مفتوح" />
-          <StatTile icon="mic-outline" tint="#0B2545" value={String(lectures.length)} label="محاضرات قادمة" />
-          <StatTile icon="bookmark-outline" tint="#C7A252" value={String(registeredIds.length)} label="تسجيلاتك" />
-          <StatTile icon="notifications-outline" tint="#9B2C2C" value={String((notifications ?? []).length)} label="إشعارات مرسلة" />
-          <StatTile icon="albums-outline" tint="#434190" value={String(all.length)} label="إجمالي الأنشطة" />
-        </View>
+      <View style={styles.tabBar}>
+        {TABS.map((item) => {
+          const active = item.key === tab;
+          return (
+            <Pressable
+              key={item.key}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: active }}
+              onPress={() => setTab(item.key)}
+              style={[styles.tab, active && styles.tabActive]}
+            >
+              <Ionicons
+                name={item.icon}
+                size={16}
+                color={active ? colors.textOnPrimary : colors.textMuted}
+              />
+              <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>{item.label}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
 
-        <Text style={styles.sectionLabel}>الإجراءات</Text>
-        <View style={{ gap: spacing.sm }}>
-          <ActionRow
-            icon="add-circle-outline"
-            label="إضافة نشاط جديد"
-            hint="مسابقة، محاضرة، فعالية رياضية أو رماية"
-            onPress={() => router.push("/admin/new-activity")}
-          />
-          <ActionRow
-            icon="megaphone-outline"
-            label="نشر إعلان"
-            hint="يظهر في الرئيسية وصفحة الإعلانات"
-            onPress={() => router.push("/admin/new-announcement")}
-          />
-          <ActionRow
-            icon="send-outline"
-            label="إرسال إشعار"
-            hint="يصل إلى مركز الإشعارات لدى المستخدمين"
-            onPress={() => router.push("/admin/send-notification")}
-          />
-        </View>
-
-        <Text style={styles.sectionLabel}>الأنشطة القادمة ({upcoming.length})</Text>
-        <View style={styles.listCard}>
-          {upcoming.slice(0, 8).map((activity, index) => (
-            <View key={activity.id}>
-              {index > 0 ? <View style={styles.divider} /> : null}
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => router.push(`/activity/${activity.id}`)}
-                style={styles.manageRow}
-              >
-                <Text style={styles.manageTitle} numberOfLines={1}>
-                  {activity.title}
-                </Text>
-                <Text style={styles.manageMeta}>
-                  {activity.registeredCount ?? 0}
-                  {activity.capacity ? ` / ${activity.capacity}` : ""} مسجّل
-                </Text>
-                <Ionicons name="chevron-back" size={16} color={colors.textMuted} />
-              </Pressable>
-            </View>
-          ))}
-        </View>
-
-        <Text style={styles.note}>
-          في وضع البيانات التجريبية تُحفظ الإضافات في ذاكرة الجلسة فقط. عند ربط Supabase تُكتب مباشرة في
-          قاعدة البيانات وتظهر لكل المستخدمين.
-        </Text>
-      </ScrollView>
+      {tab === "overview" ? <OverviewTab /> : null}
+      {tab === "activities" ? <ActivitiesTab /> : null}
+      {tab === "content" ? <ContentTab /> : null}
+      {tab === "people" ? <PeopleTab /> : null}
     </View>
   );
 }
+
+/* ============ نظرة عامة ============ */
+
+function OverviewTab() {
+  const { data: activities } = useAllActivities();
+  const { data: notifications } = useNotifications();
+  const { data: announcements } = useAnnouncements();
+
+  const all = activities ?? [];
+  const upcoming = all.filter((activity) => activity.date >= TODAY_ISO);
+  const openRegistration = all.filter((activity) => activity.registrationStatus === "open");
+  const lectures = upcoming.filter((activity) => activity.category === "Lecture");
+  const seatsTaken = all.reduce((sum, activity) => sum + (activity.registeredCount ?? 0), 0);
+  const withCode = all.filter((activity) => Boolean(activity.checkInCode)).length;
+
+  return (
+    <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <View style={styles.statsGrid}>
+        <StatTile icon="calendar-outline" tint="#2C7A7B" value={upcoming.length} label="أنشطة قادمة" />
+        <StatTile
+          icon="checkmark-circle-outline"
+          tint="#2F855A"
+          value={openRegistration.length}
+          label="تسجيل مفتوح"
+        />
+        <StatTile icon="mic-outline" tint="#0B2545" value={lectures.length} label="محاضرات قادمة" />
+        <StatTile icon="people-outline" tint="#C7A252" value={seatsTaken} label="مقاعد محجوزة" />
+        <StatTile icon="qr-code-outline" tint="#434190" value={withCode} label="أنشطة برمز حضور" />
+        <StatTile icon="albums-outline" tint="#8A6D2C" value={all.length} label="إجمالي الأنشطة" />
+        <StatTile
+          icon="megaphone-outline"
+          tint="#B7791F"
+          value={(announcements ?? []).length}
+          label="إعلانات منشورة"
+        />
+        <StatTile
+          icon="notifications-outline"
+          tint="#9B2C2C"
+          value={(notifications ?? []).length}
+          label="إشعارات مرسلة"
+        />
+        <StatTile icon="shield-checkmark-outline" tint="#276749" value={1} label="حسابات إدارية" />
+      </View>
+
+      <Text style={styles.sectionLabel}>إجراءات سريعة</Text>
+      <View style={{ gap: spacing.sm }}>
+        <ActionRow
+          icon="add-circle-outline"
+          label="إضافة نشاط جديد"
+          hint="مسابقة، محاضرة، فعالية رياضية أو رماية"
+          onPress={() => router.push("/admin/new-activity")}
+        />
+        <ActionRow
+          icon="megaphone-outline"
+          label="نشر إعلان"
+          hint="يظهر في الرئيسية وصفحة الإعلانات"
+          onPress={() => router.push("/admin/new-announcement")}
+        />
+        <ActionRow
+          icon="send-outline"
+          label="إرسال إشعار"
+          hint="يصل إلى مركز الإشعارات لدى كل المستخدمين"
+          onPress={() => router.push("/admin/send-notification")}
+        />
+        <ActionRow
+          icon="help-circle-outline"
+          label="إدارة السؤال الثقافي"
+          hint="أسئلة الأسبوع، الإجابة الصحيحة، فتح الأسبوع وإغلاقه"
+          onPress={() => router.push("/admin/quiz")}
+        />
+        <ActionRow
+          icon="bulb-outline"
+          label="نشر محتوى توعوي"
+          hint="مقال توعوي عام يظهر في تبويب التوعية"
+          onPress={() => router.push("/admin/awareness")}
+        />
+      </View>
+
+      <Text style={styles.sectionLabel}>أقرب الأنشطة</Text>
+      <View style={styles.listCard}>
+        {upcoming.slice(0, 5).map((activity, index) => (
+          <View key={activity.id}>
+            {index > 0 ? <View style={styles.divider} /> : null}
+            <ActivityRow activity={activity} />
+          </View>
+        ))}
+        {upcoming.length === 0 ? (
+          <EmptyState icon="calendar-outline" title="لا توجد أنشطة قادمة" />
+        ) : null}
+      </View>
+
+      <Text style={styles.note}>
+        في وضع البيانات التجريبية تُحفظ كل التعديلات في ذاكرة الجلسة فقط. عند ربط Supabase تُكتب مباشرة
+        في قاعدة البيانات وتظهر لكل المستخدمين، ولا تُقبل أي عملية إدارية إلا من حساب مُدرج في جدول
+        الإداريين.
+      </Text>
+    </ScrollView>
+  );
+}
+
+/* ============ الأنشطة ============ */
+
+function ActivitiesTab() {
+  const { data: activities } = useAllActivities();
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState("all");
+
+  const list = useMemo(() => {
+    const all = activities ?? [];
+    const text = query.trim();
+    return all
+      .filter((activity) => {
+        if (filter === "open") return activity.registrationStatus === "open";
+        if (filter === "upcoming") return activity.date >= TODAY_ISO;
+        if (filter === "ended") return activity.date < TODAY_ISO;
+        return true;
+      })
+      .filter((activity) => (text ? activity.title.includes(text) || activity.location.includes(text) : true))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }, [activities, filter, query]);
+
+  return (
+    <ScrollView
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+    >
+      <SearchBar value={query} onChangeText={setQuery} placeholder="ابحث باسم النشاط أو المكان..." />
+      <View style={styles.chipsRow}>
+        <FilterChips items={ACTIVITY_FILTERS} activeKey={filter} onChange={setFilter} />
+      </View>
+
+      <Text style={styles.resultCount}>{pluralizeAr(list.length, ACTIVITY_FORMS)}</Text>
+
+      {list.length === 0 ? (
+        <EmptyState icon="search-outline" title="لا نتائج" subtitle="جرّب كلمة أخرى أو غيّر الفلتر" />
+      ) : (
+        <View style={styles.listCard}>
+          {list.map((activity, index) => (
+            <View key={activity.id}>
+              {index > 0 ? <View style={styles.divider} /> : null}
+              <ActivityRow activity={activity} />
+            </View>
+          ))}
+        </View>
+      )}
+
+      <PrimaryButton
+        label="إضافة نشاط جديد"
+        onPress={() => router.push("/admin/new-activity")}
+        style={{ marginTop: spacing.lg }}
+      />
+    </ScrollView>
+  );
+}
+
+function ActivityRow({ activity }: { activity: Activity }) {
+  const meta = CATEGORY_META[activity.category];
+  const statusColor = REGISTRATION_COLOR[activity.registrationStatus];
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={() => router.push(`/admin/activity/${activity.id}`)}
+      style={({ pressed }) => [styles.manageRow, pressed && { opacity: 0.8 }]}
+    >
+      <View style={[styles.rowIcon, { backgroundColor: tintBackground(meta.tint) }]}>
+        <Ionicons name={meta.icon} size={17} color={meta.tint} />
+      </View>
+      <View style={styles.rowText}>
+        <Text style={styles.manageTitle} numberOfLines={1}>
+          {activity.title}
+        </Text>
+        <Text style={styles.manageMeta}>
+          {activity.date} · {activity.registeredCount ?? 0}
+          {activity.capacity ? ` / ${activity.capacity}` : ""} مسجّل
+        </Text>
+      </View>
+      <View style={[styles.pill, { backgroundColor: tintBackground(statusColor, 0.12) }]}>
+        <Text style={[styles.pillText, { color: statusColor }]}>
+          {REGISTRATION_LABEL[activity.registrationStatus]}
+        </Text>
+      </View>
+      <Ionicons name="chevron-back" size={16} color={colors.textMuted} />
+    </Pressable>
+  );
+}
+
+/* ============ المحتوى ============ */
+
+function ContentTab() {
+  const client = useQueryClient();
+  const { data: announcements } = useAnnouncements();
+  const { data: articles } = useQuery({
+    queryKey: ["awareness-library"],
+    queryFn: fetchAwarenessLibrary,
+  });
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; title: string } | null>(null);
+
+  const confirmDelete = async () => {
+    if (!pendingDelete) return;
+    await deleteAnnouncement(pendingDelete.id);
+    setPendingDelete(null);
+    client.invalidateQueries();
+    showToast("تم حذف الإعلان", "success");
+  };
+
+  return (
+    <>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <ActionRow
+          icon="help-circle-outline"
+          label="السؤال الثقافي الأسبوعي"
+          hint="عرض أسئلة الأسبوع وإجاباتها، وإضافة سؤال جديد"
+          onPress={() => router.push("/admin/quiz")}
+        />
+        <View style={{ height: spacing.sm }} />
+        <ActionRow
+          icon="bulb-outline"
+          label={`المحتوى التوعوي (${(articles ?? []).length})`}
+          hint="نشر مقال توعوي عام أو حذف مقال منشور"
+          onPress={() => router.push("/admin/awareness")}
+        />
+
+        <View style={styles.sectionRow}>
+          <Text style={styles.sectionLabel}>الإعلانات ({(announcements ?? []).length})</Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push("/admin/new-announcement")}
+            hitSlop={8}
+          >
+            <Ionicons name="add-circle-outline" size={22} color={colors.primary} />
+          </Pressable>
+        </View>
+
+        {(announcements ?? []).length === 0 ? (
+          <EmptyState icon="megaphone-outline" title="لا توجد إعلانات منشورة" />
+        ) : (
+          <View style={styles.listCard}>
+            {(announcements ?? []).map((announcement, index) => (
+              <View key={announcement.id}>
+                {index > 0 ? <View style={styles.divider} /> : null}
+                <View style={styles.manageRow}>
+                  <View style={styles.rowText}>
+                    <Text style={styles.manageTitle} numberOfLines={1}>
+                      {announcement.title}
+                    </Text>
+                    <Text style={styles.manageMeta}>
+                      {announcement.type} · {announcement.publishedAt}
+                    </Text>
+                  </View>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`حذف ${announcement.title}`}
+                    onPress={() => setPendingDelete({ id: announcement.id, title: announcement.title })}
+                    hitSlop={8}
+                  >
+                    <Ionicons name="trash-outline" size={18} color={colors.danger} />
+                  </Pressable>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+
+        <Text style={styles.note}>
+          المحتوى التوعوي عام فقط: إرشادات سلوكية بلا أي تفاصيل أمنية تشغيلية أو مواقع أو تفاصيل وحدات.
+        </Text>
+      </ScrollView>
+
+      <BottomSheet visible={Boolean(pendingDelete)} onClose={() => setPendingDelete(null)}>
+        <Text style={styles.sheetTitle}>حذف الإعلان</Text>
+        <Text style={styles.sheetBody}>
+          سيُحذف «{pendingDelete?.title}» نهائيًا ولن يظهر في الرئيسية ولا في صفحة الإعلانات.
+        </Text>
+        <PrimaryButton
+          label="حذف نهائيًا"
+          onPress={confirmDelete}
+          style={{ marginTop: spacing.lg, backgroundColor: colors.danger }}
+        />
+        <SecondaryButton
+          label="تراجع"
+          onPress={() => setPendingDelete(null)}
+          style={{ marginTop: spacing.sm }}
+        />
+      </BottomSheet>
+    </>
+  );
+}
+
+/* ============ المشاركون ============ */
+
+function PeopleTab() {
+  const { data: leaderboard } = useLeaderboard();
+  const rows = leaderboard ?? [];
+  const totalPoints = rows.reduce((sum, entry) => sum + entry.totalPoints, 0);
+
+  return (
+    <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <View style={styles.statsGrid}>
+        <StatTile icon="people-outline" tint="#2C5282" value={rows.length} label="مشاركون في النقاط" />
+        <StatTile icon="ribbon-outline" tint="#C7A252" value={totalPoints} label="مجموع النقاط" />
+        <StatTile
+          icon="trophy-outline"
+          tint="#2F855A"
+          value={rows[0]?.totalPoints ?? 0}
+          label="أعلى رصيد"
+        />
+      </View>
+
+      <Text style={styles.sectionLabel}>قائمة المتصدرين</Text>
+      {rows.length === 0 ? (
+        <EmptyState icon="trophy-outline" title="لا توجد نقاط بعد" />
+      ) : (
+        <View style={styles.listCard}>
+          {rows.slice(0, 10).map((entry, index) => (
+            <View key={entry.userId}>
+              {index > 0 ? <View style={styles.divider} /> : null}
+              <View style={styles.manageRow}>
+                <View style={styles.rankBadge}>
+                  <Text style={styles.rankText}>{entry.rank}</Text>
+                </View>
+                <Text style={[styles.manageTitle, { flex: 1 }]} numberOfLines={1}>
+                  {entry.name}
+                </Text>
+                <Text style={styles.pointsText}>{entry.totalPoints} نقطة</Text>
+              </View>
+            </View>
+          ))}
+        </View>
+      )}
+
+      <View style={styles.privacyCard}>
+        <Ionicons name="lock-closed-outline" size={18} color={colors.primary} />
+        <Text style={styles.privacyText}>
+          لا تعرض هذه اللوحة أرقام هواتف المستخدمين ولا بياناتهم الشخصية، ولا يوجد أي حقل للرتبة أو الرقم
+          العسكري أو جهة العمل. المتاح للإدارة هو الاسم ومجموع النقاط وأعداد التسجيل المجمّعة فقط.
+        </Text>
+      </View>
+    </ScrollView>
+  );
+}
+
+/* ============ عناصر مشتركة ============ */
 
 function StatTile({
   icon,
@@ -157,7 +445,7 @@ function StatTile({
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   tint: string;
-  value: string;
+  value: number;
   label: string;
 }) {
   return (
@@ -200,38 +488,27 @@ function ActionRow({
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  gateScreen: { flex: 1, backgroundColor: colors.primary },
-  gateBody: { flex: 1, alignItems: "center", justifyContent: "center", padding: spacing.xl, gap: spacing.sm },
-  gateIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "rgba(255,255,255,0.08)",
+  tabBar: {
+    flexDirection: "row",
+    gap: spacing.xs,
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+    backgroundColor: colors.surface,
+    borderRadius: radius.pill,
+    padding: 4,
+  },
+  tab: {
+    flex: 1,
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: spacing.md,
+    gap: 4,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.pill,
   },
-  gateTitle: { ...typography.h2, color: colors.textOnPrimary },
-  gateHint: { fontFamily: "Tajawal_400Regular", fontSize: 13.5, color: "rgba(255,255,255,0.7)" },
-  gateInput: {
-    width: "100%",
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    height: 56,
-    fontFamily: "Tajawal_700Bold",
-    fontSize: 22,
-    letterSpacing: 10,
-    marginTop: spacing.lg,
-  },
-  gateButton: { width: "100%", marginTop: spacing.md, backgroundColor: colors.accent },
-  gateNote: {
-    fontFamily: "Tajawal_400Regular",
-    fontSize: 12,
-    color: "rgba(255,255,255,0.6)",
-    textAlign: "center",
-    lineHeight: 19,
-    marginTop: spacing.lg,
-  },
+  tabActive: { backgroundColor: colors.primary },
+  tabLabel: { fontFamily: "Tajawal_500Medium", fontSize: 11.5, color: colors.textMuted },
+  tabLabelActive: { color: colors.textOnPrimary },
   content: { padding: spacing.lg, paddingTop: 0, paddingBottom: spacing.xxl },
   statsGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.md },
   tile: {
@@ -246,6 +523,7 @@ const styles = StyleSheet.create({
   tileValue: { fontFamily: "Tajawal_700Bold", fontSize: 20, color: colors.textPrimary },
   tileLabel: { ...typography.caption, fontSize: 11, textAlign: "center" },
   sectionLabel: { ...typography.h3, marginTop: spacing.xl, marginBottom: spacing.sm },
+  sectionRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   actionRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -259,8 +537,35 @@ const styles = StyleSheet.create({
   actionHint: { ...typography.caption },
   listCard: { backgroundColor: colors.surface, borderRadius: radius.lg, paddingHorizontal: spacing.lg },
   manageRow: { flexDirection: "row", alignItems: "center", gap: spacing.md, paddingVertical: spacing.md },
-  manageTitle: { ...typography.body, flex: 1 },
-  manageMeta: { ...typography.caption },
+  rowIcon: { width: 36, height: 36, borderRadius: radius.sm, alignItems: "center", justifyContent: "center" },
+  rowText: { flex: 1, gap: 2 },
+  manageTitle: { ...typography.body, fontFamily: "Tajawal_500Medium" },
+  manageMeta: { ...typography.caption, fontSize: 12 },
+  pill: { paddingHorizontal: spacing.sm, paddingVertical: 3, borderRadius: radius.pill },
+  pillText: { fontFamily: "Tajawal_500Medium", fontSize: 11 },
   divider: { height: 1, backgroundColor: colors.border },
+  chipsRow: { marginTop: spacing.md },
+  resultCount: { ...typography.caption, marginTop: spacing.md, marginBottom: spacing.sm },
+  rankBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.background,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  rankText: { fontFamily: "Tajawal_700Bold", fontSize: 12.5, color: colors.textPrimary },
+  pointsText: { fontFamily: "Tajawal_500Medium", fontSize: 13, color: colors.gold },
+  privacyCard: {
+    flexDirection: "row",
+    gap: spacing.md,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    padding: spacing.lg,
+    marginTop: spacing.xl,
+  },
+  privacyText: { ...typography.caption, flex: 1, lineHeight: 20 },
+  sheetTitle: { ...typography.h2, textAlign: "center" },
+  sheetBody: { ...typography.bodyMuted, textAlign: "center", marginTop: spacing.sm, lineHeight: 22 },
   note: { ...typography.caption, lineHeight: 20, marginTop: spacing.xl, textAlign: "center" },
 });
