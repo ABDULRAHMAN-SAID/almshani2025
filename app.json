@@ -10,7 +10,7 @@
     "splash": {
       "image": "./assets/images/logo/logo.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0B2545"
+      "backgroundColor": "#0A2340"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -26,8 +26,8 @@
     "android": {
       "package": "com.rafo.anshatati.salala",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/logo/logo.png",
-        "backgroundColor": "#0B2545"
+        "foregroundImage": "./assets/images/logo/adaptive-icon.png",
+        "backgroundColor": "#0A2340"
       },
       "permissions": [
         "RECORD_AUDIO",
@@ -41,6 +41,15 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/logo/logo.png",
+          "imageWidth": 220,
+          "resizeMode": "contain",
+          "backgroundColor": "#0A2340"
+        }
+      ],
       "expo-localization",
       [
         "expo-camera",
