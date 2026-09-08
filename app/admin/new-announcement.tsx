@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { router } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
+import { ImageField } from "@/components/ImageField";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { colors, radius, spacing, typography } from "@/constants";
@@ -9,6 +10,7 @@ import { addAnnouncement } from "@/services/adminService";
 import { useAdminSettingsStore } from "@/store/adminSettingsStore";
 import { showToast } from "@/store/toastStore";
 import type { AnnouncementType } from "@/types/models";
+import { toArabicMessage } from "@/utils/errors";
 
 const TYPES: AnnouncementType[] = ["تسجيل", "تنبيه", "نتائج", "عام"];
 
@@ -18,6 +20,7 @@ export default function NewAnnouncementScreen() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [type, setType] = useState<AnnouncementType>("عام");
+  const [image, setImage] = useState("");
   const [saving, setSaving] = useState(false);
 
   const canSave = title.trim().length > 3 && description.trim().length > 5;
@@ -25,11 +28,18 @@ export default function NewAnnouncementScreen() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await addAnnouncement({ title: title.trim(), description: description.trim(), type });
+      await addAnnouncement({
+        title: title.trim(),
+        description: description.trim(),
+        type,
+        image: image || undefined,
+      });
       client.invalidateQueries();
       logAction(`نشر إعلان: ${title.trim()}`);
       showToast("تم نشر الإعلان", "success");
       router.back();
+    } catch (error) {
+      showToast(toArabicMessage(error, "تعذّر نشر الإعلان"), "error");
     } finally {
       setSaving(false);
     }
@@ -58,6 +68,14 @@ export default function NewAnnouncementScreen() {
           style={[styles.input, styles.multiline]}
           multiline
           textAlign="right"
+        />
+
+        <ImageField
+          label="صورة الإعلان (اختياري)"
+          hint="تظهر داخل بطاقة الإعلان."
+          value={image}
+          onChange={setImage}
+          folder="announcements"
         />
 
         <Text style={styles.label}>نوع الإعلان</Text>

@@ -18,6 +18,7 @@ import { useRegistrationStore } from "@/store/registrationStore";
 import { showToast } from "@/store/toastStore";
 import { formatArabicDate, formatArabicTime, formatArabicWeekday, relativeDayLabel } from "@/utils/date";
 import { REGISTRATION_COLOR, REGISTRATION_LABEL } from "@/utils/registration";
+import { toArabicMessage } from "@/utils/errors";
 
 /** شاشة تفاصيل موحّدة لكل أنواع الأنشطة (مسابقة، محاضرة، رياضة، رماية...). */
 export default function ActivityDetailScreen() {
@@ -63,6 +64,9 @@ export default function ActivityDetailScreen() {
       else if (outcome === "already") showToast("أنت مسجّل في هذا النشاط بالفعل");
       else if (outcome === "full") showToast("اكتمل العدد في هذا النشاط", "error");
       else showToast("التسجيل مغلق لهذا النشاط", "error");
+    } catch (error) {
+      setConfirming(false);
+      showToast(toArabicMessage(error, "تعذّر إتمام التسجيل"), "error");
     } finally {
       setBusy(false);
     }
@@ -77,6 +81,8 @@ export default function ActivityDetailScreen() {
     try {
       await cancelRegistration(user.id, activity.id);
       showToast("تم إلغاء تسجيلك");
+    } catch (error) {
+      showToast(toArabicMessage(error, "تعذّر إلغاء التسجيل"), "error");
     } finally {
       setBusy(false);
     }
@@ -86,7 +92,7 @@ export default function ActivityDetailScreen() {
     <View style={styles.screen}>
       <View style={styles.cover}>
         <Image
-          source={CATEGORY_COVER[activity.category]}
+          source={activity.coverImage ? { uri: activity.coverImage } : CATEGORY_COVER[activity.category]}
           style={StyleSheet.absoluteFill}
           resizeMode="cover"
           accessibilityIgnoresInvertColors

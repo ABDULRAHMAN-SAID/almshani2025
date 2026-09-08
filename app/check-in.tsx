@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -9,6 +9,7 @@ import { colors, radius, spacing, typography } from "@/constants";
 import { useRefreshPoints } from "@/hooks/usePoints";
 import { findDemoCheckInActivity, submitCheckIn } from "@/services/checkinService";
 import { showToast } from "@/store/toastStore";
+import { toArabicMessage } from "@/utils/errors";
 
 /**
  * تسجيل حضور محاضرة/نشاط عبر مسح رمز QR يُعرض في القاعة، مع إدخال يدوي
@@ -21,10 +22,25 @@ export default function CheckInScreen() {
 
   const [permission, requestPermission] = useCameraPermissions();
   const [manualMode, setManualMode] = useState(false);
+  const [asking, setAsking] = useState(false);
   const [code, setCode] = useState("");
   const [scanned, setScanned] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const refreshPoints = useRefreshPoints();
+
+  // نطلب الإذن مرة واحدة عند فتح الشاشة بدل انتظار ضغطة إضافية من المستخدم.
+  useEffect(() => {
+    if (!permission || permission.granted || asking) return;
+    if (!permission.canAskAgain) {
+      // رُفض الإذن نهائيًا — لا فائدة من الطلب، ننقله للإدخال اليدوي مباشرة.
+      setManualMode(true);
+      return;
+    }
+    setAsking(true);
+    requestPermission().finally(() => setAsking(false));
+    // نطلبه مرة واحدة فقط عند أول حالة إذن معروفة.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [permission?.status]);
 
   const handleResult = async (scannedCode: string) => {
     if (submitting) return;
@@ -41,6 +57,9 @@ export default function CheckInScreen() {
         showToast("الرمز غير صحيح، تأكد منه وحاول مرة أخرى", "error");
         setScanned(false);
       }
+    } catch (error) {
+      setScanned(false);
+      showToast(toArabicMessage(error, "تعذّر تسجيل الحضور"), "error");
     } finally {
       setSubmitting(false);
     }
@@ -64,8 +83,23 @@ export default function CheckInScreen() {
           {!permission ? null : !permission.granted ? (
             <View style={styles.permissionBox}>
               <Ionicons name="camera-outline" size={32} color="rgba(255,255,255,0.7)" />
-              <Text style={styles.permissionText}>يحتاج مسح الرمز إلى إذن الكاميرا</Text>
-              <PrimaryButton label="السماح باستخدام الكاميرا" onPress={requestPermission} style={{ marginTop: spacing.md }} />
+              <Text style={styles.permissionText}>
+                {permission.canAskAgain
+                  ? "يحتاج مسح الرمز إلى إذن الكاميرا"
+                  : "إذن الكاميرا مرفوض. فعّله من إعدادات الهاتف، أو أدخل الرمز يدويًا."}
+              </Text>
+              {asking ? (
+                <ActivityIndicator color={colors.textOnPrimary} style={{ marginTop: spacing.md }} />
+              ) : (
+                <PrimaryButton
+                  label={permission.canAskAgain ? "السماح باستخدام الكاميرا" : "فتح إعدادات الهاتف"}
+                  onPress={() => {
+                    if (permission.canAskAgain) requestPermission();
+                    else Linking.openSettings();
+                  }}
+                  style={{ marginTop: spacing.md }}
+                />
+              )}
             </View>
           ) : (
             <CameraView
@@ -82,6 +116,12 @@ export default function CheckInScreen() {
             />
           )}
           <View style={styles.frame} pointerEvents="none" />
+          {submitting ? (
+            <View style={styles.scanBusy}>
+              <ActivityIndicator color={colors.textOnPrimary} />
+              <Text style={styles.scanBusyText}>جارٍ التحقق من الرمز…</Text>
+            </View>
+          ) : null}
         </View>
       ) : (
         <View style={styles.manualBox}>
@@ -146,6 +186,14 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.6)",
     borderRadius: radius.lg,
   },
+  scanBusy: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm,
+    backgroundColor: "rgba(6,23,41,0.62)",
+  },
+  scanBusyText: { ...typography.caption, color: colors.textOnPrimary },
   permissionBox: { alignItems: "center", paddingHorizontal: spacing.xl },
   permissionText: { color: "rgba(255,255,255,0.85)", fontFamily: "Tajawal_400Regular", fontSize: 13, marginTop: spacing.sm, textAlign: "center" },
   manualBox: { flex: 1, justifyContent: "center", paddingHorizontal: spacing.xl },

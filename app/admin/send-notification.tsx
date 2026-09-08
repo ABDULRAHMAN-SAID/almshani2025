@@ -9,6 +9,7 @@ import { useRefreshNotifications } from "@/hooks/useNotifications";
 import { sendNotification } from "@/services/adminService";
 import { useAdminSettingsStore } from "@/store/adminSettingsStore";
 import { showToast } from "@/store/toastStore";
+import { toArabicMessage } from "@/utils/errors";
 
 export default function SendNotificationScreen() {
   const refresh = useRefreshNotifications();
@@ -27,6 +28,8 @@ export default function SendNotificationScreen() {
       logAction(`إرسال إشعار: ${title.trim()}`);
       showToast("تم إرسال الإشعار", "success");
       router.back();
+    } catch (error) {
+      showToast(toArabicMessage(error, "تعذّر إرسال الإشعار"), "error");
     } finally {
       setSending(false);
     }

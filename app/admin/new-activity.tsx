@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
 import { router } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
+import { ImageField } from "@/components/ImageField";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { CATEGORY_META, tintBackground, type ActivityCategory } from "@/constants/categories";
@@ -10,6 +11,7 @@ import { addMockActivity } from "@/services/adminService";
 import { useAdminSettingsStore } from "@/store/adminSettingsStore";
 import { showToast } from "@/store/toastStore";
 import type { RegistrationState } from "@/types/models";
+import { toArabicMessage } from "@/utils/errors";
 
 const CATEGORY_KEYS = Object.keys(CATEGORY_META).filter((key) => key !== "Announcement") as ActivityCategory[];
 
@@ -34,6 +36,7 @@ export default function NewActivityScreen() {
   const [capacity, setCapacity] = useState("");
   const [status, setStatus] = useState<RegistrationState>(defaultStatus);
   const [isAnnual, setIsAnnual] = useState(false);
+  const [coverImage, setCoverImage] = useState("");
   const [saving, setSaving] = useState(false);
 
   const dateValid = /^\d{4}-\d{2}-\d{2}$/.test(date);
@@ -47,7 +50,7 @@ export default function NewActivityScreen() {
     }
     setSaving(true);
     try {
-      addMockActivity({
+      await addMockActivity({
         title: title.trim(),
         description: description.trim(),
         category,
@@ -59,11 +62,14 @@ export default function NewActivityScreen() {
         registeredCount: 0,
         registrationStatus: status,
         isAnnual,
+        coverImage: coverImage || undefined,
       });
       client.invalidateQueries();
       logAction(`إضافة نشاط: ${title.trim()}`);
       showToast("تمت إضافة النشاط", "success");
       router.back();
+    } catch (error) {
+      showToast(toArabicMessage(error, "تعذّرت إضافة النشاط"), "error");
     } finally {
       setSaving(false);
     }
@@ -113,6 +119,14 @@ export default function NewActivityScreen() {
           onChange={setCapacity}
           placeholder="60"
           numeric
+        />
+
+        <ImageField
+          label="صورة النشاط (اختياري)"
+          hint="تظهر في بطاقة النشاط وأعلى شاشة التفاصيل. إن تركتها فارغة يُستخدم غلاف التصنيف."
+          value={coverImage}
+          onChange={setCoverImage}
+          folder="activities"
         />
 
         <Text style={styles.label}>حالة التسجيل</Text>

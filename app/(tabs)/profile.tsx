@@ -11,6 +11,7 @@ import { useUnreadCount } from "@/hooks/useNotifications";
 import { useRegistrationStore } from "@/store/registrationStore";
 import { updateFullName } from "@/services/authService";
 import { showToast } from "@/store/toastStore";
+import { toArabicMessage } from "@/utils/errors";
 
 export default function ProfileScreen() {
   const { user, updateName, signOut } = useAuth();
@@ -37,6 +38,8 @@ export default function ProfileScreen() {
       updateName(nameDraft.trim());
       setEditing(false);
       showToast("تم تحديث الاسم بنجاح", "success");
+    } catch (error) {
+      showToast(toArabicMessage(error, "تعذّر تحديث الاسم"), "error");
     } finally {
       setSaving(false);
     }

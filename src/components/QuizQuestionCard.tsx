@@ -3,6 +3,8 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-nati
 import { Ionicons } from "@expo/vector-icons";
 import { colors, radius, spacing, typography } from "@/constants";
 import type { PublicQuizQuestion } from "@/services/quizService";
+import { showToast } from "@/store/toastStore";
+import { toArabicMessage } from "@/utils/errors";
 
 interface QuizQuestionCardProps {
   question: PublicQuizQuestion;
@@ -25,6 +27,9 @@ export function QuizQuestionCard({ question, index, total, initialResult, onSubm
     try {
       const res = await onSubmit(optionIndex);
       setResult(res);
+    } catch (error) {
+      setSelected(null);
+      showToast(toArabicMessage(error, "تعذّر إرسال إجابتك"), "error");
     } finally {
       setSubmitting(false);
     }

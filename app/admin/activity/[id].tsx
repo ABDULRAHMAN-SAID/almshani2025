@@ -5,6 +5,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { BottomSheet } from "@/components/BottomSheet";
 import { EmptyState } from "@/components/EmptyState";
+import { ImageField } from "@/components/ImageField";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { SecondaryButton } from "@/components/SecondaryButton";
@@ -22,6 +23,7 @@ import { useAdminSettingsStore } from "@/store/adminSettingsStore";
 import { showToast } from "@/store/toastStore";
 import { REGISTRATION_COLOR, REGISTRATION_LABEL } from "@/utils/registration";
 import type { ActivityResult, RegistrationState } from "@/types/models";
+import { toArabicMessage } from "@/utils/errors";
 
 const STATUS_OPTIONS: RegistrationState[] = ["open", "upcoming", "closed", "full", "ended"];
 const RANKS: { rank: 1 | 2 | 3; label: string; tint: string }[] = [
@@ -49,6 +51,7 @@ export default function ManageActivityScreen() {
   const [status, setStatus] = useState<RegistrationState>("open");
   const [isAnnual, setIsAnnual] = useState(false);
   const [code, setCode] = useState("");
+  const [coverImage, setCoverImage] = useState("");
   const [winners, setWinners] = useState<string[]>(["", "", ""]);
   const [saving, setSaving] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -67,6 +70,7 @@ export default function ManageActivityScreen() {
     setStatus(activity.registrationStatus);
     setIsAnnual(Boolean(activity.isAnnual));
     setCode(activity.checkInCode ?? "");
+    setCoverImage(activity.coverImage ?? "");
     setWinners(
       RANKS.map((entry) => activity.results?.find((r) => r.rank === entry.rank)?.winnerName ?? "")
     );
@@ -106,10 +110,13 @@ export default function ManageActivityScreen() {
         capacity: capacity ? Number(capacity) : undefined,
         registrationStatus: status,
         isAnnual,
+        coverImage,
       });
       client.invalidateQueries();
       logAction(`تعديل نشاط: ${title.trim()}`);
       showToast("تم حفظ التعديلات", "success");
+    } catch (error) {
+      showToast(toArabicMessage(error, "تعذّر حفظ التعديلات"), "error");
     } finally {
       setSaving(false);
     }
@@ -120,11 +127,15 @@ export default function ManageActivityScreen() {
       showToast("الرمز يجب أن يكون 4 خانات على الأقل", "error");
       return;
     }
-    const saved = await setCheckInCode(activity.id, code);
-    setCode(saved);
-    client.invalidateQueries();
-    logAction(`ضبط رمز حضور: ${activity.title}`);
-    showToast("تم حفظ رمز الحضور", "success");
+    try {
+      const saved = await setCheckInCode(activity.id, code);
+      setCode(saved);
+      client.invalidateQueries();
+      logAction(`ضبط رمز حضور: ${activity.title}`);
+      showToast("تم حفظ رمز الحضور", "success");
+    } catch (error) {
+      showToast(toArabicMessage(error, "تعذّر حفظ رمز الحضور"), "error");
+    }
   };
 
   const handleSaveResults = async () => {
@@ -132,19 +143,28 @@ export default function ManageActivityScreen() {
       rank: entry.rank,
       winnerName: winners[index],
     }));
-    await setActivityResults(activity.id, results);
-    client.invalidateQueries();
-    logAction(`تحديث نتائج: ${activity.title}`);
-    showToast("تم حفظ النتائج", "success");
+    try {
+      await setActivityResults(activity.id, results);
+      client.invalidateQueries();
+      logAction(`تحديث نتائج: ${activity.title}`);
+      showToast("تم حفظ النتائج", "success");
+    } catch (error) {
+      showToast(toArabicMessage(error, "تعذّر حفظ النتائج"), "error");
+    }
   };
 
   const handleDelete = async () => {
-    await deleteActivity(activity.id);
-    setConfirmingDelete(false);
-    client.invalidateQueries();
-    logAction(`حذف نشاط: ${activity.title}`);
-    showToast("تم حذف النشاط", "success");
-    router.back();
+    try {
+      await deleteActivity(activity.id);
+      setConfirmingDelete(false);
+      client.invalidateQueries();
+      logAction(`حذف نشاط: ${activity.title}`);
+      showToast("تم حذف النشاط", "success");
+      router.back();
+    } catch (error) {
+      setConfirmingDelete(false);
+      showToast(toArabicMessage(error, "تعذّر حذف النشاط"), "error");
+    }
   };
 
   return (
@@ -262,6 +282,14 @@ export default function ManageActivityScreen() {
         <Field label="وقت النهاية (اختياري)" value={endTime} onChange={setEndTime} placeholder="12:00" />
         <Field label="المكان" value={location} onChange={setLocation} placeholder="قاعة الأنشطة" />
         <Field label="عدد المقاعد (اختياري)" value={capacity} onChange={setCapacity} placeholder="60" numeric />
+
+        <ImageField
+          label="صورة النشاط"
+          hint="إن تركتها فارغة يُستخدم غلاف التصنيف تلقائيًا."
+          value={coverImage}
+          onChange={setCoverImage}
+          folder="activities"
+        />
 
         <Text style={styles.label}>حالة التسجيل</Text>
         <View style={styles.chipWrap}>

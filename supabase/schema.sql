@@ -1,4 +1,4 @@
--- أنشطتي | قاعة صلالة الجوية — مخطط قاعدة البيانات (Supabase / Postgres)
+-- أنشطتي | قاعدة صلالة الجوية — مخطط قاعدة البيانات (Supabase / Postgres)
 -- ملاحظة: لا يحتوي أي جدول على رتبة، رقم عسكري، جهة عمل، أو أي معلومة حساسة.
 
 create extension if not exists "pgcrypto";
@@ -397,3 +397,25 @@ begin
 end;
 $$;
 grant execute on function public.broadcast_notification(text, text) to authenticated;
+
+-- ============ تخزين الصور ============
+-- حاوية عامة للقراءة، والرفع والحذف للإدارة فقط. الصور هنا غير حساسة
+-- (أغلفة أنشطة وإعلانات ومقالات توعوية)، ولهذا القراءة مفتوحة.
+insert into storage.buckets (id, name, public)
+values ('activity-images', 'activity-images', true)
+on conflict (id) do nothing;
+
+create policy "activity images public read" on storage.objects
+  for select using (bucket_id = 'activity-images');
+
+create policy "activity images admin insert" on storage.objects
+  for insert with check (bucket_id = 'activity-images' and public.is_admin());
+
+create policy "activity images admin update" on storage.objects
+  for update using (bucket_id = 'activity-images' and public.is_admin());
+
+create policy "activity images admin delete" on storage.objects
+  for delete using (bucket_id = 'activity-images' and public.is_admin());
+
+-- صورة اختيارية للإعلان (الأنشطة والمقالات لديها عمود الصورة أصلًا)
+alter table public.announcements add column if not exists image text;

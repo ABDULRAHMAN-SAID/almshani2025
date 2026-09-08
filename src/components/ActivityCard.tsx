@@ -24,7 +24,7 @@ export function ActivityCard({ activity, onPress }: ActivityCardProps) {
       style={({ pressed }) => [styles.card, shadow.card, pressed && styles.pressed]}
     >
       <Image
-        source={CATEGORY_COVER[activity.category]}
+        source={activity.coverImage ? { uri: activity.coverImage } : CATEGORY_COVER[activity.category]}
         style={styles.thumb}
         resizeMode="cover"
         accessibilityIgnoresInvertColors

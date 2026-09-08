@@ -52,6 +52,8 @@ export interface Announcement {
   title: string;
   description: string;
   type: AnnouncementType;
+  /** صورة مرفقة اختيارية — تُرفع من لوحة الإدارة. */
+  image?: string;
   publishedAt: string;
 }
 

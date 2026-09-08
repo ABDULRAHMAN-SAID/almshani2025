@@ -12,6 +12,7 @@ import { deleteAwarenessArticle, publishAwarenessArticle } from "@/services/admi
 import { fetchAwarenessLibrary } from "@/services/awarenessService";
 import { useAdminSettingsStore } from "@/store/adminSettingsStore";
 import { showToast } from "@/store/toastStore";
+import { toArabicMessage } from "@/utils/errors";
 
 const CATEGORIES = [
   { key: "أمني", label: "التثقيف الأمني", icon: "shield-checkmark-outline" as const, tint: "#434190" },
@@ -54,6 +55,8 @@ export default function AdminAwarenessScreen() {
       client.invalidateQueries();
       logAction(`نشر مقال توعوي: ${title.trim()}`);
       showToast("تم نشر المقال التوعوي", "success");
+    } catch (error) {
+      showToast(toArabicMessage(error, "تعذّر نشر المقال"), "error");
     } finally {
       setSaving(false);
     }
@@ -61,11 +64,16 @@ export default function AdminAwarenessScreen() {
 
   const confirmDelete = async () => {
     if (!pendingDelete) return;
-    await deleteAwarenessArticle(pendingDelete.id);
-    logAction(`حذف مقال توعوي: ${pendingDelete.title}`);
-    setPendingDelete(null);
-    client.invalidateQueries();
-    showToast("تم حذف المقال", "success");
+    try {
+      await deleteAwarenessArticle(pendingDelete.id);
+      logAction(`حذف مقال توعوي: ${pendingDelete.title}`);
+      client.invalidateQueries();
+      showToast("تم حذف المقال", "success");
+    } catch (error) {
+      showToast(toArabicMessage(error, "تعذّر حذف المقال"), "error");
+    } finally {
+      setPendingDelete(null);
+    }
   };
 
   return (

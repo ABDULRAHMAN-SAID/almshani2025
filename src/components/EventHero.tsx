@@ -23,7 +23,7 @@ export function EventHero({ activity, onViewDetails, onRegister }: EventHeroProp
   return (
     <View style={styles.card}>
       <Image
-        source={CATEGORY_COVER[activity.category]}
+        source={activity.coverImage ? { uri: activity.coverImage } : CATEGORY_COVER[activity.category]}
         style={StyleSheet.absoluteFill}
         resizeMode="cover"
         accessibilityIgnoresInvertColors

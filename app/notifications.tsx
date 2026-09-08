@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useNotifications, useRefreshNotifications, useUnreadCount } from "@/hooks/useNotifications";
 import { markAllNotificationsRead, markNotificationRead } from "@/services/notificationService";
 import { showToast } from "@/store/toastStore";
+import { toArabicMessage } from "@/utils/errors";
 
 export default function NotificationsScreen() {
   const { user } = useAuth();
@@ -16,15 +17,23 @@ export default function NotificationsScreen() {
 
   const handleMarkAll = async () => {
     if (!user || unread === 0) return;
-    await markAllNotificationsRead(user.id);
-    refresh();
-    showToast("تم تعليم كل الإشعارات كمقروءة", "success");
+    try {
+      await markAllNotificationsRead(user.id);
+      refresh();
+      showToast("تم تعليم كل الإشعارات كمقروءة", "success");
+    } catch (error) {
+      showToast(toArabicMessage(error, "تعذّر تحديث الإشعارات"), "error");
+    }
   };
 
   const handleOpen = async (id: string) => {
     if (!user) return;
-    await markNotificationRead(user.id, id);
-    refresh();
+    try {
+      await markNotificationRead(user.id, id);
+      refresh();
+    } catch {
+      // تعليم إشعار كمقروء تفصيل ثانوي — لا نزعج المستخدم برسالة إن فشل.
+    }
   };
 
   return (

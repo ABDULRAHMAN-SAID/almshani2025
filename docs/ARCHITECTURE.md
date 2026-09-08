@@ -148,19 +148,25 @@ Admin (دخول بدور «إدارة» من شاشة الدخول، ثم رمز
 المصدر الموحّد: `src/constants/`.
 
 ```ts
-// الألوان
-Primary        #0B2545   (كحلي داكن)
-PrimaryDark    #071A33
-Accent         #A11D2C   (أحمر عماني)
-Gold           #C7A252   (لمسات ذهبية للجوائز/الأحداث المهمة فقط)
-Background     #F5F6F8
+// سلّم الأزرق البحري — العمق يأتي من التدرّج لا من ألوان جديدة
+navy 900 #061729 · 800 #0A2340 · 700 #123253 · 600 #1C4468
+     500 #2C5C85 · 300 #7FA3C4 · 100 #DDE7F1 · 50 #EEF3F8
+
+// الفيروزي البحري — للروابط والحالات النشطة، بقلّة
+marine 600 #0F6E7B · 500 #158A99 · 300 #6EBFC9 · 100 #DCEFF2
+
+Primary        navy 800   (الأساس الرسمي)
+Accent         #A11D2C    (أحمر عماني — للتحذير والتأكيد الحاسم فقط)
+Gold           #B8912F    (الجوائز والمراكز فقط)
+Background     #F2F5F9    (رمادي مائل للأزرق، لا رمادي محايد)
 Surface(Card)  #FFFFFF
-Border         #E4E7EC
-TextPrimary    #18202A
-TextMuted      #75808F
-Success        #1E8E5A
-Warning        #B7791F
-Danger         #B3261E
+Border         #D8E1EC
+TextPrimary    #0E1C2B
+TextSecondary  #3C5570
+TextMuted      #6B819A
+Success        #137A56 (+ successSoft)
+Warning        #9A6B14 (+ warningSoft)
+Danger         #A32218 (+ dangerSoft)
 
 // المسافات (spacing scale, 4px base)
 xs 4 · sm 8 · md 12 · lg 16 · xl 24 · xxl 32
@@ -247,6 +253,17 @@ Sports | Shooting | Lecture | AntiDrugs | GeneralSafety | Announcement
 الخلفية الحقيقية: تنفيذ `supabase/schema.sql`، تعبئة مفاتيح `.env`، وضبط
 `EXPO_PUBLIC_USE_MOCK_DATA=false` — عندها تقرأ كل الشاشات من قاعدة البيانات
 بدل البيانات التجريبية دون تعديل أي كود واجهة.
+
+### الأمور التشغيلية
+
+| الأمر | كيف يعمل |
+|---|---|
+| **رفع الصور** | `expo-image-picker` للاختيار، و`uploadService` للرفع. في وضع البيانات التجريبية يُرجع المسار المحلي، وفي الإنتاج يرفع إلى حاوية `activity-images` في Supabase Storage ويعيد الرابط العام. الحد 3 ميجابايت بعد الضغط. |
+| **مسح رمز QR** | `expo-camera` مع طلب الإذن تلقائيًا عند فتح الشاشة. إن رُفض الإذن نهائيًا يُفتح إعدادات الهاتف، ويبقى الإدخال اليدوي متاحًا دائمًا كبديل. |
+| **الاتصال** | `useConnection` عبر NetInfo، مربوط بـ `onlineManager` في React Query — فتتوقف المحاولات عند الانقطاع وتُستأنف تلقائيًا. `OfflineBanner` يظهر أعلى التطبيق. |
+| **أخطاء الخادم** | `toArabicMessage` يترجم أخطاء Postgres وSupabase وHTTP إلى رسائل عربية. **كل** نداء خدمة في الشاشات له `catch` يعرضها. |
+| **إعادة المحاولة** | استعلامات React Query تعيد المحاولة مرتين بتباعد متزايد، و`QueryState` يعرض زر «إعادة المحاولة» عند الفشل. |
+| **إرسال الإشعارات** | `broadcast_notification` تكتب صفًا لكل مستخدم داخل الخادم. الفشل يظهر كرسالة، ولا يُترك الزر صامتًا. |
 
 ### الوصول للوحة الإدارة
 شاشة الدخول تعرض خيارين: **مستخدم** و**إدارة**.

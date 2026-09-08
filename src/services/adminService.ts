@@ -33,6 +33,7 @@ export type ActivityPatch = Partial<
     | "capacity"
     | "registrationStatus"
     | "isAnnual"
+    | "coverImage"
   >
 >;
 
@@ -46,6 +47,7 @@ const toRow = (patch: ActivityPatch) => ({
   ...(patch.capacity !== undefined && { capacity: patch.capacity }),
   ...(patch.registrationStatus !== undefined && { registration_status: patch.registrationStatus }),
   ...(patch.isAnnual !== undefined && { is_annual: patch.isAnnual }),
+  ...(patch.coverImage !== undefined && { cover_image: patch.coverImage || null }),
 });
 
 /* ============ الأنشطة ============ */
@@ -195,6 +197,7 @@ export async function addAnnouncement(
       title: announcement.title,
       description: announcement.description,
       type: announcement.type,
+      image: announcement.image || null,
     });
     if (error) throw error;
     return announcement;

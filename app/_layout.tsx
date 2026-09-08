@@ -6,6 +6,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
+import { OfflineBanner } from "@/components/OfflineBanner";
 import { ToastHost } from "@/components/ToastHost";
 import { colors } from "@/constants";
 
@@ -18,7 +19,14 @@ if (!I18nManager.isRTL) {
 }
 
 const queryClient = new QueryClient({
-  defaultOptions: { queries: { staleTime: 60_000, retry: 1 } },
+  defaultOptions: {
+    queries: {
+      staleTime: 60_000,
+      // محاولتان إضافيتان بتباعد متزايد — تكفيان لانقطاع لحظي دون إبطاء الفشل الحقيقي.
+      retry: 2,
+      retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 5000),
+    },
+  },
 });
 
 export default function RootLayout() {
@@ -39,6 +47,7 @@ export default function RootLayout() {
     <SafeAreaProvider onLayout={onLayoutRootView}>
       <QueryClientProvider client={queryClient}>
         <StatusBar style="light" backgroundColor={colors.primary} />
+        <OfflineBanner />
         <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }} />
         <ToastHost />
       </QueryClientProvider>

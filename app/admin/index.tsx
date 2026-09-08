@@ -24,6 +24,7 @@ import { REGISTRATION_COLOR, REGISTRATION_LABEL } from "@/utils/registration";
 import { TODAY_ISO } from "@/utils/calendar";
 import { ACTIVITY_FORMS, pluralizeAr } from "@/utils/arabic";
 import type { Activity } from "@/types/models";
+import { toArabicMessage } from "@/utils/errors";
 
 type AdminTab = "overview" | "activities" | "content" | "people" | "settings";
 
@@ -298,11 +299,16 @@ function ContentTab() {
 
   const confirmDelete = async () => {
     if (!pendingDelete) return;
-    await deleteAnnouncement(pendingDelete.id);
-    logAction(`حذف إعلان: ${pendingDelete.title}`);
-    setPendingDelete(null);
-    client.invalidateQueries();
-    showToast("تم حذف الإعلان", "success");
+    try {
+      await deleteAnnouncement(pendingDelete.id);
+      logAction(`حذف إعلان: ${pendingDelete.title}`);
+      client.invalidateQueries();
+      showToast("تم حذف الإعلان", "success");
+    } catch (error) {
+      showToast(toArabicMessage(error, "تعذّر حذف الإعلان"), "error");
+    } finally {
+      setPendingDelete(null);
+    }
   };
 
   return (

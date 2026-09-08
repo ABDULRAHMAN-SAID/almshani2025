@@ -11,6 +11,7 @@ import { addQuizQuestion, deleteQuizQuestion, fetchAdminQuiz, setQuizStatus } fr
 import { useAdminSettingsStore } from "@/store/adminSettingsStore";
 import { showToast } from "@/store/toastStore";
 import { pluralizeAr, QUESTION_FORMS } from "@/utils/arabic";
+import { toArabicMessage } from "@/utils/errors";
 
 const OPTION_LABELS = ["الخيار الأول", "الخيار الثاني", "الخيار الثالث", "الخيار الرابع"];
 
@@ -69,6 +70,8 @@ export default function AdminQuizScreen() {
       client.invalidateQueries();
       logAction("إضافة سؤال ثقافي");
       showToast("تمت إضافة السؤال", "success");
+    } catch (error) {
+      showToast(toArabicMessage(error, "تعذّرت إضافة السؤال"), "error");
     } finally {
       setSaving(false);
     }
@@ -76,17 +79,25 @@ export default function AdminQuizScreen() {
 
   const handleToggleStatus = async () => {
     const next = quiz.status === "open" ? "closed" : "open";
-    await setQuizStatus(quiz.id, next);
-    client.invalidateQueries();
-    logAction(next === "open" ? "فتح أسبوع المسابقة" : "إغلاق أسبوع المسابقة");
-    showToast(next === "open" ? "تم فتح أسبوع المسابقة" : "تم إغلاق أسبوع المسابقة", "success");
+    try {
+      await setQuizStatus(quiz.id, next);
+      client.invalidateQueries();
+      logAction(next === "open" ? "فتح أسبوع المسابقة" : "إغلاق أسبوع المسابقة");
+      showToast(next === "open" ? "تم فتح أسبوع المسابقة" : "تم إغلاق أسبوع المسابقة", "success");
+    } catch (error) {
+      showToast(toArabicMessage(error, "تعذّر تغيير حالة المسابقة"), "error");
+    }
   };
 
   const handleDelete = async (id: string) => {
-    await deleteQuizQuestion(id);
-    client.invalidateQueries();
-    logAction("حذف سؤال ثقافي");
-    showToast("تم حذف السؤال", "success");
+    try {
+      await deleteQuizQuestion(id);
+      client.invalidateQueries();
+      logAction("حذف سؤال ثقافي");
+      showToast("تم حذف السؤال", "success");
+    } catch (error) {
+      showToast(toArabicMessage(error, "تعذّر حذف السؤال"), "error");
+    }
   };
 
   return (

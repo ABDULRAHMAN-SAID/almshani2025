@@ -15,6 +15,7 @@ import { deleteNotification } from "@/services/notificationService";
 import { useAdminSettingsStore } from "@/store/adminSettingsStore";
 import { showToast } from "@/store/toastStore";
 import type { AppNotification } from "@/types/models";
+import { toArabicMessage } from "@/utils/errors";
 
 /** مراجعة الإشعارات المرسلة: حذف ما لم يعد مناسبًا، أو إعادة إرسال إشعار سابق. */
 export default function AdminNotificationsScreen() {
@@ -27,18 +28,27 @@ export default function AdminNotificationsScreen() {
 
   const confirmDelete = async () => {
     if (!pendingDelete) return;
-    await deleteNotification(pendingDelete.id);
-    logAction(`حذف إشعار: ${pendingDelete.title}`);
-    setPendingDelete(null);
-    client.invalidateQueries();
-    showToast("تم حذف الإشعار", "success");
+    try {
+      await deleteNotification(pendingDelete.id);
+      logAction(`حذف إشعار: ${pendingDelete.title}`);
+      client.invalidateQueries();
+      showToast("تم حذف الإشعار", "success");
+    } catch (error) {
+      showToast(toArabicMessage(error, "تعذّر حذف الإشعار"), "error");
+    } finally {
+      setPendingDelete(null);
+    }
   };
 
   const resend = async (notification: AppNotification) => {
-    await sendNotification(notification.title, notification.body);
-    logAction(`إعادة إرسال إشعار: ${notification.title}`);
-    client.invalidateQueries();
-    showToast("تمت إعادة إرسال الإشعار", "success");
+    try {
+      await sendNotification(notification.title, notification.body);
+      logAction(`إعادة إرسال إشعار: ${notification.title}`);
+      client.invalidateQueries();
+      showToast("تمت إعادة إرسال الإشعار", "success");
+    } catch (error) {
+      showToast(toArabicMessage(error, "تعذّرت إعادة الإرسال"), "error");
+    }
   };
 
   return (

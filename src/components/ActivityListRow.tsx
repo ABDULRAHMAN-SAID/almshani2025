@@ -27,7 +27,7 @@ export function ActivityListRow({ activity, showDate, onPress }: ActivityListRow
     >
       <View style={styles.thumbWrap}>
         <Image
-          source={CATEGORY_COVER[activity.category]}
+          source={activity.coverImage ? { uri: activity.coverImage } : CATEGORY_COVER[activity.category]}
           style={StyleSheet.absoluteFill}
           resizeMode="cover"
           accessibilityIgnoresInvertColors
