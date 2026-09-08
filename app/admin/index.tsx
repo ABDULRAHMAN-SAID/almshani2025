@@ -506,6 +506,12 @@ function SettingsTab() {
           onPress={() => router.push("/admin/notifications")}
         />
         <ActionRow
+          icon="pulse-outline"
+          label="فحص الربط"
+          hint="هل يقرأ التطبيق من الخادم فعلًا؟ الجلسة والصلاحية والمرفقات"
+          onPress={() => router.push("/admin/connection")}
+        />
+        <ActionRow
           icon="call-outline"
           label="بيانات التواصل"
           hint="الأرقام والبريد التي تظهر في شاشة «تواصل معنا»"
