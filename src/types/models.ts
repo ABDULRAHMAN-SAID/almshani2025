@@ -1,5 +1,20 @@
 import type { ActivityCategory } from "@/constants/categories";
 
+/** أنواع المرفقات المدعومة. */
+export type MediaKind = "image" | "video" | "audio" | "file";
+
+/** مرفق بعد الرفع — يُخزَّن مع الرسالة أو المشاركة أو الإعلان. */
+export interface MediaAttachment {
+  id: string;
+  kind: MediaKind;
+  url: string;
+  name: string;
+  mimeType: string;
+  size?: number;
+  /** مدة الفيديو أو الصوت بالمللي ثانية. */
+  durationMs?: number;
+}
+
 /** المستخدم — بدون رتبة أو رقم عسكري أو جهة عمل، بحسب متطلبات الخصوصية. */
 export interface User {
   id: string;
@@ -54,6 +69,8 @@ export interface Announcement {
   type: AnnouncementType;
   /** صورة مرفقة اختيارية — تُرفع من لوحة الإدارة. */
   image?: string;
+  /** مرفقات الإعلان: فيديو أو مقطع صوتي أو ملف. */
+  attachments?: MediaAttachment[];
   publishedAt: string;
 }
 
@@ -145,4 +162,60 @@ export interface QuizAnswer {
   isCorrect: boolean;
   pointsEarned: number;
   answeredAt: string;
+}
+
+/* ============ مراسلة الإدارة ============ */
+
+export type MessageKind = "اقتراح" | "طلب" | "استفسار" | "ملاحظة";
+
+export type MessageStatus = "new" | "read" | "answered";
+
+/**
+ * رسالة يكتبها المستخدم إلى قسم الأنشطة. مراسلة رسمية باتجاه واحد:
+ * لا يراها إلا صاحبها والإدارة، ولا يوجد أي مسار مراسلة بين المستخدمين.
+ */
+export interface UserMessage {
+  id: string;
+  userId: string;
+  userName: string;
+  kind: MessageKind;
+  subject: string;
+  body: string;
+  attachments: MediaAttachment[];
+  status: MessageStatus;
+  reply?: { body: string; repliedAt: string };
+  createdAt: string;
+}
+
+/* ============ المجموعات النقاشية المُدارة ============ */
+
+/** من يستطيع الكتابة في المجموعة. */
+export type GroupAudience = "all" | "registered";
+
+export interface DiscussionGroup {
+  id: string;
+  title: string;
+  topic: string;
+  description: string;
+  coverImage?: string;
+  audience: GroupAudience;
+  /** ربط اختياري بنشاط — يجعل المجموعة خاصة بالمسجّلين فيه. */
+  activityId?: string;
+  /** مقفلة: يُقرأ النقاش ولا يُكتب فيه. */
+  locked: boolean;
+  postCount: number;
+  createdAt: string;
+}
+
+export interface GroupPost {
+  id: string;
+  groupId: string;
+  authorId: string;
+  authorName: string;
+  body: string;
+  attachments: MediaAttachment[];
+  pinned: boolean;
+  /** بلاغات المستخدمين — تظهر للإدارة فقط. */
+  reportCount: number;
+  createdAt: string;
 }

@@ -12,12 +12,15 @@
       "resizeMode": "contain",
       "backgroundColor": "#0B2545"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.rafo.anshatati.salala",
       "infoPlist": {
-        "CFBundleAllowMixedLocalizations": true
+        "CFBundleAllowMixedLocalizations": true,
+        "NSMicrophoneUsageDescription": "يستخدم التطبيق الميكروفون لتسجيل مقطع صوتي قصير عند إرفاقه بمشاركة أو رسالة."
       }
     },
     "android": {
@@ -25,7 +28,12 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/logo/logo.png",
         "backgroundColor": "#0B2545"
-      }
+      },
+      "permissions": [
+        "RECORD_AUDIO",
+        "CAMERA",
+        "INTERNET"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -38,6 +46,19 @@
         "expo-camera",
         {
           "cameraPermission": "يستخدم التطبيق الكاميرا لمسح رمز الحضور (QR) عند المحاضرات والأنشطة فقط."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "يستخدم التطبيق مكتبة الصور لإرفاق صورة أو مقطع فيديو بالإعلانات والمشاركات.",
+          "microphonePermission": "يستخدم التطبيق الميكروفون لتسجيل مقطع صوتي عند إرفاقه بمشاركة أو رسالة."
+        }
+      ],
+      [
+        "expo-av",
+        {
+          "microphonePermission": "يستخدم التطبيق الميكروفون لتسجيل مقطع صوتي قصير عند إرفاقه بمشاركة أو رسالة."
         }
       ]
     ],

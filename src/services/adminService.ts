@@ -198,6 +198,7 @@ export async function addAnnouncement(
       description: announcement.description,
       type: announcement.type,
       image: announcement.image || null,
+      attachments: announcement.attachments ?? [],
     });
     if (error) throw error;
     return announcement;

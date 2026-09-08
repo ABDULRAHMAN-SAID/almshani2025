@@ -25,6 +25,7 @@ import {
 import { usePointsBalance } from "@/hooks/usePoints";
 import { useWeeklyQuiz } from "@/hooks/useWeeklyQuiz";
 import { getAnsweredState } from "@/services/quizService";
+import { useAdminSettingsStore } from "@/store/adminSettingsStore";
 import { formatArabicWeekday } from "@/utils/date";
 
 /** وجهة كل قسم في شبكة الأيقونات. */
@@ -38,6 +39,9 @@ const SECTION_ROUTES: Record<string, string> = {
   safety: "/sections/safety",
   announcements: "/announcements",
   quiz: "/quiz",
+  groups: "/groups",
+  messages: "/compose",
+  contact: "/contact",
 };
 
 export default function HomeScreen() {
@@ -49,6 +53,9 @@ export default function HomeScreen() {
   const thisWeek = useThisWeekActivities();
   const points = usePointsBalance();
   const weeklyQuiz = useWeeklyQuiz();
+  const discussionEnabled = useAdminSettingsStore((state) => state.discussionEnabled);
+  const messagesEnabled = useAdminSettingsStore((state) => state.messagesEnabled);
+  const quizEnabled = useAdminSettingsStore((state) => state.quizEnabled);
 
   const answeredCount = weeklyQuiz.data?.questions.filter((question) => getAnsweredState(question.id)).length ?? 0;
 
@@ -56,6 +63,14 @@ export default function HomeScreen() {
     const route = SECTION_ROUTES[key];
     if (route) router.push(route as never);
   };
+
+  // الأقسام التي تستطيع الإدارة إيقافها تختفي من الشبكة كليًا حين تُوقَف.
+  const sections = HOME_SECTIONS.filter((section) => {
+    if (section.key === "groups") return discussionEnabled;
+    if (section.key === "messages") return messagesEnabled;
+    if (section.key === "quiz") return quizEnabled;
+    return true;
+  });
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -74,7 +89,7 @@ export default function HomeScreen() {
       </HeaderBand>
 
       <View style={styles.grid}>
-        {HOME_SECTIONS.map((section) => (
+        {sections.map((section) => (
           <View key={section.key} style={styles.gridItem}>
             <CategoryCard
               label={section.label}

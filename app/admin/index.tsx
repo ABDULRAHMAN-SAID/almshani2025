@@ -17,6 +17,7 @@ import { useAnnouncements, useNotifications } from "@/hooks/useNotifications";
 import { useLeaderboard } from "@/hooks/usePoints";
 import { deleteAnnouncement } from "@/services/adminService";
 import { fetchAwarenessLibrary } from "@/services/awarenessService";
+import { fetchAllMessages } from "@/services/messageService";
 import { useAdminSettingsStore } from "@/store/adminSettingsStore";
 import { useAdminStore } from "@/store/adminStore";
 import { showToast } from "@/store/toastStore";
@@ -105,6 +106,8 @@ function OverviewTab() {
   const { data: activities } = useAllActivities();
   const { data: notifications } = useNotifications();
   const { data: announcements } = useAnnouncements();
+  const { data: messages } = useQuery({ queryKey: ["messages", "all"], queryFn: fetchAllMessages });
+  const newMessages = (messages ?? []).filter((message) => message.status === "new").length;
 
   const all = activities ?? [];
   const upcoming = all.filter((activity) => activity.date >= TODAY_ISO);
@@ -173,6 +176,18 @@ function OverviewTab() {
           label="نشر محتوى توعوي"
           hint="مقال توعوي عام يظهر في تبويب التوعية"
           onPress={() => router.push("/admin/awareness")}
+        />
+        <ActionRow
+          icon="mail-unread-outline"
+          label={newMessages > 0 ? `الرسائل الواردة (${newMessages} جديدة)` : "الرسائل الواردة"}
+          hint="اقتراحات وطلبات المستخدمين والرد عليها"
+          onPress={() => router.push("/admin/inbox")}
+        />
+        <ActionRow
+          icon="chatbubbles-outline"
+          label="المجموعات النقاشية"
+          hint="إنشاء مجموعة، قفل النقاش، وحذف المشاركات"
+          onPress={() => router.push("/admin/groups")}
         />
       </View>
 
@@ -489,6 +504,12 @@ function SettingsTab() {
           label="الإشعارات المرسلة"
           hint="مراجعة وحذف وإعادة إرسال"
           onPress={() => router.push("/admin/notifications")}
+        />
+        <ActionRow
+          icon="call-outline"
+          label="بيانات التواصل"
+          hint="الأرقام والبريد التي تظهر في شاشة «تواصل معنا»"
+          onPress={() => router.push("/admin/contact")}
         />
         <ActionRow
           icon="time-outline"

@@ -25,7 +25,10 @@ export default function AdminSettingsScreen() {
   const [code, setCode] = useState(settings.code);
   const [confirmCode, setConfirmCode] = useState("");
 
-  const applyToggle = (key: "quizEnabled" | "pointsEnabled" | "registrationEnabled", label: string) => {
+  const applyToggle = (
+    key: "quizEnabled" | "pointsEnabled" | "registrationEnabled" | "discussionEnabled" | "messagesEnabled",
+    label: string
+  ) => {
     const next = !settings[key];
     settings.toggle(key);
     settings.logAction(`${next ? "تفعيل" : "تعطيل"} ${label}`);
@@ -108,6 +111,22 @@ export default function AdminSettingsScreen() {
             hint="عند الإيقاف لا تُمنح نقاط على الحضور ولا على الإجابات"
             value={settings.pointsEnabled}
             onChange={() => applyToggle("pointsEnabled", "نظام النقاط")}
+          />
+          <View style={styles.divider} />
+          <ToggleRow
+            icon="chatbubbles-outline"
+            label="المجموعات النقاشية"
+            hint="لوحات نقاش عامة مُدارة — بلا رسائل خاصة بين المستخدمين"
+            value={settings.discussionEnabled}
+            onChange={() => applyToggle("discussionEnabled", "المجموعات النقاشية")}
+          />
+          <View style={styles.divider} />
+          <ToggleRow
+            icon="mail-outline"
+            label="مراسلة الإدارة"
+            hint="عند الإيقاف لا يستطيع المستخدم إرسال رسالة جديدة"
+            value={settings.messagesEnabled}
+            onChange={() => applyToggle("messagesEnabled", "مراسلة الإدارة")}
           />
         </View>
 

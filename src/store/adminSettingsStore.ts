@@ -10,6 +10,19 @@ export interface AdminAccount {
   phone: string;
 }
 
+/**
+ * بيانات التواصل الرسمية لقسم الأنشطة — تظهر لكل المستخدمين في شاشة «تواصل معنا».
+ * لا تحتوي على أي رقم شخصي لمستخدم؛ هي خط القسم فقط.
+ */
+export interface ContactInfo {
+  department: string;
+  phone: string;
+  whatsapp: string;
+  email: string;
+  office: string;
+  hours: string;
+}
+
 export interface AdminLogEntry {
   id: string;
   action: string;
@@ -24,13 +37,21 @@ interface AdminSettingsState {
   quizEnabled: boolean;
   pointsEnabled: boolean;
   registrationEnabled: boolean;
+  /** تفعيل المجموعات النقاشية المُدارة. */
+  discussionEnabled: boolean;
+  /** تفعيل مراسلة الإدارة من داخل التطبيق. */
+  messagesEnabled: boolean;
+  contact: ContactInfo;
   admins: AdminAccount[];
   log: AdminLogEntry[];
 
   setCode: (code: string) => void;
   setPointsPerAction: (points: number) => void;
   setDefaultRegistrationStatus: (status: RegistrationState) => void;
-  toggle: (key: "quizEnabled" | "pointsEnabled" | "registrationEnabled") => void;
+  toggle: (
+    key: "quizEnabled" | "pointsEnabled" | "registrationEnabled" | "discussionEnabled" | "messagesEnabled"
+  ) => void;
+  setContact: (patch: Partial<ContactInfo>) => void;
   addAdmin: (name: string, phone: string) => void;
   removeAdmin: (id: string) => void;
   logAction: (action: string) => void;
@@ -53,6 +74,16 @@ export const useAdminSettingsStore = create<AdminSettingsState>()(
       quizEnabled: true,
       pointsEnabled: true,
       registrationEnabled: true,
+      discussionEnabled: true,
+      messagesEnabled: true,
+      contact: {
+        department: "قسم الأنشطة — قاعدة صلالة الجوية",
+        phone: "23299000",
+        whatsapp: "96823299000",
+        email: "anshatati.salalah@example.om",
+        office: "مبنى الأنشطة — الدور الأول",
+        hours: "الأحد إلى الخميس، 8:00 صباحًا — 2:00 ظهرًا",
+      },
       admins: [{ id: "adm-1", name: "مسؤول الأنشطة", phone: "91234567" }],
       log: [],
 
@@ -64,6 +95,7 @@ export const useAdminSettingsStore = create<AdminSettingsState>()(
         set((state) => ({
           admins: [...state.admins, { id: `adm-${Date.now()}`, name: name.trim(), phone: phone.trim() }],
         })),
+      setContact: (patch) => set((state) => ({ contact: { ...state.contact, ...patch } })),
       removeAdmin: (id) => set((state) => ({ admins: state.admins.filter((a) => a.id !== id) })),
       logAction: (action) =>
         set((state) => ({
@@ -81,6 +113,9 @@ export const useAdminSettingsStore = create<AdminSettingsState>()(
         quizEnabled: state.quizEnabled,
         pointsEnabled: state.pointsEnabled,
         registrationEnabled: state.registrationEnabled,
+        discussionEnabled: state.discussionEnabled,
+        messagesEnabled: state.messagesEnabled,
+        contact: state.contact,
         admins: state.admins,
         log: state.log,
       }),

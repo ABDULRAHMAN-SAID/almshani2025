@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { AttachmentList } from "@/components/AttachmentList";
 import { EmptyState } from "@/components/EmptyState";
 import { FilterChips } from "@/components/FilterChips";
 import { ScreenHeader } from "@/components/ScreenHeader";
@@ -61,6 +62,15 @@ export default function AnnouncementsScreen() {
                     </View>
                   </View>
                   <Text style={styles.cardBody}>{announcement.description}</Text>
+                  {announcement.image ? (
+                    <Image
+                      source={{ uri: announcement.image }}
+                      style={styles.cardImage}
+                      resizeMode="cover"
+                      accessibilityIgnoresInvertColors
+                    />
+                  ) : null}
+                  <AttachmentList attachments={announcement.attachments ?? []} />
                 </View>
               );
             })}
@@ -91,5 +101,12 @@ const styles = StyleSheet.create({
   cardDate: { ...typography.caption },
   typePill: { paddingHorizontal: spacing.sm, paddingVertical: 3, borderRadius: radius.pill },
   typeText: { fontFamily: "Tajawal_500Medium", fontSize: 11 },
+  cardImage: {
+    width: "100%",
+    height: 170,
+    borderRadius: radius.md,
+    marginTop: spacing.md,
+    backgroundColor: colors.backgroundDeep,
+  },
   cardBody: { ...typography.bodyMuted, lineHeight: 21 },
 });

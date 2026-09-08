@@ -419,3 +419,260 @@ create policy "activity images admin delete" on storage.objects
 
 -- صورة اختيارية للإعلان (الأنشطة والمقالات لديها عمود الصورة أصلًا)
 alter table public.announcements add column if not exists image text;
+
+-- ============ مرفقات المستخدمين (صور، فيديو، صوت، ملفات) ============
+-- حاوية منفصلة عن أغلفة الإدارة: هنا يرفع المستخدم المسجَّل مرفقات رسالته
+-- أو مشاركته في مجموعة نقاشية. القراءة عامة لأن المرفق يظهر داخل نقاش عام،
+-- والحذف لصاحب الملف أو الإدارة فقط.
+insert into storage.buckets (id, name, public, file_size_limit)
+values ('app-media', 'app-media', true, 26214400)
+on conflict (id) do nothing;
+
+create policy "app media public read" on storage.objects
+  for select using (bucket_id = 'app-media');
+
+create policy "app media user insert" on storage.objects
+  for insert with check (bucket_id = 'app-media' and auth.uid() is not null);
+
+create policy "app media owner delete" on storage.objects
+  for delete using (bucket_id = 'app-media' and (owner = auth.uid() or public.is_admin()));
+
+-- مرفقات الإعلان (فيديو أو مقطع صوتي أو ملف) — مخزّنة كوصف JSON للمرفقات
+alter table public.announcements add column if not exists attachments jsonb not null default '[]'::jsonb;
+
+-- ============ بيانات التواصل الرسمية ============
+-- صف واحد فقط تقرأه كل الأجهزة، وتكتبه الإدارة. لا يحتوي أي رقم شخصي لمستخدم.
+create table if not exists public.app_contact (
+  id smallint primary key default 1,
+  department text not null default '',
+  phone text not null default '',
+  whatsapp text not null default '',
+  email text not null default '',
+  office text not null default '',
+  hours text not null default '',
+  updated_at timestamptz not null default now(),
+  constraint app_contact_single_row check (id = 1)
+);
+
+alter table public.app_contact enable row level security;
+
+create policy "contact public read" on public.app_contact
+  for select using (true);
+
+create policy "contact admin write" on public.app_contact
+  for all using (public.is_admin()) with check (public.is_admin());
+
+insert into public.app_contact (id) values (1) on conflict (id) do nothing;
+
+-- ============ مراسلة الإدارة ============
+-- قناة رسمية باتجاه واحد: المستخدم يكتب إلى قسم الأنشطة، والقسم يردّ.
+-- لا يوجد أي مسار يجعل مستخدمًا يقرأ رسالة مستخدم آخر — تفرضه سياسات RLS أدناه،
+-- ولا يُخزَّن رقم هاتف مع الرسالة، فالإدارة ترى الاسم فقط.
+create type message_kind as enum ('اقتراح', 'طلب', 'استفسار', 'ملاحظة');
+create type message_status as enum ('new', 'read', 'answered');
+
+create table if not exists public.user_messages (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.users(id) on delete cascade,
+  user_name text not null,
+  kind message_kind not null default 'اقتراح',
+  subject text not null,
+  body text not null,
+  attachments jsonb not null default '[]'::jsonb,
+  status message_status not null default 'new',
+  reply_body text,
+  replied_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists user_messages_user_idx on public.user_messages (user_id, created_at desc);
+
+alter table public.user_messages enable row level security;
+
+-- صاحب الرسالة يقرأ رسائله فقط؛ الإدارة تقرأ الكل.
+create policy "messages read own or admin" on public.user_messages
+  for select using (user_id = auth.uid() or public.is_admin());
+
+create policy "messages insert own" on public.user_messages
+  for insert with check (user_id = auth.uid());
+
+-- التعديل للإدارة وحدها: لا يستطيع المستخدم تغيير حالة رسالته ولا كتابة رد باسم القسم.
+create policy "messages admin update" on public.user_messages
+  for update using (public.is_admin()) with check (public.is_admin());
+
+create policy "messages delete own or admin" on public.user_messages
+  for delete using (user_id = auth.uid() or public.is_admin());
+
+-- ردّ الإدارة: دالة موثوقة تكتب الرد وتضبط الحالة وتُرسل إشعارًا لصاحب الرسالة.
+create or replace function public.reply_to_message(p_message_id uuid, p_body text)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_user uuid;
+  v_subject text;
+begin
+  if not public.is_admin() then
+    raise exception 'not authorized';
+  end if;
+
+  update public.user_messages
+     set reply_body = p_body,
+         replied_at = now(),
+         status = 'answered'
+   where id = p_message_id
+  returning user_id, subject into v_user, v_subject;
+
+  if v_user is null then
+    raise exception 'message not found';
+  end if;
+
+  insert into public.notifications (user_id, title, body)
+  values (v_user, 'رد على رسالتك', concat('بخصوص: ', v_subject));
+end;
+$$;
+
+-- ============ المجموعات النقاشية المُدارة ============
+-- لوحة نقاش عامة حول موضوع نشاط. الحدود المقصودة:
+--   • لا توجد رسائل خاصة ولا جدول أعضاء ولا أي عمود لرقم هاتف؛ الاسم فقط.
+--   • المجموعة تُنشئها الإدارة وحدها، وتستطيع قفلها أو حذف أي مشاركة.
+--   • كل مشاركة قابلة للإبلاغ، والبلاغات تظهر للإدارة فقط.
+create type group_audience as enum ('all', 'registered');
+
+create table if not exists public.discussion_groups (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  topic text not null default '',
+  description text not null default '',
+  cover_image text,
+  audience group_audience not null default 'all',
+  activity_id uuid references public.activities(id) on delete set null,
+  locked boolean not null default false,
+  post_count integer not null default 0,
+  created_at timestamptz not null default now()
+);
+
+alter table public.discussion_groups enable row level security;
+
+create policy "groups public read" on public.discussion_groups
+  for select using (true);
+
+create policy "groups admin write" on public.discussion_groups
+  for all using (public.is_admin()) with check (public.is_admin());
+
+create table if not exists public.group_posts (
+  id uuid primary key default gen_random_uuid(),
+  group_id uuid not null references public.discussion_groups(id) on delete cascade,
+  author_id uuid not null references public.users(id) on delete cascade,
+  author_name text not null,
+  body text not null,
+  attachments jsonb not null default '[]'::jsonb,
+  pinned boolean not null default false,
+  report_count integer not null default 0,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists group_posts_group_idx on public.group_posts (group_id, pinned desc, created_at desc);
+
+alter table public.group_posts enable row level security;
+
+create policy "posts public read" on public.group_posts
+  for select using (true);
+
+-- الكتابة: باسم المستخدم نفسه، في مجموعة غير مقفلة، وإن كانت مقيّدة بنشاط
+-- فلا يكتب فيها إلا من سجّل في ذلك النشاط فعلًا.
+create policy "posts insert own" on public.group_posts
+  for insert with check (
+    author_id = auth.uid()
+    and exists (
+      select 1
+        from public.discussion_groups g
+       where g.id = group_id
+         and g.locked = false
+         and (
+           g.audience = 'all'
+           or exists (
+             select 1
+               from public.registrations r
+              where r.activity_id = g.activity_id
+                and r.user_id = auth.uid()
+                and r.status = 'confirmed'
+           )
+         )
+    )
+  );
+
+-- التثبيت للإدارة وحدها؛ لا يعدّل المستخدم مشاركته بعد نشرها (يحذفها ويكتب غيرها).
+create policy "posts admin update" on public.group_posts
+  for update using (public.is_admin()) with check (public.is_admin());
+
+create policy "posts delete own or admin" on public.group_posts
+  for delete using (author_id = auth.uid() or public.is_admin());
+
+-- عدّاد المشاركات في المجموعة يُحسب على الخادم لا في العميل.
+create or replace function public.sync_group_post_count()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if tg_op = 'INSERT' then
+    update public.discussion_groups
+       set post_count = post_count + 1
+     where id = new.group_id;
+  elsif tg_op = 'DELETE' then
+    update public.discussion_groups
+       set post_count = greatest(0, post_count - 1)
+     where id = old.group_id;
+  end if;
+  return null;
+end;
+$$;
+
+drop trigger if exists group_posts_count on public.group_posts;
+create trigger group_posts_count
+  after insert or delete on public.group_posts
+  for each row execute function public.sync_group_post_count();
+
+-- بلاغات المشاركات: قيد الفرادة يمنع تكرار البلاغ من الشخص نفسه، فلا يستطيع
+-- أحد رفع عدّاد البلاغات على مشاركة لا تعجبه.
+create table if not exists public.group_post_reports (
+  id uuid primary key default gen_random_uuid(),
+  post_id uuid not null references public.group_posts(id) on delete cascade,
+  reporter_id uuid not null references public.users(id) on delete cascade,
+  reason text not null default '',
+  created_at timestamptz not null default now(),
+  unique (post_id, reporter_id)
+);
+
+alter table public.group_post_reports enable row level security;
+
+-- البلاغات للإدارة فقط: لا يرى المستخدم بلاغات غيره ولا حتى بلاغه بعد إرساله.
+create policy "reports admin read" on public.group_post_reports
+  for select using (public.is_admin());
+
+create or replace function public.report_group_post(p_post_id uuid, p_reason text)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if auth.uid() is null then
+    raise exception 'not authorized';
+  end if;
+
+  insert into public.group_post_reports (post_id, reporter_id, reason)
+  values (p_post_id, auth.uid(), coalesce(p_reason, ''))
+  on conflict (post_id, reporter_id) do nothing;
+
+  update public.group_posts
+     set report_count = (
+       select count(*) from public.group_post_reports where post_id = p_post_id
+     )
+   where id = p_post_id;
+end;
+$$;

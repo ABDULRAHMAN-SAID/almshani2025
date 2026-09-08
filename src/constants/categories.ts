@@ -54,6 +54,9 @@ export const HOME_SECTIONS: HomeSection[] = [
   { key: "safety", label: "السلامة", icon: "medkit-outline", tint: "#B7791F", route: "/sections/safety" },
   { key: "announcements", label: "الإعلانات", icon: "megaphone-outline", tint: "#9B2C2C", route: "/announcements" },
   { key: "quiz", label: "سؤال الأسبوع", icon: "help-circle-outline", tint: "#2C5282", route: "/quiz" },
+  { key: "groups", label: "المجموعات النقاشية", icon: "chatbubbles-outline", tint: "#158A99", route: "/groups" },
+  { key: "messages", label: "مراسلة الإدارة", icon: "mail-outline", tint: "#1C4468", route: "/compose" },
+  { key: "contact", label: "تواصل معنا", icon: "call-outline", tint: "#0F6E7B", route: "/contact" },
 ];
 
 /** تحويل لون إلى خلفية خفيفة جدًا بنفس الدرجة (شفافية ~10%). */

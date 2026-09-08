@@ -8,6 +8,7 @@ import { colors, radius, spacing, typography } from "@/constants";
 import { useAuth } from "@/hooks/useAuth";
 import { usePointsBalance } from "@/hooks/usePoints";
 import { useUnreadCount } from "@/hooks/useNotifications";
+import { useAdminSettingsStore } from "@/store/adminSettingsStore";
 import { useRegistrationStore } from "@/store/registrationStore";
 import { updateFullName } from "@/services/authService";
 import { showToast } from "@/store/toastStore";
@@ -18,6 +19,8 @@ export default function ProfileScreen() {
   const points = usePointsBalance();
   const unread = useUnreadCount();
   const registeredCount = useRegistrationStore((state) => state.registeredIds.length);
+  const discussionEnabled = useAdminSettingsStore((state) => state.discussionEnabled);
+  const messagesEnabled = useAdminSettingsStore((state) => state.messagesEnabled);
   const [editing, setEditing] = useState(false);
   const [nameDraft, setNameDraft] = useState(user?.name ?? "");
   const [saving, setSaving] = useState(false);
@@ -78,6 +81,17 @@ export default function ProfileScreen() {
           onPress={() => router.push("/(tabs)/my-activities")}
         />
         <Row icon="search-outline" label="البحث" onPress={() => router.push("/search")} />
+        {discussionEnabled ? (
+          <Row
+            icon="chatbubbles-outline"
+            label="المجموعات النقاشية"
+            onPress={() => router.push("/groups")}
+          />
+        ) : null}
+        {messagesEnabled ? (
+          <Row icon="mail-outline" label="رسائلي مع الإدارة" onPress={() => router.push("/my-messages")} />
+        ) : null}
+        <Row icon="call-outline" label="تواصل معنا" onPress={() => router.push("/contact")} />
         <Row
           icon="notifications-outline"
           label="الإشعارات"

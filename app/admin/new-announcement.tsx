@@ -3,13 +3,14 @@ import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-
 import { router } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { ImageField } from "@/components/ImageField";
+import { MediaField } from "@/components/MediaField";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { colors, radius, spacing, typography } from "@/constants";
 import { addAnnouncement } from "@/services/adminService";
 import { useAdminSettingsStore } from "@/store/adminSettingsStore";
 import { showToast } from "@/store/toastStore";
-import type { AnnouncementType } from "@/types/models";
+import type { AnnouncementType, MediaAttachment } from "@/types/models";
 import { toArabicMessage } from "@/utils/errors";
 
 const TYPES: AnnouncementType[] = ["تسجيل", "تنبيه", "نتائج", "عام"];
@@ -21,6 +22,7 @@ export default function NewAnnouncementScreen() {
   const [description, setDescription] = useState("");
   const [type, setType] = useState<AnnouncementType>("عام");
   const [image, setImage] = useState("");
+  const [attachments, setAttachments] = useState<MediaAttachment[]>([]);
   const [saving, setSaving] = useState(false);
 
   const canSave = title.trim().length > 3 && description.trim().length > 5;
@@ -33,6 +35,7 @@ export default function NewAnnouncementScreen() {
         description: description.trim(),
         type,
         image: image || undefined,
+        attachments,
       });
       client.invalidateQueries();
       logAction(`نشر إعلان: ${title.trim()}`);
@@ -76,6 +79,15 @@ export default function NewAnnouncementScreen() {
           value={image}
           onChange={setImage}
           folder="announcements"
+        />
+
+        <MediaField
+          label="مرفقات الإعلان (اختياري)"
+          hint="مقطع فيديو أو تسجيل صوتي أو ملف يُرفق بالإعلان."
+          value={attachments}
+          onChange={setAttachments}
+          folder="announcements"
+          tools={["video", "audio", "file"]}
         />
 
         <Text style={styles.label}>نوع الإعلان</Text>
