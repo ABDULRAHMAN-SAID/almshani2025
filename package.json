@@ -14,7 +14,8 @@
     "build:android": "eas build --platform android --profile production",
     "build:ios": "eas build --platform ios --profile production",
     "submit:android": "eas submit --platform android --latest",
-    "check:supabase": "node scripts/check-supabase.mjs"
+    "check:supabase": "node scripts/check-supabase.mjs",
+    "test:security": "bash scripts/test-security.sh"
   },
   "dependencies": {
     "@expo-google-fonts/tajawal": "^0.2.3",
