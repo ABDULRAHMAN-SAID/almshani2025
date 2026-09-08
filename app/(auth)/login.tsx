@@ -113,7 +113,7 @@ export default function LoginScreen() {
           />
           <Text style={styles.hint}>
             {pendingRole === "admin"
-              ? "سنرسل لك رمز تحقق (OTP)، ثم يُطلب رمز الإدارة قبل فتح اللوحة"
+              ? "سنرسل لك رمز تحقق (OTP)، ثم تُفتح اللوحة إن كان حسابك مُدرجًا في قائمة الإداريين"
               : "سنرسل لك رمز تحقق (OTP) عبر رسالة نصية"}
           </Text>
 

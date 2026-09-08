@@ -30,8 +30,13 @@ export interface AdminLogEntry {
 }
 
 interface AdminSettingsState {
-  /** رمز فتح اللوحة — قابل للتغيير من الإعدادات. */
-  code: string;
+  /**
+   * قفل رقمي على هذا الجهاز فقط، فوق تحقق الخادم من الصلاحية.
+   * مطفأ افتراضيًا، ولا يمنح صلاحية بذاته — من ليس في جدول admins لا تفتح له
+   * اللوحة مهما أدخل، ولا تُقبل له عملية إدارية على الخادم.
+   */
+  devicePin: string;
+  devicePinEnabled: boolean;
   pointsPerAction: number;
   defaultRegistrationStatus: RegistrationState;
   quizEnabled: boolean;
@@ -45,7 +50,8 @@ interface AdminSettingsState {
   admins: AdminAccount[];
   log: AdminLogEntry[];
 
-  setCode: (code: string) => void;
+  setDevicePin: (pin: string) => void;
+  setDevicePinEnabled: (enabled: boolean) => void;
   setPointsPerAction: (points: number) => void;
   setDefaultRegistrationStatus: (status: RegistrationState) => void;
   toggle: (
@@ -68,7 +74,8 @@ export function maskPhone(phone: string): string {
 export const useAdminSettingsStore = create<AdminSettingsState>()(
   persist(
     (set) => ({
-      code: "1234",
+      devicePin: "",
+      devicePinEnabled: false,
       pointsPerAction: 10,
       defaultRegistrationStatus: "open",
       quizEnabled: true,
@@ -87,7 +94,8 @@ export const useAdminSettingsStore = create<AdminSettingsState>()(
       admins: [{ id: "adm-1", name: "مسؤول الأنشطة", phone: "91234567" }],
       log: [],
 
-      setCode: (code) => set({ code: code.trim() }),
+      setDevicePin: (pin) => set({ devicePin: pin.trim() }),
+      setDevicePinEnabled: (enabled) => set({ devicePinEnabled: enabled }),
       setPointsPerAction: (points) => set({ pointsPerAction: points }),
       setDefaultRegistrationStatus: (status) => set({ defaultRegistrationStatus: status }),
       toggle: (key) => set((state) => ({ [key]: !state[key] }) as Partial<AdminSettingsState>),
@@ -106,8 +114,17 @@ export const useAdminSettingsStore = create<AdminSettingsState>()(
     {
       name: "anshatati-admin-settings",
       storage: persistStorage,
+      version: 2,
+      // الترقية من النسخة 1: كان يُحفظ "رمز إدارة" مشترك يمنح الصلاحية.
+      // نحذفه ولا نحوّله إلى قفل جهاز، حتى لا يبقى رمز قديم فاعلًا بعد التحديث.
+      migrate: (persisted) => {
+        const state = { ...(persisted as Record<string, unknown>) };
+        delete state.code;
+        return { ...state, devicePin: "", devicePinEnabled: false } as AdminSettingsState;
+      },
       partialize: (state) => ({
-        code: state.code,
+        devicePin: state.devicePin,
+        devicePinEnabled: state.devicePinEnabled,
         pointsPerAction: state.pointsPerAction,
         defaultRegistrationStatus: state.defaultRegistrationStatus,
         quizEnabled: state.quizEnabled,

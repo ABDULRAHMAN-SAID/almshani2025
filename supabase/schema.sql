@@ -304,9 +304,10 @@ $$;
 grant execute on function public.submit_check_in(uuid, text, points_reason) to authenticated;
 
 -- ============ صلاحية الإدارة ============
--- رمز 1234 في التطبيق هو حاجز واجهة للنسخة التجريبية فقط، ولا يمنح أي صلاحية
--- فعلية. الصلاحية الحقيقية هنا: الحساب مُدرج في جدول admins، وكل كتابة إدارية
--- تمرّ عبر سياسة أو دالة تتحقق من ذلك على الخادم.
+-- مصدر الصلاحية الوحيد: الحساب مُدرج في جدول admins. لا يوجد في التطبيق أي رمز
+-- يمنح صلاحية — اللوحة تسأل is_admin() قبل أن تُفتح، وكل كتابة إدارية تُفحص هنا
+-- مرة أخرى بسياسة مستقلة. الإدراج والإزالة يتمّان من Supabase بيد مالك المشروع،
+-- لا من داخل التطبيق، حتى لا يصبح فتح اللوحة على جهاز كافيًا لترقية حساب آخر.
 create table if not exists public.admins (
   user_id uuid primary key references public.users (id) on delete cascade,
   created_at timestamptz not null default now()
@@ -320,6 +321,20 @@ returns boolean language sql stable security definer set search_path = public as
   select exists (select 1 from admins where user_id = auth.uid());
 $$;
 grant execute on function public.is_admin() to authenticated;
+
+-- تُعرَّف بعد is_admin() لأنها تستدعيها. الدالة security definer فلا تدور السياسة
+-- على نفسها عند القراءة من admins.
+-- الإداري يرى قائمة الإداريين كاملة — شاشة «الحسابات الإدارية» للقراءة فقط.
+create policy "admins read all for admins" on public.admins
+  for select using (public.is_admin());
+
+-- ويرى بيانات زملائه الإداريين وحدهم (الاسم والهاتف لعرضهما مقنّعين في اللوحة).
+-- لا يفتح هذا قراءة بيانات بقية المستخدمين: الشرط يقصرها على من هو في admins.
+create policy "users read admin peers" on public.users
+  for select using (
+    public.is_admin()
+    and exists (select 1 from public.admins a where a.user_id = users.id)
+  );
 
 -- كتابة المحتوى من لوحة الإدارة فقط
 create policy "activities admin write" on public.activities

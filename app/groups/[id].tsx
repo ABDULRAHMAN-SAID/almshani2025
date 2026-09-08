@@ -38,7 +38,12 @@ import { showToast } from "@/store/toastStore";
 import type { GroupPost, MediaAttachment } from "@/types/models";
 import { toArabicMessage } from "@/utils/errors";
 
-const MAX_POST = 800;
+/**
+ * المشاركة قصيرة عمدًا. المجموعة لوحة تنسيق حول نشاط، لا محادثة —
+ * ولذلك لا صوت ولا فيديو هنا، ومرفق واحد على الأكثر.
+ */
+const MAX_POST = 400;
+const MAX_POST_ATTACHMENTS = 1;
 
 const REPORT_REASONS = [
   "محتوى مخالف للضوابط",
@@ -226,12 +231,18 @@ export default function GroupBoardScreen() {
                 multiline
                 textAlign="right"
               />
+              <View style={styles.counterRow}>
+                <Text style={styles.counter}>
+                  {body.length} / {MAX_POST}
+                </Text>
+              </View>
               <MediaField
                 value={attachments}
                 onChange={setAttachments}
                 folder="posts"
-                max={2}
-                hint="يمكنك إرفاق صورة أو مقطع فيديو أو تسجيل صوتي أو ملف."
+                tools={["image", "camera", "file"]}
+                max={MAX_POST_ATTACHMENTS}
+                hint="مرفق واحد: صورة أو ملف. النقاش هنا مكتوب ومختصر."
               />
               <PrimaryButton
                 label="نشر المشاركة"
@@ -385,6 +396,8 @@ const styles = StyleSheet.create({
     paddingTop: spacing.sm,
     textAlignVertical: "top",
   },
+  counterRow: { flexDirection: "row", justifyContent: "flex-end", marginTop: 4 },
+  counter: { ...typography.caption, fontSize: 11 },
   post: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,

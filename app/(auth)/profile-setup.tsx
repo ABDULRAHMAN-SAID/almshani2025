@@ -22,7 +22,7 @@ export default function ProfileSetupScreen() {
     try {
       const user = await completeProfile(userId, phone, name.trim());
       signIn(user);
-      router.replace(pendingRole === "admin" ? "/(auth)/admin-code" : "/(tabs)");
+      router.replace(pendingRole === "admin" ? "/admin" : "/(tabs)");
     } catch {
       showToast("حدث خطأ، حاول مرة أخرى", "error");
     } finally {

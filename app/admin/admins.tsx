@@ -1,19 +1,30 @@
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { BottomSheet } from "@/components/BottomSheet";
+import { QueryState } from "@/components/QueryState";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { SecondaryButton } from "@/components/SecondaryButton";
 import { colors, radius, spacing, typography } from "@/constants";
+import { canEditAdminsInApp, fetchAdminAccounts } from "@/services/adminAuthService";
 import { maskPhone, useAdminSettingsStore, type AdminAccount } from "@/store/adminSettingsStore";
 import { showToast } from "@/store/toastStore";
 
 const PHONE_REGEX = /^(?:\+968)?9\d{7}$/;
 
-/** الحسابات التي تملك صلاحية فتح اللوحة. */
+/**
+ * الحسابات التي تملك صلاحية الإدارة — تُقرأ من جدول `admins` على الخادم.
+ *
+ * الإضافة والإزالة لا تتمّان من داخل التطبيق في الإنتاج، عمدًا: لو أمكن ذلك
+ * لصار فتحُ اللوحة على جهاز واحد كافيًا لترقية حسابات أخرى. تُدار من Supabase
+ * بيد مالك المشروع. في الوضع التجريبي فقط تبقى القائمة قابلة للتحرير للعرض.
+ */
 export default function AdminAccountsScreen() {
-  const admins = useAdminSettingsStore((state) => state.admins);
+  const client = useQueryClient();
+  const query = useQuery({ queryKey: ["admin-accounts"], queryFn: fetchAdminAccounts });
+  const admins = query.data ?? [];
   const addAdmin = useAdminSettingsStore((state) => state.addAdmin);
   const removeAdmin = useAdminSettingsStore((state) => state.removeAdmin);
   const logAction = useAdminSettingsStore((state) => state.logAction);
@@ -34,6 +45,7 @@ export default function AdminAccountsScreen() {
       return;
     }
     addAdmin(name, phone);
+    void client.invalidateQueries({ queryKey: ["admin-accounts"] });
     logAction(`إضافة حساب إداري: ${name.trim()}`);
     setName("");
     setPhone("");
@@ -48,6 +60,7 @@ export default function AdminAccountsScreen() {
       return;
     }
     removeAdmin(pendingRemove.id);
+    void client.invalidateQueries({ queryKey: ["admin-accounts"] });
     logAction(`إزالة حساب إداري: ${pendingRemove.name}`);
     setPendingRemove(null);
     showToast("تمت إزالة الحساب", "success");
@@ -56,12 +69,18 @@ export default function AdminAccountsScreen() {
   return (
     <View style={styles.screen}>
       <ScreenHeader title="الحسابات الإدارية" />
+      <QueryState isLoading={query.isLoading} error={query.error} onRetry={query.refetch}>
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.listCard}>
+          {admins.length === 0 ? (
+            <View style={styles.row}>
+              <Text style={styles.rowMeta}>لا توجد حسابات إدارية مُدرجة.</Text>
+            </View>
+          ) : null}
           {admins.map((admin, index) => (
             <View key={admin.id}>
               {index > 0 ? <View style={styles.divider} /> : null}
@@ -73,45 +92,60 @@ export default function AdminAccountsScreen() {
                   <Text style={styles.rowTitle}>{admin.name}</Text>
                   <Text style={styles.rowMeta}>{maskPhone(admin.phone)}</Text>
                 </View>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`إزالة ${admin.name}`}
-                  onPress={() => setPendingRemove(admin)}
-                  hitSlop={8}
-                >
-                  <Ionicons name="trash-outline" size={18} color={colors.danger} />
-                </Pressable>
+                {canEditAdminsInApp ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`إزالة ${admin.name}`}
+                    onPress={() => setPendingRemove(admin)}
+                    hitSlop={8}
+                  >
+                    <Ionicons name="trash-outline" size={18} color={colors.danger} />
+                  </Pressable>
+                ) : null}
               </View>
             </View>
           ))}
         </View>
 
-        <Text style={styles.sectionLabel}>إضافة حساب إداري</Text>
-        <View style={styles.field}>
-          <Text style={styles.label}>الاسم</Text>
-          <TextInput
-            value={name}
-            onChangeText={setName}
-            placeholder="اسم المسؤول"
-            placeholderTextColor={colors.textMuted}
-            style={styles.input}
-            textAlign="right"
-          />
-        </View>
-        <View style={styles.field}>
-          <Text style={styles.label}>رقم الهاتف</Text>
-          <TextInput
-            value={phone}
-            onChangeText={setPhone}
-            keyboardType="phone-pad"
-            maxLength={12}
-            placeholder="9XXXXXXX"
-            placeholderTextColor={colors.textMuted}
-            style={styles.input}
-            textAlign="right"
-          />
-        </View>
-        <PrimaryButton label="إضافة" onPress={handleAdd} disabled={!canAdd} style={{ marginTop: spacing.md }} />
+        {canEditAdminsInApp ? (
+          <>
+          <Text style={styles.sectionLabel}>إضافة حساب إداري</Text>
+          <View style={styles.field}>
+            <Text style={styles.label}>الاسم</Text>
+            <TextInput
+              value={name}
+              onChangeText={setName}
+              placeholder="اسم المسؤول"
+              placeholderTextColor={colors.textMuted}
+              style={styles.input}
+              textAlign="right"
+            />
+          </View>
+          <View style={styles.field}>
+            <Text style={styles.label}>رقم الهاتف</Text>
+            <TextInput
+              value={phone}
+              onChangeText={setPhone}
+              keyboardType="phone-pad"
+              maxLength={12}
+              placeholder="9XXXXXXX"
+              placeholderTextColor={colors.textMuted}
+              style={styles.input}
+              textAlign="right"
+            />
+          </View>
+          <PrimaryButton label="إضافة" onPress={handleAdd} disabled={!canAdd} style={{ marginTop: spacing.md }} />
+          </>
+        ) : (
+          <View style={styles.serverCard}>
+            <Ionicons name="server-outline" size={18} color={colors.marineDeep} />
+            <Text style={styles.privacyText}>
+              الإضافة والإزالة تتمّان من Supabase على جدول <Text style={styles.mono}>admins</Text>،
+              لا من داخل التطبيق — حتى لا يصبح فتح اللوحة على جهاز واحد كافيًا لمنح الصلاحية
+              لحسابات أخرى.
+            </Text>
+          </View>
+        )}
 
         <View style={styles.privacyCard}>
           <Ionicons name="lock-closed-outline" size={18} color={colors.primary} />
@@ -121,6 +155,7 @@ export default function AdminAccountsScreen() {
           </Text>
         </View>
       </ScrollView>
+      </QueryState>
 
       <BottomSheet visible={Boolean(pendingRemove)} onClose={() => setPendingRemove(null)}>
         <Text style={styles.sheetTitle}>إزالة الصلاحية</Text>
@@ -180,6 +215,16 @@ const styles = StyleSheet.create({
     marginTop: spacing.xl,
   },
   privacyText: { ...typography.caption, flex: 1, lineHeight: 20 },
+  serverCard: {
+    flexDirection: "row",
+    gap: spacing.sm,
+    alignItems: "flex-start",
+    backgroundColor: colors.infoSoft,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginTop: spacing.md,
+  },
+  mono: { fontFamily: "Tajawal_700Bold" },
   sheetTitle: { ...typography.h2, textAlign: "center" },
   sheetBody: { ...typography.bodyMuted, textAlign: "center", marginTop: spacing.sm, lineHeight: 22 },
 });

@@ -490,7 +490,7 @@ function SettingsTab() {
         <ActionRow
           icon="options-outline"
           label="إعدادات اللوحة"
-          hint="رمز الإدارة، مفاتيح التشغيل، وقيمة النقاط"
+          hint="قفل الجهاز، مفاتيح التشغيل، وقيمة النقاط"
           onPress={() => router.push("/admin/settings")}
         />
         <ActionRow

@@ -22,8 +22,8 @@ export default function AdminSettingsScreen() {
   const settings = useAdminSettingsStore();
   const lock = useAdminStore((state) => state.lock);
 
-  const [code, setCode] = useState(settings.code);
-  const [confirmCode, setConfirmCode] = useState("");
+  const [pin, setPin] = useState(settings.devicePin);
+  const [confirmPin, setConfirmPin] = useState("");
 
   const applyToggle = (
     key: "quizEnabled" | "pointsEnabled" | "registrationEnabled" | "discussionEnabled" | "messagesEnabled",
@@ -36,19 +36,29 @@ export default function AdminSettingsScreen() {
     showToast(`${next ? "تم تفعيل" : "تم تعطيل"} ${label}`, "success");
   };
 
-  const handleSaveCode = () => {
-    if (!/^\d{4,6}$/.test(code.trim())) {
-      showToast("الرمز يجب أن يكون من 4 إلى 6 أرقام", "error");
+  const handleSavePin = () => {
+    if (!/^\d{4,6}$/.test(pin.trim())) {
+      showToast("القفل يجب أن يكون من 4 إلى 6 أرقام", "error");
       return;
     }
-    if (code.trim() !== confirmCode.trim()) {
-      showToast("الرمز وتأكيده غير متطابقين", "error");
+    if (pin.trim() !== confirmPin.trim()) {
+      showToast("القفل وتأكيده غير متطابقين", "error");
       return;
     }
-    settings.setCode(code);
-    settings.logAction("تغيير رمز الإدارة");
-    setConfirmCode("");
-    showToast("تم تغيير رمز الإدارة", "success");
+    settings.setDevicePin(pin);
+    settings.setDevicePinEnabled(true);
+    settings.logAction("ضبط قفل الجهاز");
+    setConfirmPin("");
+    showToast("تم ضبط قفل هذا الجهاز", "success");
+  };
+
+  const handleDisablePin = () => {
+    settings.setDevicePinEnabled(false);
+    settings.setDevicePin("");
+    settings.logAction("إلغاء قفل الجهاز");
+    setPin("");
+    setConfirmPin("");
+    showToast("أُلغي قفل هذا الجهاز", "success");
   };
 
   return (
@@ -59,32 +69,64 @@ export default function AdminSettingsScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.sectionLabel}>رمز الإدارة</Text>
+        <Text style={styles.sectionLabel}>الصلاحية</Text>
+        <View style={styles.card}>
+          <View style={styles.authRow}>
+            <Ionicons name="shield-checkmark-outline" size={19} color={colors.success} />
+            <Text style={styles.authText}>
+              صلاحية الإدارة تُقرَّر على الخادم بحسب جدول الإداريين، لا برمز داخل التطبيق.
+              كل عملية إدارية تُفحص هناك مرة أخرى، فلا يمنح فتحُ هذه الشاشة أي صلاحية.
+            </Text>
+          </View>
+        </View>
+
+        <Text style={styles.sectionLabel}>قفل هذا الجهاز (اختياري)</Text>
         <View style={styles.card}>
           <Text style={styles.cardHint}>
-            الرمز المطلوب في شاشة دخول الإدارة. غيّره فور تسليم التطبيق، ولا تشاركه خارج فريق الإدارة.
+            طبقة إضافية على هذا الجهاز وحده: بعد أن يقرّ الخادم صلاحيتك، يُطلب هذا القفل قبل فتح
+            اللوحة. مفيد على جهاز مشترك، ولا يُرسَل إلى أي مكان ولا يمنح صلاحية بذاته.
           </Text>
-          <Text style={styles.fieldLabel}>الرمز الجديد</Text>
+
+          {settings.devicePinEnabled ? (
+            <>
+              <View style={styles.pinState}>
+                <Ionicons name="lock-closed" size={15} color={colors.success} />
+                <Text style={styles.pinStateText}>القفل مفعّل على هذا الجهاز</Text>
+              </View>
+              <SecondaryButton
+                label="إلغاء القفل"
+                onPress={handleDisablePin}
+                textColor={colors.danger}
+                style={{ marginTop: spacing.md, borderColor: colors.danger }}
+              />
+            </>
+          ) : null}
+
+          <Text style={styles.fieldLabel}>{settings.devicePinEnabled ? "قفل جديد" : "القفل"}</Text>
           <TextInput
-            value={code}
-            onChangeText={setCode}
+            value={pin}
+            onChangeText={setPin}
             keyboardType="number-pad"
             maxLength={6}
             secureTextEntry
             style={styles.codeInput}
             textAlign="center"
           />
-          <Text style={styles.fieldLabel}>تأكيد الرمز</Text>
+          <Text style={styles.fieldLabel}>التأكيد</Text>
           <TextInput
-            value={confirmCode}
-            onChangeText={setConfirmCode}
+            value={confirmPin}
+            onChangeText={setConfirmPin}
             keyboardType="number-pad"
             maxLength={6}
             secureTextEntry
             style={styles.codeInput}
             textAlign="center"
           />
-          <SecondaryButton label="حفظ الرمز" onPress={handleSaveCode} style={{ marginTop: spacing.md }} />
+          <SecondaryButton
+            label={settings.devicePinEnabled ? "تغيير القفل" : "تفعيل القفل"}
+            onPress={handleSavePin}
+            style={{ marginTop: spacing.md }}
+          />
         </View>
 
         <Text style={styles.sectionLabel}>مفاتيح التشغيل</Text>
@@ -284,6 +326,19 @@ const styles = StyleSheet.create({
   card: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.lg },
   cardHint: { ...typography.caption, lineHeight: 20, marginBottom: spacing.md },
   fieldLabel: { ...typography.caption, marginBottom: spacing.xs, marginTop: spacing.sm },
+  authRow: { flexDirection: "row", gap: spacing.sm, alignItems: "flex-start" },
+  authText: { ...typography.caption, flex: 1, lineHeight: 20, color: colors.textSecondary },
+  pinState: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: colors.successSoft,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    marginTop: spacing.md,
+  },
+  pinStateText: { ...typography.caption, color: colors.success, fontFamily: "Tajawal_500Medium" },
   codeInput: {
     backgroundColor: colors.background,
     borderRadius: radius.md,

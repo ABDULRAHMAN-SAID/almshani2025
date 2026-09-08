@@ -24,8 +24,8 @@ export default function OtpScreen() {
       if (isNewUser) {
         router.push({ pathname: "/(auth)/profile-setup", params: { userId, phone: pendingPhone } });
       } else if (pendingRole === "admin") {
-        // دخول الإدارة يتطلب رمزًا ثانيًا بعد التحقق من الهاتف.
-        router.replace("/(auth)/admin-code");
+        // لا رمز ثانٍ هنا: اللوحة نفسها تسأل الخادم عن صلاحية هذا الحساب.
+        router.replace("/admin");
       } else {
         router.replace("/(tabs)");
       }
@@ -47,7 +47,7 @@ export default function OtpScreen() {
       <Text style={styles.title}>التحقق من رقم الهاتف</Text>
       <Text style={styles.subtitle}>أدخل رمز التحقق المرسل إلى {pendingPhone ?? "رقمك"}</Text>
       {pendingRole === "admin" ? (
-        <Text style={styles.roleNote}>الدخول كإدارة — سيُطلب رمز الإدارة بعد هذه الخطوة</Text>
+        <Text style={styles.roleNote}>الدخول كإدارة — تُفحص صلاحية الحساب على الخادم بعد هذه الخطوة</Text>
       ) : null}
 
       <TextInput
