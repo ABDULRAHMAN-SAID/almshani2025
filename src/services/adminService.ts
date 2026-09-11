@@ -16,6 +16,7 @@ import {
   MOCK_WEEKLY_QUIZ,
 } from "./mockData";
 import { pushMockAnnouncement, pushMockNotification } from "./notificationService";
+import { toActivity, toQuizQuestion } from "./rowMappers";
 import { supabase } from "./supabase";
 
 type NewActivityInput = Omit<Activity, "id" | "createdAt">;
@@ -67,7 +68,7 @@ export async function addMockActivity(input: NewActivityInput): Promise<Activity
       .select()
       .single();
     if (error) throw error;
-    return data as Activity;
+    return toActivity(data);
   }
 
   MOCK_ACTIVITIES.push(activity);
@@ -84,7 +85,7 @@ export async function updateActivity(id: string, patch: ActivityPatch): Promise<
       .select()
       .single();
     if (error) throw error;
-    return data as Activity;
+    return toActivity(data);
   }
 
   const activity = MOCK_ACTIVITIES.find((item) => item.id === id);
@@ -298,7 +299,7 @@ export async function addQuizQuestion(input: {
       .select()
       .single();
     if (error) throw error;
-    return data as QuizQuestion;
+    return toQuizQuestion(data);
   }
 
   MOCK_WEEKLY_QUIZ.questions.push(question);

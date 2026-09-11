@@ -1,6 +1,7 @@
 import type { AppNotification, Announcement } from "@/types/models";
 import { USE_MOCK_DATA } from "./config";
 import { MOCK_ANNOUNCEMENTS, MOCK_NOTIFICATIONS } from "./mockData";
+import { toAnnouncement, toNotification } from "./rowMappers";
 import { supabase } from "./supabase";
 
 /** نسخة قابلة للتعديل في وضع البيانات التجريبية (لتعليم الإشعار كمقروء). */
@@ -15,7 +16,7 @@ export async function fetchNotifications(userId: string): Promise<AppNotificatio
     .select("*")
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
-  return (data as AppNotification[]) ?? [];
+  return (data ?? []).map(toNotification);
 }
 
 export async function markNotificationRead(userId: string, notificationId: string): Promise<void> {
@@ -57,7 +58,7 @@ export async function fetchAllAnnouncements(): Promise<Announcement[]> {
     .from("announcements")
     .select("*")
     .order("published_at", { ascending: false });
-  return (data as Announcement[]) ?? [];
+  return (data ?? []).map(toAnnouncement);
 }
 
 /** حذف إشعار مُرسَل — من لوحة الإدارة. */

@@ -1,6 +1,7 @@
 import type { Activity, Announcement, AwarenessArticle } from "@/types/models";
 import { USE_MOCK_DATA } from "./config";
 import { MOCK_ACTIVITIES, MOCK_ANNOUNCEMENTS, MOCK_AWARENESS } from "./mockData";
+import { toActivity, toAnnouncement, toAwarenessArticle } from "./rowMappers";
 import { supabase } from "./supabase";
 
 const sortByDateAsc = (a: Activity, b: Activity) => a.date.localeCompare(b.date);
@@ -11,7 +12,7 @@ export async function fetchAllActivities(): Promise<Activity[]> {
     return [...MOCK_ACTIVITIES].sort(sortByDateAsc);
   }
   const { data } = await supabase.from("activities").select("*").order("date", { ascending: true });
-  return (data as Activity[]) ?? [];
+  return (data ?? []).map(toActivity);
 }
 
 /** نشاط واحد بالمعرّف — لشاشة التفاصيل. */
@@ -20,7 +21,7 @@ export async function fetchActivityById(id: string): Promise<Activity | null> {
     return MOCK_ACTIVITIES.find((activity) => activity.id === id) ?? null;
   }
   const { data } = await supabase.from("activities").select("*").eq("id", id).maybeSingle();
-  return (data as Activity) ?? null;
+  return data ? toActivity(data) : null;
 }
 
 /** أقرب نشاط قادم (أو نشاط اليوم) لعرضه في Hero Card بالصفحة الرئيسية. */
@@ -36,7 +37,7 @@ export async function fetchHeroActivity(): Promise<Activity | null> {
     .order("date", { ascending: true })
     .limit(1)
     .maybeSingle();
-  return (data as Activity) ?? null;
+  return data ? toActivity(data) : null;
 }
 
 /** الأنشطة القادمة (بعد استثناء نشاط Hero) لقسم "الأنشطة القادمة". */
@@ -51,7 +52,7 @@ export async function fetchUpcomingActivities(excludeId?: string): Promise<Activ
     .select("*")
     .neq("id", excludeId ?? "")
     .order("date", { ascending: true });
-  return (data as Activity[]) ?? [];
+  return (data ?? []).map(toActivity);
 }
 
 export async function fetchLatestAnnouncements(limit = 3): Promise<Announcement[]> {
@@ -65,7 +66,7 @@ export async function fetchLatestAnnouncements(limit = 3): Promise<Announcement[
     .select("*")
     .order("published_at", { ascending: false })
     .limit(limit);
-  return (data as Announcement[]) ?? [];
+  return (data ?? []).map(toAnnouncement);
 }
 
 export async function fetchTodayAwareness(): Promise<AwarenessArticle | null> {
@@ -78,7 +79,7 @@ export async function fetchTodayAwareness(): Promise<AwarenessArticle | null> {
     .order("published_at", { ascending: false })
     .limit(1)
     .maybeSingle();
-  return (data as AwarenessArticle) ?? null;
+  return data ? toAwarenessArticle(data) : null;
 }
 
 /** أنشطة هذا الأسبوع (اليوم حتى 6 أيام قادمة) لبطاقة "هذا الأسبوع". */

@@ -1,6 +1,7 @@
 import type { LeaderboardEntry, PointsTransaction } from "@/types/models";
 import { USE_MOCK_DATA } from "./config";
 import { MOCK_LEADERBOARD, MOCK_POINTS_TRANSACTIONS } from "./mockData";
+import { toPointsTransaction } from "./rowMappers";
 import { supabase } from "./supabase";
 
 /**
@@ -25,10 +26,11 @@ export async function fetchPointsHistory(userId: string): Promise<PointsTransact
   }
   const { data } = await supabase
     .from("points_transactions")
-    .select("*")
+    // العلاقة المضمّنة تجلب عنوان النشاط؛ الجدول يحفظ معرّفه فقط.
+    .select("*, activities(title)")
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
-  return (data as PointsTransaction[]) ?? [];
+  return (data ?? []).map(toPointsTransaction);
 }
 
 export async function fetchPointsBalance(userId: string): Promise<number> {
