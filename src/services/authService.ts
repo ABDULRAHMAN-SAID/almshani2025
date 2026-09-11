@@ -95,12 +95,9 @@ export async function signUpWithPassword(input: SignUpInput): Promise<User> {
 
   // ربط الرقم بالحساب نفسه ليصحّ الدخول به لاحقًا. قد يرفضه الخادم إن كان
   // تأكيد الهاتف مفعّلًا (فيطلب رسالة SMS)، وحينها يبقى الدخول بالبريد عاملًا
-  // ولا نُفشل التسجيل كلّه من أجله.
-  try {
-    await supabase.auth.updateUser({ phone });
-  } catch {
-    /* الدخول بالبريد يكفي */
-  }
+  // ولا نُفشل التسجيل كلّه من أجله. والدالة تُعيد الخطأ ولا ترميه، فنقرأ الردّ
+  // بدل الاكتفاء بـ try/catch لا يلتقط شيئًا.
+  const { error: phoneError } = await supabase.auth.updateUser({ phone });
 
   const { error: profileError } = await supabase.from("users").upsert({
     id: userId,
@@ -111,7 +108,19 @@ export async function signUpWithPassword(input: SignUpInput): Promise<User> {
     phone,
     email,
   });
-  if (profileError) throw profileError;
+  if (profileError) {
+    // الرقم محفوظ فريدًا في الجدول: تكراره يعني أن شخصًا آخر سجّل به.
+    if ((profileError as { code?: string }).code === "23505") {
+      throw new Error("هذا الرقم مسجَّل بحساب آخر. استعمل رقمًا غيره، أو استعد كلمة مرور حسابك.");
+    }
+    throw profileError;
+  }
+
+  // نُبلغ هنا لا بصمت: من لم يُربط رقمه يدخل ببريده، وعليه أن يعرف ذلك قبل أن
+  // يجرّب الدخول برقمه ويُقال له إن بياناته خاطئة.
+  if (phoneError) {
+    console.warn("[auth] لم يُربط الرقم بالحساب — الدخول بالبريد فقط:", phoneError.message);
+  }
 
   return {
     id: userId,

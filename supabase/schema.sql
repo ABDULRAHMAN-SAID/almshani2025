@@ -211,9 +211,20 @@ alter table public.quiz_answers enable row level security;
 drop policy if exists "users read own row" on public.users;
 create policy "users read own row" on public.users
   for select using (auth.uid() = id);
+
+-- إنشاء الصفّ عند التسجيل. بدون هذه السياسة تُرفض كل عملية تسجيل بـ
+-- «new row violates row-level security policy» — لأن RLS يمنع الإدراج ما لم
+-- تسمح به سياسة صراحةً. والشرط يقصر ما يُنشئه المستخدم على صفّه هو، فلا
+-- يستطيع أحد أن يكتب صفًّا باسم حساب آخر.
+drop policy if exists "users insert own row" on public.users;
+create policy "users insert own row" on public.users
+  for insert with check (auth.uid() = id);
+
+-- with check صراحةً إلى جانب using: الأولى تحدّد ما يُقرأ للتعديل، والثانية ما
+-- يُقبل بعده. بغيرها لا يمنع شيءٌ تحويل الصفّ إلى هوية أخرى أثناء التعديل.
 drop policy if exists "users update own row" on public.users;
 create policy "users update own row" on public.users
-  for update using (auth.uid() = id);
+  for update using (auth.uid() = id) with check (auth.uid() = id);
 
 -- قراءة عامة للمحتوى غير الحساس، الكتابة من الإدارة فقط (Service Role)
 drop policy if exists "activities public read" on public.activities;
@@ -246,7 +257,8 @@ create policy "notifications read own" on public.notifications
   for select using (auth.uid() = user_id);
 drop policy if exists "notifications update own" on public.notifications;
 create policy "notifications update own" on public.notifications
-  for update using (auth.uid() = user_id);
+  for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
 
 -- النقاط: كل مستخدم يرى سجلّه فقط (قائمة المتصدرين تُعرض عبر leaderboard_view أدناه)
 drop policy if exists "points read own" on public.points_transactions;
@@ -368,6 +380,13 @@ create policy "admins read all for admins" on public.admins
 
 -- ويرى بيانات زملائه الإداريين وحدهم (الاسم والهاتف لعرضهما مقنّعين في اللوحة).
 -- لا يفتح هذا قراءة بيانات بقية المستخدمين: الشرط يقصرها على من هو في admins.
+-- حذف إشعار مُرسَل من لوحة الإدارة. بدونها لا يُرفع خطأ — يحذف الأمرُ صفرَ صفوف
+-- ويعود «ناجحًا»، فيظن الإداري أنه حذف شيئًا ولم يُحذف شيء.
+-- وموضعها هنا لا فوق: السياسة تستدعي is_admin()، ولا يجوز أن تسبق تعريفها.
+drop policy if exists "notifications admin delete" on public.notifications;
+create policy "notifications admin delete" on public.notifications
+  for delete using (public.is_admin());
+
 drop policy if exists "users read admin peers" on public.users;
 create policy "users read admin peers" on public.users
   for select using (

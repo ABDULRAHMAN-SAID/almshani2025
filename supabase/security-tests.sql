@@ -182,10 +182,38 @@ begin
   n := pg_temp.attempt_read(b, 'select count(*) from public.quiz_questions_public');
   perform pg_temp.log_result('ضوابط موجبة', 'B يقرأ الأسئلة عبر العرض العام', 'مسموح', n, n >= 0);
 
+  -- التسجيل نفسه: بلا سياسة إدراج على users لا يستطيع أحد إنشاء حساب أصلًا،
+  -- ولا يظهر ذلك في الوضع التجريبي لأنه لا يمرّ على قاعدة. نثبّته هنا.
+  n := pg_temp.attempt_write(
+    b,
+    'insert into public.users (id, full_name, phone) values ('
+      || quote_literal(b) || '::uuid, ''تحديث الاسم'', ''+96899000001'')'
+      || ' on conflict (id) do update set full_name = excluded.full_name'
+  );
+  perform pg_temp.log_result('ضوابط موجبة', 'B ينشئ/يحدّث صفّه في users (التسجيل)', 'مسموح', n, n >= 1);
+
   -- ===================== قراءة بيانات مستخدم آخر =====================
 
   n := pg_temp.attempt_read(b, 'select count(*) from public.users where id = ' || quote_literal(a) || '::uuid');
   perform pg_temp.log_result('قراءة', 'B يقرأ صفّ A في users', 'ممنوع', n, n <= 0);
+
+  n := pg_temp.attempt_write(
+    b,
+    'insert into public.users (id, full_name, phone) values ('
+      || quote_literal(a) || '::uuid, ''انتحال'', ''+96899000002'')'
+  );
+  perform pg_temp.log_result('كتابة', 'B ينشئ صفّ users باسم A', 'ممنوع', n, n <= 0);
+
+  n := pg_temp.attempt_write(
+    b,
+    'update public.users set id = ' || quote_literal(a) || '::uuid where id = ' || quote_literal(b) || '::uuid'
+  );
+  perform pg_temp.log_result('كتابة', 'B يحوّل صفّه إلى هوية A', 'ممنوع', n, n <= 0);
+
+  n := pg_temp.attempt_write(
+    b, 'delete from public.notifications where user_id = ' || quote_literal(a) || '::uuid'
+  );
+  perform pg_temp.log_result('كتابة', 'B يحذف إشعارات A', 'ممنوع', n, n <= 0);
 
   n := pg_temp.attempt_read(b, 'select count(*) from public.user_messages where user_id = ' || quote_literal(a) || '::uuid');
   perform pg_temp.log_result('قراءة', 'B يقرأ رسائل A إلى الإدارة', 'ممنوع', n, n <= 0);
