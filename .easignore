@@ -20,6 +20,9 @@ web-build/
 *.key
 *.mobileprovision
 
+# رمز إدارة حساب Supabase — لا شأن للبناء به، ولا يُرفع
+.supabase-setup.json
+
 *.orig.*
 npm-debug.*
 yarn-debug.*

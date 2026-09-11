@@ -13,8 +13,9 @@
 👉 [`docs/BUILD.md`](./docs/BUILD.md)
 
 ```bash
-npm run connect     # اربط التطبيق بخادم Supabase (يسأل ويتحقق)
-npm run make-app    # ابنِ ملف APK — نسخة حقيقية إن كان الخادم مربوطًا
+npm run setup       # ابنِ الخادم كاملًا: مشروع Supabase، المخطط، المحتوى، الدخول بالهاتف
+npm run make-app    # ابنِ ملف APK حقيقيًا يقرأ ويكتب عليه
+npm run admin       # اجعل نفسك إداريًا بعد أول تسجيل دخول
 ```
 
 ## التشغيل محليًا
@@ -29,10 +30,16 @@ npm run start
 
 ## ربط Supabase الفعلي
 
+`npm run setup` يفعل هذا كله بأمر واحد: ينشئ المشروع، ينفّذ `supabase/schema.sql`،
+يملأ القاعدة بمحتوى البداية، يفعّل الدخول بالهاتف مع رمز تجربة ثابت، ويكتب `.env`.
+يطلب منك رمز وصول واحدًا من [حسابك في Supabase](https://supabase.com/dashboard/account/tokens).
+
+ويدويًا إن فضّلت:
+
 1. أنشئ مشروع Supabase وفعّل Phone Auth (OTP).
-2. نفّذ `supabase/schema.sql` في SQL Editor.
+2. نفّذ `supabase/schema.sql` ثم `supabase/starter-content.sql` في SQL Editor.
 3. شغّل `npm run connect` — يسأل عن الرابط والمفتاح العام، يكتب `.env`، ثم يتحقق من الخادم فورًا.
-4. عيّن نفسك إداريًا بـ `supabase/make-me-admin.sql`.
+4. عيّن نفسك إداريًا بـ `npm run admin` أو `supabase/make-me-admin.sql`.
 
 للتشخيص: `npm run check:supabase` من الطرفية، أو «فحص الربط» من لوحة الإدارة داخل التطبيق.
 

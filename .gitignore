@@ -10,6 +10,9 @@ web-build/
 *.orig.*
 .env
 .env.local
+
+# رمز وصول Supabase ومعرّف المشروع — يكتبه npm run setup ويخصّ هذا الجهاز وحده
+.supabase-setup.json
 npm-debug.*
 yarn-debug.*
 yarn-error.*

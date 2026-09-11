@@ -15,11 +15,11 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 
-const B = (s) => `[1m${s}[0m`;
-const DIM = (s) => `[2m${s}[0m`;
-const GREEN = (s) => `[32m${s}[0m`;
-const RED = (s) => `[31m${s}[0m`;
-const YELLOW = (s) => `[33m${s}[0m`;
+const B = (s) => `[1m${s}[0m`;
+const DIM = (s) => `[2m${s}[0m`;
+const GREEN = (s) => `[32m${s}[0m`;
+const RED = (s) => `[31m${s}[0m`;
+const YELLOW = (s) => `[33m${s}[0m`;
 
 const say = (s = "") => console.log(s);
 const rule = () => say(DIM("─".repeat(56)));
@@ -140,14 +140,20 @@ if (wantsDemo) {
   say("  التطبيق الحقيقي يحتاج مكانًا تُحفظ فيه الحسابات والمنشورات والصور");
   say("  والمقاطع. هذا المكان مشروع Supabase، وإنشاؤه مجاني ويأخذ ربع ساعة.");
   say();
-  say(`  ${B("افعل هذا بالترتيب:")}`);
-  say("   1. افتح supabase.com وأنشئ مشروعًا جديدًا (المنطقة: Frankfurt أقرب لعُمان).");
-  say("   2. من SQL Editor: الصق محتوى ملف supabase/schema.sql كاملًا ثم Run.");
-  say("   3. من Authentication ← Providers ← Phone: فعّل Phone.");
-  say(`   4. ارجع إلى هذه النافذة وشغّل: ${B("npm run connect")}`);
-  say("   5. ثم أعد: npm run make-app");
+  say(`  ${B("أسرع طريق — أمر واحد يبني الخادم كاملًا:")}`);
   say();
-  say(DIM("  الشرح الكامل بالصور والخطوات في: docs/PRODUCTION.md"));
+  say(`      ${B("npm run setup")}`);
+  say();
+  say("  يطلب منك رمز وصول من حسابك في Supabase، ثم ينشئ المشروع ويركّب");
+  say("  بنيته ويملؤه بمحتوى البداية ويفعّل الدخول بالهاتف ويربط التطبيق به.");
+  say();
+  say(DIM("  ولو فضّلت فعلها بيدك من لوحة Supabase:"));
+  say(DIM("   1. supabase.com ← New project (المنطقة: Frankfurt)."));
+  say(DIM("   2. SQL Editor: الصق supabase/schema.sql كاملًا ثم Run."));
+  say(DIM("   3. Authentication ← Providers ← Phone: فعّله."));
+  say(DIM("   4. ثم: npm run connect"));
+  say();
+  say(DIM("  الشرح الكامل في: docs/PRODUCTION.md"));
   say();
   say(DIM("  ولو أردت نسخة للعرض فقط اليوم: npm run make-app -- --demo"));
   say();
@@ -264,7 +270,7 @@ if (wantsDemo) {
   say("   • من لوحة الإدارة ← الإعدادات ← فحص الربط: يجب أن تكون كل الأسطر خضراء.");
   say();
   say(DIM("  ولو لم تظهر لوحة الإدارة: لم تُدرج حسابك في جدول admins بعد —"));
-  say(DIM("  نفّذ supabase/make-me-admin.sql في SQL Editor بعد أول تسجيل دخول."));
+  say(DIM("  شغّل: npm run admin   (أو نفّذ supabase/make-me-admin.sql يدويًا)."));
 }
 say();
 say(YELLOW("  احفظ حساب Expo وكلمة مروره. مفتاح التوقيع محفوظ فيه، وبدونه"));

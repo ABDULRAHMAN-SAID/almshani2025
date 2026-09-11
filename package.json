@@ -15,6 +15,8 @@
     "build:android": "eas build --platform android --profile production",
     "build:ios": "eas build --platform ios --profile production",
     "submit:android": "eas submit --platform android --latest",
+    "setup": "node scripts/setup-server.mjs",
+    "admin": "node scripts/make-admin.mjs",
     "check:supabase": "node scripts/check-supabase.mjs",
     "test:security": "bash scripts/test-security.sh",
     "make-app": "node scripts/make-app.mjs",
