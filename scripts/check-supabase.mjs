@@ -131,12 +131,11 @@ const BUCKETS = ["activity-images", "app-media"];
 /* -------------------------------- الفحص -------------------------------- */
 
 const results = [];
+const ICONS = { ok: "✅", guarded: "🔒", missing: "❌" };
+const LABELS = { ok: "موجود", guarded: "محجوب (سليم)", missing: "غير موجود" };
 const record = (group, name, status, note = "") => {
   results.push({ group, name, status, note });
-  const icon = status === "ok" ? "✅" : status === "guarded" ? "🔒" : "❌";
-  const label =
-    status === "ok" ? "موجود" : status === "guarded" ? "محجوب (سليم)" : "غير موجود";
-  console.log(`  ${icon} ${name.padEnd(26)} ${label}${note ? dim("  " + note) : ""}`);
+  console.log(`  ${ICONS[status]} ${name.padEnd(26)} ${LABELS[status]}${note ? dim("  " + note) : ""}`);
 };
 
 /** يميّز «غير موجود» عن «ممنوع»: الأول خطأ في التنفيذ، والثاني سلوك مقصود. */
@@ -173,6 +172,33 @@ async function checkBucket(name) {
     return record("تخزين", name, "missing", error.message?.slice(0, 60));
   }
   record("تخزين", name, "guarded");
+}
+
+/* ---------------------------- هل الخادم مسموع؟ ----------------------------
+ *
+ * قبل أي فحص: لو كانت الشبكة مقطوعة أو الرابط خاطئًا، فشلت كل الطلبات بالسبب
+ * نفسه، وقرأناها خطأً على أنها «جدول غير موجود» و«محجوب بسياسة». وهذا أسوأ من
+ * لا شيء: يوهم أن الحماية تعمل بينما لم يُسأل الخادم أصلًا. فنسأل مرة واحدة
+ * ونتوقّف إن لم يُجب.
+ */
+
+const UNREACHABLE = /fetch failed|ENOTFOUND|EAI_AGAIN|ETIMEDOUT|ECONNREFUSED|ECONNRESET|getaddrinfo|network|socket hang up/i;
+
+{
+  const { error } = await supabase.from("activities").select("id", { head: true, count: "exact" });
+  if (error && UNREACHABLE.test(`${error.message} ${error.details ?? ""}`)) {
+    line();
+    line(`❌ ${bold("لم نصل إلى الخادم أصلًا")} — ${host}`);
+    line();
+    line("   لم يُفحص شيء. الأسباب المحتملة بالترتيب:");
+    line("    • الإنترنت مقطوع على هذا الحاسوب.");
+    line("    • الرابط فيه خطأ إملائي — انسخه من Supabase ← Settings ← API.");
+    line("    • المشروع موقوف (Paused) — افتحه في supabase.com واضغط Restore.");
+    line();
+    line(dim(`   نص الخطأ: ${error.message}`));
+    line();
+    process.exit(1);
+  }
 }
 
 line();

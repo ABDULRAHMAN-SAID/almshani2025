@@ -6,9 +6,12 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
+import { MisconfiguredNotice } from "@/components/MisconfiguredNotice";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { ToastHost } from "@/components/ToastHost";
 import { colors } from "@/constants";
+import { USE_MOCK_DATA } from "@/services/config";
+import { isSupabaseConfigured } from "@/services/supabase";
 
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
@@ -42,6 +45,17 @@ export default function RootLayout() {
   }, [appReady]);
 
   if (!appReady) return null;
+
+  // نسخة حقيقية خرجت بلا مفاتيح: نقف مرة واحدة برسالة صريحة بدل أن يفشل كل
+  // طلب على حدة برسالة شبكة تُقرأ خطأً على أنها ضعف إنترنت.
+  if (!USE_MOCK_DATA && !isSupabaseConfigured) {
+    return (
+      <SafeAreaProvider onLayout={onLayoutRootView}>
+        <StatusBar style="light" backgroundColor={colors.primary} />
+        <MisconfiguredNotice />
+      </SafeAreaProvider>
+    );
+  }
 
   return (
     <SafeAreaProvider onLayout={onLayoutRootView}>

@@ -11,12 +11,15 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --ext .ts,.tsx",
     "build:apk": "eas build --platform android --profile preview",
+    "build:apk:real": "eas build --platform android --profile production-apk",
     "build:android": "eas build --platform android --profile production",
     "build:ios": "eas build --platform ios --profile production",
     "submit:android": "eas submit --platform android --latest",
     "check:supabase": "node scripts/check-supabase.mjs",
     "test:security": "bash scripts/test-security.sh",
-    "make-app": "node scripts/make-app.mjs"
+    "make-app": "node scripts/make-app.mjs",
+    "connect": "node scripts/connect-server.mjs",
+    "make-app:demo": "node scripts/make-app.mjs --demo"
   },
   "dependencies": {
     "@expo-google-fonts/tajawal": "^0.2.3",
