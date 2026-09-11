@@ -320,6 +320,45 @@ begin
     perform pg_temp.check_op('إداري', 'يردّ على رسالة', true, n);
   end if;
 
+  -- ===================== رفع الملفات =====================
+  -- ‏Supabase يضبط عمود owner بنفسه عند الرفع؛ نضبطه هنا يدويًا لأن الطبقة
+  -- التوافقية المحلية لا تحاكي واجهة التخزين، وسياسة الحذف مبنية عليه.
+
+  n := pg_temp.try_write(member,
+    'insert into storage.objects (bucket_id, name, owner) values (''app-media'', ''posts/1-abc.jpg'', '
+      || quote_literal(member) || '::uuid)');
+  perform pg_temp.check_op('عضو', 'يرفع صورة/مقطعًا إلى app-media', true, n);
+
+  n := pg_temp.try_write(member,
+    'insert into storage.objects (bucket_id, name, owner) values (''activity-images'', ''covers/1-abc.jpg'', '
+      || quote_literal(member) || '::uuid)');
+  perform pg_temp.check_op('عضو', 'يرفع غلافًا إلى activity-images', false, n);
+
+  insert into storage.objects (bucket_id, name, owner)
+  values ('app-media', 'posts/owned-by-boss.jpg', boss) on conflict do nothing;
+
+  n := pg_temp.try_write(member,
+    'delete from storage.objects where bucket_id = ''app-media'' and name = ''posts/owned-by-boss.jpg''');
+  perform pg_temp.check_op('عضو', 'يحذف مرفق غيره', false, n);
+
+  insert into storage.objects (bucket_id, name, owner)
+  values ('app-media', 'posts/owned-by-member.jpg', member) on conflict do nothing;
+
+  n := pg_temp.try_write(member,
+    'delete from storage.objects where bucket_id = ''app-media'' and name = ''posts/owned-by-member.jpg''');
+  perform pg_temp.check_op('عضو', 'يحذف مرفقه هو', true, n);
+
+  n := pg_temp.try_write(boss,
+    'insert into storage.objects (bucket_id, name, owner) values (''activity-images'', ''covers/2-abc.jpg'', '
+      || quote_literal(boss) || '::uuid)');
+  perform pg_temp.check_op('إداري', 'يرفع غلاف نشاط', true, n);
+
+  n := pg_temp.try_write(boss,
+    'delete from storage.objects where bucket_id = ''app-media'' and name = ''posts/owned-by-member.jpg''');
+  perform pg_temp.check_op('إداري', 'يحذف مرفقًا مخالفًا لعضو', true, n);
+
+  delete from storage.objects where name like 'posts/owned-by-%';
+
   -- ===================== الإداري: ما يجب أن يُمنع منه أيضًا =====================
   -- صلاحية الإدارة ليست صلاحية مطلقة.
 
