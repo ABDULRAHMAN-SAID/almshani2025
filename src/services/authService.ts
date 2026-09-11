@@ -1,7 +1,12 @@
 import * as Linking from "expo-linking";
 import type { User } from "@/types/models";
+import { isValidPhone, looksLikeEmail, normalizePhone } from "@/utils/identity";
 import { USE_MOCK_DATA } from "./config";
 import { supabase } from "./supabase";
+
+// تُعاد التصدير ليبقى مسار الاستيراد في الشاشات كما هو؛ والمنطق نفسه في
+// utils/identity حيث يُختبر وحده بلا تبعيات.
+export { isValidPhone, looksLikeEmail, normalizePhone };
 
 /**
  * المصادقة بكلمة مرور.
@@ -14,27 +19,6 @@ import { supabase } from "./supabase";
  * ولأن الدخول بكلمة مرور، لم تعد هناك رسائل SMS ولا مزوّد مدفوع. يبقى البريد
  * وحده مطلوبًا لاستعادة كلمة المرور.
  */
-
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-const PHONE_DIGITS = /^\+?\d{8,15}$/;
-
-export const looksLikeEmail = (value: string) => EMAIL_REGEX.test(value.trim());
-
-/**
- * توحيد صيغة الرقم إلى الصيغة الدولية.
- *
- * الخادم يطابق الرقم حرفًا بحرف، فلو سجّل المستخدم بـ 91234567 ودخل بـ
- * ‎+96891234567 لعُدّ حسابين مختلفين. نوحّدها هنا مرة واحدة.
- */
-export function normalizePhone(raw: string): string {
-  const value = raw.replace(/[\s-]/g, "");
-  if (value.startsWith("+")) return value;
-  const digits = value.replace(/\D/g, "");
-  if (digits.length === 8) return `+968${digits}`; // رقم عماني محلي
-  return `+${digits}`;
-}
-
-export const isValidPhone = (value: string) => PHONE_DIGITS.test(normalizePhone(value));
 
 export interface SignUpInput {
   firstName: string;

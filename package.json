@@ -22,6 +22,7 @@
     "test:security": "bash scripts/test-security.sh",
     "test:operations": "bash scripts/test-operations.sh",
     "test:logic": "bash scripts/test-logic.sh",
+    "test:units": "node scripts/test-units.mjs",
     "make-app": "node scripts/make-app.mjs",
     "connect": "node scripts/connect-server.mjs",
     "make-app:demo": "node scripts/make-app.mjs --demo"

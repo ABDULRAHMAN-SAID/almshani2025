@@ -1,4 +1,5 @@
 import type { Activity } from "@/types/models";
+import { parseIsoDate } from "./date";
 
 /** أسماء أيام الأسبوع مختصرة — الأسبوع يبدأ بالأحد. */
 export const ARABIC_WEEKDAYS_SHORT = ["أحد", "إثنين", "ثلاثاء", "أربعاء", "خميس", "جمعة", "سبت"];
@@ -48,7 +49,7 @@ export function groupActivitiesByDate(activities: Activity[]): Record<string, Ac
 /** تجميع الأنشطة حسب الشهر (مفتاح: 0-11) للعرض السنوي. */
 export function groupActivitiesByMonth(activities: Activity[], year: number): Record<number, Activity[]> {
   return activities.reduce<Record<number, Activity[]>>((map, activity) => {
-    const date = new Date(activity.date);
+    const date = parseIsoDate(activity.date);
     if (date.getFullYear() !== year) return map;
     (map[date.getMonth()] ||= []).push(activity);
     return map;
