@@ -13,7 +13,7 @@ import { PointsBadge } from "@/components/PointsBadge";
 import { SectionHeader } from "@/components/SectionHeader";
 import { WeeklyQuizTeaserCard } from "@/components/WeeklyQuizTeaserCard";
 import { HOME_SECTIONS } from "@/constants/categories";
-import { colors, spacing, typography } from "@/constants";
+import { colors, radius, shadow, spacing, typography } from "@/constants";
 import { useAuth } from "@/hooks/useAuth";
 import {
   useHeroActivity,
@@ -83,22 +83,25 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.greeting}>
-          <Text style={styles.greetingTitle}>مرحبًا، {user?.name ?? ""}</Text>
+          <Text style={styles.greetingTitle}>{user?.name ? `مرحبًا، ${user.name}` : "مرحبًا"}</Text>
           <Text style={styles.greetingSubtitle}>اطّلع على أحدث الأنشطة والفعاليات</Text>
         </View>
       </HeaderBand>
 
-      <View style={styles.grid}>
-        {sections.map((section) => (
-          <View key={section.key} style={styles.gridItem}>
-            <CategoryCard
-              label={section.label}
-              icon={section.icon}
-              tint={section.tint}
-              onPress={() => openSection(section.key)}
-            />
-          </View>
-        ))}
+      <View style={styles.gridPanel}>
+        <View style={styles.grid}>
+          {sections.map((section) => (
+            <View key={section.key} style={styles.gridItem}>
+              <CategoryCard
+                label={section.label}
+                icon={section.icon}
+                tint={section.tint}
+                variant="plain"
+                onPress={() => openSection(section.key)}
+              />
+            </View>
+          ))}
+        </View>
       </View>
 
       <View style={styles.section}>
@@ -216,15 +219,20 @@ const styles = StyleSheet.create({
   greeting: { gap: 2 },
   greetingTitle: { ...typography.h1, color: colors.textOnPrimary },
   greetingSubtitle: { ...typography.bodyMuted, color: "rgba(255,255,255,0.72)" },
-  // شبكة الأقسام تتداخل مع أسفل الشريط الكحلي فتعطي إحساسًا بالعمق
-  grid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.md,
+  // لوح واحد يضمّ الأقسام، ويتداخل مع أسفل الشريط الكحلي فيعطي إحساسًا بالعمق
+  gridPanel: {
     marginTop: -44,
-    paddingHorizontal: spacing.lg,
+    marginHorizontal: spacing.lg,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg + 4,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.xs,
+    ...shadow.card,
   },
-  gridItem: { width: "31%" },
+  grid: { flexDirection: "row", flexWrap: "wrap" },
+  gridItem: { width: "33.33%" },
   section: { marginTop: spacing.xl, paddingHorizontal: spacing.lg },
   // القائمة الأفقية تمتد إلى حافة الشاشة بدل أن تتوقف عند هامش القسم
   hScroll: { marginHorizontal: -spacing.lg },
