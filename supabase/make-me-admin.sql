@@ -8,37 +8,41 @@
 --
 -- الترتيب:
 --   1. نفّذ supabase/schema.sql أولًا.
---   2. سجّل دخولك من التطبيق بهاتفك مرة واحدة (حتى يُنشأ حسابك).
---   3. غيّر الرقم في السطر المعلَّم أدناه.
+--   2. أنشئ حسابك من التطبيق ثم ادخل مرة واحدة.
+--   3. ضع رقمك أو بريدك في السطر المعلَّم أدناه.
 --   4. الصق الملف كاملًا في Supabase ← SQL Editor ← New query ثم Run.
 --
--- ⚠️ الرقم يجب أن يكون بالصيغة نفسها التي سجّلت بها في التطبيق.
---    لو سجّلت بـ +96891234567 فلا تكتب 91234567.
+-- ⚠️ اكتبه بالصيغة نفسها المحفوظة. التطبيق يحفظ الأرقام بالصيغة الدولية،
+--    فالرقم 91234567 محفوظ +96891234567.
 -- ============================================================================
 
 do $$
 declare
   -- ────────────────────────────────────────────────────────────────────────
-  -- ضع رقمك هنا، بين علامتَي التنصيص، ولا تغيّر شيئًا آخر:
-  my_phone text := '+968XXXXXXXX';
+  -- ضع رقمك أو بريدك هنا، بين علامتَي التنصيص، ولا تغيّر شيئًا آخر:
+  my_identity text := '+968XXXXXXXX';
   -- ────────────────────────────────────────────────────────────────────────
   target uuid;
 begin
-  select id into target from public.users where phone = my_phone;
+  -- يقبل الاثنين: ما فيه "@" بريد، وما سواه رقم.
+  select id into target
+    from public.users
+   where case when my_identity like '%@%' then lower(email) = lower(my_identity)
+              else phone = my_identity end;
 
-  -- الحساب غير موجود يعني أنك لم تدخل من التطبيق بعد، أو أن صيغة الرقم مختلفة.
+  -- الحساب غير موجود يعني أنك لم تدخل من التطبيق بعد، أو أن الصيغة مختلفة.
   -- نتوقّف برسالة صريحة بدل أن ننشئ صفًّا يتيمًا لا يطابق أي مستخدم.
   if target is null then
     raise exception
-      'لا يوجد حساب بالرقم %. سجّل الدخول من التطبيق أولًا، ثم تأكد أن الرقم مكتوب بالصيغة نفسها.',
-      my_phone;
+      'لا يوجد حساب بـ %. أنشئ حسابك من التطبيق أولًا، ثم تأكد أن الرقم أو البريد مكتوب بالصيغة نفسها.',
+      my_identity;
   end if;
 
   insert into public.admins (user_id)
   values (target)
   on conflict (user_id) do nothing;
 
-  raise notice 'تم: الحساب % صار إداريًا.', my_phone;
+  raise notice 'تم: الحساب % صار إداريًا.', my_identity;
 end $$;
 
 
@@ -48,6 +52,7 @@ end $$;
 select
   u.full_name  as "الاسم",
   u.phone      as "الهاتف",
+  u.email      as "البريد",
   a.created_at as "تاريخ الترقية"
 from public.admins a
 join public.users u on u.id = a.user_id
@@ -59,3 +64,6 @@ order by a.created_at;
 -- ============================================================================
 -- delete from public.admins
 -- where user_id = (select id from public.users where phone = '+968XXXXXXXX');
+-- أو بالبريد:
+-- delete from public.admins
+-- where user_id = (select id from public.users where lower(email) = 'name@example.com');

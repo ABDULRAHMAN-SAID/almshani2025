@@ -1,3 +1,4 @@
+import * as Linking from "expo-linking";
 import type { User } from "@/types/models";
 import { USE_MOCK_DATA } from "./config";
 import { supabase } from "./supabase";
@@ -180,14 +181,70 @@ export async function fetchProfile(userId: string): Promise<User | null> {
 
 /* --------------------------- استعادة كلمة المرور --------------------------- */
 
+/** الرابط الذي يعيد فتح التطبيق نفسه: anshatati://reset-password */
+export const passwordResetRedirect = () => Linking.createURL("reset-password");
+
 /**
  * الاستعادة بالبريد وحده: الرابط يصل إلى صندوق لا يملكه إلا صاحب الحساب.
  * ولو أُرسلت إلى رقم لاحتاجت رسالة SMS ومزوّدًا مدفوعًا.
+ *
+ * ونمرّر وجهة العودة صراحةً، وإلا فتح الرابطُ صفحةَ ويب لا التطبيق، ووقف
+ * المستخدم أمام رابط لا يوصله إلى مكان — وهذا أسوأ من غياب الميزة أصلًا.
  */
 export async function sendPasswordReset(email: string): Promise<void> {
   if (USE_MOCK_DATA) return;
-  const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase());
+  const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+    redirectTo: passwordResetRedirect(),
+  });
   if (error) throw authError(error, "تعذّر إرسال رابط الاستعادة");
+}
+
+/**
+ * فتح جلسة الاستعادة من الرابط القادم في البريد.
+ *
+ * تتغيّر صيغة الرابط بتغيّر إعداد المشروع: إمّا رمز تبادل (PKCE) في
+ * الاستعلام، أو توكنان في جزء الوسم (implicit). نقبل الصيغتين حتى لا يتوقّف
+ * المستخدم على إعدادٍ لا يعرفه ولا يملك تغييره.
+ */
+export async function openRecoverySession(url: string): Promise<void> {
+  if (USE_MOCK_DATA) return;
+
+  // تحليل نصّي مباشر لا عبر URL: الرابط بمخطّط خاص (anshatati://) ومعالجته
+  // تختلف بين المنصّات، بينما موضع "?" و"#" واحد في كل الحالات.
+  const afterScheme = url.slice(url.indexOf("://") + 3);
+  const queryPart = afterScheme.includes("?")
+    ? afterScheme.slice(afterScheme.indexOf("?") + 1).split("#")[0]
+    : "";
+  const hashPart = afterScheme.includes("#") ? afterScheme.slice(afterScheme.indexOf("#") + 1) : "";
+
+  const query = new URLSearchParams(queryPart);
+  const hash = new URLSearchParams(hashPart);
+  const pick = (key: string) => hash.get(key) ?? query.get(key);
+
+  const failure = pick("error_description") ?? pick("error");
+  if (failure) {
+    throw new Error("انتهت صلاحية الرابط أو استُعمل من قبل. اطلب رابطًا جديدًا.");
+  }
+
+  const code = pick("code");
+  if (code) {
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    if (error) throw authError(error, "الرابط غير صالح أو انتهت صلاحيته");
+    return;
+  }
+
+  const accessToken = pick("access_token");
+  const refreshToken = pick("refresh_token");
+  if (accessToken && refreshToken) {
+    const { error } = await supabase.auth.setSession({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+    });
+    if (error) throw authError(error, "الرابط غير صالح أو انتهت صلاحيته");
+    return;
+  }
+
+  throw new Error("لم نفهم رابط الاستعادة. اطلب رابطًا جديدًا من شاشة الدخول.");
 }
 
 /** تغيير كلمة المرور بعد فتح رابط الاستعادة، أو من الإعدادات. */

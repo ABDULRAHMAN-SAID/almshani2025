@@ -5,6 +5,9 @@
  * كل نداء خدمة في الشاشات يمرّ خطأه من هنا.
  */
 
+/** نطاق الحروف العربية — به نعرف أن الرسالة كُتبت للمستخدم لا للمطوّر. */
+const ARABIC = /[\u0600-\u06FF]/;
+
 /** أخطاء الشبكة: لا اتصال، انقطاع، أو مهلة. */
 const NETWORK_HINTS = ["network request failed", "failed to fetch", "networkerror", "timeout", "econnrefused", "enotfound"];
 
@@ -62,6 +65,11 @@ export function toArabicMessage(error: unknown, fallback = "تعذّر إتما�
   const text = readText(error);
   if (text.toLowerCase().includes("forbidden")) return "ليست لديك صلاحية لهذه العملية.";
   if (text.toLowerCase().includes("jwt")) return "انتهت صلاحية جلستك، سجّل الدخول من جديد.";
+
+  // رسالة عربية تعني أن طبقة الخدمات صاغتها للمستخدم أصلًا، فهي أدقّ من أي
+  // عبارة عامة. وبدون هذا السطر كانت كل رسائل المصادقة المكتوبة بعناية
+  // تُرمى ويُعرض «تعذّر إتمام العملية» مكانها.
+  if (ARABIC.test(text)) return text;
 
   return fallback;
 }

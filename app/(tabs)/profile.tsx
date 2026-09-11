@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { BottomSheet } from "@/components/BottomSheet";
+import { FormField } from "@/components/FormField";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { colors, radius, spacing, typography } from "@/constants";
 import { useAuth } from "@/hooks/useAuth";
@@ -10,7 +11,7 @@ import { usePointsBalance } from "@/hooks/usePoints";
 import { useUnreadCount } from "@/hooks/useNotifications";
 import { useAdminSettingsStore } from "@/store/adminSettingsStore";
 import { useRegistrationStore } from "@/store/registrationStore";
-import { updateFullName } from "@/services/authService";
+import { changePassword, updateFullName } from "@/services/authService";
 import { showToast } from "@/store/toastStore";
 import { toArabicMessage } from "@/utils/errors";
 
@@ -24,6 +25,10 @@ export default function ProfileScreen() {
   const [editing, setEditing] = useState(false);
   const [nameDraft, setNameDraft] = useState(user?.name ?? "");
   const [saving, setSaving] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [savingPassword, setSavingPassword] = useState(false);
 
   const openEdit = () => {
     setNameDraft(user?.name ?? "");
@@ -48,6 +53,29 @@ export default function ProfileScreen() {
     }
   };
 
+  const handleChangePassword = async () => {
+    if (newPassword.length < 6) {
+      showToast("كلمة المرور قصيرة — ستة أحرف على الأقل", "error");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      showToast("كلمتا المرور غير متطابقتين", "error");
+      return;
+    }
+    setSavingPassword(true);
+    try {
+      await changePassword(newPassword);
+      setChangingPassword(false);
+      setNewPassword("");
+      setConfirmPassword("");
+      showToast("تم تغيير كلمة المرور", "success");
+    } catch (error) {
+      showToast(toArabicMessage(error, "تعذّر تغيير كلمة المرور"), "error");
+    } finally {
+      setSavingPassword(false);
+    }
+  };
+
   const handleSignOut = () => {
     signOut();
     router.replace("/(auth)/login");
@@ -64,6 +92,7 @@ export default function ProfileScreen() {
         <View style={styles.profileInfo}>
           <Text style={styles.name}>{user?.name}</Text>
           <Text style={styles.phone}>{user?.phone}</Text>
+          {user?.email ? <Text style={styles.email}>{user.email}</Text> : null}
         </View>
         <Pressable accessibilityRole="button" onPress={openEdit} hitSlop={8}>
           <Ionicons name="create-outline" size={20} color={colors.primary} />
@@ -98,6 +127,11 @@ export default function ProfileScreen() {
           value={unread > 0 ? String(unread) : undefined}
           onPress={() => router.push("/notifications")}
         />
+        <Row
+          icon="key-outline"
+          label="تغيير كلمة المرور"
+          onPress={() => setChangingPassword(true)}
+        />
         <Row icon="settings-outline" label="الإعدادات" onPress={() => router.push("/settings")} />
       </View>
 
@@ -127,6 +161,36 @@ export default function ProfileScreen() {
           placeholderTextColor={colors.textMuted}
         />
         <PrimaryButton label="حفظ" onPress={handleSave} loading={saving} style={{ marginTop: spacing.lg }} />
+      </BottomSheet>
+
+      <BottomSheet visible={changingPassword} onClose={() => setChangingPassword(false)}>
+        <Text style={styles.sheetTitle}>تغيير كلمة المرور</Text>
+        <View style={{ gap: spacing.md }}>
+          <FormField
+            label="كلمة المرور الجديدة"
+            value={newPassword}
+            onChangeText={setNewPassword}
+            placeholder="••••••••"
+            secure
+            autoCapitalize="none"
+            hint="ستة أحرف على الأقل"
+          />
+          <FormField
+            label="تأكيد كلمة المرور"
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            placeholder="••••••••"
+            secure
+            autoCapitalize="none"
+            error={confirmPassword && confirmPassword !== newPassword ? "غير متطابقتين" : ""}
+          />
+        </View>
+        <PrimaryButton
+          label="حفظ كلمة المرور"
+          onPress={handleChangePassword}
+          loading={savingPassword}
+          style={{ marginTop: spacing.lg }}
+        />
       </BottomSheet>
     </View>
   );
@@ -179,6 +243,7 @@ const styles = StyleSheet.create({
   },
   profileInfo: { flex: 1, gap: 2 },
   name: { ...typography.h3 },
+  email: { ...typography.caption, fontSize: 11.5, color: colors.textMuted },
   phone: { ...typography.bodyMuted },
   list: { gap: spacing.sm, marginBottom: spacing.xl },
   row: {
