@@ -4,6 +4,7 @@ import { USE_MOCK_DATA } from "./config";
 import { MOCK_ACTIVITIES } from "./mockData";
 import { recordMockPoints } from "./pointsService";
 import { supabase } from "./supabase";
+import { fetchFeatures } from "./settingsService";
 
 const checkedInMock = new Set<string>();
 
@@ -21,7 +22,7 @@ export async function submitCheckIn(
   reason: PointsReason = "lecture_attendance"
 ): Promise<CheckInResult> {
   if (USE_MOCK_DATA) {
-    const award = adminSettings().pointsEnabled ? adminSettings().pointsPerAction : 0;
+    const award = (await fetchFeatures()).pointsEnabled ? adminSettings().pointsPerAction : 0;
     const activity = MOCK_ACTIVITIES.find((a) => a.id === activityId);
     if (!activity || !activity.checkInCode || activity.checkInCode !== code.trim().toUpperCase()) {
       return { success: false, pointsEarned: 0, alreadyCheckedIn: false };

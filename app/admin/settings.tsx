@@ -12,6 +12,9 @@ import { useAdminStore } from "@/store/adminStore";
 import { showToast } from "@/store/toastStore";
 import { REGISTRATION_LABEL } from "@/utils/registration";
 import type { RegistrationState } from "@/types/models";
+import { useFeatures, useSetFeature } from "@/hooks/useFeatures";
+import type { AppFeatures } from "@/services/settingsService";
+import { toArabicMessage } from "@/utils/errors";
 
 const STATUS_OPTIONS: RegistrationState[] = ["open", "upcoming", "closed"];
 const POINT_OPTIONS = [5, 10, 15, 20];
@@ -20,20 +23,24 @@ const POINT_OPTIONS = [5, 10, 15, 20];
 export default function AdminSettingsScreen() {
   const client = useQueryClient();
   const settings = useAdminSettingsStore();
+  const features = useFeatures();
+  const setFeatureMutation = useSetFeature();
   const lock = useAdminStore((state) => state.lock);
 
   const [pin, setPin] = useState(settings.devicePin);
   const [confirmPin, setConfirmPin] = useState("");
 
-  const applyToggle = (
-    key: "quizEnabled" | "pointsEnabled" | "registrationEnabled" | "discussionEnabled" | "messagesEnabled",
-    label: string
-  ) => {
-    const next = !settings[key];
-    settings.toggle(key);
-    settings.logAction(`${next ? "تفعيل" : "تعطيل"} ${label}`);
-    client.invalidateQueries();
-    showToast(`${next ? "تم تفعيل" : "تم تعطيل"} ${label}`, "success");
+  // المفاتيح على الخادم: التبديل يصل كل جهاز، ويُفرَض في سياسات الكتابة نفسها.
+  const applyToggle = async (key: keyof AppFeatures, label: string) => {
+    const next = !features[key];
+    try {
+      await setFeatureMutation.mutateAsync({ key, value: next });
+      settings.logAction(`${next ? "تفعيل" : "تعطيل"} ${label}`);
+      client.invalidateQueries();
+      showToast(`${next ? "تم تفعيل" : "تم تعطيل"} ${label}`, "success");
+    } catch (error) {
+      showToast(toArabicMessage(error, `تعذّر ${next ? "تفعيل" : "تعطيل"} ${label}`), "error");
+    }
   };
 
   const handleSavePin = () => {
@@ -135,7 +142,7 @@ export default function AdminSettingsScreen() {
             icon="create-outline"
             label="التسجيل في الأنشطة"
             hint="عند الإيقاف يختفي زر التسجيل من كل الأنشطة"
-            value={settings.registrationEnabled}
+            value={features.registrationEnabled}
             onChange={() => applyToggle("registrationEnabled", "التسجيل في الأنشطة")}
           />
           <View style={styles.divider} />
@@ -143,7 +150,7 @@ export default function AdminSettingsScreen() {
             icon="help-circle-outline"
             label="السؤال الثقافي الأسبوعي"
             hint="عند الإيقاف لا يظهر السؤال للمستخدمين"
-            value={settings.quizEnabled}
+            value={features.quizEnabled}
             onChange={() => applyToggle("quizEnabled", "السؤال الثقافي")}
           />
           <View style={styles.divider} />
@@ -151,7 +158,7 @@ export default function AdminSettingsScreen() {
             icon="ribbon-outline"
             label="نظام النقاط"
             hint="عند الإيقاف لا تُمنح نقاط على الحضور ولا على الإجابات"
-            value={settings.pointsEnabled}
+            value={features.pointsEnabled}
             onChange={() => applyToggle("pointsEnabled", "نظام النقاط")}
           />
           <View style={styles.divider} />
@@ -159,7 +166,7 @@ export default function AdminSettingsScreen() {
             icon="chatbubbles-outline"
             label="المجموعات النقاشية"
             hint="لوحات نقاش عامة مُدارة — بلا رسائل خاصة بين المستخدمين"
-            value={settings.discussionEnabled}
+            value={features.discussionEnabled}
             onChange={() => applyToggle("discussionEnabled", "المجموعات النقاشية")}
           />
           <View style={styles.divider} />
@@ -167,7 +174,7 @@ export default function AdminSettingsScreen() {
             icon="mail-outline"
             label="مراسلة الإدارة"
             hint="عند الإيقاف لا يستطيع المستخدم إرسال رسالة جديدة"
-            value={settings.messagesEnabled}
+            value={features.messagesEnabled}
             onChange={() => applyToggle("messagesEnabled", "مراسلة الإدارة")}
           />
         </View>

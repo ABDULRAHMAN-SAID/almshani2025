@@ -19,6 +19,7 @@ import { showToast } from "@/store/toastStore";
 import { formatArabicDate, formatArabicTime, formatArabicWeekday, relativeDayLabel } from "@/utils/date";
 import { REGISTRATION_COLOR, REGISTRATION_LABEL } from "@/utils/registration";
 import { toArabicMessage } from "@/utils/errors";
+import { useFeatures } from "@/hooks/useFeatures";
 
 /** شاشة تفاصيل موحّدة لكل أنواع الأنشطة (مسابقة، محاضرة، رياضة، رماية...). */
 export default function ActivityDetailScreen() {
@@ -46,7 +47,8 @@ export default function ActivityDetailScreen() {
 
   const meta = CATEGORY_META[activity.category];
   const statusColor = REGISTRATION_COLOR[activity.registrationStatus];
-  const check = canRegister(activity);
+  const { registrationEnabled } = useFeatures();
+  const check = canRegister(activity, registrationEnabled);
   const seatsLeft =
     activity.capacity != null ? Math.max(activity.capacity - (activity.registeredCount ?? 0), 0) : null;
 

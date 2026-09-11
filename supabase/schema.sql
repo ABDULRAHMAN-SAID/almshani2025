@@ -207,6 +207,47 @@ alter table public.weekly_quizzes enable row level security;
 alter table public.quiz_questions enable row level security;
 alter table public.quiz_answers enable row level security;
 
+-- ============ مفاتيح التشغيل ============
+-- صفٌّ واحد يقرؤه كل جهاز، وتكتبه الإدارة وحدها.
+--
+-- كانت هذه المفاتيح محفوظة في ذاكرة جهاز الإداري: يطفئ المجموعات فتختفي الأزرار
+-- عنده هو، ويبقى الخادم قابلًا للنشر عند بقية الناس. ومفتاحُ إيقافٍ لا يوقف
+-- شيئًا ليس مفتاح إيقاف. فصارت هنا، وتُفرَض في سياسات الكتابة نفسها أدناه.
+create table if not exists public.app_settings (
+  id smallint primary key default 1,
+  registration_enabled boolean not null default true,
+  quiz_enabled boolean not null default true,
+  points_enabled boolean not null default true,
+  discussion_enabled boolean not null default true,
+  messages_enabled boolean not null default true,
+  updated_at timestamptz not null default now(),
+  constraint app_settings_single_row check (id = 1)
+);
+
+alter table public.app_settings enable row level security;
+
+drop policy if exists "settings public read" on public.app_settings;
+create policy "settings public read" on public.app_settings
+  for select using (true);
+
+insert into public.app_settings (id) values (1) on conflict (id) do nothing;
+
+/** هل الميزة مفعّلة؟ تُستدعى من السياسات، فتقرأ الصفّ متجاوزةً RLS. */
+create or replace function public.feature_enabled(p_feature text)
+returns boolean language sql stable security definer set search_path = public as $$
+  select coalesce(
+    case p_feature
+      when 'registration' then registration_enabled
+      when 'quiz'         then quiz_enabled
+      when 'points'       then points_enabled
+      when 'discussion'   then discussion_enabled
+      when 'messages'     then messages_enabled
+      else true
+    end,
+    true)
+  from public.app_settings where id = 1;
+$$;
+
 -- المستخدم يرى ويعدّل صفّه فقط
 drop policy if exists "users read own row" on public.users;
 create policy "users read own row" on public.users
@@ -246,7 +287,7 @@ create policy "registrations read own" on public.registrations
   for select using (auth.uid() = user_id);
 drop policy if exists "registrations insert own" on public.registrations;
 create policy "registrations insert own" on public.registrations
-  for insert with check (auth.uid() = user_id);
+  for insert with check (auth.uid() = user_id and public.feature_enabled('registration'));
 drop policy if exists "registrations delete own" on public.registrations;
 create policy "registrations delete own" on public.registrations
   for delete using (auth.uid() = user_id);
@@ -380,6 +421,11 @@ create policy "admins read all for admins" on public.admins
 
 -- ويرى بيانات زملائه الإداريين وحدهم (الاسم والهاتف لعرضهما مقنّعين في اللوحة).
 -- لا يفتح هذا قراءة بيانات بقية المستخدمين: الشرط يقصرها على من هو في admins.
+-- كتابة مفاتيح التشغيل. موضعها هنا لا فوق: تستدعي is_admin()، ولا تسبق تعريفها.
+drop policy if exists "settings admin write" on public.app_settings;
+create policy "settings admin write" on public.app_settings
+  for update using (public.is_admin()) with check (public.is_admin());
+
 -- حذف إشعار مُرسَل من لوحة الإدارة. بدونها لا يُرفع خطأ — يحذف الأمرُ صفرَ صفوف
 -- ويعود «ناجحًا»، فيظن الإداري أنه حذف شيئًا ولم يُحذف شيء.
 -- وموضعها هنا لا فوق: السياسة تستدعي is_admin()، ولا يجوز أن تسبق تعريفها.
@@ -590,7 +636,7 @@ create policy "messages read own or admin" on public.user_messages
 
 drop policy if exists "messages insert own" on public.user_messages;
 create policy "messages insert own" on public.user_messages
-  for insert with check (user_id = auth.uid());
+  for insert with check (public.feature_enabled('messages') and user_id = auth.uid());
 
 -- التعديل للإدارة وحدها: لا يستطيع المستخدم تغيير حالة رسالته ولا كتابة رد باسم القسم.
 drop policy if exists "messages admin update" on public.user_messages;
@@ -690,7 +736,8 @@ create policy "posts public read" on public.group_posts
 drop policy if exists "posts insert own" on public.group_posts;
 create policy "posts insert own" on public.group_posts
   for insert with check (
-    author_id = auth.uid()
+    public.feature_enabled('discussion')
+    and author_id = auth.uid()
     and exists (
       select 1
         from public.discussion_groups g

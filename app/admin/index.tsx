@@ -26,6 +26,7 @@ import { TODAY_ISO } from "@/utils/calendar";
 import { ACTIVITY_FORMS, pluralizeAr } from "@/utils/arabic";
 import type { Activity } from "@/types/models";
 import { toArabicMessage } from "@/utils/errors";
+import { useFeatures } from "@/hooks/useFeatures";
 
 type AdminTab = "overview" | "activities" | "content" | "people" | "settings";
 
@@ -466,20 +467,21 @@ function PeopleTab() {
 
 function SettingsTab() {
   const settings = useAdminSettingsStore();
+  const features = useFeatures();
 
   return (
     <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       <View style={styles.statsGrid}>
         <StatTile
-          icon={settings.registrationEnabled ? "checkmark-circle-outline" : "close-circle-outline"}
-          tint={settings.registrationEnabled ? "#2F855A" : "#9B2C2C"}
-          value={settings.registrationEnabled ? 1 : 0}
+          icon={features.registrationEnabled ? "checkmark-circle-outline" : "close-circle-outline"}
+          tint={features.registrationEnabled ? "#2F855A" : "#9B2C2C"}
+          value={features.registrationEnabled ? 1 : 0}
           label="التسجيل مفعّل"
         />
         <StatTile
-          icon={settings.quizEnabled ? "help-circle-outline" : "close-circle-outline"}
-          tint={settings.quizEnabled ? "#2C5282" : "#9B2C2C"}
-          value={settings.quizEnabled ? 1 : 0}
+          icon={features.quizEnabled ? "help-circle-outline" : "close-circle-outline"}
+          tint={features.quizEnabled ? "#2C5282" : "#9B2C2C"}
+          value={features.quizEnabled ? 1 : 0}
           label="السؤال مفعّل"
         />
         <StatTile icon="ribbon-outline" tint="#C7A252" value={settings.pointsPerAction} label="نقاط لكل عملية" />

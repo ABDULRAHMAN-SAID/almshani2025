@@ -15,11 +15,12 @@ import { useAdminSettingsStore } from "@/store/adminSettingsStore";
 import { showToast } from "@/store/toastStore";
 import type { DiscussionGroup } from "@/types/models";
 import { toArabicMessage } from "@/utils/errors";
+import { useFeatures, useSetFeature } from "@/hooks/useFeatures";
 
 export default function AdminGroupsScreen() {
   const client = useQueryClient();
-  const enabled = useAdminSettingsStore((state) => state.discussionEnabled);
-  const toggle = useAdminSettingsStore((state) => state.toggle);
+  const { discussionEnabled: enabled } = useFeatures();
+  const setFeatureMutation = useSetFeature();
   const logAction = useAdminSettingsStore((state) => state.logAction);
   const [pendingDelete, setPendingDelete] = useState<DiscussionGroup | null>(null);
 
@@ -78,9 +79,13 @@ export default function AdminGroupsScreen() {
         </View>
         <Switch
           value={enabled}
-          onValueChange={() => {
-            toggle("discussionEnabled");
-            logAction(enabled ? "إيقاف المجموعات النقاشية" : "تفعيل المجموعات النقاشية");
+          onValueChange={async () => {
+            try {
+              await setFeatureMutation.mutateAsync({ key: "discussionEnabled", value: !enabled });
+              logAction(enabled ? "إيقاف المجموعات النقاشية" : "تفعيل المجموعات النقاشية");
+            } catch (error) {
+              showToast(toArabicMessage(error, "تعذّر تغيير حالة المجموعات"), "error");
+            }
           }}
           trackColor={{ true: colors.primary, false: colors.borderStrong }}
           thumbColor={colors.surface}

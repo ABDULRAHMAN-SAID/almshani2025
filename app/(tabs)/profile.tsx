@@ -9,19 +9,18 @@ import { colors, radius, spacing, typography } from "@/constants";
 import { useAuth } from "@/hooks/useAuth";
 import { usePointsBalance } from "@/hooks/usePoints";
 import { useUnreadCount } from "@/hooks/useNotifications";
-import { useAdminSettingsStore } from "@/store/adminSettingsStore";
 import { useRegistrationStore } from "@/store/registrationStore";
 import { changePassword, updateFullName } from "@/services/authService";
 import { showToast } from "@/store/toastStore";
 import { toArabicMessage } from "@/utils/errors";
+import { useFeatures } from "@/hooks/useFeatures";
 
 export default function ProfileScreen() {
   const { user, updateName, signOut } = useAuth();
   const points = usePointsBalance();
   const unread = useUnreadCount();
   const registeredCount = useRegistrationStore((state) => state.registeredIds.length);
-  const discussionEnabled = useAdminSettingsStore((state) => state.discussionEnabled);
-  const messagesEnabled = useAdminSettingsStore((state) => state.messagesEnabled);
+  const { discussionEnabled, messagesEnabled } = useFeatures();
   const [editing, setEditing] = useState(false);
   const [nameDraft, setNameDraft] = useState(user?.name ?? "");
   const [saving, setSaving] = useState(false);

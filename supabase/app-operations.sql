@@ -320,6 +320,42 @@ begin
     perform pg_temp.check_op('إداري', 'يردّ على رسالة', true, n);
   end if;
 
+  -- ===================== مفاتيح الإيقاف =====================
+  -- مفتاحُ إيقافٍ لا يوقف شيئًا ليس مفتاح إيقاف: نطفئه ونتأكد أن الخادم يرفض.
+
+  update public.app_settings set discussion_enabled = false, messages_enabled = false,
+                                 registration_enabled = false where id = 1;
+
+  if v_grp is not null then
+    n := pg_temp.try_write(member,
+      'insert into public.group_posts (group_id, author_id, author_name, body) values ('
+        || quote_literal(v_grp) || '::uuid, ' || quote_literal(member) || '::uuid, ''عضو'', ''بعد الإطفاء'')');
+    perform pg_temp.check_op('عضو', 'ينشر والمجموعات مطفأة', false, n);
+  end if;
+
+  n := pg_temp.try_write(member,
+    'insert into public.user_messages (user_id, user_name, kind, subject, body) values ('
+      || quote_literal(member) || '::uuid, ''عضو'', ''اقتراح'', ''ع'', ''ن'')');
+  perform pg_temp.check_op('عضو', 'يراسل والمراسلة مطفأة', false, n);
+
+  if v_act is not null then
+    n := pg_temp.try_write(member,
+      'insert into public.registrations (user_id, activity_id) values ('
+        || quote_literal(member) || '::uuid, ' || quote_literal(v_act) || '::uuid)');
+    perform pg_temp.check_op('عضو', 'يسجّل والتسجيل مطفأ', false, n);
+  end if;
+
+  n := pg_temp.try_write(member,
+    'update public.app_settings set discussion_enabled = true where id = 1');
+  perform pg_temp.check_op('عضو', 'يعيد تشغيل ميزة بنفسه', false, n);
+
+  update public.app_settings set discussion_enabled = true, messages_enabled = true,
+                                 registration_enabled = true where id = 1;
+
+  n := pg_temp.try_write(boss,
+    'update public.app_settings set discussion_enabled = false where id = 1');
+  perform pg_temp.check_op('إداري', 'يطفئ ميزة', true, n);
+
   -- ===================== رفع الملفات =====================
   -- ‏Supabase يضبط عمود owner بنفسه عند الرفع؛ نضبطه هنا يدويًا لأن الطبقة
   -- التوافقية المحلية لا تحاكي واجهة التخزين، وسياسة الحذف مبنية عليه.

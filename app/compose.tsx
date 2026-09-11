@@ -20,10 +20,10 @@ import { colors, radius, spacing, typography } from "@/constants";
 import { useAuth } from "@/hooks/useAuth";
 import { EmptyState } from "@/components/EmptyState";
 import { sendMessage } from "@/services/messageService";
-import { useAdminSettingsStore } from "@/store/adminSettingsStore";
 import { showToast } from "@/store/toastStore";
 import type { MediaAttachment, MessageKind } from "@/types/models";
 import { toArabicMessage } from "@/utils/errors";
+import { useFeatures } from "@/hooks/useFeatures";
 
 const KINDS: { key: MessageKind; icon: keyof typeof Ionicons.glyphMap }[] = [
   { key: "اقتراح", icon: "bulb-outline" },
@@ -42,7 +42,7 @@ export default function ComposeScreen() {
   const [body, setBody] = useState("");
   const [attachments, setAttachments] = useState<MediaAttachment[]>([]);
   const [sending, setSending] = useState(false);
-  const messagesEnabled = useAdminSettingsStore((state) => state.messagesEnabled);
+  const { messagesEnabled } = useFeatures();
 
   const canSend = subject.trim().length > 2 && body.trim().length > 9;
 

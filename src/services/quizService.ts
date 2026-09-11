@@ -4,6 +4,7 @@ import { USE_MOCK_DATA } from "./config";
 import { MOCK_WEEKLY_QUIZ } from "./mockData";
 import { recordMockPoints } from "./pointsService";
 import { supabase } from "./supabase";
+import { fetchFeatures } from "./settingsService";
 
 export type PublicQuizQuestion = Omit<QuizQuestion, "correctOptionIndex">;
 export type PublicWeeklyQuiz = Omit<WeeklyQuiz, "questions"> & { questions: PublicQuizQuestion[] };
@@ -20,8 +21,9 @@ function stripAnswer(q: QuizQuestion): PublicQuizQuestion {
  * quiz_questions_public في Supabase. التحقق يتم فقط داخل submitQuizAnswer.
  */
 export async function fetchCurrentWeeklyQuiz(): Promise<PublicWeeklyQuiz | null> {
-  // الإدارة تستطيع تعطيل السؤال الأسبوعي كليًا من الإعدادات.
-  if (!adminSettings().quizEnabled) return null;
+  // الإدارة تستطيع تعطيل السؤال الأسبوعي كليًا — والمفتاح على الخادم، فيسري
+  // على كل جهاز لا على جهاز من أطفأه.
+  if (!(await fetchFeatures()).quizEnabled) return null;
   if (USE_MOCK_DATA) {
     return { ...MOCK_WEEKLY_QUIZ, questions: MOCK_WEEKLY_QUIZ.questions.map(stripAnswer) };
   }
@@ -55,7 +57,7 @@ export async function submitQuizAnswer(
     }
     const question = MOCK_WEEKLY_QUIZ.questions.find((q) => q.id === questionId);
     const isCorrect = question?.correctOptionIndex === selectedOptionIndex;
-    const award = adminSettings().pointsEnabled ? adminSettings().pointsPerAction : 0;
+    const award = (await fetchFeatures()).pointsEnabled ? adminSettings().pointsPerAction : 0;
     const pointsEarned = isCorrect ? award : 0;
     const result = { isCorrect, pointsEarned };
     answeredMock.set(questionId, result);

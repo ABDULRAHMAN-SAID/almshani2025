@@ -25,8 +25,8 @@ import {
 import { usePointsBalance } from "@/hooks/usePoints";
 import { useWeeklyQuiz } from "@/hooks/useWeeklyQuiz";
 import { getAnsweredState } from "@/services/quizService";
-import { useAdminSettingsStore } from "@/store/adminSettingsStore";
 import { formatArabicWeekday } from "@/utils/date";
+import { useFeatures } from "@/hooks/useFeatures";
 
 /** وجهة كل قسم في شبكة الأيقونات. */
 const SECTION_ROUTES: Record<string, string> = {
@@ -53,9 +53,7 @@ export default function HomeScreen() {
   const thisWeek = useThisWeekActivities();
   const points = usePointsBalance();
   const weeklyQuiz = useWeeklyQuiz();
-  const discussionEnabled = useAdminSettingsStore((state) => state.discussionEnabled);
-  const messagesEnabled = useAdminSettingsStore((state) => state.messagesEnabled);
-  const quizEnabled = useAdminSettingsStore((state) => state.quizEnabled);
+  const { discussionEnabled, messagesEnabled, quizEnabled } = useFeatures();
 
   const answeredCount = weeklyQuiz.data?.questions.filter((question) => getAnsweredState(question.id)).length ?? 0;
 

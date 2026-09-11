@@ -1,15 +1,22 @@
 import type { Activity } from "@/types/models";
-import { adminSettings } from "@/store/adminSettingsStore";
 import { useRegistrationStore } from "@/store/registrationStore";
 import { USE_MOCK_DATA } from "./config";
 import { supabase } from "./supabase";
 
 export type RegistrationOutcome = "registered" | "cancelled" | "full" | "closed" | "already";
 
-/** يقرر ما إذا كان التسجيل ممكنًا حاليًا في هذا النشاط. */
-export function canRegister(activity: Activity): { allowed: boolean; reason?: RegistrationOutcome } {
-  // الإدارة تستطيع إيقاف التسجيل في التطبيق كله من الإعدادات.
-  if (!adminSettings().registrationEnabled) return { allowed: false, reason: "closed" };
+/**
+ * يقرر ما إذا كان التسجيل ممكنًا حاليًا في هذا النشاط.
+ *
+ * يأخذ مفتاح التشغيل وسيطًا لا يقرؤه بنفسه: المفتاح صار على الخادم فقراءته
+ * غير متزامنة، وهذه الدالة تُستدعى أثناء الرسم. والشاشة تملكه أصلًا من
+ * useFeatures. والمنع الحقيقي في سياسة الخادم على أي حال.
+ */
+export function canRegister(
+  activity: Activity,
+  registrationEnabled = true
+): { allowed: boolean; reason?: RegistrationOutcome } {
+  if (!registrationEnabled) return { allowed: false, reason: "closed" };
   if (activity.registrationStatus === "full") return { allowed: false, reason: "full" };
   if (activity.registrationStatus !== "open") return { allowed: false, reason: "closed" };
   if (activity.capacity && (activity.registeredCount ?? 0) >= activity.capacity) {

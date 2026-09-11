@@ -39,13 +39,6 @@ interface AdminSettingsState {
   devicePinEnabled: boolean;
   pointsPerAction: number;
   defaultRegistrationStatus: RegistrationState;
-  quizEnabled: boolean;
-  pointsEnabled: boolean;
-  registrationEnabled: boolean;
-  /** تفعيل المجموعات النقاشية المُدارة. */
-  discussionEnabled: boolean;
-  /** تفعيل مراسلة الإدارة من داخل التطبيق. */
-  messagesEnabled: boolean;
   contact: ContactInfo;
   admins: AdminAccount[];
   log: AdminLogEntry[];
@@ -54,9 +47,6 @@ interface AdminSettingsState {
   setDevicePinEnabled: (enabled: boolean) => void;
   setPointsPerAction: (points: number) => void;
   setDefaultRegistrationStatus: (status: RegistrationState) => void;
-  toggle: (
-    key: "quizEnabled" | "pointsEnabled" | "registrationEnabled" | "discussionEnabled" | "messagesEnabled"
-  ) => void;
   setContact: (patch: Partial<ContactInfo>) => void;
   addAdmin: (name: string, phone: string) => void;
   removeAdmin: (id: string) => void;
@@ -78,11 +68,6 @@ export const useAdminSettingsStore = create<AdminSettingsState>()(
       devicePinEnabled: false,
       pointsPerAction: 10,
       defaultRegistrationStatus: "open",
-      quizEnabled: true,
-      pointsEnabled: true,
-      registrationEnabled: true,
-      discussionEnabled: true,
-      messagesEnabled: true,
       contact: {
         department: "قسم الأنشطة — قاعدة صلالة الجوية",
         phone: "23299000",
@@ -98,7 +83,6 @@ export const useAdminSettingsStore = create<AdminSettingsState>()(
       setDevicePinEnabled: (enabled) => set({ devicePinEnabled: enabled }),
       setPointsPerAction: (points) => set({ pointsPerAction: points }),
       setDefaultRegistrationStatus: (status) => set({ defaultRegistrationStatus: status }),
-      toggle: (key) => set((state) => ({ [key]: !state[key] }) as Partial<AdminSettingsState>),
       addAdmin: (name, phone) =>
         set((state) => ({
           admins: [...state.admins, { id: `adm-${Date.now()}`, name: name.trim(), phone: phone.trim() }],
@@ -114,12 +98,20 @@ export const useAdminSettingsStore = create<AdminSettingsState>()(
     {
       name: "anshatati-admin-settings",
       storage: persistStorage,
-      version: 2,
+      version: 3,
       // الترقية من النسخة 1: كان يُحفظ "رمز إدارة" مشترك يمنح الصلاحية.
       // نحذفه ولا نحوّله إلى قفل جهاز، حتى لا يبقى رمز قديم فاعلًا بعد التحديث.
       migrate: (persisted) => {
         const state = { ...(persisted as Record<string, unknown>) };
         delete state.code;
+        // مفاتيح التشغيل انتقلت إلى الخادم؛ ما بقي منها على الأجهزة يُهمَل حتى
+        // لا يبقى مصدران للحقيقة الواحدة.
+        for (const key of [
+          "quizEnabled", "pointsEnabled", "registrationEnabled",
+          "discussionEnabled", "messagesEnabled",
+        ]) {
+          delete state[key];
+        }
         return { ...state, devicePin: "", devicePinEnabled: false } as AdminSettingsState;
       },
       partialize: (state) => ({
@@ -127,11 +119,6 @@ export const useAdminSettingsStore = create<AdminSettingsState>()(
         devicePinEnabled: state.devicePinEnabled,
         pointsPerAction: state.pointsPerAction,
         defaultRegistrationStatus: state.defaultRegistrationStatus,
-        quizEnabled: state.quizEnabled,
-        pointsEnabled: state.pointsEnabled,
-        registrationEnabled: state.registrationEnabled,
-        discussionEnabled: state.discussionEnabled,
-        messagesEnabled: state.messagesEnabled,
         contact: state.contact,
         admins: state.admins,
         log: state.log,

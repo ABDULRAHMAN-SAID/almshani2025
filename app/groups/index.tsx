@@ -8,11 +8,11 @@ import { QueryState } from "@/components/QueryState";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { colors, radius, spacing, typography } from "@/constants";
 import { fetchGroups } from "@/services/groupService";
-import { useAdminSettingsStore } from "@/store/adminSettingsStore";
 import type { DiscussionGroup } from "@/types/models";
+import { useFeatures } from "@/hooks/useFeatures";
 
 export default function GroupsScreen() {
-  const enabled = useAdminSettingsStore((state) => state.discussionEnabled);
+  const { discussionEnabled: enabled } = useFeatures();
   const query = useQuery({ queryKey: ["groups"], queryFn: fetchGroups, enabled });
   const groups = query.data ?? [];
 

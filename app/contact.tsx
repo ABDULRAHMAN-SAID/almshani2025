@@ -7,6 +7,7 @@ import { colors, radius, spacing, typography } from "@/constants";
 import { fetchContact } from "@/services/contactService";
 import { useAdminSettingsStore } from "@/store/adminSettingsStore";
 import { showToast } from "@/store/toastStore";
+import { useFeatures } from "@/hooks/useFeatures";
 
 /** يفتح تطبيق الهاتف/الرسائل/البريد، ويخبر المستخدم بوضوح إن لم يكن متاحًا. */
 async function open(url: string, fallbackMessage: string) {
@@ -26,7 +27,7 @@ export default function ContactScreen() {
   const localContact = useAdminSettingsStore((state) => state.contact);
   // النسخة المحلية تُعرض فورًا، ثم تحلّ محلها نسخة الخادم عند وصولها.
   const { data: contact = localContact } = useQuery({ queryKey: ["contact"], queryFn: fetchContact });
-  const messagesEnabled = useAdminSettingsStore((state) => state.messagesEnabled);
+  const { messagesEnabled } = useFeatures();
 
   const digits = contact.phone.replace(/\D/g, "");
   const whatsapp = contact.whatsapp.replace(/\D/g, "");
