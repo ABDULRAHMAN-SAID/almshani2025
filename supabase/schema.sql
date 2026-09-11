@@ -1,23 +1,34 @@
 -- أنشطتي | قاعدة صلالة الجوية — مخطط قاعدة البيانات (Supabase / Postgres)
 -- ملاحظة: لا يحتوي أي جدول على رتبة، رقم عسكري، جهة عمل، أو أي معلومة حساسة.
+--
+-- الملف آمن للتكرار: نفّذه مرة أو عشرًا، والنتيجة واحدة ولا يفقد بيانات.
+-- ولهذا ثمن في الشكل — الأنواع محروسة بكتل do، وكل سياسة يسبقها حذفٌ شرطي —
+-- لكن ثمن غيابه أغلى: أول تنفيذ ناقص كان يترك القاعدة نصف مبنيّة، ثم يرفض كل
+-- تنفيذ تالٍ إصلاحها بخطأ «النوع موجود أصلًا» فلا يبقى إلا حذف المشروع كله.
 
 create extension if not exists "pgcrypto";
 
 -- ============ التصنيفات (Enum) ============
-create type activity_category as enum (
-  'Cultural',
-  'SecurityAwareness',
-  'TrafficSafety',
-  'AviationSafety',
-  'Sports',
-  'Shooting',
-  'Lecture',
-  'AntiDrugs',
-  'GeneralSafety',
-  'Announcement'
-);
+do $$ begin
+  create type activity_category as enum (
+    'Cultural',
+    'SecurityAwareness',
+    'TrafficSafety',
+    'AviationSafety',
+    'Sports',
+    'Shooting',
+    'Lecture',
+    'AntiDrugs',
+    'GeneralSafety',
+    'Announcement'
+  );
+exception when duplicate_object then null;
+end $$;
 
-create type registration_status as enum ('open', 'closed', 'upcoming', 'ended', 'full');
+do $$ begin
+  create type registration_status as enum ('open', 'closed', 'upcoming', 'ended', 'full');
+exception when duplicate_object then null;
+end $$;
 
 -- ============ المستخدمون ============
 -- ملحق auth.users من Supabase Auth (Phone OTP). هذا الجدول يحمل فقط الحقول العامة.
@@ -103,7 +114,10 @@ create table if not exists public.notifications (
 create index if not exists notifications_user_idx on public.notifications (user_id, read);
 
 -- ============ نظام النقاط (حضور، مشاركة، مسابقة ثقافية أسبوعية) ============
-create type points_reason as enum ('lecture_attendance', 'activity_participation', 'quiz_correct');
+do $$ begin
+  create type points_reason as enum ('lecture_attendance', 'activity_participation', 'quiz_correct');
+exception when duplicate_object then null;
+end $$;
 
 -- قيمة موحّدة وبسيطة: 10 نقاط لكل سبب، بلا تفاوت بين الأسباب.
 create table if not exists public.points_transactions (
@@ -186,42 +200,56 @@ alter table public.quiz_questions enable row level security;
 alter table public.quiz_answers enable row level security;
 
 -- المستخدم يرى ويعدّل صفّه فقط
+drop policy if exists "users read own row" on public.users;
 create policy "users read own row" on public.users
   for select using (auth.uid() = id);
+drop policy if exists "users update own row" on public.users;
 create policy "users update own row" on public.users
   for update using (auth.uid() = id);
 
 -- قراءة عامة للمحتوى غير الحساس، الكتابة من الإدارة فقط (Service Role)
+drop policy if exists "activities public read" on public.activities;
 create policy "activities public read" on public.activities
   for select using (true);
+drop policy if exists "activity_results public read" on public.activity_results;
 create policy "activity_results public read" on public.activity_results
   for select using (true);
+drop policy if exists "announcements public read" on public.announcements;
 create policy "announcements public read" on public.announcements
   for select using (true);
+drop policy if exists "awareness public read" on public.awareness_articles;
 create policy "awareness public read" on public.awareness_articles
   for select using (true);
 
 -- التسجيلات: كل مستخدم يرى ويُنشئ تسجيلاته فقط
+drop policy if exists "registrations read own" on public.registrations;
 create policy "registrations read own" on public.registrations
   for select using (auth.uid() = user_id);
+drop policy if exists "registrations insert own" on public.registrations;
 create policy "registrations insert own" on public.registrations
   for insert with check (auth.uid() = user_id);
+drop policy if exists "registrations delete own" on public.registrations;
 create policy "registrations delete own" on public.registrations
   for delete using (auth.uid() = user_id);
 
 -- الإشعارات: كل مستخدم يرى إشعاراته فقط
+drop policy if exists "notifications read own" on public.notifications;
 create policy "notifications read own" on public.notifications
   for select using (auth.uid() = user_id);
+drop policy if exists "notifications update own" on public.notifications;
 create policy "notifications update own" on public.notifications
   for update using (auth.uid() = user_id);
 
 -- النقاط: كل مستخدم يرى سجلّه فقط (قائمة المتصدرين تُعرض عبر leaderboard_view أدناه)
+drop policy if exists "points read own" on public.points_transactions;
 create policy "points read own" on public.points_transactions
   for select using (auth.uid() = user_id);
 
+drop policy if exists "checkins read own" on public.activity_checkins;
 create policy "checkins read own" on public.activity_checkins
   for select using (auth.uid() = user_id);
 
+drop policy if exists "quiz_answers read own" on public.quiz_answers;
 create policy "quiz_answers read own" on public.quiz_answers
   for select using (auth.uid() = user_id);
 
@@ -229,13 +257,13 @@ create policy "quiz_answers read own" on public.quiz_answers
 -- ملاحظة أمان مهمة: لا نمنح قراءة عامة على quiz_questions لأنها تحتوي
 -- correct_option_index. العميل يقرأ الأسئلة عبر هذا العرض الذي يخفي الإجابة الصحيحة،
 -- والتحقق من الإجابة ومنح النقاط يتمّان فقط داخل دالة موثوقة على الخادم.
-create view public.quiz_questions_public as
+create or replace view public.quiz_questions_public as
   select id, quiz_id, text, options, category from public.quiz_questions;
 grant select on public.quiz_questions_public to anon, authenticated;
 
 -- قائمة المتصدرين: الاسم والمجموع فقط، بدون رقم الهاتف — تُنشأ بصلاحية
 -- مالك الجدول فتتجاوز قيد "read own" الخاص بالنقاط، وهذا مقصود لأنها بيانات عامة.
-create view public.leaderboard_view as
+create or replace view public.leaderboard_view as
   select u.id as user_id, u.full_name as name, coalesce(sum(pt.points), 0)::int as total_points
   from public.users u
   left join public.points_transactions pt on pt.user_id = u.id
@@ -313,6 +341,7 @@ create table if not exists public.admins (
   created_at timestamptz not null default now()
 );
 alter table public.admins enable row level security;
+drop policy if exists "admins read own row" on public.admins;
 create policy "admins read own row" on public.admins
   for select using (auth.uid() = user_id);
 
@@ -325,11 +354,13 @@ grant execute on function public.is_admin() to authenticated;
 -- تُعرَّف بعد is_admin() لأنها تستدعيها. الدالة security definer فلا تدور السياسة
 -- على نفسها عند القراءة من admins.
 -- الإداري يرى قائمة الإداريين كاملة — شاشة «الحسابات الإدارية» للقراءة فقط.
+drop policy if exists "admins read all for admins" on public.admins;
 create policy "admins read all for admins" on public.admins
   for select using (public.is_admin());
 
 -- ويرى بيانات زملائه الإداريين وحدهم (الاسم والهاتف لعرضهما مقنّعين في اللوحة).
 -- لا يفتح هذا قراءة بيانات بقية المستخدمين: الشرط يقصرها على من هو في admins.
+drop policy if exists "users read admin peers" on public.users;
 create policy "users read admin peers" on public.users
   for select using (
     public.is_admin()
@@ -337,18 +368,24 @@ create policy "users read admin peers" on public.users
   );
 
 -- كتابة المحتوى من لوحة الإدارة فقط
+drop policy if exists "activities admin write" on public.activities;
 create policy "activities admin write" on public.activities
   for all using (public.is_admin()) with check (public.is_admin());
+drop policy if exists "activity_results admin write" on public.activity_results;
 create policy "activity_results admin write" on public.activity_results
   for all using (public.is_admin()) with check (public.is_admin());
+drop policy if exists "announcements admin write" on public.announcements;
 create policy "announcements admin write" on public.announcements
   for all using (public.is_admin()) with check (public.is_admin());
+drop policy if exists "awareness admin write" on public.awareness_articles;
 create policy "awareness admin write" on public.awareness_articles
   for all using (public.is_admin()) with check (public.is_admin());
+drop policy if exists "weekly_quizzes admin all" on public.weekly_quizzes;
 create policy "weekly_quizzes admin all" on public.weekly_quizzes
   for all using (public.is_admin()) with check (public.is_admin());
 -- ملاحظة: quiz_questions تبقى بلا قراءة عامة (العميل يقرأ العرض الذي يخفي الإجابة)،
 -- والإدارة وحدها ترى الإجابة الصحيحة وتضيف الأسئلة.
+drop policy if exists "quiz_questions admin all" on public.quiz_questions;
 create policy "quiz_questions admin all" on public.quiz_questions
   for all using (public.is_admin()) with check (public.is_admin());
 
@@ -420,15 +457,19 @@ insert into storage.buckets (id, name, public)
 values ('activity-images', 'activity-images', true)
 on conflict (id) do nothing;
 
+drop policy if exists "activity images public read" on storage.objects;
 create policy "activity images public read" on storage.objects
   for select using (bucket_id = 'activity-images');
 
+drop policy if exists "activity images admin insert" on storage.objects;
 create policy "activity images admin insert" on storage.objects
   for insert with check (bucket_id = 'activity-images' and public.is_admin());
 
+drop policy if exists "activity images admin update" on storage.objects;
 create policy "activity images admin update" on storage.objects
   for update using (bucket_id = 'activity-images' and public.is_admin());
 
+drop policy if exists "activity images admin delete" on storage.objects;
 create policy "activity images admin delete" on storage.objects
   for delete using (bucket_id = 'activity-images' and public.is_admin());
 
@@ -443,12 +484,15 @@ insert into storage.buckets (id, name, public, file_size_limit)
 values ('app-media', 'app-media', true, 26214400)
 on conflict (id) do nothing;
 
+drop policy if exists "app media public read" on storage.objects;
 create policy "app media public read" on storage.objects
   for select using (bucket_id = 'app-media');
 
+drop policy if exists "app media user insert" on storage.objects;
 create policy "app media user insert" on storage.objects
   for insert with check (bucket_id = 'app-media' and auth.uid() is not null);
 
+drop policy if exists "app media owner delete" on storage.objects;
 create policy "app media owner delete" on storage.objects
   for delete using (bucket_id = 'app-media' and (owner = auth.uid() or public.is_admin()));
 
@@ -471,9 +515,11 @@ create table if not exists public.app_contact (
 
 alter table public.app_contact enable row level security;
 
+drop policy if exists "contact public read" on public.app_contact;
 create policy "contact public read" on public.app_contact
   for select using (true);
 
+drop policy if exists "contact admin write" on public.app_contact;
 create policy "contact admin write" on public.app_contact
   for all using (public.is_admin()) with check (public.is_admin());
 
@@ -483,8 +529,14 @@ insert into public.app_contact (id) values (1) on conflict (id) do nothing;
 -- قناة رسمية باتجاه واحد: المستخدم يكتب إلى قسم الأنشطة، والقسم يردّ.
 -- لا يوجد أي مسار يجعل مستخدمًا يقرأ رسالة مستخدم آخر — تفرضه سياسات RLS أدناه،
 -- ولا يُخزَّن رقم هاتف مع الرسالة، فالإدارة ترى الاسم فقط.
-create type message_kind as enum ('اقتراح', 'طلب', 'استفسار', 'ملاحظة');
-create type message_status as enum ('new', 'read', 'answered');
+do $$ begin
+  create type message_kind as enum ('اقتراح', 'طلب', 'استفسار', 'ملاحظة');
+exception when duplicate_object then null;
+end $$;
+do $$ begin
+  create type message_status as enum ('new', 'read', 'answered');
+exception when duplicate_object then null;
+end $$;
 
 create table if not exists public.user_messages (
   id uuid primary key default gen_random_uuid(),
@@ -505,16 +557,20 @@ create index if not exists user_messages_user_idx on public.user_messages (user_
 alter table public.user_messages enable row level security;
 
 -- صاحب الرسالة يقرأ رسائله فقط؛ الإدارة تقرأ الكل.
+drop policy if exists "messages read own or admin" on public.user_messages;
 create policy "messages read own or admin" on public.user_messages
   for select using (user_id = auth.uid() or public.is_admin());
 
+drop policy if exists "messages insert own" on public.user_messages;
 create policy "messages insert own" on public.user_messages
   for insert with check (user_id = auth.uid());
 
 -- التعديل للإدارة وحدها: لا يستطيع المستخدم تغيير حالة رسالته ولا كتابة رد باسم القسم.
+drop policy if exists "messages admin update" on public.user_messages;
 create policy "messages admin update" on public.user_messages
   for update using (public.is_admin()) with check (public.is_admin());
 
+drop policy if exists "messages delete own or admin" on public.user_messages;
 create policy "messages delete own or admin" on public.user_messages
   for delete using (user_id = auth.uid() or public.is_admin());
 
@@ -554,7 +610,10 @@ $$;
 --   • لا توجد رسائل خاصة ولا جدول أعضاء ولا أي عمود لرقم هاتف؛ الاسم فقط.
 --   • المجموعة تُنشئها الإدارة وحدها، وتستطيع قفلها أو حذف أي مشاركة.
 --   • كل مشاركة قابلة للإبلاغ، والبلاغات تظهر للإدارة فقط.
-create type group_audience as enum ('all', 'registered');
+do $$ begin
+  create type group_audience as enum ('all', 'registered');
+exception when duplicate_object then null;
+end $$;
 
 create table if not exists public.discussion_groups (
   id uuid primary key default gen_random_uuid(),
@@ -571,9 +630,11 @@ create table if not exists public.discussion_groups (
 
 alter table public.discussion_groups enable row level security;
 
+drop policy if exists "groups public read" on public.discussion_groups;
 create policy "groups public read" on public.discussion_groups
   for select using (true);
 
+drop policy if exists "groups admin write" on public.discussion_groups;
 create policy "groups admin write" on public.discussion_groups
   for all using (public.is_admin()) with check (public.is_admin());
 
@@ -593,11 +654,13 @@ create index if not exists group_posts_group_idx on public.group_posts (group_id
 
 alter table public.group_posts enable row level security;
 
+drop policy if exists "posts public read" on public.group_posts;
 create policy "posts public read" on public.group_posts
   for select using (true);
 
 -- الكتابة: باسم المستخدم نفسه، في مجموعة غير مقفلة، وإن كانت مقيّدة بنشاط
 -- فلا يكتب فيها إلا من سجّل في ذلك النشاط فعلًا.
+drop policy if exists "posts insert own" on public.group_posts;
 create policy "posts insert own" on public.group_posts
   for insert with check (
     author_id = auth.uid()
@@ -620,9 +683,11 @@ create policy "posts insert own" on public.group_posts
   );
 
 -- التثبيت للإدارة وحدها؛ لا يعدّل المستخدم مشاركته بعد نشرها (يحذفها ويكتب غيرها).
+drop policy if exists "posts admin update" on public.group_posts;
 create policy "posts admin update" on public.group_posts
   for update using (public.is_admin()) with check (public.is_admin());
 
+drop policy if exists "posts delete own or admin" on public.group_posts;
 create policy "posts delete own or admin" on public.group_posts
   for delete using (author_id = auth.uid() or public.is_admin());
 
@@ -666,6 +731,7 @@ create table if not exists public.group_post_reports (
 alter table public.group_post_reports enable row level security;
 
 -- البلاغات للإدارة فقط: لا يرى المستخدم بلاغات غيره ولا حتى بلاغه بعد إرساله.
+drop policy if exists "reports admin read" on public.group_post_reports;
 create policy "reports admin read" on public.group_post_reports
   for select using (public.is_admin());
 

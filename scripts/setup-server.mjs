@@ -223,6 +223,8 @@ if (!project) {
   say(GREEN("  ✔ أُنشئ المشروع"));
 }
 
+say(GREEN(`  ✔ المشروع: ${project.name ?? project.id}`));
+
 ref = project.id ?? project.ref;
 if (!ref) {
   stop("لم نفهم ردّ الخادم عن المشروع.", [
@@ -356,6 +358,12 @@ if (phone && /^\+\d{8,15}$/.test(phone)) {
   say();
   say(YELLOW("  ⚠ الرقم ليس بالصيغة الدولية — تخطّينا هذه الخطوة."));
   say(`    اضبطها لاحقًا من: supabase.com/dashboard/project/${ref}/auth/providers`);
+} else if (state.testOtp && state.phone) {
+  // مضبوط من تشغيل سابق — نذكّر به بدل أن نوهم أن شيئًا لم يُضبط.
+  testOtp = state.testOtp;
+  say();
+  say(GREEN("  ✔ مضبوط من قبل."));
+  say(`  ${B("رقمك:")} ${state.phone}    ${B("رمز الدخول الثابت:")} ${B(state.testOtp)}`);
 } else {
   say();
   say(DIM("  تخطّيت. فعّل Phone لاحقًا من لوحة Supabase قبل أن يدخل أحد."));
@@ -408,7 +416,8 @@ say(GREEN(B("  ✔ الخادم جاهز بالكامل.")));
 rule();
 say();
 say(`  المشروع      ${ref}.supabase.co`);
-if (testOtp) say(`  دخولك        ${phone}  برمز  ${B(testOtp)}`);
+const shownPhone = phone || state.phone || "";
+if (testOtp && shownPhone) say(`  دخولك        ${shownPhone}  برمز  ${B(testOtp)}`);
 say();
 say(`  ${B("الخطوة التالية — أمر واحد:")}`);
 say();

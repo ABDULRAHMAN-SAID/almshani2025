@@ -9,7 +9,9 @@
 
 import { chmodSync, existsSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 
-export const API = "https://api.supabase.com/v1";
+// يُتجاوَز في الاختبار وحده، ليُشغَّل المسار كاملًا على خادم محاكٍ محلي بدل
+// مشروع حقيقي. لا يُضبط في الاستعمال العادي.
+export const API = process.env.SUPABASE_API_URL ?? "https://api.supabase.com/v1";
 export const STATE_FILE = ".supabase-setup.json";
 
 export const B = (s) => `[1m${s}[0m`;

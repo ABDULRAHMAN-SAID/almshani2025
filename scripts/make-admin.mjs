@@ -63,6 +63,20 @@ function noPhone() {
   process.exit(1);
 }
 
+/** هل هذا الرقم إداري الآن؟ سؤال قراءة، يُوثق به في الحكم. */
+async function isAdmin(targetPhone) {
+  const result = await runSql(
+    token,
+    ref,
+    `select 1 as found
+       from public.admins a
+       join public.users u on u.id = a.user_id
+      where u.phone = ${quote(targetPhone)}`
+  );
+  const rows = Array.isArray(result) ? result : result?.data ?? [];
+  return rows.length > 0;
+}
+
 async function showAdmins() {
   const result = await runSql(
     token,
@@ -93,20 +107,35 @@ try {
   }
 
   if (removePhone) {
-    const result = await runSql(
+    // نقرأ قبل وبعد بدل أن نستنتج النتيجة من ردّ عملية الحذف. الحذف لا يُرجع
+    // دائمًا صفوفه، فكان الأمر يقول «لم يكن إداريًا أصلًا» وقد سحب صلاحيته
+    // فعلًا — وهذه جملة خاطئة في مسألة صلاحيات، لا مجرّد صياغة.
+    if (!(await isAdmin(removePhone))) {
+      say();
+      say(YELLOW(`  لم يكن ${removePhone} إداريًا أصلًا — لم نغيّر شيئًا.`));
+      say();
+      say(DIM("  لرؤية الإداريين: npm run admin -- --list"));
+      say();
+      process.exit(0);
+    }
+
+    await runSql(
       token,
       ref,
       `delete from public.admins
-        where user_id = (select id from public.users where phone = ${quote(removePhone)})
-        returning user_id;`
+        where user_id = (select id from public.users where phone = ${quote(removePhone)});`
     );
-    const rows = Array.isArray(result) ? result : result?.data ?? [];
+
+    if (await isAdmin(removePhone)) {
+      say();
+      say(RED(`  ✖ ما زال ${removePhone} إداريًا — لم يُنفَّذ الحذف.`));
+      say();
+      process.exit(1);
+    }
+
     say();
-    say(
-      rows.length > 0
-        ? GREEN(`  ✔ سُحبت صلاحية الإدارة من ${removePhone}`)
-        : YELLOW(`  لم يكن ${removePhone} إداريًا أصلًا.`)
-    );
+    say(GREEN(`  ✔ سُحبت صلاحية الإدارة من ${removePhone}`));
+    await showAdmins();
     say();
     process.exit(0);
   }
