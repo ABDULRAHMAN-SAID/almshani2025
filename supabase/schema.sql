@@ -39,6 +39,14 @@ create table if not exists public.users (
   created_at timestamptz not null default now()
 );
 
+-- الدخول بكلمة مرور لا برمز SMS: الاسم يُجمع من ثلاثة حقول كما يُكتب في السجلّات،
+-- والبريد يُحفظ هنا للعرض والاسترجاع بينما هويّة الحساب نفسها في auth.users.
+-- ولا يقرأ مستخدمٌ صفَّ غيره — سياسة "users read own row" قائمة كما هي.
+alter table public.users add column if not exists first_name text;
+alter table public.users add column if not exists second_name text;
+alter table public.users add column if not exists family_name text;
+alter table public.users add column if not exists email text;
+
 -- ============ الأنشطة (نشاط عام، مسابقة، محاضرة، رياضة، رماية...) ============
 create table if not exists public.activities (
   id uuid primary key default gen_random_uuid(),

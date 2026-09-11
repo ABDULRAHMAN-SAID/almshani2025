@@ -6,7 +6,7 @@
 للاطلاع على المعمارية الكاملة، خريطة التنقل، قائمة الشاشات، Design Tokens، ومخطط قاعدة البيانات:
 👉 [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md)
 
-للنسخة النهائية — دخول حقيقي برمز SMS، ورفع حقيقي للصور والمقاطع والملفات:
+للنسخة النهائية — حسابات بكلمة مرور، ورفع حقيقي للصور والمقاطع والملفات:
 👉 [`docs/PRODUCTION.md`](./docs/PRODUCTION.md)
 
 لشرح المراحل الأربع بالتفصيل (من التجربة على Expo Go إلى النشر في المتجر):
@@ -26,7 +26,7 @@ npm run start
 ```
 
 - اضغط `a` لتشغيل على Android، أو `i` لـ iOS، أو `w` للويب.
-- التطبيق يعمل افتراضيًا ببيانات تجريبية (`EXPO_PUBLIC_USE_MOCK_DATA=true`) و"Development Login" بدل OTP حقيقي — لا حاجة لأي إعداد خارجي للتجربة الأولى.
+- التطبيق يعمل افتراضيًا ببيانات تجريبية (`EXPO_PUBLIC_USE_MOCK_DATA=true`): أي رقم أو بريد وأي كلمة مرور يدخل — لا حاجة لأي إعداد خارجي للتجربة الأولى.
 
 ## ربط Supabase الفعلي
 
@@ -36,7 +36,7 @@ npm run start
 
 ويدويًا إن فضّلت:
 
-1. أنشئ مشروع Supabase وفعّل Phone Auth (OTP).
+1. أنشئ مشروع Supabase وفعّل Email و Phone مع إطفاء التأكيد.
 2. نفّذ `supabase/schema.sql` ثم `supabase/starter-content.sql` في SQL Editor.
 3. شغّل `npm run connect` — يسأل عن الرابط والمفتاح العام، يكتب `.env`، ثم يتحقق من الخادم فورًا.
 4. عيّن نفسك إداريًا بـ `npm run admin` أو `supabase/make-me-admin.sql`.
@@ -66,5 +66,5 @@ docs/           المعمارية، وطريق البناء، والنسخة ا
 
 ## حالة التنفيذ
 
-المرحلة 1 (Architecture, Design System, Navigation, Login/OTP, Home) **منفّذة**.
+المرحلة 1 (Architecture, Design System, Navigation, Auth, Home) **منفّذة**.
 باقي المراحل موثّقة في [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md#7-خطة-التنفيذ-على-مراحل).

@@ -101,7 +101,7 @@ say();
 say(B("  بناء خادم التطبيق — أنشطتي"));
 rule();
 say("  سأنشئ لك قاعدة البيانات، وأركّب بنيتها، وأملؤها بمحتوى البداية،");
-say("  وأفعّل الدخول برقم الهاتف، وأربط التطبيق بها. المدة 3–5 دقائق.");
+say("  وأفعّل الدخول بكلمة مرور، وأربط التطبيق بها. المدة 3–5 دقائق.");
 say();
 
 const state = readState();
@@ -313,60 +313,42 @@ await applySql("supabase/starter-content.sql", "محتوى البداية: مق�
   required: false,
 });
 
-/* ------------------------- 5) الدخول برقم الهاتف ------------------------- */
+/* --------------------------- 5) طريقة الدخول --------------------------- */
 
 say();
-say(B("  [5/6] الدخول برقم الهاتف"));
-say("  Supabase لا يرسل الرسائل بنفسه — يحتاج مزوّدًا مدفوعًا (Twilio) للتوزيع.");
-say("  وللتجربة فورًا بلا دفع نضع رمزًا ثابتًا لرقمك وحده.");
+say(B("  [5/6] طريقة الدخول"));
+say("  الدخول بكلمة مرور — بالرقم أو بالبريد. لا رسائل SMS ولا مزوّد مدفوع.");
 say();
-say(DIM("  اكتب رقمك بالصيغة الدولية، مثل: +96891234567"));
 
-const phoneRaw = await ask("رقمك (أو Enter للتخطّي)");
-const phone = phoneRaw.replace(/[^\d+]/g, "");
-let testOtp = "";
-
-if (phone && /^\+\d{8,15}$/.test(phone)) {
-  testOtp = String(Math.floor(100000 + Math.random() * 900000));
-  const validUntil = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
-  try {
-    await api(token, `/projects/${ref}/config/auth`, {
-      method: "PATCH",
-      body: {
-        external_phone_enabled: true,
-        sms_test_otp: `${phone.replace(/^\+/, "")}:${testOtp}`,
-        sms_test_otp_valid_until: validUntil,
-      },
-    });
-    say();
-    say(GREEN("  ✔ فُعّل الدخول بالهاتف."));
-    say(`  ${B("رقمك:")} ${phone}    ${B("رمز الدخول الثابت:")} ${B(testOtp)}`);
-    say(DIM("  احفظه. يعمل سنة كاملة، ولا تصل رسالة — أدخله مباشرة."));
-    writeState({ phone, testOtp });
-  } catch (error) {
-    testOtp = "";
-    say();
-    say(YELLOW(`  ⚠ تعذّر الضبط تلقائيًا: ${error instanceof ApiError ? error.message : String(error)}`));
-    say("    اضبطه يدويًا — دقيقة واحدة:");
-    say(`     1. افتح supabase.com/dashboard/project/${ref}/auth/providers`);
-    say("     2. فعّل Phone.");
-    say("     3. في قسم Test OTP أضف: " + B(`${phone}  →  123456`));
-    say();
-    say(DIM("    باقي الإعداد تمّ بنجاح — هذه الخطوة وحدها هي اليدوية."));
-  }
-} else if (phoneRaw) {
+let authReady = false;
+try {
+  await api(token, `/projects/${ref}/config/auth`, {
+    method: "PATCH",
+    body: {
+      // البريد وكلمة المرور هما هويّة الحساب.
+      external_email_enabled: true,
+      // والرقم هويّة ثانية على الحساب نفسه، ليصحّ الدخول به أيضًا.
+      external_phone_enabled: true,
+      // بلا تأكيد: التأكيد بالبريد يحتاج خادم بريد، وبالهاتف يحتاج مزوّد رسائل
+      // مدفوعًا. وبدون هذا يُنشأ الحساب ثم يُرفض دخوله فورًا، وهو أسوأ ما يمكن
+      // أن يحدث لمستخدم سجّل للتوّ.
+      mailer_autoconfirm: true,
+      sms_autoconfirm: true,
+      password_min_length: 6,
+    },
+  });
+  authReady = true;
+  say(GREEN("  ✔ فُعّل الدخول بكلمة مرور — بالرقم أو بالبريد."));
+  say(DIM("  ولا يحتاج المستخدم تأكيد بريده قبل أول دخول."));
+} catch (error) {
+  say(YELLOW(`  ⚠ تعذّر الضبط تلقائيًا: ${error instanceof ApiError ? error.message : String(error)}`));
+  say("    اضبطه يدويًا — دقيقتان:");
+  say(`     1. افتح supabase.com/dashboard/project/${ref}/auth/providers`);
+  say("     2. فعّل " + B("Email") + " و" + B("Phone") + ".");
+  say("     3. من Authentication ← Sign In / Providers، أطفئ " + B("Confirm email"));
+  say("        و" + B("Confirm phone") + " — وإلا لن يدخل أحد بلا خادم بريد أو رسائل.");
   say();
-  say(YELLOW("  ⚠ الرقم ليس بالصيغة الدولية — تخطّينا هذه الخطوة."));
-  say(`    اضبطها لاحقًا من: supabase.com/dashboard/project/${ref}/auth/providers`);
-} else if (state.testOtp && state.phone) {
-  // مضبوط من تشغيل سابق — نذكّر به بدل أن نوهم أن شيئًا لم يُضبط.
-  testOtp = state.testOtp;
-  say();
-  say(GREEN("  ✔ مضبوط من قبل."));
-  say(`  ${B("رقمك:")} ${state.phone}    ${B("رمز الدخول الثابت:")} ${B(state.testOtp)}`);
-} else {
-  say();
-  say(DIM("  تخطّيت. فعّل Phone لاحقًا من لوحة Supabase قبل أن يدخل أحد."));
+  say(DIM("    باقي الإعداد تمّ بنجاح — هذه الخطوة وحدها هي اليدوية."));
 }
 
 /* ----------------------------- 6) ربط التطبيق ----------------------------- */
@@ -416,8 +398,7 @@ say(GREEN(B("  ✔ الخادم جاهز بالكامل.")));
 rule();
 say();
 say(`  المشروع      ${ref}.supabase.co`);
-const shownPhone = phone || state.phone || "";
-if (testOtp && shownPhone) say(`  دخولك        ${shownPhone}  برمز  ${B(testOtp)}`);
+say(`  الدخول       بكلمة مرور — بالرقم أو بالبريد${authReady ? "" : "  (يحتاج ضبطًا يدويًا، انظر أعلاه)"}`);
 say();
 say(`  ${B("الخطوة التالية — أمر واحد:")}`);
 say();

@@ -18,8 +18,13 @@ export interface MediaAttachment {
 /** المستخدم — بدون رتبة أو رقم عسكري أو جهة عمل، بحسب متطلبات الخصوصية. */
 export interface User {
   id: string;
+  /** الاسم كاملًا كما يُعرض — يُجمع من الأجزاء الثلاثة. */
   name: string;
+  firstName?: string;
+  secondName?: string;
+  familyName?: string;
   phone: string;
+  email?: string;
   createdAt: string;
 }
 

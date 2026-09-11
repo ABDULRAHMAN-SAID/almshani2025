@@ -1,68 +1,54 @@
 import { useState } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
+import { FormField } from "@/components/FormField";
 import { Logo } from "@/components/Logo";
 import { PrimaryButton } from "@/components/PrimaryButton";
-import { colors, radius, spacing, typography } from "@/constants";
-import { requestOtp } from "@/services/authService";
+import { colors, spacing, typography } from "@/constants";
 import { useAuth } from "@/hooks/useAuth";
+import { signInWithPassword } from "@/services/authService";
 import { showToast } from "@/store/toastStore";
-import type { LoginRole } from "@/store/authStore";
+import { toArabicMessage } from "@/utils/errors";
 
-const PHONE_REGEX = /^(?:\+968)?9\d{7}$/;
-
-const ROLES: {
-  key: LoginRole;
-  label: string;
-  hint: string;
-  icon: keyof typeof Ionicons.glyphMap;
-}[] = [
-  {
-    key: "user",
-    label: "مستخدم",
-    hint: "تصفّح الأنشطة، سجّل فيها، واجمع النقاط",
-    icon: "person-outline",
-  },
-  {
-    key: "admin",
-    label: "إدارة",
-    hint: "إضافة وتعديل وحذف، إعلانات وإشعارات، وإعدادات التطبيق",
-    icon: "shield-checkmark-outline",
-  },
-];
-
+/**
+ * شاشة الدخول: رقم الهاتف أو البريد، وكلمة المرور.
+ *
+ * لا يوجد اختيار «مستخدم / إدارة» هنا: الصلاحية يقرّرها الخادم من جدول
+ * admins بعد الدخول، لا اختيارٌ يُتخذ قبله. ولوحة الإدارة تظهر لمن يملكها
+ * وحده.
+ */
 export default function LoginScreen() {
-  const [phone, setPhone] = useState("");
+  const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const { setPendingPhone, pendingRole, setPendingRole } = useAuth();
+  const { signIn } = useAuth();
 
-  const isValid = PHONE_REGEX.test(phone.trim());
-  const selected = ROLES.find((role) => role.key === pendingRole) ?? ROLES[0];
+  const ready = identifier.trim().length > 3 && password.length > 0;
 
   const handleSubmit = async () => {
-    if (!isValid) {
-      showToast("الرجاء إدخال رقم هاتف عماني صحيح", "error");
+    if (!ready) {
+      showToast("أدخل رقمك أو بريدك وكلمة المرور", "error");
       return;
     }
     setLoading(true);
     try {
-      await requestOtp(phone.trim());
-      setPendingPhone(phone.trim());
-      router.push("/(auth)/otp");
-    } catch {
-      showToast("تعذّر إرسال رمز التحقق، حاول مرة أخرى", "error");
+      const user = await signInWithPassword(identifier, password);
+      signIn(user);
+      router.replace("/(tabs)");
+    } catch (error) {
+      showToast(toArabicMessage(error, "تعذّر تسجيل الدخول"), "error");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
-      <View style={styles.container}>
+    <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.header}>
           <Logo size="lg" />
           <Text style={styles.title}>أنشطتي</Text>
@@ -70,107 +56,69 @@ export default function LoginScreen() {
         </View>
 
         <View style={styles.form}>
-          <Text style={styles.label}>نوع الدخول</Text>
-          <View style={styles.roleRow}>
-            {ROLES.map((role) => {
-              const active = role.key === pendingRole;
-              return (
-                <Pressable
-                  key={role.key}
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected: active }}
-                  onPress={() => setPendingRole(role.key)}
-                  style={({ pressed }) => [
-                    styles.roleCard,
-                    active && styles.roleCardActive,
-                    pressed && { opacity: 0.9 },
-                  ]}
-                >
-                  <View style={[styles.roleIcon, active && styles.roleIconActive]}>
-                    <Ionicons
-                      name={role.icon}
-                      size={20}
-                      color={active ? colors.textOnPrimary : colors.primary}
-                    />
-                  </View>
-                  <Text style={[styles.roleLabel, active && styles.roleLabelActive]}>{role.label}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
-          <Text style={styles.roleHint}>{selected.hint}</Text>
-
-          <Text style={[styles.label, { marginTop: spacing.lg }]}>رقم الهاتف</Text>
-          <TextInput
-            value={phone}
-            onChangeText={setPhone}
-            keyboardType="phone-pad"
-            placeholder="9XXXXXXX"
-            placeholderTextColor={colors.textMuted}
-            style={styles.input}
-            textAlign="right"
-            maxLength={12}
+          <FormField
+            label="رقم الهاتف أو البريد الإلكتروني"
+            value={identifier}
+            onChangeText={setIdentifier}
+            placeholder="9XXXXXXX  أو  name@example.com"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+            textContentType="username"
           />
-          <Text style={styles.hint}>
-            {pendingRole === "admin"
-              ? "سنرسل لك رمز تحقق (OTP)، ثم تُفتح اللوحة إن كان حسابك مُدرجًا في قائمة الإداريين"
-              : "سنرسل لك رمز تحقق (OTP) عبر رسالة نصية"}
-          </Text>
+
+          <FormField
+            label="كلمة المرور"
+            value={password}
+            onChangeText={setPassword}
+            placeholder="••••••••"
+            secure
+            autoCapitalize="none"
+            textContentType="password"
+            onSubmitEditing={handleSubmit}
+            returnKeyType="go"
+          />
+
+          <Pressable
+            accessibilityRole="link"
+            onPress={() => router.push("/(auth)/forgot-password")}
+            hitSlop={8}
+            style={styles.forgotWrap}
+          >
+            <Text style={styles.forgot}>هل نسيت كلمة المرور؟</Text>
+          </Pressable>
 
           <PrimaryButton
-            label={pendingRole === "admin" ? "متابعة كإدارة" : "إرسال رمز التحقق"}
+            label="تسجيل الدخول"
             onPress={handleSubmit}
             loading={loading}
-            disabled={!phone}
-            style={styles.submitButton}
+            disabled={!ready}
+            style={styles.submit}
           />
         </View>
-      </View>
+
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>لا تمتلك حسابًا؟</Text>
+          <Pressable accessibilityRole="link" onPress={() => router.push("/(auth)/register")} hitSlop={8}>
+            <Text style={styles.footerLink}>إنشاء حساب</Text>
+          </Pressable>
+        </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  container: { flex: 1, padding: spacing.xl, justifyContent: "center", gap: spacing.xl },
+  flex: { flex: 1, backgroundColor: colors.background },
+  content: { flexGrow: 1, justifyContent: "center", padding: spacing.xl, gap: spacing.xl },
   header: { alignItems: "center", gap: spacing.xs },
   title: { ...typography.h1, marginTop: spacing.md },
   subtitle: { ...typography.bodyMuted },
-  form: { gap: spacing.sm },
-  label: { ...typography.h3 },
-  roleRow: { flexDirection: "row", gap: spacing.md },
-  roleCard: {
-    flex: 1,
-    alignItems: "center",
-    gap: spacing.sm,
-    paddingVertical: spacing.lg,
-    borderRadius: radius.lg,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  roleCardActive: { borderColor: colors.primary, backgroundColor: colors.primary },
-  roleIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.md,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.background,
-  },
-  roleIconActive: { backgroundColor: "rgba(255,255,255,0.14)" },
-  roleLabel: { ...typography.body, fontFamily: "Tajawal_500Medium" },
-  roleLabelActive: { color: colors.textOnPrimary },
-  roleHint: { ...typography.caption, textAlign: "center", lineHeight: 19 },
-  input: {
-    ...typography.body,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 12,
-    paddingHorizontal: spacing.lg,
-    height: 52,
-    backgroundColor: colors.surface,
-  },
-  hint: { ...typography.caption, lineHeight: 19 },
-  submitButton: { marginTop: spacing.lg },
+  form: { gap: spacing.md },
+  forgotWrap: { alignSelf: "flex-start" },
+  forgot: { ...typography.caption, fontSize: 12.5, color: colors.marineDeep, fontFamily: "Tajawal_500Medium" },
+  submit: { marginTop: spacing.sm },
+  footer: { flexDirection: "row", justifyContent: "center", alignItems: "center", gap: spacing.xs },
+  footerText: { ...typography.caption, fontSize: 13 },
+  footerLink: { ...typography.caption, fontSize: 13, color: colors.marineDeep, fontFamily: "Tajawal_700Bold" },
 });

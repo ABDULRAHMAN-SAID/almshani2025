@@ -110,8 +110,8 @@ Admin (دخول بدور «إدارة»، والصلاحية تُقرَّر عل
 | # | الشاشة | الحالة في هذه النسخة |
 |---|---|---|
 | 1 | Splash | ✅ مرحلة 1 |
-| 2 | تسجيل الدخول (رقم الهاتف) | ✅ مرحلة 1 (Dev Login + OTP جاهز للتفعيل) |
-| 3 | التحقق OTP | ✅ مرحلة 1 |
+| 2 | تسجيل الدخول (رقم أو بريد + كلمة مرور) | ✅ |
+| 3 | إنشاء حساب (اسم ثلاثي، رقم، بريد، كلمة مرور) واستعادة كلمة المرور | ✅ |
 | 4 | إعداد الملف الشخصي (أول مرة) | ✅ مرحلة 1 |
 | 5 | الرئيسية | ✅ مرحلة 1 |
 | 6 | تفاصيل نشاط (موحدة) | ✅ منفّذ |
@@ -251,13 +251,13 @@ Sports | Shooting | Lecture | AntiDrugs | GeneralSafety | Announcement
 
 | المرحلة | المحتوى | الحالة |
 |---|---|---|
-| 1 | Architecture, Design System, Navigation, Login/OTP, Home | ✅ منفّذة |
+| 1 | Architecture, Design System, Navigation, Auth, Home | ✅ منفّذة |
 | 2 | Activities, Activity Details, Registration Flow, My Activities | ✅ منفّذة |
 | 3 | Annual Calendar, Announcements, Notifications | ✅ منفّذة |
 | 4 | Awareness, Security Awareness, Safety, Anti-Drugs | ✅ منفّذة |
 | 5 | Sports, Shooting, Competitions, Lectures, Search | ✅ منفّذة |
 | 6 | دخول بدورين + لوحة تحكم بخمسة تبويبات (إدارة نشاط ونتائج، مسابقة، توعية، إعلانات، إشعارات، إعدادات، حسابات، سجل) | ✅ منفّذة |
-| 7 | ربط Supabase الفعلي + Auth OTP حقيقي + FCM | 🔜 الخطوة الوحيدة المتبقية |
+| 7 | ربط Supabase الفعلي + FCM | ✅ الربط منفّذ (`npm run setup`)، ويبقى FCM |
 
 **كل شاشات التطبيق مبنية الآن؛ لا توجد أي شاشة تعرض «قريبًا».** المتبقي هو ربط
 الخلفية الحقيقية: تنفيذ `supabase/schema.sql`، تعبئة مفاتيح `.env`، وضبط
@@ -285,7 +285,7 @@ Sports | Shooting | Lecture | AntiDrugs | GeneralSafety | Announcement
 
 **لا يوجد رمز إدارة مشترك.** مصدر الصلاحية الوحيد هو جدول `admins` على الخادم.
 
-المسار: رقم الهاتف ← رمز التحقق (OTP) ← اللوحة تسأل `is_admin()` ← تُفتح أو
+المسار: رقم أو بريد + كلمة مرور ← اللوحة تسأل `is_admin()` ← تُفتح أو
 تُرفض. من ليس في الجدول يرى «هذا الحساب ليس إداريًا» ولا يُفتح له شيء، ومن هو
 فيه لا يُطلب منه أي رمز إضافي.
 
