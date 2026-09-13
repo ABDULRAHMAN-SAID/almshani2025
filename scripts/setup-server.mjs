@@ -316,9 +316,28 @@ await applySql("supabase/starter-content.sql", "محتوى البداية: مق�
 /* --------------------------- 5) طريقة الدخول --------------------------- */
 
 say();
-say(B("  [5/6] طريقة الدخول"));
-say("  الدخول بكلمة مرور — بالرقم أو بالبريد. لا رسائل SMS ولا مزوّد مدفوع.");
+say(B("  [5/6] طريقة الدخول والتأكيد"));
+say("  الدخول بكلمة مرور — بالرقم أو بالبريد.");
+say("  والحساب الجديد يُؤكَّد برمز من ستة أرقام يصل إلى البريد.");
 say();
+
+// قالب رسالة التأكيد: الرمز لا الرابط.
+//
+// القالب الافتراضي في Supabase يرسل رابطًا، والرابط لا يصلح لتطبيق على هاتف:
+// يفتح صفحة ويب لا التطبيق. ووجود {{ .Token }} في القالب هو ما يجعل الخادم
+// يولّد رمزًا أصلًا — فبدون هذا التعديل لا رمز يصل مهما فعل التطبيق.
+const CONFIRM_EMAIL = `<!doctype html>
+<html dir="rtl" lang="ar"><body style="font-family:system-ui,-apple-system,'Segoe UI',sans-serif;background:#f4f6f9;margin:0;padding:32px">
+  <div style="max-width:440px;margin:0 auto;background:#fff;border-radius:16px;padding:32px;text-align:center">
+    <h1 style="margin:0 0 8px;font-size:20px;color:#0a2340">أنشطتي — قاعدة صلالة الجوية</h1>
+    <p style="margin:0 0 24px;color:#5b6b80;line-height:1.9">رمز تأكيد حسابك:</p>
+    <div style="font-size:34px;font-weight:700;letter-spacing:10px;color:#0a2340;direction:ltr">{{ .Token }}</div>
+    <p style="margin:24px 0 0;color:#7a8699;font-size:13px;line-height:1.9">
+      اكتب الرمز في التطبيق. صلاحيته ساعة واحدة.<br>
+      إن لم تطلب حسابًا فتجاهل هذه الرسالة.
+    </p>
+  </div>
+</body></html>`;
 
 let authReady = false;
 try {
@@ -329,24 +348,36 @@ try {
       external_email_enabled: true,
       // والرقم هويّة ثانية على الحساب نفسه، ليصحّ الدخول به أيضًا.
       external_phone_enabled: true,
-      // بلا تأكيد: التأكيد بالبريد يحتاج خادم بريد، وبالهاتف يحتاج مزوّد رسائل
-      // مدفوعًا. وبدون هذا يُنشأ الحساب ثم يُرفض دخوله فورًا، وهو أسوأ ما يمكن
-      // أن يحدث لمستخدم سجّل للتوّ.
-      mailer_autoconfirm: true,
+      // التأكيد بالبريد مطلوب: بدونه يستطيع أيّ أحد أن يسجّل ببريد غيره.
+      // وهو مجاني — بريد Supabase يكفي للبداية.
+      mailer_autoconfirm: false,
+      mailer_otp_exp: 3600,
+      mailer_templates_confirmation_content: CONFIRM_EMAIL,
+      mailer_subjects_confirmation: "رمز تأكيد حسابك — أنشطتي",
+      // أمّا الهاتف فيبقى بلا تأكيد: تأكيده يحتاج مزوّد رسائل مدفوعًا، ولو
+      // طُلب بلا مزوّد لما استطاع أحد ربط رقمه بحسابه.
       sms_autoconfirm: true,
       password_min_length: 6,
     },
   });
   authReady = true;
-  say(GREEN("  ✔ فُعّل الدخول بكلمة مرور — بالرقم أو بالبريد."));
-  say(DIM("  ولا يحتاج المستخدم تأكيد بريده قبل أول دخول."));
+  say(GREEN("  ✔ فُعّل الدخول بكلمة مرور، وتأكيد الحساب برمز إلى البريد."));
+  say(DIM("  وقالب الرسالة عربي، يحمل الرمز لا رابطًا."));
+  say();
+  say(DIM("  ملاحظتان قبل التوزيع على عدد كبير:"));
+  say(DIM("   • بريد Supabase المجاني محدود (رسائل قليلة في الساعة). للتوزيع"));
+  say(DIM("     الواسع اضبط Custom SMTP — مجاني عند مزوّدين كثر لحجم صغير."));
+  say(DIM("   • أردت الرمز رسالةً على الهاتف بدل البريد؟ يلزم مزوّد رسائل"));
+  say(DIM("     مدفوع (Twilio أو غيره) — راجع docs/PRODUCTION.md."));
 } catch (error) {
   say(YELLOW(`  ⚠ تعذّر الضبط تلقائيًا: ${error instanceof ApiError ? error.message : String(error)}`));
-  say("    اضبطه يدويًا — دقيقتان:");
+  say("    اضبطه يدويًا — ثلاث دقائق:");
   say(`     1. افتح supabase.com/dashboard/project/${ref}/auth/providers`);
-  say("     2. فعّل " + B("Email") + " و" + B("Phone") + ".");
-  say("     3. من Authentication ← Sign In / Providers، أطفئ " + B("Confirm email"));
-  say("        و" + B("Confirm phone") + " — وإلا لن يدخل أحد بلا خادم بريد أو رسائل.");
+  say("     2. فعّل " + B("Email") + " و" + B("Phone") + "، وشغّل " + B("Confirm email") + ".");
+  say("     3. أطفئ " + B("Confirm phone") + " — تأكيد الهاتف يحتاج مزوّد رسائل مدفوعًا.");
+  say(`     4. افتح supabase.com/dashboard/project/${ref}/auth/templates`);
+  say("     5. في قالب " + B("Confirm signup") + " ضع " + B("{{ .Token }}") + " مكان الرابط،");
+  say("        وإلّا أرسل الخادم رابطًا ولم يولّد رمزًا أصلًا.");
   say();
   say(DIM("    باقي الإعداد تمّ بنجاح — هذه الخطوة وحدها هي اليدوية."));
 }

@@ -1,7 +1,8 @@
 import * as Linking from "expo-linking";
 import type { User } from "@/types/models";
 import { isValidPhone, looksLikeEmail, normalizePhone } from "@/utils/identity";
-import { USE_MOCK_DATA } from "./config";
+import { USE_MOCK_DATA, VERIFY_CHANNEL } from "./config";
+import type { VerifyChannel } from "./config";
 import { supabase } from "./supabase";
 
 // تُعاد التصدير ليبقى مسار الاستيراد في الشاشات كما هو؛ والمنطق نفسه في
@@ -58,39 +59,120 @@ function authError(error: { message?: string } | null, fallback: string): Error 
 
 /* -------------------------------- التسجيل -------------------------------- */
 
-export async function signUpWithPassword(input: SignUpInput): Promise<User> {
+/**
+ * ما يُعاد بعد طلب إنشاء الحساب.
+ *
+ * `pending` يعني أن الحساب أُنشئ ولم يُفتح بعد: أُرسل رمز إلى `destination`،
+ * ولا جلسة قبل إدخاله. و`user` يُملأ حين لا تأكيد فيدخل صاحبه مباشرة.
+ */
+export interface SignUpResult {
+  pending: boolean;
+  channel: VerifyChannel;
+  destination: string;
+  user?: User;
+}
+
+/**
+ * بيانات الحساب تُحفظ في `user_metadata` عند الطلب، لا في جدول users.
+ *
+ * قبل إدخال الرمز لا جلسة، وسياسة الإدراج على الجدول تشترط أن يكون الصفّ
+ * لصاحبه (auth.uid() = id) — فالكتابة قبل التأكيد مرفوضة أصلًا. ولمّا كانت
+ * البيانات في البيانات الوصفية، يبقى الصفّ قابلًا للإنشاء بعد التأكيد ولو
+ * أُغلق التطبيق بينهما.
+ */
+function metadataOf(input: SignUpInput) {
+  return {
+    full_name: fullNameOf(input),
+    first_name: input.firstName.trim(),
+    second_name: input.secondName.trim(),
+    family_name: input.familyName.trim(),
+    phone: normalizePhone(input.phone),
+    email: input.email.trim().toLowerCase(),
+  };
+}
+
+export async function signUpWithPassword(input: SignUpInput): Promise<SignUpResult> {
   const phone = normalizePhone(input.phone);
   const email = input.email.trim().toLowerCase();
   const name = fullNameOf(input);
 
   if (USE_MOCK_DATA) {
-    return { id: `dev-${phone}`, name, phone, email, createdAt: new Date().toISOString() };
+    if (VERIFY_CHANNEL === "off") {
+      return {
+        pending: false,
+        channel: "off",
+        destination: "",
+        user: { id: `dev-${phone}`, name, phone, email, createdAt: new Date().toISOString() },
+      };
+    }
+    return {
+      pending: true,
+      channel: VERIFY_CHANNEL,
+      destination: VERIFY_CHANNEL === "sms" ? phone : email,
+    };
   }
 
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password: input.password,
-    options: { data: { full_name: name, phone } },
-  });
+  const data_ = metadataOf(input);
+
+  // بالرسالة القصيرة يكون الرقم هو هويّة الحساب عند الإنشاء، فالرمز يُرسل
+  // إليه. والبريد يُربط بعد التأكيد.
+  const credentials =
+    VERIFY_CHANNEL === "sms"
+      ? { phone, password: input.password, options: { data: data_ } }
+      : { email, password: input.password, options: { data: data_ } };
+
+  const { data, error } = await supabase.auth.signUp(credentials);
   if (error) throw authError(error, "تعذّر إنشاء الحساب");
 
   const userId = data.user?.id;
   if (!userId) throw new Error("تعذّر إنشاء الحساب — لم يُرجع الخادم معرّفًا.");
 
-  // ربط الرقم بالحساب نفسه ليصحّ الدخول به لاحقًا. قد يرفضه الخادم إن كان
-  // تأكيد الهاتف مفعّلًا (فيطلب رسالة SMS)، وحينها يبقى الدخول بالبريد عاملًا
-  // ولا نُفشل التسجيل كلّه من أجله. والدالة تُعيد الخطأ ولا ترميه، فنقرأ الردّ
-  // بدل الاكتفاء بـ try/catch لا يلتقط شيئًا.
-  const { error: phoneError } = await supabase.auth.updateUser({ phone });
+  // جلسة فورية تعني أن الخادم لا يطلب تأكيدًا: نكمل كما كنّا.
+  if (data.session) {
+    await linkIdentitiesAndProfile(userId, data_);
+    return { pending: false, channel: "off", destination: "", user: userOf(userId, data_) };
+  }
+
+  return {
+    pending: true,
+    channel: VERIFY_CHANNEL,
+    destination: VERIFY_CHANNEL === "sms" ? phone : email,
+  };
+}
+
+const userOf = (id: string, meta: ReturnType<typeof metadataOf>): User => ({
+  id,
+  name: meta.full_name,
+  firstName: meta.first_name,
+  secondName: meta.second_name,
+  familyName: meta.family_name,
+  phone: meta.phone,
+  email: meta.email,
+  createdAt: new Date().toISOString(),
+});
+
+/**
+ * بعد أن تُفتح الجلسة: نربط الهويّة الثانية ونكتب صفّ الملف الشخصي.
+ *
+ * الهويّة الثانية ليست ترفًا: من سجّل ببريده يريد أن يدخل برقمه أيضًا،
+ * والعكس. وقد يرفضها الخادم إن طلب تأكيدًا لها، فلا نُسقط التسجيل كلّه من
+ * أجلها — لكن لا نسكت عنها أيضًا.
+ */
+async function linkIdentitiesAndProfile(
+  userId: string,
+  meta: ReturnType<typeof metadataOf>
+): Promise<void> {
+  const second = VERIFY_CHANNEL === "sms" ? { email: meta.email } : { phone: meta.phone };
+  const { error: linkError } = await supabase.auth.updateUser(second);
 
   const { error: profileError } = await supabase.from("users").upsert({
     id: userId,
-    full_name: name,
-    first_name: input.firstName.trim(),
-    second_name: input.secondName.trim(),
-    family_name: input.familyName.trim(),
-    phone,
-    email,
+    full_name: meta.full_name,
+    first_name: meta.first_name,
+    second_name: meta.second_name,
+    family_name: meta.family_name,
+    phone: meta.phone,
+    email: meta.email,
   });
   if (profileError) {
     // الرقم محفوظ فريدًا في الجدول: تكراره يعني أن شخصًا آخر سجّل به.
@@ -100,22 +182,66 @@ export async function signUpWithPassword(input: SignUpInput): Promise<User> {
     throw profileError;
   }
 
-  // نُبلغ هنا لا بصمت: من لم يُربط رقمه يدخل ببريده، وعليه أن يعرف ذلك قبل أن
-  // يجرّب الدخول برقمه ويُقال له إن بياناته خاطئة.
-  if (phoneError) {
-    console.warn("[auth] لم يُربط الرقم بالحساب — الدخول بالبريد فقط:", phoneError.message);
+  if (linkError) {
+    const missing = VERIFY_CHANNEL === "sms" ? "البريد" : "الرقم";
+    console.warn(`[auth] لم تُربط ${missing} بالحساب:`, linkError.message);
+  }
+}
+
+/** رمز مكوّن من ستة أرقام، كما ترسله Supabase. */
+export const CODE_LENGTH = 6;
+
+/**
+ * إدخال الرمز: يفتح الجلسة، ثم يُنشأ صفّ الملف الشخصي.
+ *
+ * الترتيب مقصود — قبل الجلسة لا هويّة للمستخدم، وسياسة الإدراج تشترط أن
+ * يكون الصفّ لصاحبه، فالكتابة قبل التأكيد كانت تُرفض بصمت.
+ */
+export async function confirmSignUpCode(destination: string, code: string): Promise<User> {
+  const token = code.replace(/\D/g, "");
+
+  if (USE_MOCK_DATA) {
+    if (token.length !== CODE_LENGTH) throw new Error("الرمز ستة أرقام.");
+    return {
+      id: `dev-${destination}`,
+      name: "مستخدم",
+      phone: looksLikeEmail(destination) ? "+96890000000" : destination,
+      email: looksLikeEmail(destination) ? destination : undefined,
+      createdAt: new Date().toISOString(),
+    };
   }
 
-  return {
-    id: userId,
-    name,
-    firstName: input.firstName.trim(),
-    secondName: input.secondName.trim(),
-    familyName: input.familyName.trim(),
-    phone,
-    email,
-    createdAt: new Date().toISOString(),
+  const params = looksLikeEmail(destination)
+    ? ({ email: destination, token, type: "signup" } as const)
+    : ({ phone: destination, token, type: "sms" } as const);
+
+  const { data, error } = await supabase.auth.verifyOtp(params);
+  if (error) throw authError(error, "الرمز غير صحيح أو انتهت صلاحيته");
+
+  const user = data.user;
+  if (!user) throw new Error("تعذّر تأكيد الحساب.");
+
+  const meta = (user.user_metadata ?? {}) as Record<string, string>;
+  const filled = {
+    full_name: meta.full_name ?? "",
+    first_name: meta.first_name ?? "",
+    second_name: meta.second_name ?? "",
+    family_name: meta.family_name ?? "",
+    phone: meta.phone ?? user.phone ?? "",
+    email: meta.email ?? user.email ?? "",
   };
+  await linkIdentitiesAndProfile(user.id, filled);
+  return userOf(user.id, filled);
+}
+
+/** إعادة إرسال الرمز إلى الوجهة نفسها. */
+export async function resendSignUpCode(destination: string): Promise<void> {
+  if (USE_MOCK_DATA) return;
+  const params = looksLikeEmail(destination)
+    ? ({ type: "signup", email: destination } as const)
+    : ({ type: "sms", phone: destination } as const);
+  const { error } = await supabase.auth.resend(params);
+  if (error) throw authError(error, "تعذّر إرسال رمز جديد");
 }
 
 /* --------------------------------- الدخول --------------------------------- */

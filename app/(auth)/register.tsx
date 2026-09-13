@@ -46,7 +46,7 @@ export default function RegisterScreen() {
     }
     setLoading(true);
     try {
-      const user = await signUpWithPassword({
+      const result = await signUpWithPassword({
         firstName,
         secondName,
         familyName,
@@ -54,9 +54,22 @@ export default function RegisterScreen() {
         email,
         password,
       });
-      signIn(user);
-      showToast("أهلًا بك", "success");
-      router.replace("/(tabs)");
+
+      // الحساب أُنشئ ولم تُفتح له جلسة: لا ندخله قبل أن يثبت أنه صاحب الرقم
+      // أو البريد الذي كتبه.
+      if (result.pending) {
+        router.push({
+          pathname: "/(auth)/verify",
+          params: { destination: result.destination, channel: result.channel },
+        });
+        return;
+      }
+
+      if (result.user) {
+        signIn(result.user);
+        showToast("أهلًا بك", "success");
+        router.replace("/(tabs)");
+      }
     } catch (error) {
       showToast(toArabicMessage(error, "تعذّر إنشاء الحساب"), "error");
     } finally {

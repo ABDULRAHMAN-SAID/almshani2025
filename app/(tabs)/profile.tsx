@@ -7,6 +7,7 @@ import { FormField } from "@/components/FormField";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { colors, radius, spacing, typography } from "@/constants";
 import { useAuth } from "@/hooks/useAuth";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { usePointsBalance } from "@/hooks/usePoints";
 import { useUnreadCount } from "@/hooks/useNotifications";
 import { useRegistrationStore } from "@/store/registrationStore";
@@ -17,6 +18,7 @@ import { useFeatures } from "@/hooks/useFeatures";
 
 export default function ProfileScreen() {
   const { user, updateName, signOut } = useAuth();
+  const isAdmin = useIsAdmin();
   const points = usePointsBalance();
   const unread = useUnreadCount();
   const registeredCount = useRegistrationStore((state) => state.registeredIds.length);
@@ -132,6 +134,9 @@ export default function ProfileScreen() {
           onPress={() => setChangingPassword(true)}
         />
         <Row icon="settings-outline" label="الإعدادات" onPress={() => router.push("/settings")} />
+        {isAdmin ? (
+          <Row icon="shield-checkmark-outline" label="لوحة الإدارة" onPress={() => router.push("/admin")} />
+        ) : null}
       </View>
 
       <Pressable
