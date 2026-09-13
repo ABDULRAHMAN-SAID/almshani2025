@@ -32,13 +32,32 @@ const queryClient = new QueryClient({
   },
 });
 
+/**
+ * كم ننتظر الخطّ قبل أن نمضي بدونه.
+ *
+ * الخطّ زينة، والتطبيق ضرورة. وكان الانتظار مفتوحًا: إن لم يصل الملفّ — شبكة
+ * بطيئة، أو متصفّح يمنع تحميله من أصل آخر — بقي التطبيق على شاشة البداية إلى
+ * الأبد. أن تُقرأ الشاشة بخطّ النظام خيرٌ من ألّا تُقرأ.
+ */
+const FONT_WAIT_MS = 4000;
+
 export default function RootLayout() {
-  const [fontsLoaded] = useFonts({ Tajawal_400Regular, Tajawal_500Medium, Tajawal_700Bold });
+  const [fontsLoaded, fontError] = useFonts({
+    Tajawal_400Regular,
+    Tajawal_500Medium,
+    Tajawal_700Bold,
+  });
   const [appReady, setAppReady] = useState(false);
 
   useEffect(() => {
-    if (fontsLoaded) setAppReady(true);
-  }, [fontsLoaded]);
+    if (fontsLoaded || fontError) setAppReady(true);
+  }, [fontsLoaded, fontError]);
+
+  // ولو لم يصل الخطّ ولم يُعلن فشله — وهذا يقع حين يُقطع الطلب بلا ردّ.
+  useEffect(() => {
+    const timer = setTimeout(() => setAppReady(true), FONT_WAIT_MS);
+    return () => clearTimeout(timer);
+  }, []);
 
   const onLayoutRootView = useCallback(() => {
     if (appReady) SplashScreen.hideAsync().catch(() => undefined);

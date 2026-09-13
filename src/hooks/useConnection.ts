@@ -3,13 +3,20 @@ import { Platform } from "react-native";
 import NetInfo from "@react-native-community/netinfo";
 import { onlineManager } from "@tanstack/react-query";
 
-// على الويب تفحص المكتبة الاتصال بطلب جذر النطاق "/" افتراضًا. وهذا يخطئ متى
-// نُشر التطبيق في مجلّد داخل نطاق — كصفحات GitHub التي تقدّمه من
-// /almshani2025 بينما جذر النطاق لا شيء فيه: يردّ 404 فيظنّ التطبيق أن لا
-// إنترنت ويعلّق الشريط أبدًا. فنسأل عن صفحة التطبيق نفسها، وهي موجودة حيثما
-// نُشر.
-if (Platform.OS === "web") {
-  NetInfo.configure({ reachabilityUrl: `${process.env.EXPO_BASE_URL ?? ""}/` });
+const isWeb = Platform.OS === "web";
+
+/**
+ * على الويب تتحقّق المكتبة من الإنترنت بطلب شبكة دوريّ. والطلب يفشل لأسبابٍ
+ * لا علاقة لها بالإنترنت: الصفحة تحت مسارٍ لا جذر النطاق، أو معروضة في إطارٍ
+ * معزول لا أصل له فتمنع سياسة CORS كل طلبٍ منه. وحينها يعلّق التطبيق شريط
+ * «لا يوجد اتصال» فوق كل شاشة، والإنترنت سليم.
+ *
+ * فنوقف ذلك الطلب على الويب ونكتفي بما يقوله المتصفّح نفسه (navigator.onLine)
+ * — وهو ما تفعله أكثر مواقع الويب. يفوتنا بذلك تمييز شبكة موصولة بلا إنترنت،
+ * وهو أهون من تحذيرٍ كاذب لا يزول.
+ */
+if (isWeb) {
+  NetInfo.configure({ reachabilityShouldRun: () => false });
 }
 
 /**
@@ -24,7 +31,9 @@ export function useConnection() {
   useEffect(() => {
     return NetInfo.addEventListener((state) => {
       // isInternetReachable قد تكون null قبل أن تُحسم، فنعتبرها متصلة حتى تُحسم.
-      const online = Boolean(state.isConnected) && state.isInternetReachable !== false;
+      const online = isWeb
+        ? Boolean(state.isConnected)
+        : Boolean(state.isConnected) && state.isInternetReachable !== false;
       setIsOnline(online);
       onlineManager.setOnline(online);
     });
