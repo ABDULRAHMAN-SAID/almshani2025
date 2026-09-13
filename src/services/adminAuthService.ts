@@ -1,6 +1,7 @@
 import type { AdminAccount } from "@/store/adminSettingsStore";
 import { adminSettings } from "@/store/adminSettingsStore";
 import { useAuthStore } from "@/store/authStore";
+import { normalizePhone } from "@/utils/identity";
 import { USE_MOCK_DATA } from "./config";
 import { supabase } from "./supabase";
 
@@ -16,8 +17,6 @@ import { supabase } from "./supabase";
  * إضافي اختياري فوق هذا التحقق، لا بديلًا عنه.
  */
 
-const digits = (value: string) => value.replace(/\D/g, "");
-
 /** يسأل الخادم: هل الحساب الحالي إداري؟ */
 export async function verifyAdminAccess(): Promise<boolean> {
   if (!USE_MOCK_DATA) {
@@ -28,9 +27,14 @@ export async function verifyAdminAccess(): Promise<boolean> {
 
   // الوضع التجريبي لا خادم فيه: نطابق رقم الحساب مع قائمة الإداريين المحلية.
   // هذا للعرض فقط، وليس نموذج الصلاحية الذي يعمل في الإنتاج.
-  const phone = digits(useAuthStore.getState().user?.phone ?? "");
+  //
+  // والمطابقة بالصيغة الدولية لا بالأرقام المجرّدة: الحساب يُحفظ ‎+96891234567
+  // بينما تُكتب القائمة 91234567، فمقارنة الأرقام كما هي لا تتطابق أبدًا —
+  // وكانت لوحة العرض لا تُفتح لأحد بسببها.
+  const phone = useAuthStore.getState().user?.phone;
   if (!phone) return false;
-  return adminSettings().admins.some((admin) => digits(admin.phone) === phone);
+  const normalized = normalizePhone(phone);
+  return adminSettings().admins.some((admin) => normalizePhone(admin.phone) === normalized);
 }
 
 /**
