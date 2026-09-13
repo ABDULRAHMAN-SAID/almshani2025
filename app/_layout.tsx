@@ -6,6 +6,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
+import { DemoRibbon } from "@/components/DemoRibbon";
 import { MisconfiguredNotice } from "@/components/MisconfiguredNotice";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { ToastHost } from "@/components/ToastHost";
@@ -80,6 +81,7 @@ export default function RootLayout() {
     <SafeAreaProvider onLayout={onLayoutRootView}>
       <QueryClientProvider client={queryClient}>
         <StatusBar style="light" backgroundColor={colors.primary} />
+        <DemoRibbon />
         <OfflineBanner />
         <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }} />
         <ToastHost />

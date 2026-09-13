@@ -6,6 +6,7 @@ import { FormField } from "@/components/FormField";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { colors, radius, spacing, typography } from "@/constants";
 import { useAuth } from "@/hooks/useAuth";
+import { USE_MOCK_DATA } from "@/services/config";
 import { CODE_LENGTH, confirmSignUpCode, resendSignUpCode } from "@/services/authService";
 import { showToast } from "@/store/toastStore";
 import { toArabicMessage } from "@/utils/errors";
@@ -129,6 +130,16 @@ export default function VerifyScreen() {
           </Pressable>
         )}
 
+        {USE_MOCK_DATA ? (
+          <View style={styles.demo}>
+            <Ionicons name="flask-outline" size={17} color={colors.danger} />
+            <Text style={styles.demoText}>
+              نسخة عرض: لم تُرسل رسالة، ولن تصل. اكتب أي ستة أرقام لتكمل. الرمز الحقيقي يصل بعد
+              ربط الخادم.
+            </Text>
+          </View>
+        ) : null}
+
         <View style={styles.notice}>
           <Ionicons name="information-circle-outline" size={17} color={colors.marineDeep} />
           <Text style={styles.noticeText}>
@@ -171,4 +182,18 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   noticeText: { ...typography.caption, flex: 1, fontSize: 11.5, lineHeight: 18 },
+  demo: {
+    flexDirection: "row",
+    gap: spacing.sm,
+    backgroundColor: colors.dangerSoft,
+    borderRadius: radius.md,
+    padding: spacing.md,
+  },
+  demoText: {
+    ...typography.caption,
+    flex: 1,
+    fontSize: 11.5,
+    lineHeight: 18,
+    color: colors.danger,
+  },
 });
