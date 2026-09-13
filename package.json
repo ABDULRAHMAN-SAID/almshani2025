@@ -26,7 +26,8 @@
     "make-app": "node scripts/make-app.mjs",
     "connect": "node scripts/connect-server.mjs",
     "make-app:demo": "node scripts/make-app.mjs --demo",
-    "make:web": "node scripts/make-web.mjs"
+    "make:web": "node scripts/make-web.mjs",
+    "mail": "node scripts/mail-server.mjs"
   },
   "dependencies": {
     "@expo-google-fonts/tajawal": "^0.2.3",
