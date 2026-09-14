@@ -21,6 +21,11 @@ on:
         type: choice
         default: email
         options: [email, sms, "off"]
+      expo_account:
+        description: "حساب Expo (اتركه فارغًا ليُؤخذ من الرمز)"
+        type: string
+        required: false
+        default: ""
 
 jobs:
   build:
@@ -71,6 +76,30 @@ jobs:
 
       - name: افحص المنطق الخالص
         run: npm run test:units
+
+      - name: اربط المشروع بحساب Expo
+        # ‏eas build يرفض العمل بلا معرّف مشروع، ولا يستطيع إنشاءه بنفسه في وضع
+        # غير تفاعلي — فيقف البناء بعد دقيقة برسالة لا تقول لغير المبرمج شيئًا.
+        # فنربطه هنا أولًا، ونتخطّى الخطوة إن كان مربوطًا من قبل.
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          if node -e "const c=require('./app.json');process.exit(c.expo?.extra?.eas?.projectId?0:1)"; then
+            echo "المشروع مربوط بالفعل."
+            exit 0
+          fi
+          account="${{ inputs.expo_account }}"
+          if [ -z "$account" ]; then
+            # اسم الحساب من الرمز نفسه، فلا يُطلب من أحد أن يكتبه.
+            account=$(npx --yes eas-cli@latest whoami 2>/dev/null \
+              | sed -e 's/\x1b\[[0-9;]*m//g' | tr -d '\r' | grep -v '^[[:space:]]*$' | tail -n 1)
+          fi
+          if [ -z "$account" ]; then
+            echo "::error::تعذّر معرفة حساب Expo — تأكّد أن EXPO_TOKEN صحيح ولم تنتهِ صلاحيته."
+            exit 1
+          fi
+          echo "الحساب: $account"
+          npx --yes eas-cli@latest init --account "$account" --non-interactive
 
       - name: ابنِ الملفّ
         env:
