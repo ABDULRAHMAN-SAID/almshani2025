@@ -1,0 +1,87 @@
+# بناء ملفّ التطبيق بالضغط على زرّ — بلا حاسوب ولا سطر أوامر.
+#
+# من يريد تشغيل التطبيق ليس مبرمجًا بالضرورة، وتثبيت Node وGit وفتح الطرفية
+# عقبة تسقط كثيرين قبل أن يبدأوا. وهذا الملفّ ينقل ذلك كلّه إلى خوادم GitHub:
+# تفتح صفحة Actions، وتضغط Run workflow، وتنتظر.
+#
+# قبل أول تشغيل ضع ثلاثة أسرار في:
+#   Settings ← Secrets and variables ← Actions ← New repository secret
+#
+#   EXPO_TOKEN                 من expo.dev ← Access tokens
+#   EXPO_PUBLIC_SUPABASE_URL   من Supabase ← Settings ← API
+#   EXPO_PUBLIC_SUPABASE_ANON_KEY   المفتاح العام (anon) وحده لا service_role
+#
+name: بناء التطبيق
+
+on:
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: "قناة رمز التأكيد"
+        type: choice
+        default: email
+        options: [email, sms, "off"]
+
+jobs:
+  build:
+    name: ملف APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: أنزل المشروع
+        uses: actions/checkout@v4
+
+      - name: هيّئ Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: تحقّق من الأسرار
+        # الفشل هنا برسالة مفهومة خير من فشل بعد عشرين دقيقة بناء.
+        run: |
+          missing=""
+          [ -z "${{ secrets.EXPO_TOKEN }}" ] && missing="$missing EXPO_TOKEN"
+          [ -z "${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}" ] && missing="$missing EXPO_PUBLIC_SUPABASE_URL"
+          [ -z "${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}" ] && missing="$missing EXPO_PUBLIC_SUPABASE_ANON_KEY"
+          if [ -n "$missing" ]; then
+            echo "::error::أسرار ناقصة:$missing — ضعها في Settings ← Secrets and variables ← Actions"
+            exit 1
+          fi
+          echo "الأسرار الثلاثة موجودة."
+
+      - name: ثبّت المكتبات
+        run: npm ci
+
+      - name: اكتب ملفّ الربط
+        # ‏USE_MOCK_DATA=false هو ما يجعلها النسخة الحقيقية لا نسخة العرض.
+        run: |
+          {
+            echo "EXPO_PUBLIC_SUPABASE_URL=${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}"
+            echo "EXPO_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}"
+            echo "EXPO_PUBLIC_USE_MOCK_DATA=false"
+            echo "EXPO_PUBLIC_VERIFY_CHANNEL=${{ inputs.channel }}"
+          } > .env
+          echo "كُتب .env — القناة: ${{ inputs.channel }}"
+
+      - name: افحص الأنواع
+        run: npx tsc --noEmit
+
+      - name: افحص أن كل استعلام يطابق المخطط
+        run: npm run check:queries
+
+      - name: افحص المنطق الخالص
+        run: npm run test:units
+
+      - name: ابنِ الملفّ
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: npx --yes eas-cli@latest build --platform android --profile production-apk --non-interactive
+
+      - name: أين الملفّ
+        if: success()
+        run: |
+          echo "### التطبيق جاهز" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "افتح **expo.dev** ← مشروعك ← **Builds**، وحمّل آخر بناء." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "أو انسخ رابط \`.apk\` من سجلّ الخطوة السابقة." >> $GITHUB_STEP_SUMMARY
