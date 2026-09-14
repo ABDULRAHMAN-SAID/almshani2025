@@ -90,14 +90,21 @@ jobs:
           fi
           account="${{ inputs.expo_account }}"
           if [ -z "$account" ]; then
-            # اسم الحساب من الرمز نفسه، فلا يُطلب من أحد أن يكتبه.
+            # ‏whoami يطبع اسم الحساب في أوّل سطر، ثم قائمة بالحسابات التي يملك
+            # الوصول إليها في أسطر تالية تبدأ بنقطة وتنتهي بـ (Role: …).
+            # وقراءة آخر سطر تلتقط أحد تلك الأسطر كاملًا لا اسمًا — فيُرفض.
             account=$(npx --yes eas-cli@latest whoami 2>/dev/null \
-              | sed -e 's/\x1b\[[0-9;]*m//g' | tr -d '\r' | grep -v '^[[:space:]]*$' | tail -n 1)
+              | sed -e 's/\x1b\[[0-9;]*m//g' | tr -d '\r' \
+              | grep -v '^[[:space:]]*$' | head -n 1 \
+              | sed -e 's/^[^A-Za-z0-9]*//' -e 's/[[:space:]].*$//')
           fi
-          if [ -z "$account" ]; then
-            echo "::error::تعذّر معرفة حساب Expo — تأكّد أن EXPO_TOKEN صحيح ولم تنتهِ صلاحيته."
-            exit 1
-          fi
+          # ولا نمرّر ما التقطناه إلا إن كان اسمًا فعلًا: تمريرُ سطرٍ كاملًا
+          # يُفشل الأمر برسالة عن "حساب" غريب لا يفهمها أحد.
+          case "$account" in
+            *[!A-Za-z0-9._-]* | "" )
+              echo "::error::تعذّر تحديد حساب Expo. أعد التشغيل واكتب اسم الحساب في خانة «حساب Expo» — تجده في expo.dev أعلى يسار الصفحة."
+              exit 1 ;;
+          esac
           echo "الحساب: $account"
           npx --yes eas-cli@latest init --account "$account" --non-interactive
 
