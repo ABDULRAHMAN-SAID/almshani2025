@@ -188,8 +188,14 @@ async function linkIdentitiesAndProfile(
   }
 }
 
-/** رمز مكوّن من ستة أرقام، كما ترسله Supabase. */
-export const CODE_LENGTH = 6;
+/**
+ * طول الرمز يقرّره الخادم لا التطبيق: إعداد Email OTP Length في Supabase
+ * يقبل ما بين ستّة وعشرة أرقام. وتثبيتُه هنا على ستّة جعل رمزًا صحيحًا من
+ * ثمانية أرقام يتعذّر إدخاله — الخانة تقصّه، والزرّ لا يُفعَّل. فنقبل المدى
+ * كلّه وندع الخادم وحده يحكم على صحّة الرمز.
+ */
+export const CODE_MIN_LENGTH = 6;
+export const CODE_MAX_LENGTH = 10;
 
 /**
  * إدخال الرمز: يفتح الجلسة، ثم يُنشأ صفّ الملف الشخصي.
@@ -201,7 +207,7 @@ export async function confirmSignUpCode(destination: string, code: string): Prom
   const token = code.replace(/\D/g, "");
 
   if (USE_MOCK_DATA) {
-    if (token.length !== CODE_LENGTH) throw new Error("الرمز ستة أرقام.");
+    if (token.length < CODE_MIN_LENGTH) throw new Error(`الرمز لا يقلّ عن ${CODE_MIN_LENGTH} أرقام.`);
     return {
       id: `dev-${destination}`,
       name: "مستخدم",
