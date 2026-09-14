@@ -352,6 +352,9 @@ try {
       // وهو مجاني — بريد Supabase يكفي للبداية.
       mailer_autoconfirm: false,
       mailer_otp_exp: 3600,
+      // وطولُه يُثبَّت هنا: تركُه لما وجده المشروع أرسل رمزًا من ثمانية
+      // أرقام إلى خانةٍ تقبل ستة، فوصل رمز صحيح تعذّر إدخاله.
+      mailer_otp_length: 6,
       mailer_templates_confirmation_content: CONFIRM_EMAIL,
       mailer_subjects_confirmation: "رمز تأكيد حسابك — أنشطتي",
       // أمّا الهاتف فيبقى بلا تأكيد: تأكيده يحتاج مزوّد رسائل مدفوعًا، ولو

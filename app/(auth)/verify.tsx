@@ -7,7 +7,12 @@ import { PrimaryButton } from "@/components/PrimaryButton";
 import { colors, radius, spacing, typography } from "@/constants";
 import { useAuth } from "@/hooks/useAuth";
 import { USE_MOCK_DATA } from "@/services/config";
-import { CODE_LENGTH, confirmSignUpCode, resendSignUpCode } from "@/services/authService";
+import {
+  CODE_MAX_LENGTH,
+  CODE_MIN_LENGTH,
+  confirmSignUpCode,
+  resendSignUpCode,
+} from "@/services/authService";
 import { showToast } from "@/store/toastStore";
 import { toArabicMessage } from "@/utils/errors";
 
@@ -41,8 +46,8 @@ export default function VerifyScreen() {
   const digits = code.replace(/\D/g, "");
 
   const handleSubmit = async () => {
-    if (digits.length !== CODE_LENGTH) {
-      showToast(`الرمز ${CODE_LENGTH} أرقام`, "error");
+    if (digits.length < CODE_MIN_LENGTH) {
+      showToast(`الرمز لا يقلّ عن ${CODE_MIN_LENGTH} أرقام`, "error");
       return;
     }
     // الضغط مرتين بسرعة كان يرسل الرمز مرتين، فيُقبل الأول ويُقال عن الثاني
@@ -97,7 +102,7 @@ export default function VerifyScreen() {
         <View style={styles.head}>
           <Text style={styles.title}>أدخل رمز التأكيد</Text>
           <Text style={styles.subtitle}>
-            {bySms ? "أرسلنا رسالة فيها رمز من ستة أرقام إلى " : "أرسلنا رمزًا من ستة أرقام إلى "}
+            {bySms ? "أرسلنا رسالة فيها رمز التأكيد إلى " : "أرسلنا رمز التأكيد إلى "}
             <Text style={styles.destination}>{destination}</Text>
           </Text>
         </View>
@@ -105,7 +110,7 @@ export default function VerifyScreen() {
         <FormField
           label="الرمز"
           value={code}
-          onChangeText={(value) => setCode(value.replace(/\D/g, "").slice(0, CODE_LENGTH))}
+          onChangeText={(value) => setCode(value.replace(/\D/g, "").slice(0, CODE_MAX_LENGTH))}
           placeholder="------"
           keyboardType="number-pad"
           autoCapitalize="none"
@@ -118,7 +123,7 @@ export default function VerifyScreen() {
           label="تأكيد"
           onPress={handleSubmit}
           loading={loading}
-          disabled={digits.length !== CODE_LENGTH}
+          disabled={digits.length < CODE_MIN_LENGTH}
           style={styles.submit}
         />
 
