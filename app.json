@@ -1,0 +1,80 @@
+{
+  "expo": {
+    "name": "أنشطتي",
+    "slug": "anshatati-salala",
+    "scheme": "anshatati",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/logo/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/images/logo/logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0A2340"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.rafo.anshatati.salala",
+      "infoPlist": {
+        "CFBundleAllowMixedLocalizations": true,
+        "NSMicrophoneUsageDescription": "يستخدم التطبيق الميكروفون لتسجيل مقطع صوتي قصير عند إرفاقه بمشاركة أو رسالة."
+      }
+    },
+    "android": {
+      "package": "com.rafo.anshatati.salala",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/logo/adaptive-icon.png",
+        "backgroundColor": "#0A2340"
+      },
+      "permissions": [
+        "RECORD_AUDIO",
+        "CAMERA",
+        "INTERNET"
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/logo/logo.png",
+          "imageWidth": 220,
+          "resizeMode": "contain",
+          "backgroundColor": "#0A2340"
+        }
+      ],
+      "expo-localization",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "يستخدم التطبيق الكاميرا لمسح رمز الحضور (QR) عند المحاضرات والأنشطة فقط."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "يستخدم التطبيق مكتبة الصور لإرفاق صورة أو مقطع فيديو بالإعلانات والمشاركات.",
+          "microphonePermission": "يستخدم التطبيق الميكروفون لتسجيل مقطع صوتي عند إرفاقه بمشاركة أو رسالة."
+        }
+      ],
+      [
+        "expo-av",
+        {
+          "microphonePermission": "يستخدم التطبيق الميكروفون لتسجيل مقطع صوتي قصير عند إرفاقه بمشاركة أو رسالة."
+        }
+      ]
+    ],
+    "extra": {
+      "router": {
+        "origin": false
+      }
+    }
+  }
+}

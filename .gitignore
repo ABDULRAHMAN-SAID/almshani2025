@@ -1,0 +1,22 @@
+node_modules/
+.expo/
+dist/
+web-build/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+.env
+.env.local
+
+# رمز وصول Supabase ومعرّف المشروع — يكتبه npm run setup ويخصّ هذا الجهاز وحده
+.supabase-setup.json
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+*.log
+.DS_Store
+.vscode/
+expo-env.d.ts
