@@ -57,14 +57,28 @@ export function toArabicMessage(error: unknown, fallback = "تعذّر إتما�
   if (code && CODE_MESSAGES[code]) return CODE_MESSAGES[code];
 
   const status = candidate && typeof candidate.status === "number" ? candidate.status : 0;
+  // حدّان يخصّان الرفع: ملفّ أكبر من المسموح، ومساحة الخادم ممتلئة. وبلا
+  // تمييزهما يُقال «تعذّر إتمام العملية» لمن يحتاج أن يعرف أنّ عليه اختيار
+  // ملفّ أصغر، أو أنّ المشكلة ليست عنده أصلًا بل في مساحة الخادم.
+  if (status === 413) return "الملفّ أكبر من الحدّ المسموح به. اختر ملفًّا أصغر.";
+  if (status === 507) {
+    return "مساحة التخزين على الخادم ممتلئة. على الإدارة حذف مرفقات قديمة أو توسيع الخطة.";
+  }
   if (status === 401 || status === 403) return "ليست لديك صلاحية لهذه العملية.";
   if (status === 404) return "لم يُعثر على العنصر المطلوب.";
   if (status === 429) return "طلبات كثيرة خلال وقت قصير. انتظر قليلًا ثم أعد المحاولة.";
   if (status >= 500) return "الخادم لا يستجيب حاليًا. أعد المحاولة بعد قليل.";
 
   const text = readText(error);
-  if (text.toLowerCase().includes("forbidden")) return "ليست لديك صلاحية لهذه العملية.";
-  if (text.toLowerCase().includes("jwt")) return "انتهت صلاحية جلستك، سجّل الدخول من جديد.";
+  const lower = text.toLowerCase();
+  if (/payload too large|exceeded the maximum/.test(lower)) {
+    return "الملفّ أكبر من الحدّ المسموح به. اختر ملفًّا أصغر.";
+  }
+  if (/quota|storage limit|insufficient storage/.test(lower)) {
+    return "مساحة التخزين على الخادم ممتلئة. على الإدارة حذف مرفقات قديمة أو توسيع الخطة.";
+  }
+  if (lower.includes("forbidden")) return "ليست لديك صلاحية لهذه العملية.";
+  if (lower.includes("jwt")) return "انتهت صلاحية جلستك، سجّل الدخول من جديد.";
 
   // رسالة عربية تعني أن طبقة الخدمات صاغتها للمستخدم أصلًا، فهي أدقّ من أي
   // عبارة عامة. وبدون هذا السطر كانت كل رسائل المصادقة المكتوبة بعناية

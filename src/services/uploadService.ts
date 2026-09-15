@@ -2,7 +2,7 @@ import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
 import type { MediaAttachment, MediaKind } from "@/types/models";
-import { USE_MOCK_DATA } from "./config";
+import { SUPABASE_ANON_KEY, SUPABASE_URL, USE_MOCK_DATA } from "./config";
 import { supabase } from "./supabase";
 // المنطق الخالص في utils/media ليُختبر خارج الهاتف؛ ويُعاد تصديره هنا ليبقى
 // مسار الاستيراد في الشاشات كما هو.
@@ -290,14 +290,75 @@ export async function uploadMedia(media: PickedMedia, folder: string): Promise<M
   }
 
   const path = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${extensionOf(media)}`;
-  const bytes = base64ToBytes(await readBase64(media));
-  const { error } = await supabase.storage
-    .from(MEDIA_BUCKET)
-    .upload(path, bytes, { contentType: media.mimeType, upsert: false });
-  if (error) throw error;
+  await putObject(MEDIA_BUCKET, path, media);
 
   const { data } = supabase.storage.from(MEDIA_BUCKET).getPublicUrl(path);
   return { ...attachment, url: data.publicUrl };
+}
+
+/**
+ * يرفع الملفّ من مساره مباشرة، لا من ذاكرة التطبيق.
+ *
+ * كان المسار الوحيد يقرأ الملفّ كلّه نصَّ base64 ثم يحوّله بايتات: مقطع من
+ * خمسة وعشرين ميجابايت يصير نحو ثلاثة وثلاثين نصًّا وخمسة وعشرين بايتات،
+ * ستّون ميجابايت في كومة JavaScript دفعة واحدة. على هاتف متوسط هذا بطء
+ * شديد، وعلى الأضعف انهيار للتطبيق عند الرفع — وهو أثقل ما يفعله المستخدم
+ * وأكثره عرضة للفشل.
+ *
+ * و‏uploadAsync يمرّر الملفّ من مساره إلى الشبكة في الطبقة الأصلية، فلا يمرّ
+ * منه شيء على الذاكرة. ويبقى مسار base64 لمن أعطانا المنتقي محتواه أصلًا
+ * (الصور)، ولحالة يتعذّر فيها التدفّق — فالرفع الثقيل أهون من رفع لا يتمّ.
+ */
+async function putObject(bucket: string, path: string, media: PickedMedia): Promise<void> {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const accessToken = sessionData.session?.access_token;
+
+  if (accessToken && SUPABASE_URL && !media.base64) {
+    try {
+      const result = await FileSystem.uploadAsync(
+        `${SUPABASE_URL}/storage/v1/object/${bucket}/${encodeURI(path)}`,
+        media.uri,
+        {
+          httpMethod: "POST",
+          uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            apikey: SUPABASE_ANON_KEY,
+            "Content-Type": media.mimeType,
+            "x-upsert": "false",
+          },
+        }
+      );
+      if (result.status >= 200 && result.status < 300) return;
+      throw new Error(storageMessage(result.status, result.body));
+    } catch (error) {
+      // خطأٌ من الخادم نفسه (مساحة ممتلئة، صلاحية) لا يُعالَج بإعادة المحاولة
+      // بطريقة أخرى: نرفعه كما هو. أمّا تعذّر التدفّق فنكمل بالمسار القديم.
+      if (error instanceof Error && error.message.startsWith("__server__")) {
+        throw new Error(error.message.replace("__server__", ""));
+      }
+    }
+  }
+
+  const bytes = base64ToBytes(await readBase64(media));
+  const { error } = await supabase.storage
+    .from(bucket)
+    .upload(path, bytes, { contentType: media.mimeType, upsert: false });
+  if (error) throw error;
+}
+
+/** رسائل التخزين إنجليزية؛ وأكثرها ورودًا امتلاء المساحة، فيُقال صراحةً. */
+function storageMessage(status: number, body: string): string {
+  if (status === 413 || /payload too large|exceeded the maximum/i.test(body)) {
+    return "__server__الملفّ أكبر من الحدّ المسموح به. اختر ملفًّا أصغر.";
+  }
+  if (status === 507 || /quota|storage limit|insufficient storage/i.test(body)) {
+    return "__server__مساحة التخزين على الخادم ممتلئة. على الإدارة حذف مرفقات قديمة أو توسيع الخطة.";
+  }
+  if (status === 401 || status === 403) {
+    return "__server__انتهت جلستك أو لا صلاحية لك بالرفع. أعد تسجيل الدخول.";
+  }
+  return `تعذّر الرفع (${status}).`;
 }
 
 /** يحذف صورة مرفوعة. يتجاهل الروابط المحلية لأنها ليست على الخادم. */
