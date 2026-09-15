@@ -291,9 +291,31 @@ export async function uploadMedia(media: PickedMedia, folder: string): Promise<M
 
   const path = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${extensionOf(media)}`;
   await putObject(MEDIA_BUCKET, path, media);
+  await discardTemporary(media.uri);
 
   const { data } = supabase.storage.from(MEDIA_BUCKET).getPublicUrl(path);
   return { ...attachment, url: data.publicUrl };
+}
+
+/**
+ * يحذف النسخة المؤقّتة بعد أن تصل الخادم.
+ *
+ * الكاميرا والمنتقي يكتبان نسخة في ذاكرة التطبيق المؤقّتة قبل الرفع، ولم
+ * يكن شيء يحذفها. فكلّ مقطع وكلّ صورة تبقى مرّتين: على الخادم وعلى الهاتف.
+ * ومع الاستعمال يكبر حجم التطبيق في إعدادات الهاتف بلا سبب يفهمه صاحبه —
+ * يرى تطبيق أنشطة وقد صار مئات الميجابايت.
+ *
+ * ولا نحذف إلا ما في المجلّد المؤقّت: ملفٌّ اختاره المستخدم من مجلّداته قد
+ * يُمرَّر بمساره الأصلي، وحذفُه يمحو ملفّه هو.
+ */
+async function discardTemporary(uri: string): Promise<void> {
+  const cache = FileSystem.cacheDirectory;
+  if (!cache || !uri.startsWith(cache)) return;
+  try {
+    await FileSystem.deleteAsync(uri, { idempotent: true });
+  } catch {
+    // تنظيف لا أكثر: فشلُه لا يُبطل رفعًا تمّ.
+  }
 }
 
 /**

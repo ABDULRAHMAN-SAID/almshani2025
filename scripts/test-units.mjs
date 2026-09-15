@@ -196,8 +196,9 @@ function runAll(tz) {
     try { media.assertWithinLimit(kind, size); return false; } catch { return true; }
   };
   check("المرفقات", "صورة دون الحدّ تمرّ", false, overLimit("image", 2 * 1024 * 1024));
-  check("المرفقات", "صورة فوق الحدّ تُرفض", true, overLimit("image", 4 * 1024 * 1024));
-  check("المرفقات", "الحدّ نفسه يمرّ", false, overLimit("image", 3 * 1024 * 1024));
+  check("المرفقات", "صورة كاميرا حديثة تمرّ", false, overLimit("image", 5 * 1024 * 1024));
+  check("المرفقات", "صورة فوق الحدّ تُرفض", true, overLimit("image", 7 * 1024 * 1024));
+  check("المرفقات", "الحدّ نفسه يمرّ", false, overLimit("image", 6 * 1024 * 1024));
   check("المرفقات", "فيديو ٢٠ ميجا يمرّ", false, overLimit("video", 20 * 1024 * 1024));
   check("المرفقات", "فيديو ٣٠ ميجا يُرفض", true, overLimit("video", 30 * 1024 * 1024));
   check("المرفقات", "صوت ٩ ميجا يُرفض", true, overLimit("audio", 9 * 1024 * 1024));
