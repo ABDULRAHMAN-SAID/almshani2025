@@ -10,6 +10,8 @@ export type ActivityCategory =
   | "Lecture"
   | "AntiDrugs"
   | "GeneralSafety"
+  | "OfficersClub"
+  | "SeniorNcoClub"
   | "Announcement";
 
 type IoniconName = keyof typeof Ionicons.glyphMap;
@@ -32,6 +34,8 @@ export const CATEGORY_META: Record<ActivityCategory, CategoryMeta> = {
   Lecture: { label: "محاضرات", icon: "mic-outline", tint: "#0B2545" },
   AntiDrugs: { label: "مكافحة المخدرات", icon: "leaf-outline", tint: "#276749" },
   GeneralSafety: { label: "السلامة العامة", icon: "medkit-outline", tint: "#9B2C2C" },
+  OfficersClub: { label: "نادي الضباط", icon: "ribbon-outline", tint: "#1C4468" },
+  SeniorNcoClub: { label: "نادي كبار ضباط الصف", icon: "shield-outline", tint: "#6B4E2E" },
   Announcement: { label: "إعلان", icon: "megaphone-outline", tint: "#8A6D2C" },
 };
 
@@ -55,6 +59,8 @@ export const HOME_SECTIONS: HomeSection[] = [
   { key: "security", label: "التثقيف الأمني", icon: "shield-checkmark-outline", tint: "#434190", route: "/(tabs)/awareness" },
   { key: "safety", label: "السلامة", icon: "medkit-outline", tint: "#B7791F", route: "/sections/safety" },
   { key: "announcements", label: "الإعلانات", icon: "megaphone-outline", tint: "#9B2C2C", route: "/announcements" },
+  { key: "officers-club", label: "نادي الضباط", icon: "ribbon-outline", tint: "#1C4468", route: "/sections/officers-club" },
+  { key: "nco-club", label: "نادي كبار ضباط الصف", icon: "shield-outline", tint: "#6B4E2E", route: "/sections/nco-club" },
   { key: "news", label: "الأخبار", icon: "newspaper-outline", tint: "#1A5F7A", route: "/news" },
   { key: "quiz", label: "سؤال الأسبوع", icon: "help-circle-outline", tint: "#2C5282", route: "/quiz" },
   { key: "groups", label: "المجموعات النقاشية", icon: "chatbubbles-outline", tint: "#158A99", route: "/groups" },

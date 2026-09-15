@@ -20,10 +20,17 @@ do $$ begin
     'Lecture',
     'AntiDrugs',
     'GeneralSafety',
+    'OfficersClub',
+    'SeniorNcoClub',
     'Announcement'
   );
 exception when duplicate_object then null;
 end $$;
+
+-- لقاعدةٍ أُنشئت قبل هذه القيم: إضافتها إلى نوعٍ قائم. وadd value لا تقبل
+-- do/exception، فتُكتب بـ if not exists وحدها.
+alter type activity_category add value if not exists 'OfficersClub';
+alter type activity_category add value if not exists 'SeniorNcoClub';
 
 do $$ begin
   create type registration_status as enum ('open', 'closed', 'upcoming', 'ended', 'full');
@@ -160,6 +167,8 @@ exception when duplicate_object then null;
 end $$;
 
 -- قيمة موحّدة وبسيطة: 10 نقاط لكل سبب، بلا تفاوت بين الأسباب.
+alter type points_reason add value if not exists 'news_read';
+
 create table if not exists public.points_transactions (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.users (id) on delete cascade,

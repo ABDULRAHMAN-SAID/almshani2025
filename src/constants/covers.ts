@@ -15,5 +15,7 @@ export const CATEGORY_COVER: Record<ActivityCategory, ImageSourcePropType> = {
   Lecture: require("@assets/images/covers/cover-Lecture.png"),
   AntiDrugs: require("@assets/images/covers/cover-AntiDrugs.png"),
   GeneralSafety: require("@assets/images/covers/cover-GeneralSafety.png"),
+  OfficersClub: require("@assets/images/covers/cover-OfficersClub.png"),
+  SeniorNcoClub: require("@assets/images/covers/cover-SeniorNcoClub.png"),
   Announcement: require("@assets/images/covers/cover-Announcement.png"),
 };
