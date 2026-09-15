@@ -146,12 +146,31 @@ const record = (group, name, status, note = "") => {
   console.log(`  ${ICONS[status]} ${name.padEnd(26)} ${LABELS[status]}${note ? dim("  " + note) : ""}`);
 };
 
-/** يميّز «غير موجود» عن «ممنوع»: الأول خطأ في التنفيذ، والثاني سلوك مقصود. */
-const missing = (error) =>
-  error &&
-  (error.code === "42P01" ||
-    error.code === "PGRST202" ||
-    /does not exist|could not find|not found/i.test(error.message ?? ""));
+/**
+ * يميّز «غير موجود» عن «ممنوع» عن «ردّ برسالته»: الأول خطأ في التنفيذ،
+ * والثاني سلوك مقصود، والثالث دليل وجود لا غياب.
+ *
+ * ويُحكَم بالرمز لا بنصّ الرسالة: كان المطابِق يقبل «not found» أينما وردت،
+ * فدالةٌ نوديت بمعرّف وهمي وردّت «question not found» — أي عملت وأجابت —
+ * حُسبت غائبة، وقيل لصاحب المشروع إنّ مخطّطه ناقص وإنّ عليه إعادة تنفيذه.
+ * ورسالةُ الدالة عن بياناتها ليست نفيًا لوجودها.
+ */
+const MISSING_CODES = new Set([
+  "42P01", // جدول غير موجود
+  "42883", // دالة غير موجودة
+  "PGRST202", // لم تجد PostgREST الدالة في المخطّط
+  "PGRST205", // ولا الجدول
+]);
+
+const missing = (error) => {
+  if (!error) return false;
+  if (error.code && MISSING_CODES.has(error.code)) return true;
+  // بلا رمز: لا نقبل إلا الصيغة التي يكتبها PostgREST نفسه عن عنصر مفقود.
+  if (error.code) return false;
+  return /could not find the (function|table|relation)|relation .* does not exist|function .* does not exist/i.test(
+    error.message ?? ""
+  );
+};
 
 async function checkTable(name, expectReadable) {
   const { error } = await supabase.from(name).select("*", { count: "exact", head: true }).limit(1);
@@ -175,7 +194,9 @@ async function checkFunction(name, args) {
 
 async function checkBucket(name) {
   const { error } = await supabase.storage.from(name).list("", { limit: 1 });
-  if (error && /not found|does not exist/i.test(error.message ?? "")) {
+  // حاوية غائبة يقول عنها التخزين «Bucket not found» بهذا اللفظ؛ فنقبله هنا
+  // وحده، لا كل «not found» كما كان.
+  if (error && /bucket not found/i.test(error.message ?? "")) {
     return record("تخزين", name, "missing", error.message?.slice(0, 60));
   }
   const status = error ? "guarded" : "ok";
