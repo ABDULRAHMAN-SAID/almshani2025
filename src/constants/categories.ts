@@ -53,6 +53,7 @@ export const HOME_SECTIONS: HomeSection[] = [
   { key: "security", label: "التثقيف الأمني", icon: "shield-checkmark-outline", tint: "#434190", route: "/awareness" },
   { key: "safety", label: "السلامة", icon: "medkit-outline", tint: "#B7791F", route: "/sections/safety" },
   { key: "announcements", label: "الإعلانات", icon: "megaphone-outline", tint: "#9B2C2C", route: "/announcements" },
+  { key: "news", label: "الأخبار", icon: "newspaper-outline", tint: "#1A5F7A", route: "/news" },
   { key: "quiz", label: "سؤال الأسبوع", icon: "help-circle-outline", tint: "#2C5282", route: "/quiz" },
   { key: "groups", label: "المجموعات النقاشية", icon: "chatbubbles-outline", tint: "#158A99", route: "/groups" },
   { key: "messages", label: "مراسلة الإدارة", icon: "mail-outline", tint: "#1C4468", route: "/compose" },

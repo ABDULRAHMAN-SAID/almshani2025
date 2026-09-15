@@ -224,3 +224,18 @@ export interface GroupPost {
   reportCount: number;
   createdAt: string;
 }
+
+/** نطاق الخبر: عالمي أو عُماني. */
+export type NewsScope = "world" | "oman";
+
+export interface NewsItem {
+  id: string;
+  title: string;
+  summary: string;
+  body: string;
+  scope: NewsScope;
+  source: string;
+  url?: string;
+  image?: string;
+  publishedAt: string;
+}

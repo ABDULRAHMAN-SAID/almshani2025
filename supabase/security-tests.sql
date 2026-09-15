@@ -283,6 +283,16 @@ begin
     'insert into public.announcements (title, description, type) values (''اختراق'', ''اختبار'', ''عام'')');
   perform pg_temp.log_result('تصعيد صلاحية', 'B ينشر إعلانًا', 'ممنوع', n, n <= 0);
 
+  -- الأخبار جدول جديد تكتبه الإدارة؛ وكل جدول كذلك يُختبر هنا لا يُفترض فيه
+  -- الخير: خبرٌ يكتبه عضو يظهر في الصفحة الرئيسية كأنّ القاعدة نشرته.
+  n := pg_temp.attempt_write(b,
+    'insert into public.news (title, summary, scope, source) '
+    || 'values (''اختراق'', ''اختبار'', ''world'', ''—'')');
+  perform pg_temp.log_result('تصعيد صلاحية', 'B ينشر خبرًا', 'ممنوع', n, n <= 0);
+
+  n := pg_temp.attempt_write(b, 'delete from public.news');
+  perform pg_temp.log_result('تصعيد صلاحية', 'B يحذف الأخبار', 'ممنوع', n, n <= 0);
+
   n := pg_temp.attempt_call(b, 'select public.broadcast_notification(''اختراق'', ''اختبار'')');
   perform pg_temp.log_result('تصعيد صلاحية', 'B يستدعي broadcast_notification()', 'ممنوع', n, n < 0);
 

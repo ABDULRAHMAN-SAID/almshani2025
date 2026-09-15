@@ -179,6 +179,12 @@ function OverviewTab() {
           onPress={() => router.push("/admin/awareness")}
         />
         <ActionRow
+          icon="newspaper-outline"
+          label="نشر خبر"
+          hint="خبر عُماني أو عالمي يظهر في الصفحة الرئيسية"
+          onPress={() => router.push("/admin/news")}
+        />
+        <ActionRow
           icon="mail-unread-outline"
           label={newMessages > 0 ? `الرسائل الواردة (${newMessages} جديدة)` : "الرسائل الواردة"}
           hint="اقتراحات وطلبات المستخدمين والرد عليها"
@@ -342,6 +348,13 @@ function ContentTab() {
           label={`المحتوى التوعوي (${(articles ?? []).length})`}
           hint="نشر مقال توعوي عام أو حذف مقال منشور"
           onPress={() => router.push("/admin/awareness")}
+        />
+        <View style={{ height: spacing.sm }} />
+        <ActionRow
+          icon="newspaper-outline"
+          label="الأخبار"
+          hint="نشر خبر عُماني أو عالمي، أو حذف خبر منشور"
+          onPress={() => router.push("/admin/news")}
         />
 
         <View style={styles.sectionRow}>

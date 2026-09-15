@@ -10,6 +10,7 @@ import { HeaderBand } from "@/components/HeaderBand";
 import { ActivitySkeletonCard } from "@/components/LoadingSkeleton";
 import { Logo } from "@/components/Logo";
 import { PointsBadge } from "@/components/PointsBadge";
+import { NewsCard } from "@/components/NewsCard";
 import { SectionHeader } from "@/components/SectionHeader";
 import { WeeklyQuizTeaserCard } from "@/components/WeeklyQuizTeaserCard";
 import { HOME_SECTIONS } from "@/constants/categories";
@@ -21,6 +22,7 @@ import {
   useThisWeekActivities,
   useTodayAwareness,
   useUpcomingActivities,
+  useLatestNews,
 } from "@/hooks/useHomeData";
 import { usePointsBalance } from "@/hooks/usePoints";
 import { useWeeklyQuiz } from "@/hooks/useWeeklyQuiz";
@@ -49,6 +51,7 @@ export default function HomeScreen() {
   const hero = useHeroActivity();
   const upcoming = useUpcomingActivities(hero.data?.id);
   const announcements = useLatestAnnouncements();
+  const news = useLatestNews();
   const awareness = useTodayAwareness();
   const thisWeek = useThisWeekActivities();
   const points = usePointsBalance();
@@ -175,6 +178,21 @@ export default function HomeScreen() {
                   {activity.title}
                 </Text>
               </View>
+            ))}
+          </View>
+        </View>
+      ) : null}
+
+      {news.data && news.data.length > 0 ? (
+        <View style={styles.section}>
+          <SectionHeader
+            title="أهم الأخبار"
+            actionLabel="عرض الكل"
+            onPressAction={() => router.push("/news")}
+          />
+          <View style={{ gap: spacing.sm }}>
+            {news.data.map((item) => (
+              <NewsCard key={item.id} item={item} />
             ))}
           </View>
         </View>

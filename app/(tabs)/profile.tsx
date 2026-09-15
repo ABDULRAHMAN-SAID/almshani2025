@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BottomSheet } from "@/components/BottomSheet";
 import { FormField } from "@/components/FormField";
 import { PrimaryButton } from "@/components/PrimaryButton";
@@ -21,6 +22,7 @@ export default function ProfileScreen() {
   const isAdmin = useIsAdmin();
   const points = usePointsBalance();
   const unread = useUnreadCount();
+  const insets = useSafeAreaInsets();
   const registeredCount = useRegistrationStore((state) => state.registeredIds.length);
   const { discussionEnabled, messagesEnabled } = useFeatures();
   const [editing, setEditing] = useState(false);
@@ -84,7 +86,18 @@ export default function ProfileScreen() {
 
   return (
     <View style={styles.screen}>
-      <Text style={styles.title}>حسابي</Text>
+      {/* الشاشة كانت View لا ScrollView: صفوفها أطول من الشاشة على أغلب
+          الأجهزة، فكان آخرها — الإعدادات ولوحة الإدارة وتسجيل الخروج —
+          مقصوصًا أسفلها ولا سبيل إليه. والنوافذ المنبثقة تبقى خارج التمرير
+          لتغطّي الشاشة كاملة كما صُمّمت. */}
+      <ScrollView
+        contentContainerStyle={[
+          styles.content,
+          { paddingTop: insets.top + spacing.md, paddingBottom: insets.bottom + spacing.xxl },
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
+        <Text style={styles.title}>حسابي</Text>
 
       <View style={styles.profileCard}>
         <View style={styles.avatar}>
@@ -153,6 +166,8 @@ export default function ProfileScreen() {
         <Ionicons name="log-out-outline" size={18} color={colors.danger} />
         <Text style={styles.signOutLabel}>تسجيل الخروج</Text>
       </Pressable>
+
+      </ScrollView>
 
       <BottomSheet visible={editing} onClose={() => setEditing(false)}>
         <Text style={styles.sheetTitle}>تعديل الاسم</Text>
@@ -226,7 +241,8 @@ function Row({
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background, padding: spacing.lg },
+  screen: { flex: 1, backgroundColor: colors.background },
+  content: { padding: spacing.lg },
   title: { ...typography.h1, marginBottom: spacing.lg },
   profileCard: {
     flexDirection: "row",

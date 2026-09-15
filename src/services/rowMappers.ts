@@ -6,6 +6,8 @@ import type {
   AppNotification,
   AwarenessArticle,
   MediaAttachment,
+  NewsItem,
+  NewsScope,
   PointsReason,
   PointsTransaction,
   QuizQuestion,
@@ -120,4 +122,19 @@ export const toQuizQuestion = (row: Row): QuizQuestion => ({
   category: text(row.category),
   // العرض العام لا يرسل الإجابة الصحيحة — تبقى -1 حتى تصل من مسار موثوق.
   correctOptionIndex: row.correct_option_index === undefined ? -1 : Number(row.correct_option_index),
+});
+
+/** صفّ خبر من القاعدة إلى نموذج الشاشة. */
+export const toNewsItem = (row: Row): NewsItem => ({
+  id: text(row.id),
+  title: text(row.title),
+  summary: text(row.summary),
+  body: text(row.body),
+  // النطاق محصور في القاعدة بقيد، فقيمة غريبة تعني صفًّا أُدخل من خارج
+  // التطبيق؛ نعدّه عالميًّا بدل أن نُسقط الخبر كلّه.
+  scope: (row.scope === "oman" ? "oman" : "world") as NewsScope,
+  source: text(row.source),
+  url: optional(row.url),
+  image: optional(row.image),
+  publishedAt: text(row.published_at),
 });

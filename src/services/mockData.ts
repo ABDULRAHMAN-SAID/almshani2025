@@ -4,6 +4,7 @@ import type {
   AppNotification,
   AwarenessArticle,
   LeaderboardEntry,
+  NewsItem,
   PointsTransaction,
   WeeklyQuiz,
 } from "@/types/models";
@@ -578,5 +579,27 @@ export const MOCK_AWARENESS_LIBRARY: AwarenessArticle[] = [
       "خصّص وقتًا للإحماء قبل أي نشاط رياضي، واشرب الماء بانتظام خصوصًا في الأجواء الحارة، وارتدِ الحذاء المناسب. عند الشعور بألم حاد أو دوخة توقف فورًا ولا تكمل.",
     category: "السلامة",
     publishedAt: iso(-4),
+  },
+];
+
+/** أخبار للعرض في وضع التجربة — تُستبدل بما تنشره الإدارة على الخادم. */
+export const MOCK_NEWS: NewsItem[] = [
+  {
+    id: "news-om-1",
+    title: "سلطنة عُمان تطلق حزمة مشاريع تنموية في محافظة ظفار",
+    summary: "مشاريع في البنية الأساسية والخدمات ضمن خطة التنمية.",
+    body: "أُعلن عن حزمة مشاريع تنموية تشمل الطرق والخدمات في عدد من ولايات المحافظة.",
+    scope: "oman",
+    source: "وكالة الأنباء العُمانية",
+    publishedAt: new Date().toISOString(),
+  },
+  {
+    id: "news-w-1",
+    title: "اجتماع دولي حول أمن الطيران المدني",
+    summary: "مناقشة معايير السلامة الجوية وتحديثات التشغيل.",
+    body: "تناول الاجتماع مستجدات معايير السلامة في الطيران المدني والتعاون الدولي.",
+    scope: "world",
+    source: "وكالات",
+    publishedAt: new Date(Date.now() - 3600_000).toISOString(),
   },
 ];

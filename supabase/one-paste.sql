@@ -18,6 +18,9 @@
 
 -- أنشطتي | قاعدة صلالة الجوية — مخطط قاعدة البيانات (Supabase / Postgres)
 -- ملاحظة: لا يحتوي أي جدول على رتبة، رقم عسكري، جهة عمل، أو أي معلومة حساسة.
+
+-- أنشطتي | قاعدة صلالة الجوية — مخطط قاعدة البيانات (Supabase / Postgres)
+-- ملاحظة: لا يحتوي أي جدول على رتبة، رقم عسكري، جهة عمل، أو أي معلومة حساسة.
 --
 -- الملف آمن للتكرار: نفّذه مرة أو عشرًا، والنتيجة واحدة ولا يفقد بيانات.
 -- ولهذا ثمن في الشكل — الأنواع محروسة بكتل do، وكل سياسة يسبقها حذفٌ شرطي —
@@ -127,6 +130,25 @@ create table if not exists public.awareness_articles (
   published_at timestamptz not null default now()
 );
 
+-- ============ الأخبار (عالمية ومحلّية) ============
+-- قسمٌ يقرأه المنتسبون وتكتبه الإدارة، كالإعلانات لا كالنقاش: الخبر في تطبيق
+-- رسمي مسؤوليةٌ تحريرية، ومن يفتحه يقرأه على أنه منشور من القاعدة. فالنشر
+-- بيد من يملك تلك المسؤولية. والمصدر حقل صريح لا زينة: خبرٌ بلا مصدر لا
+-- يُوثَق، ومن أراد التفصيل ذهب إلى أصله.
+create table if not exists public.news (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  summary text not null,
+  body text not null default '',
+  scope text not null check (scope in ('world', 'oman')),
+  source text not null default '',
+  url text,
+  image text,
+  published_at timestamptz not null default now(),
+  created_at timestamptz not null default now()
+);
+create index if not exists news_scope_published_idx on public.news (scope, published_at desc);
+
 -- ============ الإشعارات ============
 create table if not exists public.notifications (
   id uuid primary key default gen_random_uuid(),
@@ -216,6 +238,7 @@ alter table public.activity_results enable row level security;
 alter table public.registrations enable row level security;
 alter table public.announcements enable row level security;
 alter table public.awareness_articles enable row level security;
+alter table public.news enable row level security;
 alter table public.notifications enable row level security;
 alter table public.points_transactions enable row level security;
 alter table public.activity_checkins enable row level security;
@@ -295,6 +318,12 @@ create policy "activity_results public read" on public.activity_results
 drop policy if exists "announcements public read" on public.announcements;
 create policy "announcements public read" on public.announcements
   for select using (true);
+drop policy if exists "news read" on public.news;
+-- للمسجَّلين وحدهم: المفتاح العام داخل ملفّ التطبيق، ولا داعي لأن يُقرأ ما
+-- تنشره القاعدة لمنسوبيها من غير منتسب.
+create policy "news read" on public.news
+  for select to authenticated using (true);
+
 drop policy if exists "awareness public read" on public.awareness_articles;
 create policy "awareness public read" on public.awareness_articles
   for select using (true);
@@ -348,11 +377,7 @@ create or replace view public.leaderboard_view as
   left join public.points_transactions pt on pt.user_id = u.id
   group by u.id, u.full_name
   order by total_points desc;
--- للمسجَّلين وحدهم لا لـ anon: المفتاح العام موجود داخل ملفّ التطبيق، فمنحُ
--- anon يعني أن من يملك الملفّ يقرأ أسماء الأعضاء كلّهم وترتيبهم بلا أن
--- يسجّل دخولًا قطّ. ولوحة المتصدّرين لا تُعرض إلا بعد الدخول أصلًا.
-revoke select on public.leaderboard_view from anon;
-grant select on public.leaderboard_view to authenticated;
+grant select on public.leaderboard_view to anon, authenticated;
 
 -- التحقق من إجابة السؤال الثقافي ومنح النقاط (10 نقاط) عند الصواب — بمعزل عن العميل تمامًا
 create or replace function public.submit_quiz_answer(p_question_id uuid, p_selected_option_index smallint)
@@ -472,6 +497,10 @@ create policy "activity_results admin write" on public.activity_results
 drop policy if exists "announcements admin write" on public.announcements;
 create policy "announcements admin write" on public.announcements
   for all using (public.is_admin()) with check (public.is_admin());
+drop policy if exists "news admin write" on public.news;
+create policy "news admin write" on public.news
+  for all using (public.is_admin()) with check (public.is_admin());
+
 drop policy if exists "awareness admin write" on public.awareness_articles;
 create policy "awareness admin write" on public.awareness_articles
   for all using (public.is_admin()) with check (public.is_admin());
@@ -593,24 +622,6 @@ create policy "app media owner delete" on storage.objects
 
 -- مرفقات الإعلان (فيديو أو مقطع صوتي أو ملف) — مخزّنة كوصف JSON للمرفقات
 alter table public.announcements add column if not exists attachments jsonb not null default '[]'::jsonb;
-
--- ============ فهارس ما يُرشَّح به كثيرًا ============
--- ‏PostgreSQL لا يفهرس المفتاح الأجنبي من تلقائه، والفهرس الموجود يغطّي ستة
--- مسارات لا كلّها. وهذه الأعمدة يُرشَّح بها أو يُرتَّب عليها في كل فتحة شاشة:
--- «أنشطتي» ترشّح التسجيلات بالعضو، والإعلانات تُرتَّب بتاريخ النشر، وأسئلة
--- الأسبوع تُجلب بمعرّف المسابقة. بمئة صفّ لا فرق يُذكر؛ وبعد سنتين من قاعدة
--- تستعمله يوميًّا يصير الفرق مسحًا كاملًا للجدول عند كل فتحة.
--- وحذف عضو يمرّ على كل جدول يشير إليه: بلا فهرس يُمسح كلٌّ منها كاملًا.
-create index if not exists registrations_user_idx on public.registrations (user_id);
-create index if not exists registrations_activity_idx on public.registrations (activity_id);
-create index if not exists announcements_published_idx on public.announcements (published_at desc);
-create index if not exists activity_checkins_user_idx on public.activity_checkins (user_id, activity_id);
-create index if not exists activity_results_activity_idx on public.activity_results (activity_id);
-create index if not exists quiz_questions_quiz_idx on public.quiz_questions (quiz_id);
-create index if not exists quiz_answers_user_idx on public.quiz_answers (user_id, question_id);
-create index if not exists weekly_quizzes_start_idx on public.weekly_quizzes (start_date desc);
-create index if not exists group_post_reports_post_idx on public.group_post_reports (post_id);
-create index if not exists awareness_published_idx on public.awareness_articles (published_at desc);
 
 -- ============ بيانات التواصل الرسمية ============
 -- صف واحد فقط تقرأه كل الأجهزة، وتكتبه الإدارة. لا يحتوي أي رقم شخصي لمستخدم.
@@ -871,7 +882,6 @@ begin
    where id = p_post_id;
 end;
 $$;
-
 
 -- ============================================================================
 -- محتوى البداية

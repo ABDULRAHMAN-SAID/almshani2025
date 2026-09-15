@@ -109,6 +109,25 @@ create table if not exists public.awareness_articles (
   published_at timestamptz not null default now()
 );
 
+-- ============ الأخبار (عالمية ومحلّية) ============
+-- قسمٌ يقرأه المنتسبون وتكتبه الإدارة، كالإعلانات لا كالنقاش: الخبر في تطبيق
+-- رسمي مسؤوليةٌ تحريرية، ومن يفتحه يقرأه على أنه منشور من القاعدة. فالنشر
+-- بيد من يملك تلك المسؤولية. والمصدر حقل صريح لا زينة: خبرٌ بلا مصدر لا
+-- يُوثَق، ومن أراد التفصيل ذهب إلى أصله.
+create table if not exists public.news (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  summary text not null,
+  body text not null default '',
+  scope text not null check (scope in ('world', 'oman')),
+  source text not null default '',
+  url text,
+  image text,
+  published_at timestamptz not null default now(),
+  created_at timestamptz not null default now()
+);
+create index if not exists news_scope_published_idx on public.news (scope, published_at desc);
+
 -- ============ الإشعارات ============
 create table if not exists public.notifications (
   id uuid primary key default gen_random_uuid(),
@@ -198,6 +217,7 @@ alter table public.activity_results enable row level security;
 alter table public.registrations enable row level security;
 alter table public.announcements enable row level security;
 alter table public.awareness_articles enable row level security;
+alter table public.news enable row level security;
 alter table public.notifications enable row level security;
 alter table public.points_transactions enable row level security;
 alter table public.activity_checkins enable row level security;
@@ -277,6 +297,12 @@ create policy "activity_results public read" on public.activity_results
 drop policy if exists "announcements public read" on public.announcements;
 create policy "announcements public read" on public.announcements
   for select using (true);
+drop policy if exists "news read" on public.news;
+-- للمسجَّلين وحدهم: المفتاح العام داخل ملفّ التطبيق، ولا داعي لأن يُقرأ ما
+-- تنشره القاعدة لمنسوبيها من غير منتسب.
+create policy "news read" on public.news
+  for select to authenticated using (true);
+
 drop policy if exists "awareness public read" on public.awareness_articles;
 create policy "awareness public read" on public.awareness_articles
   for select using (true);
@@ -450,6 +476,10 @@ create policy "activity_results admin write" on public.activity_results
 drop policy if exists "announcements admin write" on public.announcements;
 create policy "announcements admin write" on public.announcements
   for all using (public.is_admin()) with check (public.is_admin());
+drop policy if exists "news admin write" on public.news;
+create policy "news admin write" on public.news
+  for all using (public.is_admin()) with check (public.is_admin());
+
 drop policy if exists "awareness admin write" on public.awareness_articles;
 create policy "awareness admin write" on public.awareness_articles
   for all using (public.is_admin()) with check (public.is_admin());
