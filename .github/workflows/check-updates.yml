@@ -1,0 +1,77 @@
+# لماذا لم يصل التحديث إلى الهواتف؟
+#
+# التحديث ينتقل في سلسلة من أربع حلقات، وانقطاع أيّها يبدو للمستخدم شيئًا
+# واحدًا: «لا يصل شيء». وهذه الأداة تطبع الحلقات الأربع كما هي على خادم
+# ‏Expo لا كما نظنّها:
+#
+#   1. النسخة المثبَّتة تحمل عنوان خادم التحديثات (updates.url).
+#   2. البناء مربوط بقناة (channel)، والتحديث منشور على فرع (branch).
+#   3. القناة موصولة بذلك الفرع — وهذه أكثر الحلقات انقطاعًا.
+#   4. runtimeVersion في التحديث يطابق ما بُني به الملفّ.
+#
+# للقراءة فقط: لا ينشر تحديثًا ولا يغيّر إعدادًا.
+name: افحص التحديثات
+
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    name: حالة التحديثات
+    runs-on: ubuntu-latest
+    steps:
+      - name: أنزل المشروع
+        uses: actions/checkout@v4
+
+      - name: هيّئ Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: اقرأ إعداد التطبيق
+        run: |
+          {
+            echo "## حالة التحديثات"
+            echo ""
+            echo "### ما في app.json"
+            echo '```'
+            node -e "
+              const c = require('./app.json').expo;
+              console.log('runtimeVersion :', JSON.stringify(c.runtimeVersion));
+              console.log('updates.url    :', c.updates?.url ?? '(غير مضبوط — التحديث لن يصل أبدًا)');
+              console.log('updates.enabled:', c.updates?.enabled);
+              console.log('projectId      :', c.extra?.eas?.projectId ?? '(غير مربوط)');
+              console.log('version        :', c.version);
+            "
+            echo '```'
+          } >> $GITHUB_STEP_SUMMARY
+
+      - name: اسأل خادم Expo
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        continue-on-error: true
+        run: |
+          eas() { npx --yes eas-cli@latest "$@" 2>&1 | sed -e 's/\x1b\[[0-9;]*m//g'; }
+
+          {
+            echo ""
+            echo "### القنوات والفروع"
+            echo "القناة هي ما يحمله الملفّ المثبَّت، والفرع هو ما يُنشر إليه."
+            echo "وما لم تكن القناة موصولة بالفرع، لا يصل تحديث واحد."
+            echo '```'
+            eas channel:list --non-interactive || echo "تعذّر"
+            echo '```'
+            echo '```'
+            eas branch:list --non-interactive || echo "تعذّر"
+            echo '```'
+            echo ""
+            echo "### آخر ما نُشر على فرع production"
+            echo '```'
+            eas update:list --branch production --limit 5 --non-interactive || echo "تعذّر — قد لا يكون الفرع موجودًا"
+            echo '```'
+            echo ""
+            echo "### آخر بناء — بأي قناة خرج"
+            echo '```'
+            eas build:list --platform android --limit 3 --non-interactive || echo "تعذّر"
+            echo '```'
+          } >> $GITHUB_STEP_SUMMARY
