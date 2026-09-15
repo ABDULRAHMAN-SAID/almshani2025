@@ -348,7 +348,11 @@ create or replace view public.leaderboard_view as
   left join public.points_transactions pt on pt.user_id = u.id
   group by u.id, u.full_name
   order by total_points desc;
-grant select on public.leaderboard_view to anon, authenticated;
+-- للمسجَّلين وحدهم لا لـ anon: المفتاح العام موجود داخل ملفّ التطبيق، فمنحُ
+-- anon يعني أن من يملك الملفّ يقرأ أسماء الأعضاء كلّهم وترتيبهم بلا أن
+-- يسجّل دخولًا قطّ. ولوحة المتصدّرين لا تُعرض إلا بعد الدخول أصلًا.
+revoke select on public.leaderboard_view from anon;
+grant select on public.leaderboard_view to authenticated;
 
 -- التحقق من إجابة السؤال الثقافي ومنح النقاط (10 نقاط) عند الصواب — بمعزل عن العميل تمامًا
 create or replace function public.submit_quiz_answer(p_question_id uuid, p_selected_option_index smallint)

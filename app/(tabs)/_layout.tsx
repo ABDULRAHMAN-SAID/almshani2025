@@ -1,8 +1,20 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Tabs } from "expo-router";
+import { Redirect, Tabs } from "expo-router";
 import { colors } from "@/constants";
+import { useAuthStore } from "@/store/authStore";
 
 export default function TabsLayout() {
+  const user = useAuthStore((state) => state.user);
+  const hasHydrated = useAuthStore((state) => state.hasHydrated);
+
+  // الحارس هنا لا في شاشة البداية وحدها: تلك تُتخطّى برابط عميق
+  // (anshatati://) يفتح تبويبًا مباشرة، فيدخل من لا جلسة له إلى واجهة
+  // الأعضاء. والجداول المحمية ترفضه على الخادم، لكنه يرى ما هو عامّ ويظنّ
+  // نفسه داخلًا. وننتظر الترطيب أولًا وإلّا طُرد العضو المسجَّل في كل فتحة
+  // قبل أن تُقرأ جلسته من التخزين.
+  if (!hasHydrated) return null;
+  if (!user) return <Redirect href="/(auth)/login" />;
+
   return (
     <Tabs
       screenOptions={{
