@@ -4,6 +4,9 @@ import { MOCK_ACTIVITIES, MOCK_ANNOUNCEMENTS, MOCK_AWARENESS } from "./mockData"
 import { toActivity, toAnnouncement, toAwarenessArticle } from "./rowMappers";
 import { supabase } from "./supabase";
 
+// الخطأ يُرفع ولا يُبتلع: القراءة التي تُرجع فراغًا عند انقطاع الشبكة
+// تجعل الشاشة تقول «لا توجد بيانات» والخادمُ غير متاح أصلًا — فلا يرى
+// المستخدم سببًا ولا زرّ إعادة محاولة. ومع رفعه يتكفّل QueryState بهما.
 const sortByDateAsc = (a: Activity, b: Activity) => a.date.localeCompare(b.date);
 
 /** كل الأنشطة (للتقويم الشهري والسنوي وشاشات الأقسام). */
@@ -11,7 +14,8 @@ export async function fetchAllActivities(): Promise<Activity[]> {
   if (USE_MOCK_DATA) {
     return [...MOCK_ACTIVITIES].sort(sortByDateAsc);
   }
-  const { data } = await supabase.from("activities").select("*").order("date", { ascending: true });
+  const { data, error } = await supabase.from("activities").select("*").order("date", { ascending: true });
+  if (error) throw error;
   return (data ?? []).map(toActivity);
 }
 
@@ -20,7 +24,8 @@ export async function fetchActivityById(id: string): Promise<Activity | null> {
   if (USE_MOCK_DATA) {
     return MOCK_ACTIVITIES.find((activity) => activity.id === id) ?? null;
   }
-  const { data } = await supabase.from("activities").select("*").eq("id", id).maybeSingle();
+  const { data, error } = await supabase.from("activities").select("*").eq("id", id).maybeSingle();
+  if (error) throw error;
   return data ? toActivity(data) : null;
 }
 
@@ -30,13 +35,14 @@ export async function fetchHeroActivity(): Promise<Activity | null> {
     const upcoming = MOCK_ACTIVITIES.filter((a) => a.registrationStatus !== "ended").sort(sortByDateAsc);
     return upcoming[0] ?? null;
   }
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("activities")
     .select("*")
     .gte("date", new Date().toISOString().slice(0, 10))
     .order("date", { ascending: true })
     .limit(1)
     .maybeSingle();
+  if (error) throw error;
   return data ? toActivity(data) : null;
 }
 
@@ -47,11 +53,12 @@ export async function fetchUpcomingActivities(excludeId?: string): Promise<Activ
       sortByDateAsc
     );
   }
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("activities")
     .select("*")
     .neq("id", excludeId ?? "")
     .order("date", { ascending: true });
+  if (error) throw error;
   return (data ?? []).map(toActivity);
 }
 
@@ -61,11 +68,12 @@ export async function fetchLatestAnnouncements(limit = 3): Promise<Announcement[
       .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt))
       .slice(0, limit);
   }
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("announcements")
     .select("*")
     .order("published_at", { ascending: false })
     .limit(limit);
+  if (error) throw error;
   return (data ?? []).map(toAnnouncement);
 }
 
@@ -73,12 +81,13 @@ export async function fetchTodayAwareness(): Promise<AwarenessArticle | null> {
   if (USE_MOCK_DATA) {
     return [...MOCK_AWARENESS].sort((a, b) => b.publishedAt.localeCompare(a.publishedAt))[0] ?? null;
   }
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("awareness_articles")
     .select("*")
     .order("published_at", { ascending: false })
     .limit(1)
     .maybeSingle();
+  if (error) throw error;
   return data ? toAwarenessArticle(data) : null;
 }
 

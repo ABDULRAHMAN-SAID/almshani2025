@@ -286,7 +286,13 @@ export async function signInWithPassword(identifier: string, password: string): 
   };
 }
 
-/** الملف الشخصي من جدول users — سياسة القراءة تقصره على صاحبه. */
+/**
+ * الملف الشخصي من جدول users — سياسة القراءة تقصره على صاحبه.
+ *
+ * وهذه وحدها تبتلع الخطأ عن قصد، بخلاف بقيّة القراءات: تُستدعى بعد أن تُفتح
+ * الجلسة فعلًا، فلو رفعت الخطأ لأسقطت دخولًا ناجحًا من أجل صفّ عرضٍ تعذّرت
+ * قراءته. والمنادي يبني اسمًا من بيانات الحساب حين تعود بلا شيء.
+ */
 export async function fetchProfile(userId: string): Promise<User | null> {
   if (USE_MOCK_DATA) return null;
   const { data } = await supabase.from("users").select("*").eq("id", userId).maybeSingle();

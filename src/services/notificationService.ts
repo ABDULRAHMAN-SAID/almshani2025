@@ -4,6 +4,9 @@ import { MOCK_ANNOUNCEMENTS, MOCK_NOTIFICATIONS } from "./mockData";
 import { toAnnouncement, toNotification } from "./rowMappers";
 import { supabase } from "./supabase";
 
+// الخطأ يُرفع ولا يُبتلع: القراءة التي تُرجع فراغًا عند انقطاع الشبكة
+// تجعل الشاشة تقول «لا توجد بيانات» والخادمُ غير متاح أصلًا — فلا يرى
+// المستخدم سببًا ولا زرّ إعادة محاولة. ومع رفعه يتكفّل QueryState بهما.
 /** نسخة قابلة للتعديل في وضع البيانات التجريبية (لتعليم الإشعار كمقروء). */
 const mockInbox: AppNotification[] = [...MOCK_NOTIFICATIONS];
 
@@ -11,11 +14,12 @@ export async function fetchNotifications(userId: string): Promise<AppNotificatio
   if (USE_MOCK_DATA) {
     return [...mockInbox].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("notifications")
     .select("*")
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
+  if (error) throw error;
   return (data ?? []).map(toNotification);
 }
 
@@ -54,10 +58,11 @@ export async function fetchAllAnnouncements(): Promise<Announcement[]> {
   if (USE_MOCK_DATA) {
     return [...MOCK_ANNOUNCEMENTS].sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
   }
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("announcements")
     .select("*")
     .order("published_at", { ascending: false });
+  if (error) throw error;
   return (data ?? []).map(toAnnouncement);
 }
 
