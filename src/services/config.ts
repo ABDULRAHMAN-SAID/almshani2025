@@ -20,3 +20,13 @@ export type VerifyChannel = "email" | "sms" | "off";
 const channel = process.env.EXPO_PUBLIC_VERIFY_CHANNEL;
 export const VERIFY_CHANNEL: VerifyChannel =
   channel === "sms" || channel === "off" ? channel : "email";
+
+/**
+ * سقف ما يُجلب في القائمة الواحدة.
+ *
+ * الإشعارات والرسائل والمشاركات تتراكم ولا تُحذف، والشاشة ترسمها كلّها دفعة
+ * واحدة بلا قائمة كسولة. فبعد سنة من الاستعمال يصير فتح الشاشة بطيئًا، ثم
+ * ثقيلًا على الأجهزة الأضعف — وهو تدهور لا يظهر اليوم ولا يُنسب إلى سببه
+ * حين يظهر. وكلّها مرتّبة من الأحدث، فالسقف يأخذ الأحدث لا الأقدم.
+ */
+export const LIST_LIMIT = 100;

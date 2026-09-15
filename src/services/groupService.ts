@@ -1,5 +1,5 @@
 import type { DiscussionGroup, GroupPost, MediaAttachment } from "@/types/models";
-import { USE_MOCK_DATA } from "./config";
+import { LIST_LIMIT, USE_MOCK_DATA } from "./config";
 import { supabase } from "./supabase";
 
 /**
@@ -223,7 +223,8 @@ export async function fetchPosts(groupId: string): Promise<GroupPost[]> {
     .select("*")
     .eq("group_id", groupId)
     .order("pinned", { ascending: false })
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(LIST_LIMIT);
   if (error) throw error;
   return ((data as Record<string, unknown>[]) ?? []).map(toPost);
 }

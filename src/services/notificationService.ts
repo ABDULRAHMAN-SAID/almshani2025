@@ -1,5 +1,5 @@
 import type { AppNotification, Announcement } from "@/types/models";
-import { USE_MOCK_DATA } from "./config";
+import { LIST_LIMIT, USE_MOCK_DATA } from "./config";
 import { MOCK_ANNOUNCEMENTS, MOCK_NOTIFICATIONS } from "./mockData";
 import { toAnnouncement, toNotification } from "./rowMappers";
 import { supabase } from "./supabase";
@@ -18,7 +18,8 @@ export async function fetchNotifications(userId: string): Promise<AppNotificatio
     .from("notifications")
     .select("*")
     .eq("user_id", userId)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(LIST_LIMIT);
   if (error) throw error;
   return (data ?? []).map(toNotification);
 }
@@ -61,7 +62,8 @@ export async function fetchAllAnnouncements(): Promise<Announcement[]> {
   const { data, error } = await supabase
     .from("announcements")
     .select("*")
-    .order("published_at", { ascending: false });
+    .order("published_at", { ascending: false })
+    .limit(LIST_LIMIT);
   if (error) throw error;
   return (data ?? []).map(toAnnouncement);
 }

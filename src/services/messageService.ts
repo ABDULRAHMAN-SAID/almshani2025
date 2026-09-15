@@ -1,5 +1,5 @@
 import type { MediaAttachment, MessageKind, MessageStatus, UserMessage } from "@/types/models";
-import { USE_MOCK_DATA } from "./config";
+import { LIST_LIMIT, USE_MOCK_DATA } from "./config";
 import { supabase } from "./supabase";
 
 /**
@@ -94,7 +94,8 @@ export async function fetchMyMessages(userId: string): Promise<UserMessage[]> {
     .from("user_messages")
     .select("*")
     .eq("user_id", userId)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(LIST_LIMIT);
   if (error) throw error;
   return ((data as Record<string, unknown>[]) ?? []).map(toMessage);
 }
@@ -107,7 +108,8 @@ export async function fetchAllMessages(): Promise<UserMessage[]> {
   const { data, error } = await supabase
     .from("user_messages")
     .select("*")
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(LIST_LIMIT);
   if (error) throw error;
   return ((data as Record<string, unknown>[]) ?? []).map(toMessage);
 }
