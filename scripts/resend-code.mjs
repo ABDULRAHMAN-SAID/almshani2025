@@ -2,7 +2,7 @@
 /**
  * إعادة إرسال رمز تأكيد الحساب — لعضوٍ سجّل ولم يصله الرمز.
  *
- * تشغيل:  npm run resend -- name@example.com
+ * تشغيل:  npm run resend -- name@example.com [signup|recovery]
  *
  * ولماذا أداة أصلًا؟ لأن الرمز قد لا يصل لسببين مختلفين تمامًا يبدوان
  * للمستخدم سواءً: بريدٌ كُتب خطأً، أو خدمة بريدٍ بلغت حدّها فلم تُرسل شيئًا.
@@ -39,13 +39,19 @@ const url = (env.EXPO_PUBLIC_SUPABASE_URL ?? "").replace(/\/+$/, "");
 const key = env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? "";
 const email = (process.argv[2] ?? env.RESEND_EMAIL ?? "").trim().toLowerCase();
 
+// نوعان: رمز تأكيد حسابٍ جديد، أو رمز تغيير كلمة المرور لحسابٍ قائم.
+// والثاني يفيد فائدةً ثانية: هو الاختبار الوحيد الذي يثبت أن خدمة البريد
+// تُرسل فعلًا إلى عنوانٍ له حساب مؤكَّد — إذ يردّ الخادم بخطأ الإرسال حالًا.
+const kind = (process.argv[3] ?? env.RESEND_KIND ?? "signup").trim().toLowerCase();
+const recovery = kind === "recovery";
+
 const ESC = String.fromCharCode(27);
 const line = (s = "") => console.log(s);
 const bold = (s) => `${ESC}[1m${s}${ESC}[0m`;
 const dim = (s) => `${ESC}[2m${s}${ESC}[0m`;
 
 line();
-line(bold("إعادة إرسال رمز التأكيد"));
+line(bold(recovery ? "إرسال رمز تغيير كلمة المرور" : "إعادة إرسال رمز التأكيد"));
 line(dim("-".repeat(52)));
 
 if (!url || !key) {
@@ -62,10 +68,13 @@ line(`البريد             ${email}`);
 line(dim("-".repeat(52)));
 line();
 
-const response = await fetch(`${url}/auth/v1/resend`, {
+const endpoint = recovery ? "recover" : "resend";
+const payload = recovery ? { email } : { type: "signup", email };
+
+const response = await fetch(`${url}/auth/v1/${endpoint}`, {
   method: "POST",
   headers: { apikey: key, Authorization: `Bearer ${key}`, "content-type": "application/json" },
-  body: JSON.stringify({ type: "signup", email }),
+  body: JSON.stringify(payload),
 });
 
 const text = await response.text();
@@ -79,7 +88,14 @@ try {
 // الخادم يردّ 200 ولو لم يكن للبريد حساب — عمدًا، لئلّا تُعرف العناوين
 // المسجَّلة بالتجربة. فالنجاح هنا يعني «قُبل الطلب»، لا «وصل الرمز».
 if (response.ok) {
-  line("تم — " + bold("قُبل الطلب، وأُرسل الرمز إن كان للبريد حسابٌ غير مؤكَّد."));
+  line(
+    "تم — " +
+      bold(
+        recovery
+          ? "قُبل الطلب، وأُرسل الرمز إن كان للبريد حساب."
+          : "قُبل الطلب، وأُرسل الرمز إن كان للبريد حسابٌ غير مؤكَّد."
+      )
+  );
   line();
   line("   افتح البريد — وصندوق الرسائل غير المرغوبة أيضًا — واكتب الرمز في التطبيق.");
   line(dim("   ولو لم يصل خلال دقيقتين فالخلل في خدمة البريد لا في الحساب."));

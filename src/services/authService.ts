@@ -48,11 +48,21 @@ function authError(error: { message?: string } | null, fallback: string): Error 
   if (/password.*at least|should be at least/i.test(message)) {
     return new Error("كلمة المرور قصيرة — ستة أحرف على الأقل.");
   }
-  if (/email.*not confirmed|confirm/i.test(message)) {
-    return new Error("الحساب يحتاج تأكيدًا. افتح الرابط المرسل إلى بريدك ثم أعد المحاولة.");
+  // «تعذّر الإرسال» ليس «يحتاج تأكيدًا»، وإن اشتركا في كلمة confirmation.
+  // الأول عطلٌ في خدمة البريد لا حيلة للعضو فيه، والثاني خطوةٌ ينتظرها منه.
+  // وقد كانا سطرًا واحدًا فبُعث من لم تصله رسالةٌ أصلًا يفتّش عن رسالة.
+  if (/error sending|failed to send|smtp/i.test(message)) {
+    return new Error(
+      "تعذّر إرسال رمز التأكيد — خدمة البريد لم تستجب. أبلغ الإدارة، فالخلل ليس عندك."
+    );
   }
-  if (/rate limit|too many/i.test(message)) {
-    return new Error("محاولات كثيرة متتالية. انتظر دقيقة ثم أعد المحاولة.");
+  if (/email.*not confirmed|not confirmed/i.test(message)) {
+    return new Error("الحساب يحتاج تأكيدًا. أدخل الرمز المرسل إلى بريدك، أو اطلب رمزًا جديدًا.");
+  }
+  if (/rate limit|too many|over_email_send/i.test(message)) {
+    return new Error(
+      "محاولات كثيرة متتالية، وخدمة البريد بلغت حدّها. انتظر قليلًا ثم أعد المحاولة."
+    );
   }
   return new Error(message || fallback);
 }

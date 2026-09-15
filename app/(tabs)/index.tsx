@@ -30,22 +30,6 @@ import { getAnsweredState } from "@/services/quizService";
 import { formatArabicWeekday } from "@/utils/date";
 import { useFeatures } from "@/hooks/useFeatures";
 
-/** وجهة كل قسم في شبكة الأيقونات. */
-const SECTION_ROUTES: Record<string, string> = {
-  competitions: "/sections/competitions",
-  lectures: "/sections/lectures",
-  calendar: "/calendar",
-  sports: "/sections/sports",
-  shooting: "/sections/shooting",
-  security: "/(tabs)/awareness",
-  safety: "/sections/safety",
-  announcements: "/announcements",
-  quiz: "/quiz",
-  groups: "/groups",
-  messages: "/compose",
-  contact: "/contact",
-};
-
 export default function HomeScreen() {
   const { user } = useAuth();
   const hero = useHeroActivity();
@@ -60,10 +44,12 @@ export default function HomeScreen() {
 
   const answeredCount = weeklyQuiz.data?.questions.filter((question) => getAnsweredState(question.id)).length ?? 0;
 
-  const openSection = (key: string) => {
-    const route = SECTION_ROUTES[key];
-    if (route) router.push(route as never);
-  };
+  // الوجهة تُقرأ من HOME_SECTIONS نفسها، لا من جدولٍ ثانٍ بجانبها.
+  //
+  // كان هنا جدول وجهات منفصل، فلمّا أُضيف قسم «الأخبار» إلى الشبكة ولم يُضف
+  // إلى الجدول صارت أيقونته تُرسم ولا تفتح شيئًا حين تُلمس — لا خطأ ولا
+  // شاشة، سكوت. ومصدرٌ واحد للوجهة يمنع أن يتكرّر هذا مع أي قسم يُضاف بعد.
+  const openSection = (route: string) => router.push(route as never);
 
   // الأقسام التي تستطيع الإدارة إيقافها تختفي من الشبكة كليًا حين تُوقَف.
   const sections = HOME_SECTIONS.filter((section) => {
@@ -98,7 +84,7 @@ export default function HomeScreen() {
                 icon={section.icon}
                 tint={section.tint}
                 variant="plain"
-                onPress={() => openSection(section.key)}
+                onPress={() => openSection(section.route)}
               />
             </View>
           ))}
@@ -183,20 +169,36 @@ export default function HomeScreen() {
         </View>
       ) : null}
 
-      {news.data && news.data.length > 0 ? (
-        <View style={styles.section}>
-          <SectionHeader
-            title="أهم الأخبار"
-            actionLabel="عرض الكل"
-            onPressAction={() => router.push("/news")}
-          />
+      {/*
+        قسم الأخبار يظهر دائمًا، ولو لم يُنشر خبر بعد.
+        كان يختفي حين تخلو القاعدة من خبر، فبدا لمن يبحث عنه أنه غير موجود
+        في التطبيق أصلًا — وهو موجود وينتظر أول خبر. وسطرٌ يقول ذلك أصدق من
+        فراغ يُفسَّر عطلًا.
+      */}
+      <View style={styles.section}>
+        <SectionHeader
+          title="أهم الأخبار"
+          actionLabel="عرض الكل"
+          onPressAction={() => router.push("/news")}
+        />
+        {news.data && news.data.length > 0 ? (
           <View style={{ gap: spacing.sm }}>
             {news.data.map((item) => (
               <NewsCard key={item.id} item={item} />
             ))}
           </View>
-        </View>
-      ) : null}
+        ) : (
+          <View style={styles.newsPlaceholder}>
+            <Text style={styles.newsPlaceholderText}>
+              {news.isLoading
+                ? "جارٍ تحميل الأخبار…"
+                : news.error
+                  ? "تعذّر تحميل الأخبار — تحقّق من الاتصال ثم أعد فتح الصفحة."
+                  : "لا أخبار منشورة بعد. تنشرها الإدارة من: الإدارة ← المحتوى ← الأخبار."}
+            </Text>
+          </View>
+        )}
+      </View>
 
       {announcements.data && announcements.data.length > 0 ? (
         <View style={styles.section}>
@@ -250,6 +252,15 @@ const styles = StyleSheet.create({
   grid: { flexDirection: "row", flexWrap: "wrap" },
   gridItem: { width: "33.33%" },
   section: { marginTop: spacing.xl, paddingHorizontal: spacing.lg },
+  newsPlaceholder: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.md,
+  },
+  newsPlaceholderText: { ...typography.caption, color: colors.textMuted, textAlign: "center" },
   // القائمة الأفقية تمتد إلى حافة الشاشة بدل أن تتوقف عند هامش القسم
   hScroll: { marginHorizontal: -spacing.lg },
   hList: { gap: spacing.md, paddingHorizontal: spacing.lg },

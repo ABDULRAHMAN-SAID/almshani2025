@@ -1,5 +1,6 @@
-import { Image, Linking, Pressable, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 import { colors, radius, spacing, typography } from "@/constants";
 import type { NewsItem } from "@/types/models";
 import { relativeDayLabel } from "@/utils/date";
@@ -21,13 +22,19 @@ const SCOPE_LABEL: Record<NewsItem["scope"], string> = {
  * أنه صادر عن القاعدة، وذِكرُ من نقله يفصل بين ما تنشره وما تنقله.
  */
 export function NewsCard({ item, onPress }: NewsCardProps) {
-  const open = onPress ?? (item.url ? () => void Linking.openURL(item.url as string) : undefined);
+  // اللمسة تفتح الخبر داخل التطبيق، لا رابط المصدر في المتصفّح.
+  //
+  // كانت البطاقة تُفتح على الرابط الخارجي إن وُجد، فإن لم يوجد لم تُفتح على
+  // شيء — والخبر الذي تكتبه الإدارة بنصّها لا رابط له، فكان يُنشر ولا يُقرأ
+  // منه إلا سطران. والمصدر يبقى مذكورًا، ويُفتح من داخل صفحة الخبر.
+  const open = onPress ?? (() => router.push(`/news/${item.id}`));
 
   return (
     <Pressable
-      accessibilityRole={open ? "button" : undefined}
+      accessibilityRole="button"
+      accessibilityLabel={`اقرأ الخبر: ${item.title}`}
       onPress={open}
-      style={({ pressed }) => [styles.card, pressed && open ? styles.pressed : null]}
+      style={({ pressed }) => [styles.card, pressed ? styles.pressed : null]}
     >
       {item.image ? (
         // الصورة فوق النصّ لا خلفه: خبرٌ يُقرأ عنوانه أوّلًا، والصورة تشرح
@@ -52,12 +59,10 @@ export function NewsCard({ item, onPress }: NewsCardProps) {
         {item.summary}
       </Text>
 
-      {item.url ? (
-        <View style={styles.more}>
-          <Ionicons name="open-outline" size={14} color={colors.primary} />
-          <Text style={styles.moreText}>المصدر</Text>
-        </View>
-      ) : null}
+      <View style={styles.more}>
+        <Ionicons name="chevron-back" size={14} color={colors.primary} />
+        <Text style={styles.moreText}>اقرأ الخبر</Text>
+      </View>
     </Pressable>
   );
 }

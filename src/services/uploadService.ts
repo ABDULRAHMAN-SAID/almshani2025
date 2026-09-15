@@ -66,10 +66,16 @@ async function requireLibraryPermission() {
 export async function pickImage(): Promise<PickedImage | null> {
   await requireLibraryPermission();
 
+  // بلا خطوة قصّ.
+  //
+  // كانت allowsEditing تفتح شاشة القصّ التي يبنيها النظام، وهي على كثير من
+  // هواتف أندرويد لا تحمل زرًّا مكتوبًا عليه «تم» — بل أيقونة قصّ وحدها.
+  // فمن اختار صورةً وقف أمام شاشةٍ لا يعرف كيف يخرج منها بالصورة، ولا شيء
+  // في التطبيق يدلّه. والبطاقات تقصّ ما يزيد عندها بنفسها (resizeMode)، فلم
+  // يكن القصّ اليدوي يشتري شيئًا أصلًا.
   const result = await ImagePicker.launchImageLibraryAsync({
     mediaTypes: ImagePicker.MediaTypeOptions.Images,
-    allowsEditing: true,
-    aspect: [16, 10],
+    allowsEditing: false,
     quality: 0.7,
     base64: true,
   });
@@ -121,9 +127,11 @@ export function imageToMedia(image: PickedImage): PickedMedia {
 export async function pickVideo(maxSeconds = 60): Promise<PickedMedia | null> {
   await requireLibraryPermission();
 
+  // وبلا قصّ هنا أيضًا، للسبب نفسه: شاشة تشذيب المقطع في أندرويد أغمض من
+  // شاشة قصّ الصورة، والمدّة محدودة أصلًا ويُرفض ما تجاوزها برسالة واضحة.
   const result = await ImagePicker.launchImageLibraryAsync({
     mediaTypes: ImagePicker.MediaTypeOptions.Videos,
-    allowsEditing: true,
+    allowsEditing: false,
     videoMaxDuration: maxSeconds,
     quality: 0.6,
   });

@@ -53,8 +53,13 @@ export default function AdminNewsScreen() {
       setBody("");
       setUrl("");
       setImage("");
-      void client.invalidateQueries({ queryKey: ["news"] });
-      showToast("نُشر الخبر", "success");
+      // إبطالٌ شامل كما في بقيّة شاشات الإدارة.
+      //
+      // كان مقصورًا على المفتاح "news"، والصفحة الرئيسية تقرأ الأخبار بمفتاح
+      // آخر ("latest-news") — فمن نشر خبرًا رآه في هذه الشاشة وحدها، ولم يجده
+      // في الرئيسية ولا في صفحة الأخبار، فظنّ أن النشر لم يقع.
+      void client.invalidateQueries();
+      showToast("نُشر الخبر — تجده في الصفحة الرئيسية", "success");
     },
     onError: (e) => showToast(toArabicMessage(e, "تعذّر نشر الخبر"), "error"),
   });
@@ -62,7 +67,7 @@ export default function AdminNewsScreen() {
   const remove = useMutation({
     mutationFn: (id: string) => deleteNews(id),
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ["news"] });
+      void client.invalidateQueries();
       showToast("حُذف الخبر");
     },
     onError: (e) => showToast(toArabicMessage(e, "تعذّر الحذف"), "error"),

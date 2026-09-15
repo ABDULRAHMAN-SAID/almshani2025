@@ -50,7 +50,9 @@ export const HOME_SECTIONS: HomeSection[] = [
   { key: "calendar", label: "التقويم", icon: "calendar-outline", tint: "#2C7A7B", route: "/calendar" },
   { key: "sports", label: "الرياضة", icon: "football-outline", tint: "#2F855A", route: "/sections/sports" },
   { key: "shooting", label: "الرماية", icon: "locate-outline", tint: "#A11D2C", route: "/sections/shooting" },
-  { key: "security", label: "التثقيف الأمني", icon: "shield-checkmark-outline", tint: "#434190", route: "/awareness" },
+  // ‏/(tabs)/awareness لا /awareness: الثاني مجلّد صفحته الوحيدة [id]، فالمسار
+  // المجرّد منه لا يطابق شاشةً ويقع على «غير موجود».
+  { key: "security", label: "التثقيف الأمني", icon: "shield-checkmark-outline", tint: "#434190", route: "/(tabs)/awareness" },
   { key: "safety", label: "السلامة", icon: "medkit-outline", tint: "#B7791F", route: "/sections/safety" },
   { key: "announcements", label: "الإعلانات", icon: "megaphone-outline", tint: "#9B2C2C", route: "/announcements" },
   { key: "news", label: "الأخبار", icon: "newspaper-outline", tint: "#1A5F7A", route: "/news" },

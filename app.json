@@ -74,6 +74,9 @@
     "extra": {
       "router": {
         "origin": false
+      },
+      "eas": {
+        "projectId": "f7034e9c-5dcd-4de4-8c71-15ab30f5d1cd"
       }
     },
     "runtimeVersion": {
@@ -81,7 +84,8 @@
     },
     "updates": {
       "enabled": true,
-      "fallbackToCacheTimeout": 0
+      "fallbackToCacheTimeout": 0,
+      "url": "https://u.expo.dev/f7034e9c-5dcd-4de4-8c71-15ab30f5d1cd"
     }
   }
 }

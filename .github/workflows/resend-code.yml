@@ -14,6 +14,14 @@ on:
         description: "بريد العضو الذي لم يصله الرمز"
         type: string
         required: true
+      kind:
+        description: "نوع الرمز"
+        type: choice
+        required: true
+        default: signup
+        options:
+          - signup
+          - recovery
 
 jobs:
   resend:
@@ -49,10 +57,11 @@ jobs:
           EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
           EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
           RESEND_EMAIL: ${{ inputs.email }}
+          RESEND_KIND: ${{ inputs.kind }}
         continue-on-error: true
         run: |
           set -o pipefail
-          node scripts/resend-code.mjs "$RESEND_EMAIL" 2>&1 | tee /tmp/resend.txt
+          node scripts/resend-code.mjs "$RESEND_EMAIL" "$RESEND_KIND" 2>&1 | tee /tmp/resend.txt
 
       - name: اكتب التقرير
         if: always()
