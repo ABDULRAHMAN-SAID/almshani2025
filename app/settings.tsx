@@ -1,5 +1,6 @@
 import { ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import Constants from "expo-constants";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { colors, radius, spacing, typography } from "@/constants";
 import { useSettingsStore } from "@/store/settingsStore";
@@ -10,6 +11,20 @@ const PRIVACY_POINTS = [
   "لا يجمع التطبيق موقعك ولا يتتبعه",
   "لا يحفظ التطبيق رتبة ولا رقمًا عسكريًا ولا جهة عمل",
 ];
+
+/**
+ * إصدار النسخة المثبَّتة، لا رقمًا مكتوبًا في الشفرة.
+ *
+ * كان السطر ثابتًا: "0.1.0" في كل بناء مهما تغيّر. فمن ثبّت ملفًّا قديمًا بلا
+ * أن ينتبه — وهذا يقع، فالملفّات تتشابه في مجلّد التنزيلات — لم يكن في
+ * التطبيق كلّه ما يقول له أيّ نسخة يحمل. ورقم البناء هو ما يميّزها: تزيده
+ * خوادم البناء واحدًا كل مرّة، ويطابق ما تراه في صفحة البناء.
+ */
+function installedVersion(): string {
+  const name = Constants.expoConfig?.version ?? "—";
+  const build = Constants.platform?.android?.versionCode;
+  return build ? `${name} (بناء ${build})` : name;
+}
 
 export default function SettingsScreen() {
   const { activityReminders, announcementAlerts, quizReminders, toggle } = useSettingsStore();
@@ -75,7 +90,7 @@ export default function SettingsScreen() {
           <View style={styles.staticRow}>
             <Ionicons name="pricetag-outline" size={19} color={colors.primary} />
             <Text style={styles.rowLabel}>الإصدار</Text>
-            <Text style={styles.rowValue}>0.1.0</Text>
+            <Text style={styles.rowValue}>{installedVersion()}</Text>
           </View>
         </View>
 
