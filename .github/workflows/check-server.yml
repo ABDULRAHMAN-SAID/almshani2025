@@ -1,0 +1,72 @@
+# فحص الخادم بالضغط على زرّ — هل كل ما يحتاجه التطبيق موجود فعلًا؟
+#
+# الأسئلة التي يجيب عنها: هل الخادم مسموع أصلًا؟ هل نُفِّذ المخطّط كاملًا؟
+# هل حاويتا الملفّات موجودتان — تلك التي ترفع إليها الصور والفيديو والصوت؟
+# وهل الجداول المحمية محجوبة عمّن لا يملك جلسة؟
+#
+# ولا يحتاج سرًّا جديدًا: يستعمل الرابط ومفتاح anon المخزّنين للبناء، وهو
+# المفتاح نفسه الذي يحمله التطبيق على هاتف كل مستخدم. والأداة للقراءة فقط.
+name: افحص الخادم
+
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    name: حالة الخادم
+    runs-on: ubuntu-latest
+    steps:
+      - name: أنزل المشروع
+        uses: actions/checkout@v4
+
+      - name: هيّئ Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: تحقّق من الأسرار
+        env:
+          URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          ANON: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+        run: |
+          missing=""
+          [ -z "$URL" ] && missing="$missing EXPO_PUBLIC_SUPABASE_URL"
+          [ -z "$ANON" ] && missing="$missing EXPO_PUBLIC_SUPABASE_ANON_KEY"
+          if [ -n "$missing" ]; then
+            echo "::error::ينقص سرّ:$missing — ضعه في Settings ← Secrets and variables ← Actions."
+            exit 1
+          fi
+
+      - name: ثبّت المكتبات
+        run: npm ci
+
+      - name: افحص
+        id: check
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+          EXPO_PUBLIC_USE_MOCK_DATA: "false"
+        # ‏continue-on-error ليُكتب التقرير في الملخّص حتى حين ينقص شيء —
+        # ونقصٌ بلا بيان بما نقص لا ينفع أحدًا. والخطوة الأخيرة تُسقط التشغيل.
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          npm run --silent check:supabase 2>&1 | tee /tmp/report.txt
+
+      - name: اكتب التقرير
+        if: always()
+        run: |
+          {
+            echo "## حالة الخادم"
+            echo ""
+            echo '```'
+            sed -e 's/\x1b\[[0-9;]*m//g' /tmp/report.txt || echo "لم يُنتج الفحص تقريرًا."
+            echo '```'
+          } >> $GITHUB_STEP_SUMMARY
+
+      - name: اعكس النتيجة
+        if: steps.check.outcome != 'success'
+        run: |
+          echo "::error::الفحص وجد نقصًا — التفصيل في الملخّص أعلى الصفحة."
+          exit 1
