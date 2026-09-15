@@ -182,11 +182,19 @@ export default function HomeScreen() {
           onPressAction={() => router.push("/news")}
         />
         {news.data && news.data.length > 0 ? (
-          <View style={{ gap: spacing.sm }}>
+          // صفّ يُسحب جانبًا كبقيّة أقسام الصفحة، لا عمود.
+          // عمودًا كان الخبران الأولان يملآن الشاشة، فلا يصل أحدٌ إلى ما
+          // تحتهما إلا بسحبٍ طويل — والصفحة الرئيسية نظرةٌ لا قراءة.
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.hScroll}
+            contentContainerStyle={styles.hList}
+          >
             {news.data.map((item) => (
-              <NewsCard key={item.id} item={item} />
+              <NewsCard key={item.id} item={item} compact />
             ))}
-          </View>
+          </ScrollView>
         ) : (
           <View style={styles.newsPlaceholder}>
             <Text style={styles.newsPlaceholderText}>

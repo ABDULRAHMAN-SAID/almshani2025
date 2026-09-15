@@ -69,6 +69,33 @@ export async function publishNews(draft: NewsDraft): Promise<void> {
   if (error) throw error;
 }
 
+/**
+ * تعديل خبر منشور.
+ *
+ * ولم يكن موجودًا: نُشر خبر بلا صورة، فلم يكن أمام ناشره إلا حذفه وكتابته من
+ * أوّله — وقد يكون طويلًا، وقد يكون فيه ما لا يُستعاد. والتعديل هو الحال
+ * الغالب في النشر لا الاستثناء.
+ *
+ * ‏published_at لا يُمَسّ: تعديلُ صورةٍ أو تصحيحُ حرف لا يجعل الخبر جديدًا،
+ * ولو رُفع تاريخه لقفز فوق ما نُشر بعده في كل قائمة.
+ */
+export async function updateNews(id: string, draft: NewsDraft): Promise<void> {
+  if (USE_MOCK_DATA) return;
+  const { error } = await supabase
+    .from("news")
+    .update({
+      title: draft.title.trim(),
+      summary: draft.summary.trim(),
+      body: draft.body.trim(),
+      scope: draft.scope,
+      source: draft.source.trim(),
+      url: draft.url?.trim() || null,
+      image: draft.image?.trim() || null,
+    })
+    .eq("id", id);
+  if (error) throw error;
+}
+
 export async function deleteNews(id: string): Promise<void> {
   if (USE_MOCK_DATA) return;
   const { error } = await supabase.from("news").delete().eq("id", id);

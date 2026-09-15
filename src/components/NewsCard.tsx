@@ -8,6 +8,8 @@ import { relativeDayLabel } from "@/utils/date";
 interface NewsCardProps {
   item: NewsItem;
   onPress?: () => void;
+  /** بطاقة ضيّقة بعرض ثابت، لصفّ أفقي لا لعمود. */
+  compact?: boolean;
 }
 
 const SCOPE_LABEL: Record<NewsItem["scope"], string> = {
@@ -21,7 +23,7 @@ const SCOPE_LABEL: Record<NewsItem["scope"], string> = {
  * والمصدر ظاهر دائمًا لا مخفيًّا في التفاصيل: خبرٌ في تطبيق رسمي يُقرأ على
  * أنه صادر عن القاعدة، وذِكرُ من نقله يفصل بين ما تنشره وما تنقله.
  */
-export function NewsCard({ item, onPress }: NewsCardProps) {
+export function NewsCard({ item, onPress, compact }: NewsCardProps) {
   // اللمسة تفتح الخبر داخل التطبيق، لا رابط المصدر في المتصفّح.
   //
   // كانت البطاقة تُفتح على الرابط الخارجي إن وُجد، فإن لم يوجد لم تُفتح على
@@ -34,12 +36,20 @@ export function NewsCard({ item, onPress }: NewsCardProps) {
       accessibilityRole="button"
       accessibilityLabel={`اقرأ الخبر: ${item.title}`}
       onPress={open}
-      style={({ pressed }) => [styles.card, pressed ? styles.pressed : null]}
+      style={({ pressed }) => [
+        styles.card,
+        compact ? styles.cardCompact : null,
+        pressed ? styles.pressed : null,
+      ]}
     >
       {item.image ? (
         // الصورة فوق النصّ لا خلفه: خبرٌ يُقرأ عنوانه أوّلًا، والصورة تشرح
         // ولا تزاحم. وresizeMode يقصّ ولا يشوّه مهما كانت أبعاد ما رُفع.
-        <Image source={{ uri: item.image }} style={styles.image} resizeMode="cover" />
+        <Image
+          source={{ uri: item.image }}
+          style={[styles.image, compact ? styles.imageCompact : null]}
+          resizeMode="cover"
+        />
       ) : null}
 
       <View style={styles.top}>
@@ -52,10 +62,10 @@ export function NewsCard({ item, onPress }: NewsCardProps) {
         </Text>
       </View>
 
-      <Text style={styles.title} numberOfLines={2}>
+      <Text style={[styles.title, compact ? styles.titleCompact : null]} numberOfLines={2}>
         {item.title}
       </Text>
-      <Text style={styles.summary} numberOfLines={2}>
+      <Text style={styles.summary} numberOfLines={compact ? 2 : 3}>
         {item.summary}
       </Text>
 
@@ -76,6 +86,12 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     gap: spacing.xs,
   },
+  // الصفّ الأفقي في الصفحة الرئيسية: عرضٌ ثابت لتُرى حافّةُ التالية فيُعرف
+  // أن الصفّ يُسحب. وبلا هذا كانت الأخبار عمودًا يبتلع الشاشة كلّها،
+  // فيُدفن ما تحته من أقسام.
+  cardCompact: { width: 268, padding: spacing.md },
+  imageCompact: { height: 132 },
+  titleCompact: { fontSize: 15, lineHeight: 24 },
   pressed: { opacity: 0.75 },
   image: {
     width: "100%",

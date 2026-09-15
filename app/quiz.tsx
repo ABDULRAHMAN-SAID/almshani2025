@@ -1,8 +1,7 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { router } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { EmptyState } from "@/components/EmptyState";
 import { QuizQuestionCard } from "@/components/QuizQuestionCard";
+import { ScreenHeader } from "@/components/ScreenHeader";
 import { colors, spacing, typography } from "@/constants";
 import { useWeeklyQuiz } from "@/hooks/useWeeklyQuiz";
 import { useRefreshPoints } from "@/hooks/usePoints";
@@ -22,13 +21,7 @@ export default function WeeklyQuizScreen() {
 
   return (
     <View style={styles.screen}>
-      <View style={styles.header}>
-        <Pressable accessibilityRole="button" onPress={() => router.back()} hitSlop={10}>
-          <Ionicons name="chevron-forward" size={22} color={colors.textPrimary} />
-        </Pressable>
-        <Text style={styles.headerTitle}>السؤال الثقافي الأسبوعي</Text>
-        <View style={{ width: 22 }} />
-      </View>
+      <ScreenHeader title="السؤال الثقافي الأسبوعي" />
 
       {isLoading ? null : quiz ? (
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -56,14 +49,6 @@ export default function WeeklyQuizScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: spacing.lg,
-    paddingBottom: spacing.md,
-  },
-  headerTitle: { ...typography.h3 },
   content: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl },
   weekLabel: { ...typography.caption, textAlign: "center", marginBottom: 2 },
   hint: { ...typography.bodyMuted, textAlign: "center" },

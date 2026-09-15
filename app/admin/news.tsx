@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -10,9 +10,9 @@ import { PrimaryButton } from "@/components/PrimaryButton";
 import { QueryState } from "@/components/QueryState";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { colors, radius, spacing, typography } from "@/constants";
-import { deleteNews, fetchNews, publishNews } from "@/services/newsService";
+import { deleteNews, fetchNews, publishNews, updateNews } from "@/services/newsService";
 import { showToast } from "@/store/toastStore";
-import type { NewsScope } from "@/types/models";
+import type { NewsItem, NewsScope } from "@/types/models";
 import { formatArabicDate } from "@/utils/date";
 import { toArabicMessage } from "@/utils/errors";
 
@@ -29,6 +29,10 @@ const SCOPES = [
  */
 export default function AdminNewsScreen() {
   const client = useQueryClient();
+  const scroller = useRef<ScrollView>(null);
+  // معرّف الخبر قيد التعديل، أو null للنشر الجديد. حالةٌ واحدة تكفي: النموذج
+  // هو هو، والفرق أين يذهب ما فيه.
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [scope, setScope] = useState<NewsScope>("oman");
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
@@ -45,23 +49,50 @@ export default function AdminNewsScreen() {
   const canPublish =
     title.trim().length > 5 && summary.trim().length > 10 && source.trim().length > 1;
 
+  const resetForm = () => {
+    setEditingId(null);
+    setTitle("");
+    setSummary("");
+    setBody("");
+    setUrl("");
+    setImage("");
+  };
+
+  const startEditing = (item: NewsItem) => {
+    setEditingId(item.id);
+    setScope(item.scope);
+    setTitle(item.title);
+    setSummary(item.summary);
+    setBody(item.body ?? "");
+    setSource(item.source ?? "");
+    setUrl(item.url ?? "");
+    setImage(item.image ?? "");
+    // النموذج أعلى الشاشة والقائمة أسفلها: بلا هذا يضغط المحرّر «تعديل»
+    // فلا يرى شيئًا يتغيّر، والحقول امتلأت فوق ما يراه.
+    scroller.current?.scrollTo({ y: 0, animated: true });
+  };
+
   const publish = useMutation({
-    mutationFn: () => publishNews({ title, summary, body, scope, source, url, image }),
+    mutationFn: () =>
+      editingId
+        ? updateNews(editingId, { title, summary, body, scope, source, url, image })
+        : publishNews({ title, summary, body, scope, source, url, image }),
     onSuccess: () => {
-      setTitle("");
-      setSummary("");
-      setBody("");
-      setUrl("");
-      setImage("");
+      const wasEditing = editingId !== null;
+      resetForm();
       // إبطالٌ شامل كما في بقيّة شاشات الإدارة.
       //
       // كان مقصورًا على المفتاح "news"، والصفحة الرئيسية تقرأ الأخبار بمفتاح
       // آخر ("latest-news") — فمن نشر خبرًا رآه في هذه الشاشة وحدها، ولم يجده
       // في الرئيسية ولا في صفحة الأخبار، فظنّ أن النشر لم يقع.
       void client.invalidateQueries();
-      showToast("نُشر الخبر — تجده في الصفحة الرئيسية", "success");
+      showToast(
+        wasEditing ? "حُفظ التعديل" : "نُشر الخبر — تجده في الصفحة الرئيسية",
+        "success"
+      );
     },
-    onError: (e) => showToast(toArabicMessage(e, "تعذّر نشر الخبر"), "error"),
+    onError: (e) =>
+      showToast(toArabicMessage(e, editingId ? "تعذّر حفظ التعديل" : "تعذّر نشر الخبر"), "error"),
   });
 
   const remove = useMutation({
@@ -76,8 +107,12 @@ export default function AdminNewsScreen() {
   return (
     <View style={styles.screen}>
       <ScreenHeader title="الأخبار" />
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Text style={styles.sectionLabel}>خبر جديد</Text>
+      <ScrollView
+        ref={scroller}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        <Text style={styles.sectionLabel}>{editingId ? "تعديل خبر منشور" : "خبر جديد"}</Text>
         <View style={styles.card}>
           <FilterChips items={SCOPES} activeKey={scope} onChange={(k) => setScope(k as NewsScope)} />
           <FormField label="العنوان" value={title} onChangeText={setTitle} placeholder="عنوان الخبر" />
@@ -111,11 +146,16 @@ export default function AdminNewsScreen() {
             folder="news"
           />
           <PrimaryButton
-            label="نشر الخبر"
+            label={editingId ? "احفظ التعديل" : "نشر الخبر"}
             onPress={() => publish.mutate()}
             disabled={!canPublish}
             loading={publish.isPending}
           />
+          {editingId ? (
+            <Pressable accessibilityRole="button" onPress={resetForm} hitSlop={8}>
+              <Text style={styles.cancelEdit}>إلغاء التعديل والعودة إلى خبر جديد</Text>
+            </Pressable>
+          ) : null}
         </View>
 
         <Text style={styles.sectionLabel}>المنشور</Text>
@@ -132,6 +172,14 @@ export default function AdminNewsScreen() {
                     {formatArabicDate(item.publishedAt.slice(0, 10))}
                   </Text>
                 </View>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`تعديل ${item.title}`}
+                  onPress={() => startEditing(item)}
+                  hitSlop={8}
+                >
+                  <Ionicons name="create-outline" size={20} color={colors.primary} />
+                </Pressable>
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel={`حذف ${item.title}`}
@@ -176,4 +224,5 @@ const styles = StyleSheet.create({
   rowText: { flex: 1, gap: 2 },
   rowTitle: { ...typography.body, lineHeight: 24 },
   rowMeta: { ...typography.caption, fontSize: 11 },
+  cancelEdit: { ...typography.caption, color: colors.primary, textAlign: "center" },
 });

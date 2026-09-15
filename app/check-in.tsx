@@ -5,6 +5,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { PatternOverlay } from "@/components/PatternOverlay";
 import { PrimaryButton } from "@/components/PrimaryButton";
+import { ScreenHeader } from "@/components/ScreenHeader";
 import { colors, radius, spacing, typography } from "@/constants";
 import { useRefreshPoints } from "@/hooks/usePoints";
 import { findDemoCheckInActivity, submitCheckIn } from "@/services/checkinService";
@@ -68,13 +69,7 @@ export default function CheckInScreen() {
   return (
     <View style={styles.screen}>
       <PatternOverlay opacity={0.06} />
-      <View style={styles.header}>
-        <Pressable accessibilityRole="button" onPress={() => router.back()} hitSlop={10}>
-          <Ionicons name="chevron-forward" size={22} color={colors.textOnPrimary} />
-        </Pressable>
-        <Text style={styles.headerTitle}>تسجيل الحضور</Text>
-        <View style={{ width: 22 }} />
-      </View>
+      <ScreenHeader title="تسجيل الحضور" onDark />
 
       {demoActivity ? <Text style={styles.activityLabel}>{demoActivity.title}</Text> : null}
 
@@ -158,13 +153,6 @@ export default function CheckInScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.primary },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: spacing.lg,
-  },
-  headerTitle: { ...typography.h3, color: colors.textOnPrimary },
   activityLabel: { textAlign: "center", color: "rgba(255,255,255,0.85)", fontFamily: "Tajawal_500Medium", marginBottom: spacing.md },
   cameraWrap: {
     flex: 1,
