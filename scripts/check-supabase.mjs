@@ -281,15 +281,22 @@ for (const b of BUCKETS) await checkBucket(b);
  * الصحيح كان «هل فيه صفّ؟». هذه الأرقام تفصل بينهما في سطر واحد.
  */
 const CONTENT = [
-  ["activities", "الأنشطة"],
-  ["announcements", "الإعلانات"],
-  ["awareness_articles", "المحتوى التوعوي"],
-  ["news", "الأخبار"],
+  ["activities", "الأنشطة", true],
+  ["announcements", "الإعلانات", true],
+  ["awareness_articles", "المحتوى التوعوي", true],
+  // الأخبار تُقرأ للمسجَّلين وحدهم، وهذه الأداة تسأل بمفتاح الزائر: فصفر هنا
+  // يعني «لا أرى»، لا «لا يوجد». وقولُ صفرٍ عنها يرسل صاحبها ينشر خبرًا مرّة
+  // ثانية ظنًّا أن الأولى ضاعت — وهذا ما لا نفعله.
+  ["news", "الأخبار", false],
 ];
 
 line();
 line(bold("المحتوى المنشور") + dim(" — ما يراه المستخدم حين يفتح التطبيق"));
-for (const [table, label] of CONTENT) {
+for (const [table, label, countable] of CONTENT) {
+  if (!countable) {
+    line(`  ${dim("—")} ${label.padEnd(18)} ${dim("للمسجَّلين وحدهم — لا يُعدّ بمفتاح الزائر")}`);
+    continue;
+  }
   const { count, error } = await supabase.from(table).select("id", { head: true, count: "exact" });
   if (error) {
     line(`  ${dim("—")} ${label.padEnd(18)} ${dim("تعذّر العدّ")}`);
