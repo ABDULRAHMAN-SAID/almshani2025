@@ -274,6 +274,23 @@ begin
     'insert into public.admins (user_id) values (' || quote_literal(b) || '::uuid)');
   perform pg_temp.log_result('تصعيد صلاحية', 'B يُدرج نفسه في جدول admins', 'ممنوع', n, n <= 0);
 
+  -- الدرجات: المنح والسحب صارا من داخل التطبيق، فلا يكفي أن نثبت منع الإدراج
+  -- المباشر — يجب أن تُختبر الدوال نفسها، فهي security definer وتتجاوز السياسة.
+  n := pg_temp.attempt_call(b,
+    'select public.grant_admin(' || quote_literal(b) || '::uuid, ''admin'')');
+  perform pg_temp.log_result('تصعيد صلاحية', 'B يمنح نفسه درجة admin', 'ممنوع', n, n < 0);
+
+  n := pg_temp.attempt_call(b,
+    'select public.grant_admin(' || quote_literal(b) || '::uuid, ''editor'')');
+  perform pg_temp.log_result('تصعيد صلاحية', 'B يمنح نفسه درجة editor', 'ممنوع', n, n < 0);
+
+  n := pg_temp.attempt_call(b,
+    'select public.revoke_admin(' || quote_literal(a) || '::uuid)');
+  perform pg_temp.log_result('تصعيد صلاحية', 'B يسحب صلاحية غيره', 'ممنوع', n, n < 0);
+
+  n := pg_temp.attempt_call(b, 'select public.find_member(''salalah'')');
+  perform pg_temp.log_result('تصعيد صلاحية', 'B يبحث عن الأعضاء', 'ممنوع', n, n < 0);
+
   n := pg_temp.attempt_write(b,
     'insert into public.activities (title, description, category, date, start_time, location) '
     || 'values (''اختراق'', ''اختبار'', ''Cultural'', current_date, ''10:00'', ''—'')');

@@ -427,6 +427,26 @@ create table if not exists public.admins (
   user_id uuid primary key references public.users (id) on delete cascade,
   created_at timestamptz not null default now()
 );
+
+-- ============ درجات الصلاحية ============
+-- ثلاث درجات لا واحدة: من يدير الأنشطة ليس بالضرورة من يمنح الصلاحيات، ومَن
+-- يكتب خبرًا ليس بالضرورة من يحذف حسابًا. وبلا تدرّج يصير كل تفويض تفويضًا
+-- كاملًا، فيُمنع التفويض أصلًا ويبقى كل شيء بيد واحد.
+--
+--   owner   — المالك. يمنح ويسحب، ولا يُسحب منه. ولا يكون إلا واحدًا.
+--   admin   — إدارة كاملة، ويمنح درجة editor ويسحبها.
+--   editor  — المحتوى وحده: أخبار، إعلانات، توعية، أسئلة. لا صلاحيات ولا حسابات.
+alter table public.admins add column if not exists role text not null default 'admin';
+do $$ begin
+  alter table public.admins add constraint admins_role_check
+    check (role in ('owner', 'admin', 'editor'));
+exception when duplicate_object then null; end $$;
+
+-- أوّل حساب أُدرج هو المالك، ما لم يكن ثمّة مالك بالفعل. وبلا هذا يبقى مشروعٌ
+-- أُنشئ قبل التدرّج بلا مالك، فلا يستطيع أحد أن يمنح شيئًا.
+update public.admins set role = 'owner'
+where user_id = (select user_id from public.admins order by created_at asc limit 1)
+  and not exists (select 1 from public.admins where role = 'owner');
 alter table public.admins enable row level security;
 drop policy if exists "admins read own row" on public.admins;
 create policy "admins read own row" on public.admins
@@ -438,6 +458,119 @@ returns boolean language sql stable security definer set search_path = public as
 $$;
 grant execute on function public.is_admin() to authenticated;
 
+/** درجة الحساب الحالي، أو null إن لم يكن إداريًّا. */
+create or replace function public.admin_role()
+returns text language sql stable security definer set search_path = public as $$
+  select role from admins where user_id = auth.uid();
+$$;
+grant execute on function public.admin_role() to authenticated;
+
+/** من يملك إدارة كاملة: المالك والإداري، لا المحرّر. */
+create or replace function public.is_full_admin()
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (select 1 from admins where user_id = auth.uid() and role in ('owner', 'admin'));
+$$;
+grant execute on function public.is_full_admin() to authenticated;
+
+-- ============ منح الصلاحيات وسحبها من داخل التطبيق ============
+-- كانت شاشة «الحسابات الإدارية» تكتب في ذاكرة الجهاز وحدها: يظهر الاسم في
+-- القائمة ولا يصل الخادم، فيظنّ من أضاف أنه فوّض ولم يفوّض. وشاشةٌ تُوهم بما
+-- لا تفعله أسوأ من غيابها.
+--
+-- والدوال هنا security definer لأن الجدول مغلق على الكتابة: لا سياسة تسمح
+-- لأحد بالإدراج مباشرة، فالمسار الوحيد هذه الدوال، وفيها تُفحص الدرجة.
+
+/** يبحث عن عضو ببريده أو رقمه — للإدارة الكاملة وحدها. */
+create or replace function public.find_member(p_query text)
+returns table (user_id uuid, full_name text, phone text, email text, role text)
+language plpgsql stable security definer set search_path = public as $$
+begin
+  if not public.is_full_admin() then
+    raise exception 'ليست لديك صلاحية البحث عن الأعضاء';
+  end if;
+  if length(coalesce(trim(p_query), '')) < 3 then
+    raise exception 'اكتب ثلاثة أحرف على الأقل';
+  end if;
+
+  return query
+    select u.id, u.full_name, u.phone, u.email, a.role
+    from users u
+    left join admins a on a.user_id = u.id
+    where lower(u.email) = lower(trim(p_query))
+       or replace(u.phone, ' ', '') like '%' || replace(trim(p_query), ' ', '') || '%'
+       or u.full_name ilike '%' || trim(p_query) || '%'
+    limit 10;
+end;
+$$;
+grant execute on function public.find_member(text) to authenticated;
+
+/** يمنح درجة. المالك يمنح ما شاء؛ والإداري يمنح editor وحدها. */
+create or replace function public.grant_admin(p_user_id uuid, p_role text)
+returns text language plpgsql security definer set search_path = public as $$
+declare
+  v_caller text := public.admin_role();
+  v_target text;
+begin
+  if v_caller is null or v_caller = 'editor' then
+    raise exception 'ليست لديك صلاحية منح الصلاحيات';
+  end if;
+  if p_role not in ('admin', 'editor') then
+    -- درجة المالك لا تُمنح: تنتقل ولا تُنسخ، وإلا صار في المشروع مالكان
+    -- يستطيع كلٌّ منهما سحب الآخر.
+    raise exception 'الدرجة غير صحيحة';
+  end if;
+  if v_caller = 'admin' and p_role <> 'editor' then
+    raise exception 'الإداري يمنح درجة المحرّر فقط';
+  end if;
+  if not exists (select 1 from users where id = p_user_id) then
+    raise exception 'لا يوجد عضو بهذا المعرّف';
+  end if;
+
+  select role into v_target from admins where user_id = p_user_id;
+  if v_target = 'owner' then
+    raise exception 'لا تُغيَّر درجة المالك';
+  end if;
+
+  insert into admins (user_id, role) values (p_user_id, p_role)
+  on conflict (user_id) do update set role = excluded.role;
+
+  return p_role;
+end;
+$$;
+grant execute on function public.grant_admin(uuid, text) to authenticated;
+
+/** يسحب الصلاحية. ولا يُسحب من المالك، ولا يسحب أحدٌ من نفسه. */
+create or replace function public.revoke_admin(p_user_id uuid)
+returns boolean language plpgsql security definer set search_path = public as $$
+declare
+  v_caller text := public.admin_role();
+  v_target text;
+begin
+  if v_caller is null or v_caller = 'editor' then
+    raise exception 'ليست لديك صلاحية سحب الصلاحيات';
+  end if;
+
+  select role into v_target from admins where user_id = p_user_id;
+  if v_target is null then
+    return false;
+  end if;
+  if v_target = 'owner' then
+    raise exception 'لا تُسحب صلاحية المالك';
+  end if;
+  -- ولا يسحب أحدٌ من نفسه: خطأٌ واحد يترك المشروع بلا من يديره.
+  if p_user_id = auth.uid() then
+    raise exception 'لا تسحب صلاحيتك من نفسك';
+  end if;
+  if v_caller = 'admin' and v_target <> 'editor' then
+    raise exception 'الإداري يسحب درجة المحرّر فقط';
+  end if;
+
+  delete from admins where user_id = p_user_id;
+  return true;
+end;
+$$;
+grant execute on function public.revoke_admin(uuid) to authenticated;
+
 -- تُعرَّف بعد is_admin() لأنها تستدعيها. الدالة security definer فلا تدور السياسة
 -- على نفسها عند القراءة من admins.
 -- الإداري يرى قائمة الإداريين كاملة — شاشة «الحسابات الإدارية» للقراءة فقط.
@@ -448,16 +581,19 @@ create policy "admins read all for admins" on public.admins
 -- ويرى بيانات زملائه الإداريين وحدهم (الاسم والهاتف لعرضهما مقنّعين في اللوحة).
 -- لا يفتح هذا قراءة بيانات بقية المستخدمين: الشرط يقصرها على من هو في admins.
 -- كتابة مفاتيح التشغيل. موضعها هنا لا فوق: تستدعي is_admin()، ولا تسبق تعريفها.
+-- ما يلي للإدارة الكاملة لا للمحرّر: مفاتيح التشغيل، والإشعارات المرسَلة،
+-- وبيانات التواصل الرسمية، ومراسلات الأعضاء، والمجموعات وما يُبلَّغ فيها.
+-- والمحرّر يبقى على المحتوى: الأنشطة والإعلانات والأخبار والتوعية والأسئلة.
 drop policy if exists "settings admin write" on public.app_settings;
 create policy "settings admin write" on public.app_settings
-  for update using (public.is_admin()) with check (public.is_admin());
+  for update using (public.is_full_admin()) with check (public.is_full_admin());
 
 -- حذف إشعار مُرسَل من لوحة الإدارة. بدونها لا يُرفع خطأ — يحذف الأمرُ صفرَ صفوف
 -- ويعود «ناجحًا»، فيظن الإداري أنه حذف شيئًا ولم يُحذف شيء.
 -- وموضعها هنا لا فوق: السياسة تستدعي is_admin()، ولا يجوز أن تسبق تعريفها.
 drop policy if exists "notifications admin delete" on public.notifications;
 create policy "notifications admin delete" on public.notifications
-  for delete using (public.is_admin());
+  for delete using (public.is_full_admin());
 
 drop policy if exists "users read admin peers" on public.users;
 create policy "users read admin peers" on public.users
@@ -624,7 +760,7 @@ create policy "contact public read" on public.app_contact
 
 drop policy if exists "contact admin write" on public.app_contact;
 create policy "contact admin write" on public.app_contact
-  for all using (public.is_admin()) with check (public.is_admin());
+  for all using (public.is_full_admin()) with check (public.is_full_admin());
 
 insert into public.app_contact (id) values (1) on conflict (id) do nothing;
 
@@ -662,7 +798,7 @@ alter table public.user_messages enable row level security;
 -- صاحب الرسالة يقرأ رسائله فقط؛ الإدارة تقرأ الكل.
 drop policy if exists "messages read own or admin" on public.user_messages;
 create policy "messages read own or admin" on public.user_messages
-  for select using (user_id = auth.uid() or public.is_admin());
+  for select using (user_id = auth.uid() or public.is_full_admin());
 
 drop policy if exists "messages insert own" on public.user_messages;
 create policy "messages insert own" on public.user_messages
@@ -671,11 +807,11 @@ create policy "messages insert own" on public.user_messages
 -- التعديل للإدارة وحدها: لا يستطيع المستخدم تغيير حالة رسالته ولا كتابة رد باسم القسم.
 drop policy if exists "messages admin update" on public.user_messages;
 create policy "messages admin update" on public.user_messages
-  for update using (public.is_admin()) with check (public.is_admin());
+  for update using (public.is_full_admin()) with check (public.is_full_admin());
 
 drop policy if exists "messages delete own or admin" on public.user_messages;
 create policy "messages delete own or admin" on public.user_messages
-  for delete using (user_id = auth.uid() or public.is_admin());
+  for delete using (user_id = auth.uid() or public.is_full_admin());
 
 -- ردّ الإدارة: دالة موثوقة تكتب الرد وتضبط الحالة وتُرسل إشعارًا لصاحب الرسالة.
 create or replace function public.reply_to_message(p_message_id uuid, p_body text)
@@ -739,7 +875,7 @@ create policy "groups public read" on public.discussion_groups
 
 drop policy if exists "groups admin write" on public.discussion_groups;
 create policy "groups admin write" on public.discussion_groups
-  for all using (public.is_admin()) with check (public.is_admin());
+  for all using (public.is_full_admin()) with check (public.is_full_admin());
 
 create table if not exists public.group_posts (
   id uuid primary key default gen_random_uuid(),
@@ -789,11 +925,11 @@ create policy "posts insert own" on public.group_posts
 -- التثبيت للإدارة وحدها؛ لا يعدّل المستخدم مشاركته بعد نشرها (يحذفها ويكتب غيرها).
 drop policy if exists "posts admin update" on public.group_posts;
 create policy "posts admin update" on public.group_posts
-  for update using (public.is_admin()) with check (public.is_admin());
+  for update using (public.is_full_admin()) with check (public.is_full_admin());
 
 drop policy if exists "posts delete own or admin" on public.group_posts;
 create policy "posts delete own or admin" on public.group_posts
-  for delete using (author_id = auth.uid() or public.is_admin());
+  for delete using (author_id = auth.uid() or public.is_full_admin());
 
 -- عدّاد المشاركات في المجموعة يُحسب على الخادم لا في العميل.
 create or replace function public.sync_group_post_count()
@@ -837,7 +973,7 @@ alter table public.group_post_reports enable row level security;
 -- البلاغات للإدارة فقط: لا يرى المستخدم بلاغات غيره ولا حتى بلاغه بعد إرساله.
 drop policy if exists "reports admin read" on public.group_post_reports;
 create policy "reports admin read" on public.group_post_reports
-  for select using (public.is_admin());
+  for select using (public.is_full_admin());
 
 create or replace function public.report_group_post(p_post_id uuid, p_reason text)
 returns void

@@ -4,6 +4,8 @@ import { persistStorage } from "./persistStorage";
 import type { RegistrationState } from "@/types/models";
 
 export interface AdminAccount {
+  /** درجة الصلاحية كما يقولها الخادم. */
+  role?: "owner" | "admin" | "editor";
   id: string;
   name: string;
   /** يُخزَّن كاملًا للتحقق، ولا يُعرض إلا مقنّعًا. */

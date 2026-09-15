@@ -1,175 +1,225 @@
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { BottomSheet } from "@/components/BottomSheet";
-import { QueryState } from "@/components/QueryState";
+import { EmptyState } from "@/components/EmptyState";
+import { FormField } from "@/components/FormField";
 import { PrimaryButton } from "@/components/PrimaryButton";
+import { QueryState } from "@/components/QueryState";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { SecondaryButton } from "@/components/SecondaryButton";
 import { colors, radius, spacing, typography } from "@/constants";
-import { canEditAdminsInApp, fetchAdminAccounts } from "@/services/adminAuthService";
-import { maskPhone, useAdminSettingsStore, type AdminAccount } from "@/store/adminSettingsStore";
+import {
+  type AdminRole,
+  type FoundMember,
+  fetchAdminAccounts,
+  fetchMyRole,
+  findMember,
+  grantAdmin,
+  revokeAdmin,
+  ROLE_HINT,
+  ROLE_LABEL,
+} from "@/services/adminAuthService";
+import { maskPhone } from "@/store/adminSettingsStore";
+import { useAuthStore } from "@/store/authStore";
 import { showToast } from "@/store/toastStore";
-
-const PHONE_REGEX = /^(?:\+968)?9\d{7}$/;
+import { toArabicMessage } from "@/utils/errors";
 
 /**
- * الحسابات التي تملك صلاحية الإدارة — تُقرأ من جدول `admins` على الخادم.
+ * الحسابات الإدارية — منحًا وسحبًا، على الخادم.
  *
- * الإضافة والإزالة لا تتمّان من داخل التطبيق في الإنتاج، عمدًا: لو أمكن ذلك
- * لصار فتحُ اللوحة على جهاز واحد كافيًا لترقية حسابات أخرى. تُدار من Supabase
- * بيد مالك المشروع. في الوضع التجريبي فقط تبقى القائمة قابلة للتحرير للعرض.
+ * كانت هذه الشاشة تكتب في ذاكرة الجهاز وحدها: يظهر الاسم في القائمة ولا يصل
+ * الخادم، فيظنّ من أضاف أنه فوّض ولم يفوّض. والمنع كان مقصودًا (ألّا يكفي
+ * هاتفٌ مفتوح لترقية حسابات) لكنّ شاشةً تُوهم بما لا تفعله أسوأ من غيابها.
+ *
+ * فصار المنع تدرّجًا: المالك يمنح ما شاء، والإداري يمنح درجة المحرّر وحدها،
+ * والمحرّر لا يرى هذه الشاشة أصلًا. والخادم يفحص كل ذلك مرّة أخرى في الدالة
+ * نفسها، فلا ينفع تلاعبٌ بالتطبيق.
  */
 export default function AdminAccountsScreen() {
   const client = useQueryClient();
-  const query = useQuery({ queryKey: ["admin-accounts"], queryFn: fetchAdminAccounts });
-  const admins = query.data ?? [];
-  const addAdmin = useAdminSettingsStore((state) => state.addAdmin);
-  const removeAdmin = useAdminSettingsStore((state) => state.removeAdmin);
-  const logAction = useAdminSettingsStore((state) => state.logAction);
+  const myId = useAuthStore((state) => state.user?.id);
 
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [pendingRemove, setPendingRemove] = useState<AdminAccount | null>(null);
+  const roleQuery = useQuery({ queryKey: ["my-admin-role"], queryFn: fetchMyRole });
+  const listQuery = useQuery({ queryKey: ["admin-accounts"], queryFn: fetchAdminAccounts });
 
-  const canAdd = name.trim().length > 2 && PHONE_REGEX.test(phone.trim());
+  const myRole = roleQuery.data;
+  const canGrantAdmin = myRole === "owner";
+  const canManage = myRole === "owner" || myRole === "admin";
 
-  const handleAdd = () => {
-    if (!canAdd) {
-      showToast("أدخل الاسم ورقم هاتف عماني صحيح", "error");
-      return;
-    }
-    if (admins.some((admin) => admin.phone === phone.trim())) {
-      showToast("هذا الرقم مُدرج بالفعل", "error");
-      return;
-    }
-    addAdmin(name, phone);
-    void client.invalidateQueries({ queryKey: ["admin-accounts"] });
-    logAction(`إضافة حساب إداري: ${name.trim()}`);
-    setName("");
-    setPhone("");
-    showToast("تمت إضافة الحساب الإداري", "success");
-  };
+  const [search, setSearch] = useState("");
+  const [results, setResults] = useState<FoundMember[] | null>(null);
+  const [picked, setPicked] = useState<FoundMember | null>(null);
+  const [pendingRemove, setPendingRemove] = useState<{ id: string; name: string } | null>(null);
 
-  const confirmRemove = () => {
-    if (!pendingRemove) return;
-    if (admins.length === 1) {
-      showToast("لا يمكن إزالة آخر حساب إداري", "error");
+  const doSearch = useMutation({
+    mutationFn: () => findMember(search),
+    onSuccess: (found) => setResults(found),
+    onError: (e) => showToast(toArabicMessage(e, "تعذّر البحث"), "error"),
+  });
+
+  const doGrant = useMutation({
+    mutationFn: (vars: { userId: string; role: Exclude<AdminRole, "owner"> }) =>
+      grantAdmin(vars.userId, vars.role),
+    onSuccess: () => {
+      setPicked(null);
+      setResults(null);
+      setSearch("");
+      void client.invalidateQueries({ queryKey: ["admin-accounts"] });
+      showToast("مُنحت الصلاحية", "success");
+    },
+    onError: (e) => showToast(toArabicMessage(e, "تعذّر المنح"), "error"),
+  });
+
+  const doRevoke = useMutation({
+    mutationFn: (userId: string) => revokeAdmin(userId),
+    onSuccess: () => {
       setPendingRemove(null);
-      return;
-    }
-    removeAdmin(pendingRemove.id);
-    void client.invalidateQueries({ queryKey: ["admin-accounts"] });
-    logAction(`إزالة حساب إداري: ${pendingRemove.name}`);
-    setPendingRemove(null);
-    showToast("تمت إزالة الحساب", "success");
-  };
+      void client.invalidateQueries({ queryKey: ["admin-accounts"] });
+      showToast("سُحبت الصلاحية");
+    },
+    onError: (e) => {
+      setPendingRemove(null);
+      showToast(toArabicMessage(e, "تعذّر السحب"), "error");
+    },
+  });
 
   return (
     <View style={styles.screen}>
       <ScreenHeader title="الحسابات الإدارية" />
-      <QueryState isLoading={query.isLoading} error={query.error} onRetry={query.refetch}>
-      <ScrollView
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={styles.listCard}>
-          {admins.length === 0 ? (
-            <View style={styles.row}>
-              <Text style={styles.rowMeta}>لا توجد حسابات إدارية مُدرجة.</Text>
-            </View>
-          ) : null}
-          {admins.map((admin, index) => (
-            <View key={admin.id}>
-              {index > 0 ? <View style={styles.divider} /> : null}
-              <View style={styles.row}>
-                <View style={styles.avatar}>
-                  <Ionicons name="shield-checkmark-outline" size={18} color={colors.primary} />
-                </View>
-                <View style={{ flex: 1, gap: 2 }}>
-                  <Text style={styles.rowTitle}>{admin.name}</Text>
-                  <Text style={styles.rowMeta}>{maskPhone(admin.phone)}</Text>
-                </View>
-                {canEditAdminsInApp ? (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={`إزالة ${admin.name}`}
-                    onPress={() => setPendingRemove(admin)}
-                    hitSlop={8}
-                  >
-                    <Ionicons name="trash-outline" size={18} color={colors.danger} />
-                  </Pressable>
-                ) : null}
-              </View>
-            </View>
-          ))}
-        </View>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {myRole ? (
+          <View style={styles.myRole}>
+            <Ionicons name="shield-checkmark-outline" size={18} color={colors.primary} />
+            <Text style={styles.myRoleText}>درجتك: {ROLE_LABEL[myRole]}</Text>
+          </View>
+        ) : null}
 
-        {canEditAdminsInApp ? (
+        {canManage ? (
           <>
-          <Text style={styles.sectionLabel}>إضافة حساب إداري</Text>
-          <View style={styles.field}>
-            <Text style={styles.label}>الاسم</Text>
-            <TextInput
-              value={name}
-              onChangeText={setName}
-              placeholder="اسم المسؤول"
-              placeholderTextColor={colors.textMuted}
-              style={styles.input}
-              textAlign="right"
-            />
-          </View>
-          <View style={styles.field}>
-            <Text style={styles.label}>رقم الهاتف</Text>
-            <TextInput
-              value={phone}
-              onChangeText={setPhone}
-              keyboardType="phone-pad"
-              maxLength={12}
-              placeholder="9XXXXXXX"
-              placeholderTextColor={colors.textMuted}
-              style={styles.input}
-              textAlign="right"
-            />
-          </View>
-          <PrimaryButton label="إضافة" onPress={handleAdd} disabled={!canAdd} style={{ marginTop: spacing.md }} />
+            <Text style={styles.sectionLabel}>منح صلاحية</Text>
+            <View style={styles.card}>
+              <FormField
+                label="ابحث عن العضو"
+                value={search}
+                onChangeText={setSearch}
+                placeholder="البريد أو الرقم أو الاسم"
+                autoCapitalize="none"
+              />
+              <PrimaryButton
+                label="بحث"
+                onPress={() => doSearch.mutate()}
+                disabled={search.trim().length < 3}
+                loading={doSearch.isPending}
+              />
+
+              {results?.length === 0 ? (
+                <Text style={styles.none}>لا يوجد عضو مطابق. تأكّد أنه أنشأ حسابه في التطبيق.</Text>
+              ) : null}
+
+              {(results ?? []).map((member) => (
+                <Pressable
+                  key={member.userId}
+                  accessibilityRole="button"
+                  onPress={() => setPicked(member)}
+                  style={styles.result}
+                >
+                  <View style={styles.resultText}>
+                    <Text style={styles.resultName}>{member.name}</Text>
+                    <Text style={styles.resultMeta}>
+                      {maskPhone(member.phone)}
+                      {member.role ? ` · ${ROLE_LABEL[member.role]}` : ""}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-back" size={18} color={colors.textMuted} />
+                </Pressable>
+              ))}
+            </View>
           </>
-        ) : (
-          <View style={styles.serverCard}>
-            <Ionicons name="server-outline" size={18} color={colors.marineDeep} />
-            <Text style={styles.privacyText}>
-              الإضافة والإزالة تتمّان من Supabase على جدول <Text style={styles.mono}>admins</Text>،
-              لا من داخل التطبيق — حتى لا يصبح فتح اللوحة على جهاز واحد كافيًا لمنح الصلاحية
-              لحسابات أخرى.
-            </Text>
-          </View>
-        )}
+        ) : null}
 
-        <View style={styles.privacyCard}>
-          <Ionicons name="lock-closed-outline" size={18} color={colors.primary} />
-          <Text style={styles.privacyText}>
-            تُعرض أرقام الحسابات الإدارية مقنّعة (9•••4567) ولا تُعرض كاملة لأحد. وأرقام هواتف
-            المستخدمين العاديين لا تظهر في هذه اللوحة إطلاقًا.
+        <Text style={styles.sectionLabel}>من يملك صلاحية الآن</Text>
+        <QueryState
+          isLoading={listQuery.isLoading}
+          error={listQuery.error}
+          onRetry={() => void listQuery.refetch()}
+        >
+          {(listQuery.data ?? []).length > 0 ? (
+            (listQuery.data ?? []).map((admin) => {
+              const role = (admin.role ?? "admin") as AdminRole;
+              const removable =
+                canManage && role !== "owner" && admin.id !== myId && (canGrantAdmin || role === "editor");
+              return (
+                <View key={admin.id} style={styles.row}>
+                  <View style={styles.resultText}>
+                    <Text style={styles.resultName}>{admin.name}</Text>
+                    <Text style={styles.resultMeta}>
+                      {maskPhone(admin.phone)} · {ROLE_LABEL[role]}
+                    </Text>
+                  </View>
+                  {removable ? (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`سحب صلاحية ${admin.name}`}
+                      onPress={() => setPendingRemove({ id: admin.id, name: admin.name })}
+                      hitSlop={8}
+                    >
+                      <Ionicons name="close-circle-outline" size={21} color={colors.danger} />
+                    </Pressable>
+                  ) : null}
+                </View>
+              );
+            })
+          ) : (
+            <EmptyState icon="shield-outline" title="لا توجد حسابات إدارية" />
+          )}
+        </QueryState>
+
+        {!canManage ? (
+          <Text style={styles.none}>
+            درجتك لا تمنح صلاحيات. المالك أو الإداري وحدهما يفعلان ذلك.
           </Text>
-        </View>
+        ) : null}
       </ScrollView>
-      </QueryState>
 
+      {/* اختيار الدرجة */}
+      <BottomSheet visible={Boolean(picked)} onClose={() => setPicked(null)}>
+        <Text style={styles.sheetTitle}>{picked?.name}</Text>
+        <Text style={styles.sheetBody}>اختر الدرجة التي تمنحها:</Text>
+
+        {(canGrantAdmin ? (["admin", "editor"] as const) : (["editor"] as const)).map((role) => (
+          <Pressable
+            key={role}
+            accessibilityRole="button"
+            onPress={() => picked && doGrant.mutate({ userId: picked.userId, role })}
+            style={styles.roleOption}
+          >
+            <View style={styles.resultText}>
+              <Text style={styles.resultName}>{ROLE_LABEL[role]}</Text>
+              <Text style={styles.resultMeta}>{ROLE_HINT[role]}</Text>
+            </View>
+            <Ionicons name="chevron-back" size={18} color={colors.textMuted} />
+          </Pressable>
+        ))}
+
+        <SecondaryButton label="إلغاء" onPress={() => setPicked(null)} style={{ marginTop: spacing.md }} />
+      </BottomSheet>
+
+      {/* تأكيد السحب */}
       <BottomSheet visible={Boolean(pendingRemove)} onClose={() => setPendingRemove(null)}>
-        <Text style={styles.sheetTitle}>إزالة الصلاحية</Text>
+        <Text style={styles.sheetTitle}>سحب الصلاحية</Text>
         <Text style={styles.sheetBody}>
-          لن يتمكن «{pendingRemove?.name}» من فتح لوحة الإدارة بعد ذلك. يبقى حسابه في التطبيق كمستخدم
-          عادي.
+          لن يتمكّن «{pendingRemove?.name}» من فتح لوحة الإدارة بعد ذلك. يبقى حسابه في التطبيق كعضو.
         </Text>
         <PrimaryButton
-          label="إزالة الصلاحية"
-          onPress={confirmRemove}
-          style={{ marginTop: spacing.lg, backgroundColor: colors.danger }}
+          label="سحب الصلاحية"
+          onPress={() => pendingRemove && doRevoke.mutate(pendingRemove.id)}
+          loading={doRevoke.isPending}
+          style={{ marginTop: spacing.md }}
         />
         <SecondaryButton
-          label="تراجع"
+          label="إلغاء"
           onPress={() => setPendingRemove(null)}
           style={{ marginTop: spacing.sm }}
         />
@@ -180,51 +230,57 @@ export default function AdminAccountsScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.lg, paddingTop: 0, paddingBottom: spacing.xxl },
-  listCard: { backgroundColor: colors.surface, borderRadius: radius.lg, paddingHorizontal: spacing.lg },
-  row: { flexDirection: "row", alignItems: "center", gap: spacing.md, paddingVertical: spacing.md },
-  avatar: {
-    width: 38,
-    height: 38,
-    borderRadius: radius.sm,
-    backgroundColor: colors.background,
+  content: { padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xxl },
+  myRole: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-  },
-  rowTitle: { ...typography.body, fontFamily: "Tajawal_500Medium" },
-  rowMeta: { ...typography.caption, fontSize: 12 },
-  divider: { height: 1, backgroundColor: colors.border },
-  sectionLabel: { ...typography.h3, marginTop: spacing.xl, marginBottom: spacing.xs },
-  field: { marginBottom: spacing.sm },
-  label: { ...typography.caption, marginBottom: spacing.xs, marginTop: spacing.sm },
-  input: {
-    ...typography.body,
+    gap: spacing.sm,
+    padding: spacing.md,
+    borderRadius: radius.md,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.lg,
-    height: 50,
   },
-  privacyCard: {
-    flexDirection: "row",
-    gap: spacing.md,
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
+  myRoleText: { ...typography.body },
+  sectionLabel: { ...typography.caption, marginTop: spacing.sm },
+  card: {
     padding: spacing.lg,
-    marginTop: spacing.xl,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: spacing.md,
   },
-  privacyText: { ...typography.caption, flex: 1, lineHeight: 20 },
-  serverCard: {
+  result: {
     flexDirection: "row",
-    gap: spacing.sm,
-    alignItems: "flex-start",
-    backgroundColor: colors.infoSoft,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    marginTop: spacing.md,
+    alignItems: "center",
+    gap: spacing.md,
+    paddingVertical: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
   },
-  mono: { fontFamily: "Tajawal_700Bold" },
-  sheetTitle: { ...typography.h2, textAlign: "center" },
-  sheetBody: { ...typography.bodyMuted, textAlign: "center", marginTop: spacing.sm, lineHeight: 22 },
+  roleOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    padding: spacing.lg,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  resultText: { flex: 1, gap: 2 },
+  resultName: { ...typography.body },
+  resultMeta: { ...typography.caption, fontSize: 12 },
+  none: { ...typography.caption, lineHeight: 22 },
+  sheetTitle: { ...typography.h3, marginBottom: spacing.xs },
+  sheetBody: { ...typography.caption, lineHeight: 22, marginBottom: spacing.sm },
 });
