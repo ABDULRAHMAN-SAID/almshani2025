@@ -590,6 +590,24 @@ create policy "app media owner delete" on storage.objects
 -- مرفقات الإعلان (فيديو أو مقطع صوتي أو ملف) — مخزّنة كوصف JSON للمرفقات
 alter table public.announcements add column if not exists attachments jsonb not null default '[]'::jsonb;
 
+-- ============ فهارس ما يُرشَّح به كثيرًا ============
+-- ‏PostgreSQL لا يفهرس المفتاح الأجنبي من تلقائه، والفهرس الموجود يغطّي ستة
+-- مسارات لا كلّها. وهذه الأعمدة يُرشَّح بها أو يُرتَّب عليها في كل فتحة شاشة:
+-- «أنشطتي» ترشّح التسجيلات بالعضو، والإعلانات تُرتَّب بتاريخ النشر، وأسئلة
+-- الأسبوع تُجلب بمعرّف المسابقة. بمئة صفّ لا فرق يُذكر؛ وبعد سنتين من قاعدة
+-- تستعمله يوميًّا يصير الفرق مسحًا كاملًا للجدول عند كل فتحة.
+-- وحذف عضو يمرّ على كل جدول يشير إليه: بلا فهرس يُمسح كلٌّ منها كاملًا.
+create index if not exists registrations_user_idx on public.registrations (user_id);
+create index if not exists registrations_activity_idx on public.registrations (activity_id);
+create index if not exists announcements_published_idx on public.announcements (published_at desc);
+create index if not exists activity_checkins_user_idx on public.activity_checkins (user_id, activity_id);
+create index if not exists activity_results_activity_idx on public.activity_results (activity_id);
+create index if not exists quiz_questions_quiz_idx on public.quiz_questions (quiz_id);
+create index if not exists quiz_answers_user_idx on public.quiz_answers (user_id, question_id);
+create index if not exists weekly_quizzes_start_idx on public.weekly_quizzes (start_date desc);
+create index if not exists group_post_reports_post_idx on public.group_post_reports (post_id);
+create index if not exists awareness_published_idx on public.awareness_articles (published_at desc);
+
 -- ============ بيانات التواصل الرسمية ============
 -- صف واحد فقط تقرأه كل الأجهزة، وتكتبه الإدارة. لا يحتوي أي رقم شخصي لمستخدم.
 create table if not exists public.app_contact (
