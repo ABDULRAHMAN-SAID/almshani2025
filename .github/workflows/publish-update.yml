@@ -103,8 +103,8 @@ jobs:
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
-          npx --yes eas-cli@latest channel:create production --non-interactive             2>&1 | sed -e 's/\[[0-9;]*m//g' || echo "القناة موجودة من قبل."
-          npx --yes eas-cli@latest channel:edit production --branch production --non-interactive             2>&1 | sed -e 's/\[[0-9;]*m//g'
+          npx --yes eas-cli@latest channel:create production --non-interactive || echo "القناة موجودة من قبل."
+          npx --yes eas-cli@latest channel:edit production --branch production --non-interactive
 
       - name: انشر التحديث
         # المفاتيح تُمرَّر هنا كما تُمرَّر في البناء: حزمة التحديث تحمل نسخة
