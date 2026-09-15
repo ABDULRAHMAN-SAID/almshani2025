@@ -7,6 +7,7 @@ import { BottomSheet } from "@/components/BottomSheet";
 import { EmptyState } from "@/components/EmptyState";
 import { ImageField } from "@/components/ImageField";
 import { PrimaryButton } from "@/components/PrimaryButton";
+import { QrCode } from "@/components/QrCode";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { SecondaryButton } from "@/components/SecondaryButton";
 import { CATEGORY_META, tintBackground } from "@/constants/categories";
@@ -247,6 +248,22 @@ export default function ManageActivityScreen() {
             </Pressable>
           </View>
           <SecondaryButton label="حفظ الرمز" onPress={handleSaveCode} style={{ marginTop: spacing.md }} />
+
+          {code.trim().length >= 4 ? (
+            <View style={styles.qrWrap}>
+              <QrCode value={code.trim().toUpperCase()} size={170} />
+              <SecondaryButton
+                label="اعرضه بملء الشاشة"
+                onPress={() =>
+                  router.push({
+                    pathname: "/admin/checkin-qr",
+                    params: { code: code.trim().toUpperCase(), title: activity.title },
+                  })
+                }
+                style={{ marginTop: spacing.md }}
+              />
+            </View>
+          ) : null}
         </View>
 
         <View style={styles.card}>
@@ -419,6 +436,7 @@ const styles = StyleSheet.create({
   progressTrack: { height: 6, borderRadius: radius.pill, backgroundColor: colors.background, overflow: "hidden" },
   progressFill: { height: 6, borderRadius: radius.pill, backgroundColor: colors.primary },
   codeRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, marginTop: spacing.sm },
+  qrWrap: { alignItems: "center", marginTop: spacing.lg },
   codeInput: {
     flex: 1,
     backgroundColor: colors.background,
