@@ -44,7 +44,7 @@ jobs:
               console.log('version        :', c.version);
             "
             echo '```'
-          } >> $GITHUB_STEP_SUMMARY
+          } | tee -a $GITHUB_STEP_SUMMARY
 
       - name: اسأل خادم Expo
         env:
@@ -74,4 +74,4 @@ jobs:
             echo '```'
             eas build:list --platform android --limit 3 --non-interactive || echo "تعذّر"
             echo '```'
-          } >> $GITHUB_STEP_SUMMARY
+          } | tee -a $GITHUB_STEP_SUMMARY
