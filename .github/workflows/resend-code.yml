@@ -1,0 +1,72 @@
+# أعد إرسال رمز التأكيد لعضوٍ سجّل ولم يصله الرمز.
+#
+# يُستعمل حين يقول أحدهم «سجّلت ولم يصلني شيء». والزرّ يفعل أمرين: يعيد
+# الإرسال، ويطبع ردّ الخادم كما هو — فإن كان الرفض لأن خدمة البريد بلغت
+# حدّها ظهر ذلك صريحًا، بدل أن يبقى العضو ينتظر رسالةً لم تخرج أصلًا.
+#
+# ولا يحتاج سرًّا جديدًا: نفس الرابط ومفتاح anon المستعملين في البناء.
+name: أعد إرسال رمز التأكيد
+
+on:
+  workflow_dispatch:
+    inputs:
+      email:
+        description: "بريد العضو الذي لم يصله الرمز"
+        type: string
+        required: true
+
+jobs:
+  resend:
+    name: إعادة الإرسال
+    runs-on: ubuntu-latest
+    steps:
+      - name: أنزل المشروع
+        uses: actions/checkout@v4
+
+      - name: هيّئ Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: تحقّق من الأسرار
+        env:
+          URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          ANON: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+        run: |
+          missing=""
+          [ -z "$URL" ] && missing="$missing EXPO_PUBLIC_SUPABASE_URL"
+          [ -z "$ANON" ] && missing="$missing EXPO_PUBLIC_SUPABASE_ANON_KEY"
+          if [ -n "$missing" ]; then
+            echo "::error::ينقص سرّ:$missing"
+            exit 1
+          fi
+
+      # لا npm ci هنا: الأداة تستعمل fetch المدمج في Node ولا مكتبة لها،
+      # فتثبيت ألف وثلاثمئة حزمة من أجلها انتظارٌ بلا مقابل.
+      - name: أعد الإرسال
+        id: resend
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+          RESEND_EMAIL: ${{ inputs.email }}
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          node scripts/resend-code.mjs "$RESEND_EMAIL" 2>&1 | tee /tmp/resend.txt
+
+      - name: اكتب التقرير
+        if: always()
+        run: |
+          {
+            echo "## إعادة إرسال الرمز"
+            echo ""
+            echo '```'
+            sed -e 's/\x1b\[[0-9;]*m//g' /tmp/resend.txt || echo "لم تُنتج الأداة تقريرًا."
+            echo '```'
+          } >> $GITHUB_STEP_SUMMARY
+
+      - name: اعكس النتيجة
+        if: steps.resend.outcome != 'success'
+        run: |
+          echo "::error::لم يُرسل الرمز — التفصيل في الملخّص أعلى الصفحة."
+          exit 1

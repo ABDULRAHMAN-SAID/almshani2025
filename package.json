@@ -17,6 +17,7 @@
     "submit:android": "eas submit --platform android --latest",
     "setup": "node scripts/setup-server.mjs",
     "admin": "node scripts/make-admin.mjs",
+    "resend": "node scripts/resend-code.mjs",
     "check:supabase": "node scripts/check-supabase.mjs",
     "check:queries": "node scripts/check-queries.mjs",
     "test:security": "bash scripts/test-security.sh",
