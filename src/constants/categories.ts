@@ -87,3 +87,17 @@ export const CALENDAR_FILTERS: CalendarFilter[] = [
   { key: "awareness", label: "التوعية", categories: ["AntiDrugs", "SecurityAwareness"] },
   { key: "safety", label: "السلامة", categories: ["GeneralSafety", "TrafficSafety", "AviationSafety"] },
 ];
+
+/* -------------------------------- الأخبار -------------------------------- */
+
+/**
+ * تسمية نطاق الخبر، في موضع واحد.
+ *
+ * كانت مكتوبة في أربعة ملفّات: البطاقة، وصفحة الخبر، وفلاتر الأخبار، وشاشة
+ * النشر. وتغيير كلمة واحدة كان يعني تتبّعها في أربعة أماكن ونسيان واحد منها
+ * — وهو صنف الخلل الذي جعل قسم الأخبار لا يفتح أصلًا.
+ */
+export const NEWS_SCOPE_LABEL: Record<"oman" | "world", string> = {
+  oman: "محلي",
+  world: "دولي",
+};

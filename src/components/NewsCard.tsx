@@ -2,6 +2,7 @@ import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { colors, radius, spacing, typography } from "@/constants";
+import { NEWS_SCOPE_LABEL } from "@/constants/categories";
 import type { NewsItem } from "@/types/models";
 import { relativeDayLabel } from "@/utils/date";
 
@@ -11,11 +12,6 @@ interface NewsCardProps {
   /** بطاقة ضيّقة بعرض ثابت، لصفّ أفقي لا لعمود. */
   compact?: boolean;
 }
-
-const SCOPE_LABEL: Record<NewsItem["scope"], string> = {
-  oman: "عُمان",
-  world: "عالمي",
-};
 
 /**
  * بطاقة خبر واحد: النطاق والمصدر ووقته، ثم العنوان والملخّص.
@@ -54,7 +50,7 @@ export function NewsCard({ item, onPress, compact }: NewsCardProps) {
 
       <View style={styles.top}>
         <View style={[styles.badge, item.scope === "oman" ? styles.badgeOman : styles.badgeWorld]}>
-          <Text style={styles.badgeText}>{SCOPE_LABEL[item.scope]}</Text>
+          <Text style={styles.badgeText}>{NEWS_SCOPE_LABEL[item.scope]}</Text>
         </View>
         <Text style={styles.meta} numberOfLines={1}>
           {item.source ? `${item.source} · ` : ""}

@@ -10,6 +10,7 @@ import { PrimaryButton } from "@/components/PrimaryButton";
 import { QueryState } from "@/components/QueryState";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { colors, radius, spacing, typography } from "@/constants";
+import { NEWS_SCOPE_LABEL } from "@/constants/categories";
 import { deleteNews, fetchNews, publishNews, updateNews } from "@/services/newsService";
 import { showToast } from "@/store/toastStore";
 import type { NewsItem, NewsScope } from "@/types/models";
@@ -17,8 +18,8 @@ import { formatArabicDate } from "@/utils/date";
 import { toArabicMessage } from "@/utils/errors";
 
 const SCOPES = [
-  { key: "oman", label: "عُمان" },
-  { key: "world", label: "عالمي" },
+  { key: "oman", label: NEWS_SCOPE_LABEL.oman },
+  { key: "world", label: NEWS_SCOPE_LABEL.world },
 ];
 
 /**
@@ -168,7 +169,7 @@ export default function AdminNewsScreen() {
                     {item.title}
                   </Text>
                   <Text style={styles.rowMeta}>
-                    {item.scope === "oman" ? "عُمان" : "عالمي"} · {item.source} ·{" "}
+                    {NEWS_SCOPE_LABEL[item.scope]} · {item.source} ·{" "}
                     {formatArabicDate(item.publishedAt.slice(0, 10))}
                   </Text>
                 </View>

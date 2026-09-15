@@ -181,7 +181,7 @@ function OverviewTab() {
         <ActionRow
           icon="newspaper-outline"
           label="نشر خبر"
-          hint="خبر عُماني أو عالمي يظهر في الصفحة الرئيسية"
+          hint="خبر محلي أو دولي يظهر في الصفحة الرئيسية"
           onPress={() => router.push("/admin/news")}
         />
         <ActionRow
@@ -353,7 +353,7 @@ function ContentTab() {
         <ActionRow
           icon="newspaper-outline"
           label="الأخبار"
-          hint="نشر خبر عُماني أو عالمي، أو حذف خبر منشور"
+          hint="نشر خبر محلي أو دولي، أو حذف خبر منشور"
           onPress={() => router.push("/admin/news")}
         />
 

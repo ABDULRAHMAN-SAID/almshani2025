@@ -7,13 +7,14 @@ import { NewsCard } from "@/components/NewsCard";
 import { QueryState } from "@/components/QueryState";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { colors, spacing } from "@/constants";
+import { NEWS_SCOPE_LABEL } from "@/constants/categories";
 import { fetchNews } from "@/services/newsService";
 import type { NewsScope } from "@/types/models";
 
 const FILTERS = [
   { key: "all", label: "الكل" },
-  { key: "oman", label: "عُمان" },
-  { key: "world", label: "عالمي" },
+  { key: "oman", label: NEWS_SCOPE_LABEL.oman },
+  { key: "world", label: NEWS_SCOPE_LABEL.world },
 ];
 
 export default function NewsScreen() {

@@ -6,11 +6,9 @@ import { EmptyState } from "@/components/EmptyState";
 import { QueryState } from "@/components/QueryState";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { colors, radius, spacing, typography } from "@/constants";
+import { NEWS_SCOPE_LABEL } from "@/constants/categories";
 import { fetchNewsItem } from "@/services/newsService";
-import type { NewsItem } from "@/types/models";
 import { formatArabicDate } from "@/utils/date";
-
-const SCOPE_LABEL: Record<NewsItem["scope"], string> = { oman: "عُمان", world: "عالمي" };
 
 /**
  * الخبر كاملًا.
@@ -59,7 +57,7 @@ export default function NewsItemScreen() {
 
         <View style={styles.metaRow}>
           <View style={styles.badge}>
-            <Text style={styles.badgeText}>{SCOPE_LABEL[item.scope]}</Text>
+            <Text style={styles.badgeText}>{NEWS_SCOPE_LABEL[item.scope]}</Text>
           </View>
           <Text style={styles.meta} numberOfLines={1}>
             {item.source ? `${item.source} · ` : ""}

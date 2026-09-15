@@ -225,7 +225,9 @@ export interface GroupPost {
   createdAt: string;
 }
 
-/** نطاق الخبر: عالمي أو عُماني. */
+/** نطاق الخبر: محلي أو دولي. والمفتاحان في قاعدة البيانات "oman" و"world"
+ * كما كُتبا أوّل مرّة — التسمية تُقرأ، والمفتاح يُخزَّن، وتغييره يعني ترحيل
+ * كل صفّ منشور بلا فائدة تُذكر. */
 export type NewsScope = "world" | "oman";
 
 export interface NewsItem {
