@@ -37,6 +37,7 @@ const MODULES = [
   "src/utils/arabic.ts",
   "src/utils/errors.ts",
   "src/services/rowMappers.ts",
+  "src/utils/media.ts",
 ];
 
 const work = mkdtempSync(join(tmpdir(), "anshatati-units-"));
@@ -90,6 +91,7 @@ const calendar = await load("src/utils/calendar.ts");
 const arabic = await load("src/utils/arabic.ts");
 const errors = await load("src/utils/errors.ts");
 const mappers = await load("src/services/rowMappers.ts");
+const media = await load("src/utils/media.ts");
 
 /* -------------------------------- الاختبارات -------------------------------- */
 
@@ -175,6 +177,48 @@ function runAll(tz) {
   check("الأخطاء", "رمز التكرار", "هذا العنصر مسجَّل مسبقًا.", errors.toArabicMessage({ code: "23505" }));
   check("الأخطاء", "منع 403", "ليست لديك صلاحية لهذه العملية.", errors.toArabicMessage({ status: 403 }));
   check("الأخطاء", "انقطاع الشبكة يُعرف", true, errors.isNetworkError(new Error("Failed to fetch")));
+
+  // ---- المرفقات ----
+  // طبقة الرفع كلّها كانت بلا تحقّق واحد: حدودها وامتداداتها وفكّ ترميزها.
+  const overLimit = (kind, size) => {
+    try { media.assertWithinLimit(kind, size); return false; } catch { return true; }
+  };
+  check("المرفقات", "صورة دون الحدّ تمرّ", false, overLimit("image", 2 * 1024 * 1024));
+  check("المرفقات", "صورة فوق الحدّ تُرفض", true, overLimit("image", 4 * 1024 * 1024));
+  check("المرفقات", "الحدّ نفسه يمرّ", false, overLimit("image", 3 * 1024 * 1024));
+  check("المرفقات", "فيديو ٢٠ ميجا يمرّ", false, overLimit("video", 20 * 1024 * 1024));
+  check("المرفقات", "فيديو ٣٠ ميجا يُرفض", true, overLimit("video", 30 * 1024 * 1024));
+  check("المرفقات", "صوت ٩ ميجا يُرفض", true, overLimit("audio", 9 * 1024 * 1024));
+  check("المرفقات", "ملف ٩ ميجا يمرّ", false, overLimit("file", 9 * 1024 * 1024));
+  // حدّ الحاوية على الخادم ٢٥ ميجابايت؛ فلو تجاوزه حدّ التطبيق لقُبل الملف
+  // في الجهاز ورفضه الخادم بعد انتظار الرفع كلّه.
+  check("المرفقات", "لا حدّ يتجاوز حدّ الحاوية", true,
+    Object.values(media.MEDIA_LIMITS).every((l) => l.bytes <= 26214400));
+
+  // النوع من نوعه الصِّرف: صورة اختيرت من متصفّح الملفات تبقى صورة بحدّها هي
+  check("المرفقات", "صورة من متصفّح الملفات تبقى صورة", "image", media.kindOfMime("image/png"));
+  check("المرفقات", "مستند يبقى ملفًا", "file", media.kindOfMime("application/pdf"));
+  check("المرفقات", "مجهول النوع ملفّ", "file", media.kindOfMime("application/octet-stream"));
+
+  check("المرفقات", "امتداد من النوع", "jpg", media.extensionOf({ mimeType: "image/jpeg", name: "x" }));
+  check("المرفقات", "امتداد m4a للصوت", "m4a", media.extensionOf({ mimeType: "audio/mp4", name: "x" }));
+  check("المرفقات", "نوع مجهول يأخذ امتداد الاسم", "docx",
+    media.extensionOf({ mimeType: "application/x-unknown", name: "تقرير.docx" }));
+  check("المرفقات", "بلا نوع ولا امتداد", "bin",
+    media.extensionOf({ mimeType: "application/x-unknown", name: "ملف" }));
+
+  // فكّ base64: بايت خاطئ واحد يرفع ملفًا تالفًا لا يُفتح، ولا يظهر إلا عند فتحه
+  check("المرفقات", "فكّ base64 يعيد البايتات", [72, 105],
+    Array.from(media.base64ToBytes("SGk=")));
+  check("المرفقات", "فكّ base64 يتجاهل الفراغ والأسطر", [72, 105],
+    Array.from(media.base64ToBytes("SG\nk=")));
+  check("المرفقات", "حجم base64 تقريبي", 3, media.bytesOfBase64("AAAA"));
+
+  check("المرفقات", "الحجم بالكيلوبايت", "420 كيلوبايت", media.formatBytes(430080));
+  check("المرفقات", "الحجم بالميجابايت", "1٫8 ميجابايت", media.formatBytes(1887437));
+  check("المرفقات", "حجم صفر لا يُعرض", "", media.formatBytes(0));
+  check("المرفقات", "المدة دقيقة وثانيتان", "1:02", media.formatDuration(62000));
+  check("المرفقات", "المدة صفر", "0:00", media.formatDuration(0));
 
   // ---- تحويل صفوف القاعدة ----
   const activity = mappers.toActivity({

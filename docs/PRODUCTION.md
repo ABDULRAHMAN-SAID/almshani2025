@@ -314,10 +314,33 @@ npm run admin -- --remove +968…     # اسحب الصلاحية
 | «هذه النسخة غير مربوطة بالخادم» عند فتح التطبيق | بُني بلا مفاتيح | `npm run connect` ثم `npm run make-app` |
 | «الحساب يحتاج تأكيدًا» بعد التسجيل | Confirm email مفعّل | أطفئه من Authentication ← Providers، أو أعد `npm run setup` |
 | رسالة استعادة كلمة المرور لا تصل | لا يوجد خادم بريد | اضبط Custom SMTP في Supabase ← Authentication ← SMTP |
+| رابط الاستعادة يفتح صفحة ويب لا التطبيق | الوجهة ليست في قائمة المسموح | أعد `npm run setup`، أو أضفها يدويًا (أسفل) |
+| رسالة الاستعادة إنجليزية | المشروع أُعدّ قبل إضافة قالبها | أعد `npm run setup`، أو الصق القالب يدويًا (أسفل) |
 | لوحة الإدارة لا تظهر | حسابك ليس في `admins` | `npm run admin` |
 | «تعذّر الوصول إلى الخادم» | المشروع موقوف (Paused) | افتح supabase.com واضغط Restore |
 | رفع صورة يفشل | حاويات الملفات ناقصة | أعد `npm run setup` — يتخطّى ما تمّ ويكمل |
 | `npm.ps1 cannot be loaded` على ويندوز | سياسة تشغيل السكربتات | `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` ثم أعد فتح النافذة |
+
+### إن كان مشروعك أُعدّ قبل هذا
+
+`npm run setup` يضبط الأمرين. ومن لا يملك المشروع على حاسوبه يضبطهما بيده مرّة
+واحدة من لوحة Supabase:
+
+**١) وجهة الرجوع** — Authentication ← URL Configuration ← **Redirect URLs** ←
+أضف:
+
+```
+anshatati://*
+```
+
+بدونها يتجاهل الخادم الوجهة التي يمرّرها التطبيق، فيذهب الرابط إلى صفحة ويب
+لا تُعيد صاحبه إلى مكان.
+
+**٢) قالب الرسالة** — Authentication ← Email Templates ← **Reset Password** ←
+الصق محتوى `RECOVERY_EMAIL` من `scripts/setup-server.mjs`، والعنوان:
+`تغيير كلمة المرور — أنشطتي`.
+
+ولا يمسّ هذا تأكيد الحساب: رمزه يصل كما هو.
 
 للتشخيص من الطرفية: `npm run check:supabase`
 ومن داخل التطبيق: لوحة الإدارة ← الإعدادات ← فحص الربط.
