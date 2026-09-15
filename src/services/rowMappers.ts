@@ -75,6 +75,7 @@ export const toAnnouncement = (row: Row): Announcement => ({
   description: text(row.description),
   type: (row.type as AnnouncementType) ?? "عام",
   image: optional(row.image),
+  club: (optional(row.club) as Announcement["club"]) ?? undefined,
   attachments: (row.attachments as MediaAttachment[]) ?? [],
   publishedAt: day(row.published_at),
 });

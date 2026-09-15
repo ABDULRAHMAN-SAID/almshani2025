@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, radius, spacing, typography } from "@/constants";
+import { CATEGORY_META } from "@/constants/categories";
 import type { Announcement } from "@/types/models";
 import { formatArabicDate } from "@/utils/date";
 
@@ -16,14 +17,23 @@ export function AnnouncementCard({ announcement, onPress }: AnnouncementCardProp
       onPress={onPress}
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}
     >
-      <View style={styles.iconWrap}>
-        <Ionicons name="megaphone-outline" size={18} color={colors.accent} />
-      </View>
+      {announcement.image ? (
+        // صورة الإعلان مكان الأيقونة حين تُرفع: هي ما يميّز إعلانًا عن إعلان
+        // في قائمة كلّها أيقونة واحدة.
+        <Image source={{ uri: announcement.image }} style={styles.thumb} resizeMode="cover" />
+      ) : (
+        <View style={styles.iconWrap}>
+          <Ionicons name="megaphone-outline" size={18} color={colors.accent} />
+        </View>
+      )}
       <View style={styles.content}>
         <Text style={styles.title} numberOfLines={2}>
           {announcement.title}
         </Text>
-        <Text style={styles.date}>{formatArabicDate(announcement.publishedAt)}</Text>
+        <Text style={styles.date}>
+          {announcement.club ? `${CATEGORY_META[announcement.club].label} · ` : ""}
+          {formatArabicDate(announcement.publishedAt)}
+        </Text>
       </View>
     </Pressable>
   );
@@ -47,6 +57,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  thumb: { width: 52, height: 52, borderRadius: radius.sm, backgroundColor: colors.background },
   content: { flex: 1, gap: 2 },
   title: { ...typography.body, fontFamily: "Tajawal_500Medium" },
   date: { ...typography.caption },

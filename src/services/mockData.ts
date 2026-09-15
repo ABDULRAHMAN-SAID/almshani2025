@@ -107,8 +107,8 @@ export const MOCK_ACTIVITIES: Activity[] = [
   },
   {
     id: "act-clubs-1",
-    title: "أمسية نادي الضباط الشهرية",
-    description: "لقاء شهري في نادي الضباط يتضمن كلمة ضيف وبرنامجًا اجتماعيًا مفتوحًا لمنسوبي القاعدة وأسرهم.",
+    title: "فعالية نادي الضباط",
+    description: "مثال لنشاط يُنشر تحت قسم نادي الضباط — يظهر في نسخة العرض وحدها.",
     category: "OfficersClub",
     date: iso(12),
     startTime: "19:30",
@@ -122,8 +122,8 @@ export const MOCK_ACTIVITIES: Activity[] = [
   },
   {
     id: "act-clubs-2",
-    title: "ملتقى نادي كبار ضباط الصف",
-    description: "ملتقى دوري في نادي كبار ضباط الصف: برنامج ثقافي ورياضي، ونقاش مفتوح حول أنشطة الفصل القادم.",
+    title: "فعالية نادي كبار ضباط الصف",
+    description: "مثال لنشاط يُنشر تحت قسم نادي كبار ضباط الصف — يظهر في نسخة العرض وحدها.",
     category: "SeniorNcoClub",
     date: iso(19),
     startTime: "18:00",
@@ -336,6 +336,22 @@ export const MOCK_ACTIVITIES: Activity[] = [
 ];
 
 export const MOCK_ANNOUNCEMENTS: Announcement[] = [
+  {
+    id: "ann-club-1",
+    title: "إعلان نادي الضباط",
+    description: "مثال لإعلان يخصّ نادي الضباط وحده — يظهر داخل صفحة النادي.",
+    type: "عام",
+    club: "OfficersClub",
+    publishedAt: iso(-1),
+  },
+  {
+    id: "ann-club-2",
+    title: "إعلان نادي كبار ضباط الصف",
+    description: "مثال لإعلان يخصّ نادي كبار ضباط الصف وحده — يظهر داخل صفحة النادي.",
+    type: "تنبيه",
+    club: "SeniorNcoClub",
+    publishedAt: iso(-2),
+  },
   {
     id: "ann-1",
     title: "فتح باب التسجيل في المسابقة الثقافية السنوية",

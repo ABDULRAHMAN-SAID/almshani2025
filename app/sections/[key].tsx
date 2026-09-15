@@ -3,6 +3,7 @@ import { Image, ScrollView, StyleSheet, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
 import { ActivityListRow } from "@/components/ActivityListRow";
+import { AnnouncementCard } from "@/components/AnnouncementCard";
 import { EmptyState } from "@/components/EmptyState";
 import { FilterChips } from "@/components/FilterChips";
 import { ScreenHeader } from "@/components/ScreenHeader";
@@ -10,6 +11,7 @@ import { SECTION_DEFINITIONS } from "@/constants/sections";
 import { CATEGORY_COVER } from "@/constants/covers";
 import { colors, spacing, typography } from "@/constants";
 import { useAllActivities } from "@/hooks/useActivities";
+import { useAnnouncements } from "@/hooks/useNotifications";
 import { ACTIVITY_FORMS, pluralizeAr } from "@/utils/arabic";
 import { TODAY_ISO } from "@/utils/calendar";
 
@@ -18,7 +20,18 @@ export default function SectionScreen() {
   const { key } = useLocalSearchParams<{ key: string }>();
   const section = SECTION_DEFINITIONS[key];
   const { data: activities } = useAllActivities();
+  const { data: announcements } = useAnnouncements();
   const [filterKey, setFilterKey] = useState("all");
+
+  // إعلانات النادي وحده. والقائمة محمَّلة أصلًا لشاشة الإعلانات، فالترشيح
+  // هنا لا يكلّف طلبًا ثانيًا.
+  const clubAnnouncements = useMemo(
+    () =>
+      section?.club
+        ? (announcements ?? []).filter((item) => item.club === section.club)
+        : [],
+    [announcements, section]
+  );
 
   const list = useMemo(() => {
     if (!section) return [];
@@ -73,6 +86,21 @@ export default function SectionScreen() {
       ) : null}
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {clubAnnouncements.length > 0 ? (
+          <View style={styles.announcements}>
+            <Text style={styles.count}>إعلانات النادي</Text>
+            <View style={{ gap: spacing.sm }}>
+              {clubAnnouncements.map((item) => (
+                <AnnouncementCard
+                  key={item.id}
+                  announcement={item}
+                  onPress={() => router.push("/announcements")}
+                />
+              ))}
+            </View>
+          </View>
+        ) : null}
+
         {list.length > 0 ? (
           <>
             <Text style={styles.count}>
@@ -105,6 +133,7 @@ export default function SectionScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
+  announcements: { gap: spacing.sm, marginBottom: spacing.lg },
   banner: {
     height: 132,
     overflow: "hidden",

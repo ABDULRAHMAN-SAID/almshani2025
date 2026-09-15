@@ -781,6 +781,18 @@ create policy "activity images admin delete" on storage.objects
 -- صورة اختيارية للإعلان (الأنشطة والمقالات لديها عمود الصورة أصلًا)
 alter table public.announcements add column if not exists image text;
 
+-- النادي الذي يخصّه الإعلان، أو null للإعلان العام.
+--
+-- عمودٌ على الجدول القائم لا جدولٌ ثانٍ للأندية: الإعلان إعلان، وما يتغيّر
+-- هو من يعنيه. ولو أُفرد لكلّ نادٍ جدولٌ لتضاعف كل ما يمرّ بالإعلانات —
+-- الإشعارات، والبحث، والصفحة الرئيسية — بلا أن يختلف شيء في جوهره.
+alter table public.announcements add column if not exists club text;
+do $$ begin
+  alter table public.announcements add constraint announcements_club_check
+    check (club is null or club in ('OfficersClub', 'SeniorNcoClub'));
+exception when duplicate_object then null; end $$;
+create index if not exists announcements_club_idx on public.announcements (club, published_at desc);
+
 -- ============ مرفقات المستخدمين (صور، فيديو، صوت، ملفات) ============
 -- حاوية منفصلة عن أغلفة الإدارة: هنا يرفع المستخدم المسجَّل مرفقات رسالته
 -- أو مشاركته في مجموعة نقاشية. القراءة عامة لأن المرفق يظهر داخل نقاش عام،

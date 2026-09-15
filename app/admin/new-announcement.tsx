@@ -10,10 +10,18 @@ import { colors, radius, spacing, typography } from "@/constants";
 import { addAnnouncement } from "@/services/adminService";
 import { useAdminSettingsStore } from "@/store/adminSettingsStore";
 import { showToast } from "@/store/toastStore";
-import type { AnnouncementType, MediaAttachment } from "@/types/models";
+import { CATEGORY_META } from "@/constants/categories";
+import type { AnnouncementType, ClubKey, MediaAttachment } from "@/types/models";
 import { toArabicMessage } from "@/utils/errors";
 
 const TYPES: AnnouncementType[] = ["تسجيل", "تنبيه", "نتائج", "عام"];
+
+/** لمن هذا الإعلان: للقاعدة كلّها، أو لأحد النادييْن. */
+const AUDIENCES: { key: ClubKey | "all"; label: string }[] = [
+  { key: "all", label: "للجميع" },
+  { key: "OfficersClub", label: CATEGORY_META.OfficersClub.label },
+  { key: "SeniorNcoClub", label: CATEGORY_META.SeniorNcoClub.label },
+];
 
 export default function NewAnnouncementScreen() {
   const client = useQueryClient();
@@ -22,6 +30,7 @@ export default function NewAnnouncementScreen() {
   const [description, setDescription] = useState("");
   const [type, setType] = useState<AnnouncementType>("عام");
   const [image, setImage] = useState("");
+  const [audience, setAudience] = useState<ClubKey | "all">("all");
   const [attachments, setAttachments] = useState<MediaAttachment[]>([]);
   const [saving, setSaving] = useState(false);
 
@@ -35,6 +44,7 @@ export default function NewAnnouncementScreen() {
         description: description.trim(),
         type,
         image: image || undefined,
+        club: audience === "all" ? undefined : audience,
         attachments,
       });
       client.invalidateQueries();
@@ -90,6 +100,28 @@ export default function NewAnnouncementScreen() {
           tools={["video", "audio", "file"]}
         />
 
+        <Text style={styles.label}>لمن هذا الإعلان</Text>
+        <View style={styles.chipWrap}>
+          {AUDIENCES.map((option) => {
+            const active = option.key === audience;
+            return (
+              <Pressable
+                key={option.key}
+                accessibilityRole="button"
+                onPress={() => setAudience(option.key)}
+                style={[styles.chip, active && styles.chipActive]}
+              >
+                <Text style={[styles.chipText, active && styles.chipTextActive]}>
+                  {option.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        <Text style={styles.audienceHint}>
+          إعلان النادي يظهر داخل صفحة ناديه، وفي قائمة الإعلانات باسم ناديه.
+        </Text>
+
         <Text style={styles.label}>نوع الإعلان</Text>
         <View style={styles.chipWrap}>
           {TYPES.map((option) => {
@@ -133,6 +165,7 @@ const styles = StyleSheet.create({
     height: 50,
   },
   multiline: { height: 120, paddingTop: spacing.md, textAlignVertical: "top" },
+  audienceHint: { ...typography.caption, fontSize: 11, marginTop: -spacing.xs, lineHeight: 18 },
   chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   chip: {
     paddingHorizontal: spacing.lg,

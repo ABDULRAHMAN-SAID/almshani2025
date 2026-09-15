@@ -1,10 +1,13 @@
 import type { ActivityCategory } from "./categories";
+import type { ClubKey } from "@/types/models";
 
 export interface SectionDefinition {
   key: string;
   title: string;
   subtitle: string;
   categories: ActivityCategory[];
+  /** ناديه، إن كان القسم ناديًا — فتُعرض إعلاناته الخاصة داخله. */
+  club?: ClubKey;
   /** فلاتر فرعية داخل الشاشة؛ الأول دائمًا "الكل". */
   filters: { key: string; label: string; categories: ActivityCategory[] }[];
 }
@@ -50,6 +53,7 @@ export const SECTION_DEFINITIONS: Record<string, SectionDefinition> = {
     title: "نادي الضباط",
     subtitle: "فعاليات النادي ولقاءاته وبرامجه",
     categories: ["OfficersClub"],
+    club: "OfficersClub",
     filters: [{ key: "all", label: "الكل", categories: [] }],
   },
   "nco-club": {
@@ -57,6 +61,7 @@ export const SECTION_DEFINITIONS: Record<string, SectionDefinition> = {
     title: "نادي كبار ضباط الصف",
     subtitle: "فعاليات النادي ولقاءاته وبرامجه",
     categories: ["SeniorNcoClub"],
+    club: "SeniorNcoClub",
     filters: [{ key: "all", label: "الكل", categories: [] }],
   },
   safety: {

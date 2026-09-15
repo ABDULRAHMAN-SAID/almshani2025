@@ -67,6 +67,9 @@ export interface Registration {
 
 export type AnnouncementType = "تسجيل" | "تنبيه" | "نتائج" | "عام";
 
+/** النادي الذي يخصّه إعلان، إن خصّ ناديًا. */
+export type ClubKey = "OfficersClub" | "SeniorNcoClub";
+
 export interface Announcement {
   id: string;
   title: string;
@@ -74,6 +77,8 @@ export interface Announcement {
   type: AnnouncementType;
   /** صورة مرفقة اختيارية — تُرفع من لوحة الإدارة. */
   image?: string;
+  /** نادٍ يخصّه الإعلان، أو غير محدَّد للإعلان العام. */
+  club?: ClubKey;
   /** مرفقات الإعلان: فيديو أو مقطع صوتي أو ملف. */
   attachments?: MediaAttachment[];
   publishedAt: string;

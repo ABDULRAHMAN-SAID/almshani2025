@@ -12,10 +12,19 @@
 alter type activity_category add value if not exists 'OfficersClub';
 alter type activity_category add value if not exists 'SeniorNcoClub';
 
--- ============ ٢) سبب النقاط: قراءة خبر ============
+-- ============ ٢) إعلانات خاصة بكل نادٍ ============
+-- عمودٌ على جدول الإعلانات القائم: null للإعلان العام، واسم النادي لإعلانه.
+alter table public.announcements add column if not exists club text;
+do $$ begin
+  alter table public.announcements add constraint announcements_club_check
+    check (club is null or club in ('OfficersClub', 'SeniorNcoClub'));
+exception when duplicate_object then null; end $$;
+create index if not exists announcements_club_idx on public.announcements (club, published_at desc);
+
+-- ============ ٣) سبب النقاط: قراءة خبر ============
 alter type points_reason add value if not exists 'news_read';
 
--- ============ ٣) ما قرأه كلٌّ من الأخبار ============
+-- ============ ٤) ما قرأه كلٌّ من الأخبار ============
 -- المفتاح الأوّلي (القارئ، الخبر) هو ما يمنع منح النقطة مرّتين: الصفّ الثاني
 -- يُرفض، فلا يصير زرّ «قرأته» عدّادًا يُضغط.
 create table if not exists public.news_reads (
@@ -34,7 +43,7 @@ create policy "news_reads read own" on public.news_reads
   for select to authenticated using (auth.uid() = user_id);
 -- ولا سياسة كتابة: الإدراج لا يقع إلا داخل الدالة الموثوقة أدناه.
 
--- ============ ٤) الدالة التي تمنح النقطة ============
+-- ============ ٥) الدالة التي تمنح النقطة ============
 -- من الخادم لا من الهاتف: لو كان الهاتف هو من يكتب النقطة لكتبها من شاء كما
 -- شاء بلا أن يفتح خبرًا. ونقطتان لا عشر: القراءة أيسر من الحضور ومن الإجابة
 -- الصحيحة، وتسويتها بهما تجعل جمع النقاط بالضغط أربح من الحضور.
