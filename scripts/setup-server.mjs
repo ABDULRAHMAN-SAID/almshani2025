@@ -339,6 +339,23 @@ const CONFIRM_EMAIL = `<!doctype html>
   </div>
 </body></html>`;
 
+// رسالة استعادة كلمة المرور. كانت متروكة لقالب Supabase الافتراضي: إنجليزي،
+// ورابطُه يذهب إلى Site URL لا إلى التطبيق. والتطبيق يمرّر anshatati://reset-password
+// صراحةً، لكن الخادم لا يقبل وجهةً ليست في قائمة المسموح — فكان يتجاهلها
+// ويرسل إلى الويب، فيقف طالبُ الاستعادة أمام صفحة لا تُعيده إلى مكان.
+const RECOVERY_EMAIL = `<!doctype html>
+<html dir="rtl" lang="ar"><body style="font-family:system-ui,-apple-system,'Segoe UI',sans-serif;background:#f4f6f9;margin:0;padding:32px">
+  <div style="max-width:440px;margin:0 auto;background:#fff;border-radius:16px;padding:32px;text-align:center">
+    <h1 style="margin:0 0 8px;font-size:20px;color:#0a2340">أنشطتي — قاعدة صلالة الجوية</h1>
+    <p style="margin:0 0 24px;color:#5b6b80;line-height:1.9">طلبتَ تغيير كلمة مرورك.</p>
+    <a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#0a2340;color:#fff;text-decoration:none;padding:14px 28px;border-radius:10px;font-size:16px">افتح التطبيق وغيّر كلمة المرور</a>
+    <p style="margin:24px 0 0;color:#7a8699;font-size:13px;line-height:1.9">
+      الرابط صالح لساعة واحدة ويُستعمل مرة واحدة.<br>
+      إن لم تطلب هذا فتجاهل الرسالة — كلمة مرورك لم تتغيّر.
+    </p>
+  </div>
+</body></html>`;
+
 let authReady = false;
 try {
   await api(token, `/projects/${ref}/config/auth`, {
@@ -357,6 +374,11 @@ try {
       mailer_otp_length: 6,
       mailer_templates_confirmation_content: CONFIRM_EMAIL,
       mailer_subjects_confirmation: "رمز تأكيد حسابك — أنشطتي",
+      mailer_templates_recovery_content: RECOVERY_EMAIL,
+      mailer_subjects_recovery: "تغيير كلمة المرور — أنشطتي",
+      // بلا هذه القائمة يُرفض anshatati://reset-password وتذهب الاستعادة إلى
+      // الويب. والمخطّط مكتوب مرّتين: مطلقًا للنمط، وصريحًا للوجهة نفسها.
+      uri_allow_list: "anshatati://*,anshatati://reset-password",
       // أمّا الهاتف فيبقى بلا تأكيد: تأكيده يحتاج مزوّد رسائل مدفوعًا، ولو
       // طُلب بلا مزوّد لما استطاع أحد ربط رقمه بحسابه.
       sms_autoconfirm: true,
@@ -366,6 +388,7 @@ try {
   authReady = true;
   say(GREEN("  ✔ فُعّل الدخول بكلمة مرور، وتأكيد الحساب برمز إلى البريد."));
   say(DIM("  وقالب الرسالة عربي، يحمل الرمز لا رابطًا."));
+  say(DIM("  ورسالة الاستعادة عربية أيضًا، ورابطها يفتح التطبيق لا صفحة ويب."));
   say();
   say(DIM("  ملاحظتان قبل التوزيع على عدد كبير:"));
   say(DIM("   • بريد Supabase المجاني محدود — بضع رسائل في الساعة. ولو سجّل"));

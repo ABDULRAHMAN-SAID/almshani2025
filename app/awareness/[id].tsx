@@ -5,6 +5,7 @@ import { useLocalSearchParams } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { EmptyState } from "@/components/EmptyState";
 import { PatternOverlay } from "@/components/PatternOverlay";
+import { QueryState } from "@/components/QueryState";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { colors, radius, spacing, typography } from "@/constants";
 import { CATEGORY_COVER } from "@/constants/covers";
@@ -27,12 +28,27 @@ const CATEGORY_COVER_KEY: Record<string, ActivityCategory> = {
 
 export default function AwarenessArticleScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { data: article, isLoading } = useQuery({
+  const {
+    data: article,
+    isLoading,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: ["awareness-article", id],
     queryFn: () => fetchAwarenessArticle(id),
   });
 
-  if (isLoading) return <View style={styles.screen} />;
+  // كما في شاشة النشاط: بياض بلا رأس ولا مؤشّر كان يبدو عطلًا في التطبيق.
+  if (isLoading || error) {
+    return (
+      <View style={styles.screen}>
+        <ScreenHeader title="التوعية" />
+        <QueryState isLoading={isLoading} error={error} onRetry={() => void refetch()}>
+          {null}
+        </QueryState>
+      </View>
+    );
+  }
   if (!article) {
     return (
       <View style={styles.screen}>

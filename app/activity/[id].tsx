@@ -7,6 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { BottomSheet } from "@/components/BottomSheet";
 import { EmptyState } from "@/components/EmptyState";
 import { PrimaryButton } from "@/components/PrimaryButton";
+import { QueryState } from "@/components/QueryState";
 import { SecondaryButton } from "@/components/SecondaryButton";
 import { CATEGORY_META, tintBackground } from "@/constants/categories";
 import { CATEGORY_COVER } from "@/constants/covers";
@@ -25,7 +26,12 @@ import { useFeatures } from "@/hooks/useFeatures";
 export default function ActivityDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
-  const { data: activity, isLoading } = useQuery({
+  const {
+    data: activity,
+    isLoading,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: ["activity", id],
     queryFn: () => fetchActivityById(id),
   });
@@ -34,8 +40,25 @@ export default function ActivityDetailScreen() {
   const isRegistered = activity ? registeredIds.includes(activity.id) : false;
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
+  // فوق الخروج المبكّر لا تحته: الشاشة تعود أولًا وهي تُحمّل، فلو نُودي
+  // الخطّاف بعد ذلك لاختلف عددُ الخطّافات بين عرضٍ وعرض وانهار React عند
+  // وصول البيانات. ولا يظهر ذلك في وضع العرض لأن بياناته حاضرة بلا انتظار.
+  const { registrationEnabled } = useFeatures();
 
-  if (isLoading) return <View style={styles.screen} />;
+  // كانت تعود بـ View فارغة: لا شريط علوي ولا مؤشّر ولا رسالة. فمن فتحها
+  // وخادمُه بطيء أو منقطع وقف أمام بياض تامّ لا يدري أهو عطل أم انتظار،
+  // ولا زرّ رجوع أمامه. والغلاف الموحّد يعرض هيكلًا أثناء التحميل، وسبب
+  // الفشل وزرّ إعادة المحاولة عند الانقطاع.
+  if (isLoading || error) {
+    return (
+      <View style={styles.screen}>
+        <TopBar onDark={false} />
+        <QueryState isLoading={isLoading} error={error} onRetry={() => void refetch()}>
+          {null}
+        </QueryState>
+      </View>
+    );
+  }
   if (!activity) {
     return (
       <View style={styles.screen}>
@@ -47,7 +70,6 @@ export default function ActivityDetailScreen() {
 
   const meta = CATEGORY_META[activity.category];
   const statusColor = REGISTRATION_COLOR[activity.registrationStatus];
-  const { registrationEnabled } = useFeatures();
   const check = canRegister(activity, registrationEnabled);
   const seatsLeft =
     activity.capacity != null ? Math.max(activity.capacity - (activity.registeredCount ?? 0), 0) : null;

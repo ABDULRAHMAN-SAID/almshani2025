@@ -128,6 +128,14 @@ function ZERO() {
 
 const BUCKETS = ["activity-images", "app-media"];
 
+/**
+ * أكبر مرفق يسمح به التطبيق — الفيديو. لو كان سقف الحاوية دونه، قُبل المقطع
+ * على الجهاز ورفضه الخادم بعد أن يُرفع كاملًا، فيرى صاحبه فشلًا بلا سبب بعد
+ * انتظار طويل. وهذه مقارنة لا تُغني عنها معرفةُ وجود الحاوية.
+ */
+const APP_MAX_UPLOAD = 25 * 1024 * 1024;
+const mib = (bytes) => `${Math.round(bytes / 1024 / 1024)} ميجابايت`;
+
 /* -------------------------------- الفحص -------------------------------- */
 
 const results = [];
@@ -167,11 +175,29 @@ async function checkFunction(name, args) {
 
 async function checkBucket(name) {
   const { error } = await supabase.storage.from(name).list("", { limit: 1 });
-  if (!error) return record("تخزين", name, "ok");
-  if (/not found|does not exist/i.test(error.message ?? "")) {
+  if (error && /not found|does not exist/i.test(error.message ?? "")) {
     return record("تخزين", name, "missing", error.message?.slice(0, 60));
   }
-  record("تخزين", name, "guarded");
+  const status = error ? "guarded" : "ok";
+
+  // وسقفُها إن سُمح بقراءته: بعض المشاريع تمنع قراءة وصف الحاوية بمفتاح anon،
+  // وحينها نقول ذلك صراحةً بدل أن نصمت فيُفهم الصمت سلامةً.
+  let note = "";
+  try {
+    const { data } = await supabase.storage.getBucket(name);
+    if (data) {
+      const limit = data.file_size_limit;
+      if (!limit) note = "بلا سقف محدّد";
+      else if (limit < APP_MAX_UPLOAD) {
+        note = `سقفها ${mib(limit)} ودون ما يسمح به التطبيق (${mib(APP_MAX_UPLOAD)})`;
+        record("تخزين", name, "missing", note);
+        return;
+      } else note = `سقفها ${mib(limit)}`;
+    }
+  } catch {
+    /* لا يُقرأ الوصف بهذا المفتاح */
+  }
+  record("تخزين", name, status, note);
 }
 
 /* ---------------------------- هل الخادم مسموع؟ ----------------------------
@@ -218,7 +244,7 @@ line(bold("الدوال الموثوقة"));
 for (const [name, args] of FUNCTIONS) await checkFunction(name, args);
 
 line();
-line(bold("حاويات الملفات"));
+line(bold("حاويات الملفات") + dim(" — إليها تُرفع الصور والفيديو والصوت والملفّات"));
 for (const b of BUCKETS) await checkBucket(b);
 
 /* -------------------------------- الخلاصة -------------------------------- */

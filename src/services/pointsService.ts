@@ -4,6 +4,9 @@ import { MOCK_LEADERBOARD, MOCK_POINTS_TRANSACTIONS } from "./mockData";
 import { toPointsTransaction } from "./rowMappers";
 import { supabase } from "./supabase";
 
+// الخطأ يُرفع ولا يُبتلع: القراءة التي تُرجع فراغًا عند انقطاع الشبكة
+// تجعل الشاشة تقول «لا توجد بيانات» والخادمُ غير متاح أصلًا — فلا يرى
+// المستخدم سببًا ولا زرّ إعادة محاولة. ومع رفعه يتكفّل QueryState بهما.
 /**
  * في وضع البيانات التجريبية نحتفظ بحركات النقاط في الذاكرة (تُضاف إليها حركة
  * جديدة عند الإجابة الصحيحة على سؤال أو تسجيل حضور)، لمحاكاة صادقة للسلوك
@@ -24,12 +27,13 @@ export async function fetchPointsHistory(userId: string): Promise<PointsTransact
   if (USE_MOCK_DATA) {
     return [...mockLedger].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("points_transactions")
     // العلاقة المضمّنة تجلب عنوان النشاط؛ الجدول يحفظ معرّفه فقط.
     .select("*, activities(title)")
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
+  if (error) throw error;
   return (data ?? []).map(toPointsTransaction);
 }
 
@@ -49,11 +53,12 @@ export async function fetchLeaderboard(currentUserName?: string): Promise<Leader
       .map((entry, index) => ({ ...entry, rank: index + 1 }));
     return withMe;
   }
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("leaderboard_view")
     .select("*")
     .order("total_points", { ascending: false })
     .limit(20);
+  if (error) throw error;
   return (
     (data as { user_id: string; name: string; total_points: number }[])?.map((row, index) => ({
       userId: row.user_id,

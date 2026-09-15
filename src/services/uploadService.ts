@@ -4,6 +4,19 @@ import * as ImagePicker from "expo-image-picker";
 import type { MediaAttachment, MediaKind } from "@/types/models";
 import { USE_MOCK_DATA } from "./config";
 import { supabase } from "./supabase";
+// المنطق الخالص في utils/media ليُختبر خارج الهاتف؛ ويُعاد تصديره هنا ليبقى
+// مسار الاستيراد في الشاشات كما هو.
+import {
+  assertWithinLimit,
+  base64ToBytes,
+  bytesOfBase64,
+  extensionOf,
+  kindOfMime,
+  MEDIA_KIND_LABEL,
+  MEDIA_LIMITS,
+  formatBytes,
+  formatDuration,
+} from "@/utils/media";
 
 /** حاوية أغلفة الأنشطة والإعلانات — القراءة للجميع والكتابة للإدارة فقط. */
 export const IMAGE_BUCKET = "activity-images";
@@ -13,28 +26,9 @@ export const MEDIA_BUCKET = "app-media";
 
 export type { MediaAttachment, MediaKind };
 
-export interface MediaLimit {
-  bytes: number;
-  label: string;
-}
 
-/**
- * حدود الحجم لكل نوع. مختارة بحيث يبقى الرفع ممكنًا على شبكة القاعدة البطيئة،
- * ولا تمتلئ الحاوية بملفات ضخمة.
- */
-export const MEDIA_LIMITS: Record<MediaKind, MediaLimit> = {
-  image: { bytes: 3 * 1024 * 1024, label: "٣ ميجابايت" },
-  video: { bytes: 25 * 1024 * 1024, label: "٢٥ ميجابايت" },
-  audio: { bytes: 8 * 1024 * 1024, label: "٨ ميجابايت" },
-  file: { bytes: 10 * 1024 * 1024, label: "١٠ ميجابايت" },
-};
-
-export const MEDIA_KIND_LABEL: Record<MediaKind, string> = {
-  image: "صورة",
-  video: "فيديو",
-  audio: "مقطع صوتي",
-  file: "ملف",
-};
+export { MEDIA_KIND_LABEL, MEDIA_LIMITS, formatBytes, formatDuration };
+export type { MediaLimit } from "@/utils/media";
 
 /** ملف مختار أو مسجَّل، قبل الرفع. */
 export interface PickedMedia {
@@ -54,79 +48,6 @@ export interface PickedImage {
   base64: string;
   width: number;
   height: number;
-}
-
-const B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-
-/**
- * فكّ ترميز base64 إلى بايتات. مكتوب هنا بدل إضافة اعتمادية، ولأن `atob`
- * غير مضمونة في React Native.
- */
-function base64ToBytes(base64: string): Uint8Array {
-  const clean = base64.replace(/[^A-Za-z0-9+/]/g, "");
-  const length = Math.floor((clean.length * 3) / 4);
-  const bytes = new Uint8Array(length);
-  let byte = 0;
-  let bits = 0;
-  let out = 0;
-
-  for (let i = 0; i < clean.length; i += 1) {
-    const value = B64.indexOf(clean[i]);
-    if (value < 0) continue;
-    byte = (byte << 6) | value;
-    bits += 6;
-    if (bits >= 8) {
-      bits -= 8;
-      bytes[out] = (byte >> bits) & 0xff;
-      out += 1;
-    }
-  }
-  return bytes.subarray(0, out);
-}
-
-/** الحجم التقريبي بالبايت من طول سلسلة base64. */
-const bytesOfBase64 = (base64: string) => Math.floor((base64.length * 3) / 4);
-
-/** يحوّل البايتات إلى نص عربي مقروء: ٤٢٠ كيلوبايت / ١٫٨ ميجابايت. */
-export function formatBytes(size?: number): string {
-  if (!size || size <= 0) return "";
-  if (size < 1024) return `${size} بايت`;
-  if (size < 1024 * 1024) return `${Math.round(size / 1024)} كيلوبايت`;
-  return `${(size / (1024 * 1024)).toFixed(1)} ميجابايت`;
-}
-
-/** يحوّل المدة إلى m:ss. */
-export function formatDuration(ms?: number): string {
-  if (!ms || ms <= 0) return "0:00";
-  const total = Math.round(ms / 1000);
-  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
-}
-
-const EXTENSIONS: Record<string, string> = {
-  "image/jpeg": "jpg",
-  "image/png": "png",
-  "image/webp": "webp",
-  "video/mp4": "mp4",
-  "video/quicktime": "mov",
-  "audio/m4a": "m4a",
-  "audio/mp4": "m4a",
-  "audio/mpeg": "mp3",
-  "audio/aac": "aac",
-  "application/pdf": "pdf",
-};
-
-function extensionOf(media: PickedMedia): string {
-  const fromMime = EXTENSIONS[media.mimeType];
-  if (fromMime) return fromMime;
-  const fromName = media.name.includes(".") ? media.name.split(".").pop() : "";
-  return (fromName || "bin").toLowerCase().slice(0, 5);
-}
-
-function assertWithinLimit(kind: MediaKind, size: number) {
-  const limit = MEDIA_LIMITS[kind];
-  if (size > limit.bytes) {
-    throw new Error(`حجم الملف كبير. الحد الأقصى لـ${MEDIA_KIND_LABEL[kind]} هو ${limit.label}.`);
-  }
 }
 
 /* ============ الاختيار من الجهاز ============ */
@@ -280,12 +201,16 @@ export async function pickFile(): Promise<PickedMedia | null> {
   const asset = result.assets?.[0];
   if (!asset?.uri) throw new Error("تعذّرت قراءة الملف، جرّب ملفًا آخر.");
 
-  const size = asset.size ?? (await fileSize(asset.uri));
-  assertWithinLimit("file", size);
-
   const mimeType = asset.mimeType ?? "application/octet-stream";
+  // النوع أولًا ثم الحدّ: كان يُفحص بحدّ الملفّات (١٠ ميجا) ثم يُرجَع كصورة
+  // (حدّها ٣) — فتُقبل عند الاختيار ويرفضها الرفعُ بعد حين، والمستخدم يظنّ
+  // العطل في الشبكة لا في حجم ما اختاره.
+  const kind = kindOfMime(mimeType);
+  const size = asset.size ?? (await fileSize(asset.uri));
+  assertWithinLimit(kind, size);
+
   return {
-    kind: mimeType.startsWith("image/") ? "image" : "file",
+    kind,
     uri: asset.uri,
     name: asset.name ?? "ملف",
     mimeType,
