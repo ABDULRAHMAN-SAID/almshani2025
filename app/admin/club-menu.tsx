@@ -6,7 +6,7 @@ import { PrimaryButton } from "@/components/PrimaryButton";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { colors, radius, spacing, typography } from "@/constants";
 import { CATEGORY_META } from "@/constants/categories";
-import { fetchClubMenu, publishClubMenu, weekStartOf } from "@/services/menuService";
+import { fetchClub, fetchClubMenu, publishClubMenu, updateClub, weekStartOf } from "@/services/menuService";
 import { showToast } from "@/store/toastStore";
 import type { ClubKey } from "@/types/models";
 import { formatArabicDate } from "@/utils/date";
@@ -29,10 +29,30 @@ export default function AdminClubMenuScreen() {
   const [image, setImage] = useState("");
   const [note, setNote] = useState("");
   const [meals, setMeals] = useState<Record<string, string>>({});
+  const [clubTitle, setClubTitle] = useState("");
+  const [clubSubtitle, setClubSubtitle] = useState("");
+  const [clubImage, setClubImage] = useState("");
 
   const weekStart = weekStartOf();
 
   const current = useQuery({ queryKey: ["club-menu", club], queryFn: () => fetchClubMenu(club) });
+  const profile = useQuery({ queryKey: ["club", club], queryFn: () => fetchClub(club) });
+
+  useEffect(() => {
+    setClubTitle(profile.data?.title ?? "");
+    setClubSubtitle(profile.data?.subtitle ?? "");
+    setClubImage(profile.data?.image ?? "");
+  }, [profile.data]);
+
+  const saveProfile = useMutation({
+    mutationFn: () =>
+      updateClub(club, { title: clubTitle, subtitle: clubSubtitle, image: clubImage }),
+    onSuccess: () => {
+      void client.invalidateQueries();
+      showToast("حُفظت بيانات النادي", "success");
+    },
+    onError: (e) => showToast(toArabicMessage(e, "تعذّر الحفظ"), "error"),
+  });
 
   // تبديل النادي يعيد تعبئة الحقول بقائمته هو — لا بقائمة النادي السابق.
   useEffect(() => {
@@ -69,7 +89,7 @@ export default function AdminClubMenuScreen() {
 
   return (
     <View style={styles.screen}>
-      <ScreenHeader title="قائمة الطعام" />
+      <ScreenHeader title="النادي وقائمته" />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <Text style={styles.label}>النادي</Text>
         <View style={styles.chipWrap}>
@@ -89,6 +109,47 @@ export default function AdminClubMenuScreen() {
             );
           })}
         </View>
+
+        {/*
+          بيانات النادي نفسه — اسمه ووصفه وصورته.
+          كانت مكتوبة في الشفرة، فلم يكن لمن يعرف النادي سبيلٌ إلى تصحيحها.
+        */}
+        <Text style={styles.label}>اسم النادي</Text>
+        <TextInput
+          value={clubTitle}
+          onChangeText={setClubTitle}
+          placeholder="نادي الضباط"
+          placeholderTextColor={colors.textMuted}
+          style={styles.dayInput}
+          textAlign="right"
+        />
+
+        <Text style={styles.label}>وصف مختصر</Text>
+        <TextInput
+          value={clubSubtitle}
+          onChangeText={setClubSubtitle}
+          placeholder="مطعم النادي ومرافقه"
+          placeholderTextColor={colors.textMuted}
+          style={styles.dayInput}
+          textAlign="right"
+        />
+
+        <ImageField
+          label="صورة النادي"
+          hint="تظهر خلف اسم النادي أعلى صفحته"
+          value={clubImage}
+          onChange={setClubImage}
+          folder="clubs"
+        />
+
+        <PrimaryButton
+          label="احفظ بيانات النادي"
+          onPress={() => saveProfile.mutate()}
+          disabled={clubTitle.trim().length < 2}
+          loading={saveProfile.isPending}
+        />
+
+        <View style={styles.divider} />
 
         <View style={styles.weekCard}>
           <Text style={styles.weekLabel}>أسبوع {formatArabicDate(weekStart)}</Text>
@@ -146,6 +207,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xxl },
   label: { ...typography.caption, marginTop: spacing.sm },
+  divider: { height: 1, backgroundColor: colors.border, marginVertical: spacing.lg },
   chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   chip: {
     paddingHorizontal: spacing.lg,

@@ -1,5 +1,6 @@
 import type {
   ClubMenu,
+  ClubProfile,
   Activity,
   Announcement,
   AppNotification,
@@ -341,6 +342,20 @@ export const MOCK_ACTIVITIES: Activity[] = [
     registrationStatus: "upcoming",
     isAnnual: true,
     createdAt: iso(-2),
+  },
+];
+
+/** ملفّا النادييْن — نسخة العرض وحدها. */
+export const MOCK_CLUBS: ClubProfile[] = [
+  {
+    key: "OfficersClub",
+    title: "نادي الضباط",
+    subtitle: "مطعم النادي ومرافقه — قائمة طعام الأسبوع وإعلاناته",
+  },
+  {
+    key: "SeniorNcoClub",
+    title: "نادي كبار ضباط الصف",
+    subtitle: "مطعم النادي ومرافقه — قائمة طعام الأسبوع وإعلاناته",
   },
 ];
 

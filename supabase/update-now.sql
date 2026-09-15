@@ -21,7 +21,32 @@ do $$ begin
 exception when duplicate_object then null; end $$;
 create index if not exists announcements_club_idx on public.announcements (club, published_at desc);
 
--- ============ ٣) قائمة طعام النادي ============
+-- ============ ٣) الأندية: اسمها ووصفها وصورتها ============
+-- تُحرَّر من داخل التطبيق لا من الشفرة.
+create table if not exists public.clubs (
+  key text primary key check (key in ('OfficersClub', 'SeniorNcoClub')),
+  title text not null,
+  subtitle text not null default '',
+  image text,
+  updated_at timestamptz not null default now()
+);
+
+insert into public.clubs (key, title, subtitle) values
+  ('OfficersClub', 'نادي الضباط', 'مطعم النادي ومرافقه — قائمة طعام الأسبوع وإعلاناته'),
+  ('SeniorNcoClub', 'نادي كبار ضباط الصف', 'مطعم النادي ومرافقه — قائمة طعام الأسبوع وإعلاناته')
+on conflict (key) do nothing;
+
+alter table public.clubs enable row level security;
+
+drop policy if exists "clubs read" on public.clubs;
+create policy "clubs read" on public.clubs
+  for select to authenticated using (true);
+
+drop policy if exists "clubs admin write" on public.clubs;
+create policy "clubs admin write" on public.clubs
+  for all using (public.is_admin()) with check (public.is_admin());
+
+-- ============ ٤) قائمة طعام النادي ============
 -- قائمة واحدة لكل نادٍ في الأسبوع: المفتاح الفريد (النادي، بداية الأسبوع)
 -- يجعل نشرَ القائمة مرّتين تصحيحًا يحلّ محلّ الأول، لا قائمتين متراكمتين
 -- يقرأ الناس أقدمهما.
@@ -49,10 +74,10 @@ drop policy if exists "club_menus admin write" on public.club_menus;
 create policy "club_menus admin write" on public.club_menus
   for all using (public.is_admin()) with check (public.is_admin());
 
--- ============ ٤) سبب النقاط: قراءة خبر ============
+-- ============ ٥) سبب النقاط: قراءة خبر ============
 alter type points_reason add value if not exists 'news_read';
 
--- ============ ٥) ما قرأه كلٌّ من الأخبار ============
+-- ============ ٦) ما قرأه كلٌّ من الأخبار ============
 -- المفتاح الأوّلي (القارئ، الخبر) هو ما يمنع منح النقطة مرّتين: الصفّ الثاني
 -- يُرفض، فلا يصير زرّ «قرأته» عدّادًا يُضغط.
 create table if not exists public.news_reads (
@@ -71,7 +96,7 @@ create policy "news_reads read own" on public.news_reads
   for select to authenticated using (auth.uid() = user_id);
 -- ولا سياسة كتابة: الإدراج لا يقع إلا داخل الدالة الموثوقة أدناه.
 
--- ============ ٦) الدالة التي تمنح النقطة ============
+-- ============ ٧) الدالة التي تمنح النقطة ============
 -- من الخادم لا من الهاتف: لو كان الهاتف هو من يكتب النقطة لكتبها من شاء كما
 -- شاء بلا أن يفتح خبرًا. ونقطتان لا عشر: القراءة أيسر من الحضور ومن الإجابة
 -- الصحيحة، وتسويتها بهما تجعل جمع النقاط بالضغط أربح من الحضور.

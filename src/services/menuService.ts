@@ -1,7 +1,7 @@
-import type { ClubKey, ClubMenu } from "@/types/models";
+import type { ClubKey, ClubMenu, ClubProfile } from "@/types/models";
 import { USE_MOCK_DATA } from "./config";
-import { MOCK_CLUB_MENUS } from "./mockData";
-import { toClubMenu } from "./rowMappers";
+import { MOCK_CLUBS, MOCK_CLUB_MENUS } from "./mockData";
+import { toClubMenu, toClubProfile } from "./rowMappers";
 import { supabase } from "./supabase";
 
 /**
@@ -66,6 +66,41 @@ export async function publishClubMenu(draft: ClubMenuDraft): Promise<void> {
       days: draft.days.filter((entry) => entry.meal.trim().length > 0),
     },
     { onConflict: "club,week_start" }
+  );
+  if (error) throw error;
+}
+
+/* ------------------------------ النادي نفسه ------------------------------ */
+
+/**
+ * ملفّ النادي: اسمه ووصفه وصورته.
+ *
+ * وكانت الثلاثة مكتوبةً في الشفرة: الاسم والوصف ثابتان، والصورة تدرّجٌ
+ * مولَّد. فلم يكن لمن يعرف النادي سبيلٌ إلى تصحيح وصفه ولا وضع صورته —
+ * وهو وصفٌ كتبتُه أنا وأخطأتُ فيه، إذ حسبتُه قاعة فعاليات وهو مطعم.
+ */
+export async function fetchClub(key: ClubKey): Promise<ClubProfile | null> {
+  if (USE_MOCK_DATA) return MOCK_CLUBS.find((club) => club.key === key) ?? null;
+  const { data, error } = await supabase
+    .from("clubs")
+    .select("*")
+    .eq("key", key)
+    .maybeSingle();
+  if (error) throw error;
+  return data ? toClubProfile(data) : null;
+}
+
+export async function updateClub(key: ClubKey, patch: Partial<ClubProfile>): Promise<void> {
+  if (USE_MOCK_DATA) return;
+  const { error } = await supabase.from("clubs").upsert(
+    {
+      key,
+      title: patch.title?.trim() ?? "",
+      subtitle: patch.subtitle?.trim() ?? "",
+      image: patch.image?.trim() || null,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "key" }
   );
   if (error) throw error;
 }

@@ -51,7 +51,7 @@ export const SECTION_DEFINITIONS: Record<string, SectionDefinition> = {
   "officers-club": {
     key: "officers-club",
     title: "نادي الضباط",
-    subtitle: "فعاليات النادي ولقاءاته وبرامجه",
+    subtitle: "مطعم النادي ومرافقه — قائمة طعام الأسبوع وإعلاناته",
     categories: ["OfficersClub"],
     club: "OfficersClub",
     filters: [{ key: "all", label: "الكل", categories: [] }],
@@ -59,7 +59,7 @@ export const SECTION_DEFINITIONS: Record<string, SectionDefinition> = {
   "nco-club": {
     key: "nco-club",
     title: "نادي كبار ضباط الصف",
-    subtitle: "فعاليات النادي ولقاءاته وبرامجه",
+    subtitle: "مطعم النادي ومرافقه — قائمة طعام الأسبوع وإعلاناته",
     categories: ["SeniorNcoClub"],
     club: "SeniorNcoClub",
     filters: [{ key: "all", label: "الكل", categories: [] }],

@@ -1,5 +1,6 @@
 import type {
   ClubMenu,
+  ClubProfile,
   Activity,
   ActivityResult,
   Announcement,
@@ -68,6 +69,13 @@ export const toActivity = (row: Row): Activity => ({
   // results و checkInCode لا يأتيان مع صفّ النشاط: الأولى جدول مستقل،
   // والثاني لا يُقرأ إلا بدالة موثوقة على الخادم.
   createdAt: day(row.created_at),
+});
+
+export const toClubProfile = (row: Row): ClubProfile => ({
+  key: row.key as ClubProfile["key"],
+  title: text(row.title),
+  subtitle: text(row.subtitle),
+  image: optional(row.image),
 });
 
 export const toClubMenu = (row: Row): ClubMenu => ({

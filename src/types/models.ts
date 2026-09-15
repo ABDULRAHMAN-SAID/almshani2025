@@ -70,6 +70,14 @@ export type AnnouncementType = "تسجيل" | "تنبيه" | "نتائج" | "ع�
 /** النادي الذي يخصّه إعلان، إن خصّ ناديًا. */
 export type ClubKey = "OfficersClub" | "SeniorNcoClub";
 
+/** ملفّ النادي: اسمه ووصفه وصورته — تُحرَّر من لوحة الإدارة. */
+export interface ClubProfile {
+  key: ClubKey;
+  title: string;
+  subtitle: string;
+  image?: string;
+}
+
 /** يوم واحد من قائمة الطعام. */
 export interface ClubMenuDay {
   day: string;

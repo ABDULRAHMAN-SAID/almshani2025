@@ -14,7 +14,7 @@ import { PointsBadge } from "@/components/PointsBadge";
 import { NewsCard } from "@/components/NewsCard";
 import { SectionHeader } from "@/components/SectionHeader";
 import { WeeklyQuizTeaserCard } from "@/components/WeeklyQuizTeaserCard";
-import { HOME_SECTIONS } from "@/constants/categories";
+import { HOME_GROUP_LABEL, HOME_GROUP_ORDER, HOME_SECTIONS } from "@/constants/categories";
 import { colors, radius, shadow, spacing, typography } from "@/constants";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -89,20 +89,34 @@ export default function HomeScreen() {
         </View>
       </HeaderBand>
 
+      {/*
+        الشبكة مقسّمة أشرطة بعناوينها.
+        ثلاثة عشر رمزًا في شبكة واحدة تُقرأ كوماً لا كقائمة: لا فرق في العين
+        بين «الرماية» و«تواصل معنا»، فيُبحث عن كل شيء من أوّله كل مرّة.
+      */}
       <View style={styles.gridPanel}>
-        <View style={styles.grid}>
-          {sections.map((section) => (
-            <View key={section.key} style={styles.gridItem}>
-              <CategoryCard
-                label={section.label}
-                icon={section.icon}
-                tint={section.tint}
-                variant="plain"
-                onPress={() => openSection(section.route)}
-              />
+        {HOME_GROUP_ORDER.map((group, index) => {
+          const items = sections.filter((section) => section.group === group);
+          if (items.length === 0) return null;
+          return (
+            <View key={group} style={index > 0 ? styles.groupSpaced : undefined}>
+              <Text style={styles.groupLabel}>{HOME_GROUP_LABEL[group]}</Text>
+              <View style={styles.grid}>
+                {items.map((section) => (
+                  <View key={section.key} style={styles.gridItem}>
+                    <CategoryCard
+                      label={section.label}
+                      icon={section.icon}
+                      tint={section.tint}
+                      variant="plain"
+                      onPress={() => openSection(section.route)}
+                    />
+                  </View>
+                ))}
+              </View>
             </View>
-          ))}
-        </View>
+          );
+        })}
       </View>
 
       <View style={styles.section}>
@@ -281,6 +295,13 @@ const styles = StyleSheet.create({
     textAlign: "left",
     marginBottom: -spacing.sm,
   },
+  groupLabel: {
+    ...typography.caption,
+    color: colors.textMuted,
+    marginBottom: spacing.sm,
+    marginHorizontal: spacing.xs,
+  },
+  groupSpaced: { marginTop: spacing.lg },
   section: { marginTop: spacing.xl, paddingHorizontal: spacing.lg },
   newsPlaceholder: {
     backgroundColor: colors.surface,

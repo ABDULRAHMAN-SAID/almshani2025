@@ -14,7 +14,7 @@ import { colors, spacing, typography } from "@/constants";
 import { useAllActivities } from "@/hooks/useActivities";
 import { useAnnouncements } from "@/hooks/useNotifications";
 import { useQuery } from "@tanstack/react-query";
-import { fetchClubMenu } from "@/services/menuService";
+import { fetchClub, fetchClubMenu } from "@/services/menuService";
 import { ACTIVITY_FORMS, pluralizeAr } from "@/utils/arabic";
 import { TODAY_ISO } from "@/utils/calendar";
 
@@ -29,6 +29,14 @@ export default function SectionScreen() {
   // إعلانات النادي وحده. والقائمة محمَّلة أصلًا لشاشة الإعلانات، فالترشيح
   // هنا لا يكلّف طلبًا ثانيًا.
   // قائمة الطعام أوّل ما يُسأل عنه في النادي، فهي أوّل ما في صفحته.
+  // ملفّ النادي: اسمه ووصفه وصورته كما حرّرتها الإدارة، لا كما كُتبت في
+  // الشفرة. ويرجع كل شيء إلى تعريف القسم إن لم يُحرَّر شيء بعد.
+  const club = useQuery({
+    queryKey: ["club", section?.club],
+    enabled: Boolean(section?.club),
+    queryFn: () => fetchClub(section!.club!),
+  });
+
   const menu = useQuery({
     queryKey: ["club-menu", section?.club],
     enabled: Boolean(section?.club),
@@ -74,7 +82,11 @@ export default function SectionScreen() {
     <View style={styles.screen}>
       <View style={styles.banner}>
         <Image
-          source={CATEGORY_COVER[section.categories[0]]}
+          source={
+            club.data?.image
+              ? { uri: club.data.image }
+              : CATEGORY_COVER[section.categories[0]]
+          }
           style={StyleSheet.absoluteFill}
           resizeMode="cover"
           accessibilityIgnoresInvertColors
@@ -85,8 +97,8 @@ export default function SectionScreen() {
           end={{ x: 0, y: 1 }}
           style={StyleSheet.absoluteFill}
         />
-        <ScreenHeader title={section.title} onDark />
-        <Text style={styles.bannerSubtitle}>{section.subtitle}</Text>
+        <ScreenHeader title={club.data?.title || section.title} onDark />
+        <Text style={styles.bannerSubtitle}>{club.data?.subtitle || section.subtitle}</Text>
       </View>
 
       {section.filters.length > 1 ? (

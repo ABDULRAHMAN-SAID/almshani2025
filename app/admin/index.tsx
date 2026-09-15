@@ -186,8 +186,8 @@ function OverviewTab() {
         />
         <ActionRow
           icon="restaurant-outline"
-          label="قائمة طعام النادي"
-          hint="طعام الأسبوع في نادي الضباط أو نادي كبار ضباط الصف"
+          label="الأندية وقوائم طعامها"
+          hint="اسم النادي وصورته، وقائمة طعام الأسبوع"
           onPress={() => router.push("/admin/club-menu")}
         />
         <ActionRow

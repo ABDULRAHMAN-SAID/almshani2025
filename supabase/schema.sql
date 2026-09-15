@@ -148,6 +148,25 @@ create table if not exists public.news_reads (
 );
 create index if not exists news_reads_user_idx on public.news_reads (user_id);
 
+-- ============ الأندية ============
+-- اسم النادي ووصفه وصورته — تُحرَّر من داخل التطبيق لا من الشفرة.
+--
+-- والنادي مطعم ومكان راحة لفئة بعينها، لا قاعة فعاليات: وصفه يكتبه من يعرفه،
+-- وصورته صورته هو لا تدرّجًا مولَّدًا. وجدولٌ من صفّين أهون من بناءٍ جديد كلّما
+-- تغيّرت كلمة.
+create table if not exists public.clubs (
+  key text primary key check (key in ('OfficersClub', 'SeniorNcoClub')),
+  title text not null,
+  subtitle text not null default '',
+  image text,
+  updated_at timestamptz not null default now()
+);
+
+insert into public.clubs (key, title, subtitle) values
+  ('OfficersClub', 'نادي الضباط', 'مطعم النادي ومرافقه — قائمة طعام الأسبوع وإعلاناته'),
+  ('SeniorNcoClub', 'نادي كبار ضباط الصف', 'مطعم النادي ومرافقه — قائمة طعام الأسبوع وإعلاناته')
+on conflict (key) do nothing;
+
 -- ============ قائمة طعام النادي ============
 -- قائمة واحدة لكل نادٍ في الأسبوع — وهذا ما يفرضه المفتاح الفريد أدناه:
 -- نشرُ قائمة الأسبوع مرّتين تصحيحٌ لا قائمتان، فيحلّ الثاني محلّ الأول بدل
@@ -263,6 +282,7 @@ alter table public.awareness_articles enable row level security;
 alter table public.news enable row level security;
 alter table public.news_reads enable row level security;
 alter table public.club_menus enable row level security;
+alter table public.clubs enable row level security;
 alter table public.notifications enable row level security;
 alter table public.points_transactions enable row level security;
 alter table public.activity_checkins enable row level security;
@@ -500,6 +520,14 @@ begin
 end $$;
 
 grant execute on function public.mark_news_read(uuid) to authenticated;
+
+drop policy if exists "clubs read" on public.clubs;
+create policy "clubs read" on public.clubs
+  for select to authenticated using (true);
+
+drop policy if exists "clubs admin write" on public.clubs;
+create policy "clubs admin write" on public.clubs
+  for all using (public.is_admin()) with check (public.is_admin());
 
 drop policy if exists "club_menus read" on public.club_menus;
 create policy "club_menus read" on public.club_menus
