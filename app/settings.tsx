@@ -1,9 +1,10 @@
-import { ScrollView, StyleSheet, Switch, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import Constants from "expo-constants";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { colors, radius, spacing, typography } from "@/constants";
 import { BUILD_STAMP } from "@/services/config";
+import { useAppUpdate } from "@/hooks/useAppUpdate";
 import { useSettingsStore } from "@/store/settingsStore";
 
 const PRIVACY_POINTS = [
@@ -35,6 +36,7 @@ function installedVersion(): string {
 
 export default function SettingsScreen() {
   const { activityReminders, announcementAlerts, quizReminders, toggle } = useSettingsStore();
+  const { checkNow, checking } = useAppUpdate();
 
   return (
     <View style={styles.screen}>
@@ -99,6 +101,26 @@ export default function SettingsScreen() {
             <Text style={styles.rowLabel}>الإصدار</Text>
             <Text style={styles.rowValue}>{installedVersion()}</Text>
           </View>
+          <View style={styles.divider} />
+          {/*
+            فحصٌ بالطلب، إلى جانب الفحص التلقائي عند كل فتحة.
+            التحديث يصل وحده، لكن من ينتظر إصلاحًا بعينه لا يريد أن ينتظر
+            فتحةً تالية ليعرف — ولا أن يسأل أحدًا «هل وصل؟».
+          */}
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => void checkNow()}
+            disabled={checking}
+            style={({ pressed }) => [styles.staticRow, pressed ? styles.rowPressed : null]}
+          >
+            <Ionicons name="cloud-download-outline" size={19} color={colors.primary} />
+            <Text style={styles.rowLabel}>ابحث عن تحديث</Text>
+            {checking ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              <Ionicons name="chevron-back" size={17} color={colors.textMuted} />
+            )}
+          </Pressable>
         </View>
 
         <Text style={styles.footer}>
@@ -149,6 +171,7 @@ const styles = StyleSheet.create({
   staticRow: { flexDirection: "row", alignItems: "center", gap: spacing.md, paddingVertical: spacing.md },
   rowLabel: { ...typography.body, flex: 1 },
   rowHint: { ...typography.caption },
+  rowPressed: { opacity: 0.6 },
   rowValue: { ...typography.caption },
   divider: { height: 1, backgroundColor: colors.border },
   privacyRow: { flexDirection: "row", alignItems: "flex-start", gap: spacing.sm, paddingVertical: spacing.sm },
