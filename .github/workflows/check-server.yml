@@ -22,7 +22,10 @@ jobs:
       - name: هيّئ Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # ‏22 لا 20: مكتبة Supabase تبني عميلها على WebSocket المدمج، وهو
+          # غير موجود في Node 20 — فتسقط الأداة عند إنشاء العميل، قبل أن
+          # تسأل الخادم سؤالًا واحدًا، ويبدو ذلك كأنّ الخادم هو المعطوب.
+          node-version: 22
           cache: npm
 
       - name: تحقّق من الأسرار
