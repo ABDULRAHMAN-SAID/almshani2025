@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { EmptyState } from "@/components/EmptyState";
 import { FilterChips } from "@/components/FilterChips";
 import { tintBackground } from "@/constants/categories";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors, radius, spacing, typography } from "@/constants";
 import { fetchAwarenessLibrary } from "@/services/awarenessService";
 import { formatArabicDate } from "@/utils/date";
@@ -25,6 +26,8 @@ const CATEGORY_STYLE: Record<string, { icon: keyof typeof Ionicons.glyphMap; tin
 
 /** مكتبة المحتوى التوعوي: بطاقات قصيرة مصنّفة، وكل بطاقة تفتح المقال كاملًا. */
 export default function AwarenessScreen() {
+  // الرأس أوّل عنصر في الشاشة، فيقع تحت شريط الحالة بلا هذه.
+  const insets = useSafeAreaInsets();
   const { data: articles } = useQuery({ queryKey: ["awareness-library"], queryFn: fetchAwarenessLibrary });
   const [filterKey, setFilterKey] = useState("الكل");
 
@@ -36,7 +39,7 @@ export default function AwarenessScreen() {
 
   return (
     <View style={styles.screen}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
         <Text style={styles.title}>التوعية</Text>
         <Text style={styles.subtitle}>محتوى توعوي عام: أمن المعلومات، مكافحة المخدرات، والسلامة</Text>
       </View>
@@ -90,7 +93,7 @@ export default function AwarenessScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  header: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg, gap: 2, marginBottom: spacing.md },
+  header: { paddingHorizontal: spacing.lg, gap: 2, marginBottom: spacing.md },
   title: { ...typography.h1 },
   subtitle: { ...typography.bodyMuted },
   filters: { paddingHorizontal: spacing.lg, marginBottom: spacing.md },

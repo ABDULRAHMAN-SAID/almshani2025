@@ -1,6 +1,7 @@
 import { type ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { colors, spacing, typography } from "@/constants";
 
@@ -18,8 +19,9 @@ interface ScreenHeaderProps {
  */
 export function ScreenHeader({ title, action, onDark }: ScreenHeaderProps) {
   const tint = onDark ? colors.textOnPrimary : colors.textPrimary;
+  const insets = useSafeAreaInsets();
   return (
-    <View style={styles.header}>
+    <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="رجوع"
@@ -36,6 +38,13 @@ export function ScreenHeader({ title, action, onDark }: ScreenHeaderProps) {
   );
 }
 
+/**
+ * حشوة أعلى الشاشة تُحسب من الجهاز لا تُقدَّر.
+ *
+ * كانت ثابتة، فوقع الرأس تحت شريط الحالة: العنوان مقصوص نصفه وزرّ الرجوع
+ * ملتصق بالساعة. ولا يظهر ذلك في متصفّح ولا في محاكٍ بلا نتوء — يظهر على
+ * أوّل هاتف حقيقي، وهو أوّل ما تقع عليه العين في كل شاشة.
+ */
 const styles = StyleSheet.create({
   header: {
     flexDirection: "row",

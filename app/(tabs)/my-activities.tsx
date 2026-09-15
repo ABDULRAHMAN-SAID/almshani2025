@@ -4,6 +4,7 @@ import { router } from "expo-router";
 import { ActivityListRow } from "@/components/ActivityListRow";
 import { EmptyState } from "@/components/EmptyState";
 import { FilterChips } from "@/components/FilterChips";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors, spacing, typography } from "@/constants";
 import { useAllActivities } from "@/hooks/useActivities";
 import { useRegistrationStore } from "@/store/registrationStore";
@@ -20,6 +21,8 @@ const TABS = [
 
 /** الأنشطة التي سجّل فيها المستخدم، مقسّمة حسب الوقت والنوع. */
 export default function MyActivitiesScreen() {
+  // الرأس أوّل عنصر في الشاشة، فيقع تحت شريط الحالة بلا هذه.
+  const insets = useSafeAreaInsets();
   const { data: activities } = useAllActivities();
   const registeredIds = useRegistrationStore((state) => state.registeredIds);
   const [tab, setTab] = useState("upcoming");
@@ -50,7 +53,7 @@ export default function MyActivitiesScreen() {
 
   return (
     <View style={styles.screen}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
         <Text style={styles.title}>نشاطاتي</Text>
         <Text style={styles.subtitle}>
           {mine.length > 0 ? `أنت مسجّل في ${pluralizeAr(mine.length, ACTIVITY_FORMS)}` : "لم تسجّل في أي نشاط بعد"}
@@ -89,7 +92,7 @@ export default function MyActivitiesScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  header: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg, gap: 2, marginBottom: spacing.md },
+  header: { paddingHorizontal: spacing.lg, gap: 2, marginBottom: spacing.md },
   title: { ...typography.h1 },
   subtitle: { ...typography.bodyMuted },
   filters: { paddingHorizontal: spacing.lg, marginBottom: spacing.md },

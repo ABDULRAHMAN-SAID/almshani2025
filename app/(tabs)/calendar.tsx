@@ -5,6 +5,7 @@ import { CalendarMonth } from "@/components/CalendarMonth";
 import { EmptyState } from "@/components/EmptyState";
 import { FilterChips } from "@/components/FilterChips";
 import { CALENDAR_FILTERS } from "@/constants/categories";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors, radius, spacing, typography } from "@/constants";
 import { useAllActivities } from "@/hooks/useActivities";
 import { router } from "expo-router";
@@ -15,6 +16,8 @@ import { TODAY_ISO, groupActivitiesByDate, groupActivitiesByMonth } from "@/util
 type CalendarView = "month" | "year";
 
 export default function CalendarScreen() {
+  // الرأس أوّل عنصر في الشاشة، فيقع تحت شريط الحالة بلا هذه.
+  const insets = useSafeAreaInsets();
   const { data: activities, isLoading } = useAllActivities();
   const [view, setView] = useState<CalendarView>("month");
   const [filterKey, setFilterKey] = useState("all");
@@ -49,7 +52,7 @@ export default function CalendarScreen() {
 
   return (
     <View style={styles.screen}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
         <Text style={styles.title}>التقويم</Text>
         <View style={styles.toggle}>
           <ToggleButton label="شهري" active={view === "month"} onPress={() => setView("month")} />
@@ -143,7 +146,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
     marginBottom: spacing.md,
   },
   title: { ...typography.h1 },

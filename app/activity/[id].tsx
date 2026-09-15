@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BottomSheet } from "@/components/BottomSheet";
 import { EmptyState } from "@/components/EmptyState";
 import { PrimaryButton } from "@/components/PrimaryButton";
@@ -248,8 +249,10 @@ export default function ActivityDetailScreen() {
 
 function TopBar({ onDark }: { onDark: boolean }) {
   const tint = onDark ? colors.textOnPrimary : colors.textPrimary;
+  // كبقيّة الرؤوس: بلا حشوة الجهاز يقع زرّ الرجوع تحت شريط الحالة.
+  const insets = useSafeAreaInsets();
   return (
-    <View style={styles.topBar}>
+    <View style={[styles.topBar, { paddingTop: insets.top + spacing.sm }]}>
       <Pressable accessibilityRole="button" accessibilityLabel="رجوع" onPress={() => router.back()} hitSlop={10}>
         <Ionicons name="chevron-forward" size={22} color={tint} />
       </Pressable>
