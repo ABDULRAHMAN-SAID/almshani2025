@@ -148,6 +148,27 @@ create table if not exists public.news_reads (
 );
 create index if not exists news_reads_user_idx on public.news_reads (user_id);
 
+-- ============ قائمة طعام النادي ============
+-- قائمة واحدة لكل نادٍ في الأسبوع — وهذا ما يفرضه المفتاح الفريد أدناه:
+-- نشرُ قائمة الأسبوع مرّتين تصحيحٌ لا قائمتان، فيحلّ الثاني محلّ الأول بدل
+-- أن يتراكما ويقرأ الناس القديمة.
+--
+-- والصورة والأيام كلاهما اختياري وكلاهما يكفي: من يصوّر الورقة المعلّقة
+-- يرفع صورة، ومن يكتبها يكتبها، ومن شاء جمع بينهما.
+create table if not exists public.club_menus (
+  id uuid primary key default gen_random_uuid(),
+  club text not null check (club in ('OfficersClub', 'SeniorNcoClub')),
+  week_start date not null,
+  image text,
+  days jsonb not null default '[]'::jsonb,
+  note text not null default '',
+  published_at timestamptz not null default now(),
+  unique (club, week_start)
+);
+
+create index if not exists club_menus_club_week_idx
+  on public.club_menus (club, week_start desc);
+
 -- ============ الإشعارات ============
 create table if not exists public.notifications (
   id uuid primary key default gen_random_uuid(),
@@ -241,6 +262,7 @@ alter table public.announcements enable row level security;
 alter table public.awareness_articles enable row level security;
 alter table public.news enable row level security;
 alter table public.news_reads enable row level security;
+alter table public.club_menus enable row level security;
 alter table public.notifications enable row level security;
 alter table public.points_transactions enable row level security;
 alter table public.activity_checkins enable row level security;
@@ -478,6 +500,14 @@ begin
 end $$;
 
 grant execute on function public.mark_news_read(uuid) to authenticated;
+
+drop policy if exists "club_menus read" on public.club_menus;
+create policy "club_menus read" on public.club_menus
+  for select to authenticated using (true);
+
+drop policy if exists "club_menus admin write" on public.club_menus;
+create policy "club_menus admin write" on public.club_menus
+  for all using (public.is_admin()) with check (public.is_admin());
 
 drop policy if exists "news_reads read own" on public.news_reads;
 create policy "news_reads read own" on public.news_reads

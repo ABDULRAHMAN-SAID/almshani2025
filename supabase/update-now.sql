@@ -1,5 +1,5 @@
 -- ============================================================================
--- آخر تحديث للخادم — نادي الضباط، ونادي كبار ضباط الصف، ونقطة قراءة الخبر
+-- آخر تحديث للخادم — النادِيان وقائمة طعامهما، ونقطة قراءة الخبر
 -- ============================================================================
 -- الصقه كاملًا في Supabase ← SQL Editor ← Run.
 -- تنفيذه مرّتين لا يضرّ: كل جملة فيه تتخطّى ما هو موجود.
@@ -21,10 +21,38 @@ do $$ begin
 exception when duplicate_object then null; end $$;
 create index if not exists announcements_club_idx on public.announcements (club, published_at desc);
 
--- ============ ٣) سبب النقاط: قراءة خبر ============
+-- ============ ٣) قائمة طعام النادي ============
+-- قائمة واحدة لكل نادٍ في الأسبوع: المفتاح الفريد (النادي، بداية الأسبوع)
+-- يجعل نشرَ القائمة مرّتين تصحيحًا يحلّ محلّ الأول، لا قائمتين متراكمتين
+-- يقرأ الناس أقدمهما.
+create table if not exists public.club_menus (
+  id uuid primary key default gen_random_uuid(),
+  club text not null check (club in ('OfficersClub', 'SeniorNcoClub')),
+  week_start date not null,
+  image text,
+  days jsonb not null default '[]'::jsonb,
+  note text not null default '',
+  published_at timestamptz not null default now(),
+  unique (club, week_start)
+);
+
+create index if not exists club_menus_club_week_idx
+  on public.club_menus (club, week_start desc);
+
+alter table public.club_menus enable row level security;
+
+drop policy if exists "club_menus read" on public.club_menus;
+create policy "club_menus read" on public.club_menus
+  for select to authenticated using (true);
+
+drop policy if exists "club_menus admin write" on public.club_menus;
+create policy "club_menus admin write" on public.club_menus
+  for all using (public.is_admin()) with check (public.is_admin());
+
+-- ============ ٤) سبب النقاط: قراءة خبر ============
 alter type points_reason add value if not exists 'news_read';
 
--- ============ ٤) ما قرأه كلٌّ من الأخبار ============
+-- ============ ٥) ما قرأه كلٌّ من الأخبار ============
 -- المفتاح الأوّلي (القارئ، الخبر) هو ما يمنع منح النقطة مرّتين: الصفّ الثاني
 -- يُرفض، فلا يصير زرّ «قرأته» عدّادًا يُضغط.
 create table if not exists public.news_reads (
@@ -43,7 +71,7 @@ create policy "news_reads read own" on public.news_reads
   for select to authenticated using (auth.uid() = user_id);
 -- ولا سياسة كتابة: الإدراج لا يقع إلا داخل الدالة الموثوقة أدناه.
 
--- ============ ٥) الدالة التي تمنح النقطة ============
+-- ============ ٦) الدالة التي تمنح النقطة ============
 -- من الخادم لا من الهاتف: لو كان الهاتف هو من يكتب النقطة لكتبها من شاء كما
 -- شاء بلا أن يفتح خبرًا. ونقطتان لا عشر: القراءة أيسر من الحضور ومن الإجابة
 -- الصحيحة، وتسويتها بهما تجعل جمع النقاط بالضغط أربح من الحضور.

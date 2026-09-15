@@ -4,6 +4,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
 import { ActivityListRow } from "@/components/ActivityListRow";
 import { AnnouncementCard } from "@/components/AnnouncementCard";
+import { ClubMenuCard } from "@/components/ClubMenuCard";
 import { EmptyState } from "@/components/EmptyState";
 import { FilterChips } from "@/components/FilterChips";
 import { ScreenHeader } from "@/components/ScreenHeader";
@@ -12,6 +13,8 @@ import { CATEGORY_COVER } from "@/constants/covers";
 import { colors, spacing, typography } from "@/constants";
 import { useAllActivities } from "@/hooks/useActivities";
 import { useAnnouncements } from "@/hooks/useNotifications";
+import { useQuery } from "@tanstack/react-query";
+import { fetchClubMenu } from "@/services/menuService";
 import { ACTIVITY_FORMS, pluralizeAr } from "@/utils/arabic";
 import { TODAY_ISO } from "@/utils/calendar";
 
@@ -25,6 +28,13 @@ export default function SectionScreen() {
 
   // إعلانات النادي وحده. والقائمة محمَّلة أصلًا لشاشة الإعلانات، فالترشيح
   // هنا لا يكلّف طلبًا ثانيًا.
+  // قائمة الطعام أوّل ما يُسأل عنه في النادي، فهي أوّل ما في صفحته.
+  const menu = useQuery({
+    queryKey: ["club-menu", section?.club],
+    enabled: Boolean(section?.club),
+    queryFn: () => fetchClubMenu(section!.club!),
+  });
+
   const clubAnnouncements = useMemo(
     () =>
       section?.club
@@ -86,6 +96,13 @@ export default function SectionScreen() {
       ) : null}
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {menu.data ? (
+          <View style={styles.announcements}>
+            <Text style={styles.count}>قائمة الطعام</Text>
+            <ClubMenuCard menu={menu.data} />
+          </View>
+        ) : null}
+
         {clubAnnouncements.length > 0 ? (
           <View style={styles.announcements}>
             <Text style={styles.count}>إعلانات النادي</Text>

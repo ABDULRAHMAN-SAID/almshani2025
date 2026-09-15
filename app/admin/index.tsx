@@ -185,6 +185,12 @@ function OverviewTab() {
           onPress={() => router.push("/admin/news")}
         />
         <ActionRow
+          icon="restaurant-outline"
+          label="قائمة طعام النادي"
+          hint="طعام الأسبوع في نادي الضباط أو نادي كبار ضباط الصف"
+          onPress={() => router.push("/admin/club-menu")}
+        />
+        <ActionRow
           icon="qr-code-outline"
           label="رمز الحضور"
           hint="أنشئ رمزًا لأي نشاط واعرضه في القاعة — يمسحه الحاضر فتُحتسب نقاطه"

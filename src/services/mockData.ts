@@ -1,4 +1,5 @@
 import type {
+  ClubMenu,
   Activity,
   Announcement,
   AppNotification,
@@ -18,6 +19,14 @@ const iso = (offsetDays: number) => {
   const d = new Date(today);
   d.setDate(d.getDate() + offsetDays);
   return d.toISOString().slice(0, 10);
+};
+
+/** أحد الأسبوع الجاري — لتبدو قائمة الطعام التجريبية قائمةَ هذا الأسبوع. */
+const weekStartIso = () => {
+  const d = new Date();
+  d.setDate(d.getDate() - d.getDay());
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 };
 
 /** تاريخ ثابت داخل السنة الحالية (للمناسبات السنوية في التقويم). */
@@ -332,6 +341,38 @@ export const MOCK_ACTIVITIES: Activity[] = [
     registrationStatus: "upcoming",
     isAnnual: true,
     createdAt: iso(-2),
+  },
+];
+
+/** قوائم طعام تجريبية — نسخة العرض وحدها. */
+export const MOCK_CLUB_MENUS: ClubMenu[] = [
+  {
+    id: "menu-1",
+    club: "OfficersClub",
+    weekStart: weekStartIso(),
+    days: [
+      { day: "الأحد", meal: "مندي لحم · سلطة · تمر" },
+      { day: "الاثنين", meal: "دجاج مشوي · أرز بخاري · شوربة" },
+      { day: "الثلاثاء", meal: "سمك مقلي · أرز صيادية · سلطة" },
+      { day: "الأربعاء", meal: "كبسة لحم · لبن · حلوى" },
+      { day: "الخميس", meal: "مشاوي مشكّلة · خبز تنّور" },
+    ],
+    note: "الغداء من ١٢:٣٠ إلى ٢:٣٠",
+    publishedAt: iso(-1),
+  },
+  {
+    id: "menu-2",
+    club: "SeniorNcoClub",
+    weekStart: weekStartIso(),
+    days: [
+      { day: "الأحد", meal: "برياني دجاج · سلطة" },
+      { day: "الاثنين", meal: "لحم بالصلصة · أرز أبيض · شوربة" },
+      { day: "الثلاثاء", meal: "مقلوبة · لبن" },
+      { day: "الأربعاء", meal: "سمك مشوي · أرز · سلطة" },
+      { day: "الخميس", meal: "مندي دجاج · تمر" },
+    ],
+    note: "",
+    publishedAt: iso(-1),
   },
 ];
 
