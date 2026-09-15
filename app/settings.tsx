@@ -3,6 +3,7 @@ import { Ionicons } from "@expo/vector-icons";
 import Constants from "expo-constants";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { colors, radius, spacing, typography } from "@/constants";
+import { BUILD_STAMP } from "@/services/config";
 import { useSettingsStore } from "@/store/settingsStore";
 
 const PRIVACY_POINTS = [
@@ -15,15 +16,21 @@ const PRIVACY_POINTS = [
 /**
  * إصدار النسخة المثبَّتة، لا رقمًا مكتوبًا في الشفرة.
  *
- * كان السطر ثابتًا: "0.1.0" في كل بناء مهما تغيّر. فمن ثبّت ملفًّا قديمًا بلا
- * أن ينتبه — وهذا يقع، فالملفّات تتشابه في مجلّد التنزيلات — لم يكن في
- * التطبيق كلّه ما يقول له أيّ نسخة يحمل. ورقم البناء هو ما يميّزها: تزيده
- * خوادم البناء واحدًا كل مرّة، ويطابق ما تراه في صفحة البناء.
+ * وقد جُرّب قبل هذا أخذُ رقم البناء من Constants.platform، فكان فارغًا في
+ * نسخة الإنتاج: يظهر «0.1.0» وحده مهما تغيّرت النسخة، فلا يعرف من ثبّت ملفًّا
+ * أهو الجديد أم القديم — وهو السؤال الوحيد الذي وُضع السطر من أجله.
+ *
+ * فالختم يُكتب في الشفرة نفسها ساعة بنائها، ويتغيّر مع كل بناء ومع كل تحديث.
  */
 function installedVersion(): string {
   const name = Constants.expoConfig?.version ?? "—";
-  const build = Constants.platform?.android?.versionCode;
-  return build ? `${name} (بناء ${build})` : name;
+  if (!BUILD_STAMP) return name;
+  // الختم يُكتب لاتينيًّا في ملفّ البيئة — الحروف العربية فيه تمرّ بأدوات
+  // لا تَعِد بترميزها — ويُعرَّب هنا حيث النصّ عربيّ أصلًا.
+  const [kind, ...rest] = BUILD_STAMP.split(" ");
+  const when = rest.join(" ");
+  const label = kind === "update" ? "تحديث" : "بناء";
+  return when ? `${name} · ${label} ${when}` : name;
 }
 
 export default function SettingsScreen() {

@@ -65,6 +65,8 @@ jobs:
             echo "EXPO_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}"
             echo "EXPO_PUBLIC_USE_MOCK_DATA=false"
             echo "EXPO_PUBLIC_VERIFY_CHANNEL=${{ inputs.channel }}"
+            # ختم يظهر في «الإعدادات ← الإصدار»، ليُعرف أيّ نسخة على الهاتف.
+            echo "EXPO_PUBLIC_BUILD_STAMP=build $(TZ=Asia/Muscat date +'%Y-%m-%d %H:%M')"
           } > .env
           echo "كُتب .env — القناة: ${{ inputs.channel }}"
 

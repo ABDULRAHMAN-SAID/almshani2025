@@ -98,6 +98,10 @@ jobs:
           EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
           EXPO_PUBLIC_USE_MOCK_DATA: "false"
         run: |
+          # نفس ختم البناء: التحديث يستبدل الشفرة، فيجب أن يستبدل ختمها معها
+          # — وإلّا بقي سطر الإصدار يشير إلى شفرةٍ لم تعد تعمل.
+          export EXPO_PUBLIC_BUILD_STAMP="update $(TZ=Asia/Muscat date +'%Y-%m-%d %H:%M')"
+          echo "الختم: $EXPO_PUBLIC_BUILD_STAMP"
           npx --yes eas-cli@latest update \
             --branch production \
             --message "${{ inputs.message }}" \
