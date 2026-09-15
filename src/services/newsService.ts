@@ -52,6 +52,7 @@ export interface NewsDraft {
   scope: NewsScope;
   source: string;
   url?: string;
+  image?: string;
 }
 
 export async function publishNews(draft: NewsDraft): Promise<void> {
@@ -63,6 +64,7 @@ export async function publishNews(draft: NewsDraft): Promise<void> {
     scope: draft.scope,
     source: draft.source.trim(),
     url: draft.url?.trim() || null,
+    image: draft.image?.trim() || null,
   });
   if (error) throw error;
 }

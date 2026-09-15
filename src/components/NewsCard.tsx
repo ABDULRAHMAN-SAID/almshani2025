@@ -1,4 +1,4 @@
-import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
+import { Image, Linking, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, radius, spacing, typography } from "@/constants";
 import type { NewsItem } from "@/types/models";
@@ -29,6 +29,12 @@ export function NewsCard({ item, onPress }: NewsCardProps) {
       onPress={open}
       style={({ pressed }) => [styles.card, pressed && open ? styles.pressed : null]}
     >
+      {item.image ? (
+        // الصورة فوق النصّ لا خلفه: خبرٌ يُقرأ عنوانه أوّلًا، والصورة تشرح
+        // ولا تزاحم. وresizeMode يقصّ ولا يشوّه مهما كانت أبعاد ما رُفع.
+        <Image source={{ uri: item.image }} style={styles.image} resizeMode="cover" />
+      ) : null}
+
       <View style={styles.top}>
         <View style={[styles.badge, item.scope === "oman" ? styles.badgeOman : styles.badgeWorld]}>
           <Text style={styles.badgeText}>{SCOPE_LABEL[item.scope]}</Text>
@@ -66,6 +72,13 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   pressed: { opacity: 0.75 },
+  image: {
+    width: "100%",
+    height: 160,
+    borderRadius: radius.md,
+    marginBottom: spacing.xs,
+    backgroundColor: colors.background,
+  },
   top: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   badge: { paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: radius.sm },
   badgeOman: { backgroundColor: colors.successSoft ?? colors.background },

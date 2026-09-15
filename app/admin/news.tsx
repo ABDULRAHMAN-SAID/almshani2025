@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { EmptyState } from "@/components/EmptyState";
 import { FilterChips } from "@/components/FilterChips";
 import { FormField } from "@/components/FormField";
+import { ImageField } from "@/components/ImageField";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { QueryState } from "@/components/QueryState";
 import { ScreenHeader } from "@/components/ScreenHeader";
@@ -34,6 +35,7 @@ export default function AdminNewsScreen() {
   const [body, setBody] = useState("");
   const [source, setSource] = useState("");
   const [url, setUrl] = useState("");
+  const [image, setImage] = useState("");
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["news"],
@@ -44,12 +46,13 @@ export default function AdminNewsScreen() {
     title.trim().length > 5 && summary.trim().length > 10 && source.trim().length > 1;
 
   const publish = useMutation({
-    mutationFn: () => publishNews({ title, summary, body, scope, source, url }),
+    mutationFn: () => publishNews({ title, summary, body, scope, source, url, image }),
     onSuccess: () => {
       setTitle("");
       setSummary("");
       setBody("");
       setUrl("");
+      setImage("");
       void client.invalidateQueries({ queryKey: ["news"] });
       showToast("نُشر الخبر", "success");
     },
@@ -94,6 +97,13 @@ export default function AdminNewsScreen() {
             onChangeText={setUrl}
             placeholder="https://"
             autoCapitalize="none"
+          />
+          <ImageField
+            label="صورة الخبر (اختياري)"
+            hint="تظهر فوق الخبر في الصفحة الرئيسية"
+            value={image}
+            onChange={setImage}
+            folder="news"
           />
           <PrimaryButton
             label="نشر الخبر"
