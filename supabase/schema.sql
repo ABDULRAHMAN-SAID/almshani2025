@@ -128,6 +128,19 @@ create table if not exists public.news (
 );
 create index if not exists news_scope_published_idx on public.news (scope, published_at desc);
 
+-- ما قرأه كلٌّ من الأخبار.
+--
+-- والجدول هو ما يجعل النقطة تُمنح مرّة واحدة: المفتاح الأوّلي (القارئ، الخبر)
+-- يرفض الصفّ الثاني، فلا يكرّر أحدٌ فتح الخبر نفسه ليجمع نقاطًا. ولولاه لصار
+-- زرّ «قرأته» عدّادًا يُضغط.
+create table if not exists public.news_reads (
+  user_id uuid not null references public.users (id) on delete cascade,
+  news_id uuid not null references public.news (id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (user_id, news_id)
+);
+create index if not exists news_reads_user_idx on public.news_reads (user_id);
+
 -- ============ الإشعارات ============
 create table if not exists public.notifications (
   id uuid primary key default gen_random_uuid(),
@@ -142,7 +155,7 @@ create index if not exists notifications_user_idx on public.notifications (user_
 
 -- ============ نظام النقاط (حضور، مشاركة، مسابقة ثقافية أسبوعية) ============
 do $$ begin
-  create type points_reason as enum ('lecture_attendance', 'activity_participation', 'quiz_correct');
+  create type points_reason as enum ('lecture_attendance', 'activity_participation', 'quiz_correct', 'news_read');
 exception when duplicate_object then null;
 end $$;
 
@@ -218,6 +231,7 @@ alter table public.registrations enable row level security;
 alter table public.announcements enable row level security;
 alter table public.awareness_articles enable row level security;
 alter table public.news enable row level security;
+alter table public.news_reads enable row level security;
 alter table public.notifications enable row level security;
 alter table public.points_transactions enable row level security;
 alter table public.activity_checkins enable row level security;
@@ -417,6 +431,49 @@ begin
 end;
 $$;
 grant execute on function public.submit_check_in(uuid, text, points_reason) to authenticated;
+
+-- ============ نقطة قراءة الخبر ============
+-- تُمنح مرّة واحدة لكل خبر، ومن الخادم لا من الهاتف: لو كان الهاتف هو من
+-- يكتب النقطة لكتبها من شاء كما شاء، بلا أن يفتح خبرًا.
+--
+-- ونقطتان لا عشر: القراءة أيسر من الحضور ومن الإجابة الصحيحة، وتسويتها بهما
+-- تجعل جمع النقاط بالضغط أربح من الحضور.
+create or replace function public.mark_news_read(p_news_id uuid)
+returns table (awarded boolean, points_earned integer)
+language plpgsql security definer set search_path = public as $$
+declare
+  v_user uuid := auth.uid();
+  v_points constant integer := 2;
+begin
+  if v_user is null then
+    return query select false, 0;
+    return;
+  end if;
+  if not exists (select 1 from news where id = p_news_id) then
+    return query select false, 0;
+    return;
+  end if;
+
+  begin
+    insert into news_reads (user_id, news_id) values (v_user, p_news_id);
+  exception when unique_violation then
+    -- قرأه من قبل: لا نقطة ثانية، ولا خطأ — فتحُ خبرٍ مرّتين ليس خطأً.
+    return query select false, 0;
+    return;
+  end;
+
+  insert into points_transactions (user_id, reason, points)
+  values (v_user, 'news_read', v_points);
+
+  return query select true, v_points;
+end $$;
+
+grant execute on function public.mark_news_read(uuid) to authenticated;
+
+drop policy if exists "news_reads read own" on public.news_reads;
+create policy "news_reads read own" on public.news_reads
+  for select to authenticated using (auth.uid() = user_id);
+-- ولا سياسة كتابة: الإدراج لا يقع إلا داخل الدالة الموثوقة أعلاه.
 
 -- ============ صلاحية الإدارة ============
 -- مصدر الصلاحية الوحيد: الحساب مُدرج في جدول admins. لا يوجد في التطبيق أي رمز

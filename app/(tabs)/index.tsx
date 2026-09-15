@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
 import { ActivityCard } from "@/components/ActivityCard";
@@ -27,7 +28,7 @@ import {
 import { usePointsBalance } from "@/hooks/usePoints";
 import { useWeeklyQuiz } from "@/hooks/useWeeklyQuiz";
 import { getAnsweredState } from "@/services/quizService";
-import { formatArabicWeekday } from "@/utils/date";
+import { formatArabicWeekday, omanDateTimeLabel } from "@/utils/date";
 import { useFeatures } from "@/hooks/useFeatures";
 
 export default function HomeScreen() {
@@ -41,6 +42,17 @@ export default function HomeScreen() {
   const points = usePointsBalance();
   const weeklyQuiz = useWeeklyQuiz();
   const { discussionEnabled, messagesEnabled, quizEnabled } = useFeatures();
+
+  // ساعة القاعدة، تُحدَّث كل دقيقة.
+  //
+  // ولا تُقرأ من ساعة الجهاز: من ضبط هاتفه على منطقة أخرى — أو سافر — تظل
+  // الشاشة تقول توقيت عُمان، وهو التوقيت الذي تُعقد به المحاضرات ويُفتح به
+  // التسجيل. وساعةٌ تقول غيره أسوأ من لا ساعة.
+  const [clock, setClock] = useState(() => omanDateTimeLabel());
+  useEffect(() => {
+    const id = setInterval(() => setClock(omanDateTimeLabel()), 30_000);
+    return () => clearInterval(id);
+  }, []);
 
   const answeredCount = weeklyQuiz.data?.questions.filter((question) => getAnsweredState(question.id)).length ?? 0;
 
@@ -62,6 +74,8 @@ export default function HomeScreen() {
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       <HeaderBand overlap={44}>
+        <Text style={styles.clock}>{clock}</Text>
+
         <View style={styles.header}>
           <Logo size="sm" />
           <Text style={styles.brand}>أنشطتي</Text>
@@ -259,6 +273,14 @@ const styles = StyleSheet.create({
   },
   grid: { flexDirection: "row", flexWrap: "wrap" },
   gridItem: { width: "33.33%" },
+  // ‏textAlign "left" اتجاهٌ مطلق لا نسبيّ، فيبقى يسارًا في واجهة تُقرأ يمينًا.
+  clock: {
+    ...typography.caption,
+    fontSize: 11,
+    color: "rgba(255,255,255,0.72)",
+    textAlign: "left",
+    marginBottom: -spacing.sm,
+  },
   section: { marginTop: spacing.xl, paddingHorizontal: spacing.lg },
   newsPlaceholder: {
     backgroundColor: colors.surface,

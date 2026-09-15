@@ -185,6 +185,12 @@ function OverviewTab() {
           onPress={() => router.push("/admin/news")}
         />
         <ActionRow
+          icon="qr-code-outline"
+          label="رمز الحضور"
+          hint="أنشئ رمزًا لأي نشاط واعرضه في القاعة — يمسحه الحاضر فتُحتسب نقاطه"
+          onPress={() => router.push("/admin/checkin-codes")}
+        />
+        <ActionRow
           icon="mail-unread-outline"
           label={newMessages > 0 ? `الرسائل الواردة (${newMessages} جديدة)` : "الرسائل الواردة"}
           hint="اقتراحات وطلبات المستخدمين والرد عليها"

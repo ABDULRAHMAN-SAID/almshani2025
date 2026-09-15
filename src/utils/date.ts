@@ -64,3 +64,29 @@ export function relativeDayLabel(isoDate: string): string {
   if (diffDays > 1) return `بعد ${diffDays} ${diffDays === 2 ? "يومين" : "أيام"}`;
   return formatArabicDate(isoDate);
 }
+
+/* ------------------------- ساعة عُمان وتاريخها ------------------------- */
+
+/** فرق توقيت عُمان عن غرينتش بالدقائق. ثابت: لا توقيت صيفي في السلطنة. */
+const OMAN_OFFSET_MINUTES = 4 * 60;
+
+/**
+ * لحظةُ عُمان الآن، محسوبةً من غرينتش لا من ساعة الجهاز.
+ *
+ * وهذا هو بيت القصيد: من ضبط هاتفه على منطقة أخرى — أو سافر — تظل الشاشة
+ * تقول توقيت القاعدة، وهو التوقيت الذي تُعقد به المحاضرات ويُفتح به التسجيل.
+ * ولو قرأنا ساعة الجهاز لأخبرناه بتوقيتٍ لا يعني هنا شيئًا.
+ */
+function omanNow(at: Date = new Date()): Date {
+  return new Date(at.getTime() + (OMAN_OFFSET_MINUTES + at.getTimezoneOffset()) * 60_000);
+}
+
+/** "الثلاثاء ١٥ سبتمبر · ١١:٠٢ م" — سطر واحد صغير لأعلى الصفحة الرئيسية. */
+export function omanDateTimeLabel(at: Date = new Date()): string {
+  const d = omanNow(at);
+  const hour = d.getHours();
+  const hour12 = hour % 12 === 0 ? 12 : hour % 12;
+  const minute = String(d.getMinutes()).padStart(2, "0");
+  const period = hour < 12 ? "ص" : "م";
+  return `${ARABIC_WEEKDAYS[d.getDay()]} ${d.getDate()} ${ARABIC_MONTHS[d.getMonth()]} · ${hour12}:${minute} ${period}`;
+}

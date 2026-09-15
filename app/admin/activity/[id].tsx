@@ -16,6 +16,7 @@ import { fetchActivityById } from "@/services/activityService";
 import {
   deleteActivity,
   generateCheckInCode,
+  getCheckInCode,
   setActivityResults,
   setCheckInCode,
   updateActivity,
@@ -70,7 +71,13 @@ export default function ManageActivityScreen() {
     setCapacity(activity.capacity != null ? String(activity.capacity) : "");
     setStatus(activity.registrationStatus);
     setIsAnnual(Boolean(activity.isAnnual));
+    // الرمز لا يأتي مع صفّ النشاط — الجدول محجوب عن كل قراءة — فيُطلب من
+    // الدالة الموثوقة. وبلا هذا تُفتح الخانة فارغة دائمًا، فيظنّ الإداري أن
+    // لا رمز فيولّد غيره ويُبطل ما طُبع وعُلّق في القاعة.
     setCode(activity.checkInCode ?? "");
+    void getCheckInCode(activity.id)
+      .then((saved) => saved && setCode(saved))
+      .catch(() => undefined);
     setCoverImage(activity.coverImage ?? "");
     setWinners(
       RANKS.map((entry) => activity.results?.find((r) => r.rank === entry.rank)?.winnerName ?? "")

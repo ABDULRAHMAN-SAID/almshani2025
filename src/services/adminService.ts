@@ -139,6 +139,22 @@ export async function setCheckInCode(activityId: string, code: string): Promise<
   return normalized;
 }
 
+/**
+ * الرمز المحفوظ لنشاط، أو null إن لم يُضبط بعد.
+ *
+ * والدالة موجودة على الخادم منذ أول يوم ولم يكن في التطبيق ما يناديها: صفّ
+ * النشاط لا يحمل الرمز — عمدًا، فهو محجوب عن كل قراءة — فكانت خانة الرمز
+ * تُفتح فارغة دائمًا، ويظنّ الإداري أن لا رمز فيولّد غيره ويُبطل ما طُبع.
+ */
+export async function getCheckInCode(activityId: string): Promise<string | null> {
+  if (USE_MOCK_DATA) {
+    return MOCK_ACTIVITIES.find((item) => item.id === activityId)?.checkInCode ?? null;
+  }
+  const { data, error } = await supabase.rpc("get_check_in_code", { p_activity_id: activityId });
+  if (error) throw error;
+  return (data as string | null) ?? null;
+}
+
 /** أعداد المسجّلين لكل نشاط — أرقام مجمّعة فقط، بلا أسماء أو أرقام هواتف. */
 export async function fetchRegistrationCounts(): Promise<Record<string, number>> {
   if (USE_MOCK_DATA) {

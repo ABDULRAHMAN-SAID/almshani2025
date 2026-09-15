@@ -1,13 +1,16 @@
 import { Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams } from "expo-router";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { EmptyState } from "@/components/EmptyState";
 import { QueryState } from "@/components/QueryState";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { colors, radius, spacing, typography } from "@/constants";
 import { NEWS_SCOPE_LABEL } from "@/constants/categories";
-import { fetchNewsItem } from "@/services/newsService";
+import { fetchNewsItem, hasReadNews, markNewsRead } from "@/services/newsService";
+import { useRefreshPoints } from "@/hooks/usePoints";
+import { showToast } from "@/store/toastStore";
+import { toArabicMessage } from "@/utils/errors";
 import { formatArabicDate } from "@/utils/date";
 
 /**
@@ -26,6 +29,24 @@ export default function NewsItemScreen() {
     error,
     refetch,
   } = useQuery({ queryKey: ["news", id], queryFn: () => fetchNewsItem(id) });
+
+  const refreshPoints = useRefreshPoints();
+  const read = useQuery({ queryKey: ["news-read", id], queryFn: () => hasReadNews(id) });
+
+  // النقطة لا تُطلب إلا بضغطة: فتحُ الخبر ليس قراءته، ومنحُها بمجرّد الفتح
+  // يجعل تمرير القائمة أربح من القراءة.
+  const award = useMutation({
+    mutationFn: () => markNewsRead(id),
+    onSuccess: (result) => {
+      void read.refetch();
+      refreshPoints();
+      showToast(
+        result.awarded ? `شكرًا لقراءتك — +${result.pointsEarned} نقطتان` : "قرأتَ هذا الخبر من قبل",
+        result.awarded ? "success" : "info"
+      );
+    },
+    onError: (e) => showToast(toArabicMessage(e, "تعذّر تسجيل القراءة"), "error"),
+  });
 
   if (isLoading || error) {
     return (
@@ -70,6 +91,24 @@ export default function NewsItemScreen() {
 
         {item.body ? <Text style={styles.body}>{item.body}</Text> : null}
 
+        {read.data ? (
+          <View style={[styles.readButton, styles.readDone]}>
+            <Ionicons name="checkmark-circle" size={19} color={colors.success} />
+            <Text style={styles.readDoneText}>قرأتَ هذا الخبر — احتُسبت نقاطه</Text>
+          </View>
+        ) : (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="تأكيد قراءة الخبر"
+            disabled={award.isPending}
+            onPress={() => award.mutate()}
+            style={({ pressed }) => [styles.readButton, pressed && styles.pressed]}
+          >
+            <Ionicons name="checkmark-done-outline" size={19} color={colors.textOnPrimary} />
+            <Text style={styles.readText}>قرأتُ الخبر · +2 نقطتان</Text>
+          </Pressable>
+        )}
+
         {item.url ? (
           <Pressable
             accessibilityRole="button"
@@ -109,12 +148,25 @@ const styles = StyleSheet.create({
   title: { ...typography.h2, lineHeight: 34 },
   summary: { ...typography.body, color: colors.textSecondary, lineHeight: 26 },
   body: { ...typography.body, lineHeight: 28, marginTop: spacing.xs },
+  readButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm,
+    marginTop: spacing.xl,
+    paddingVertical: spacing.md,
+    borderRadius: radius.lg,
+    backgroundColor: colors.primary,
+  },
+  readText: { ...typography.body, color: colors.textOnPrimary, fontFamily: "Tajawal_700Bold" },
+  readDone: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  readDoneText: { ...typography.body, color: colors.textSecondary, fontSize: 14 },
   sourceButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: spacing.sm,
-    marginTop: spacing.lg,
+    marginTop: spacing.sm,
     paddingVertical: spacing.md,
     borderRadius: radius.lg,
     borderWidth: 1,

@@ -101,3 +101,48 @@ export async function deleteNews(id: string): Promise<void> {
   const { error } = await supabase.from("news").delete().eq("id", id);
   if (error) throw error;
 }
+
+/* ---------------------- نقطة لمن قرأ الخبر ---------------------- */
+
+export interface NewsReadResult {
+  /** هل مُنحت النقاط الآن؟ يكون false لمن قرأه من قبل — وليس ذلك خطأً. */
+  awarded: boolean;
+  pointsEarned: number;
+}
+
+/** أُعطي نقاطًا محليًّا في نسخة العرض، لتُجرَّب الشاشة بلا خادم. */
+const MOCK_READ = new Set<string>();
+
+/**
+ * تسجيل أن القارئ أتمّ الخبر، ومنحه النقطة.
+ *
+ * الحساب كلّه على الخادم: لو كان الهاتف هو من يكتب النقطة لكتبها من شاء كما
+ * شاء بلا أن يفتح خبرًا. والدالة تمنح مرّة واحدة لكل خبر — المفتاح الأوّلي في
+ * جدول القراءات هو ما يمنع الثانية، لا فحصٌ في الشاشة يمكن تجاوزه.
+ */
+export async function markNewsRead(id: string): Promise<NewsReadResult> {
+  if (USE_MOCK_DATA) {
+    if (MOCK_READ.has(id)) return { awarded: false, pointsEarned: 0 };
+    MOCK_READ.add(id);
+    return { awarded: true, pointsEarned: 2 };
+  }
+  const { data, error } = await supabase.rpc("mark_news_read", { p_news_id: id });
+  if (error) throw error;
+  const row = Array.isArray(data) ? data[0] : data;
+  return {
+    awarded: Boolean(row?.awarded),
+    pointsEarned: Number(row?.points_earned ?? 0),
+  };
+}
+
+/** هل قرأ صاحب الجلسة هذا الخبر من قبل؟ — لئلّا يُعرض عليه ما لن يناله. */
+export async function hasReadNews(id: string): Promise<boolean> {
+  if (USE_MOCK_DATA) return MOCK_READ.has(id);
+  const { data, error } = await supabase
+    .from("news_reads")
+    .select("news_id")
+    .eq("news_id", id)
+    .maybeSingle();
+  if (error) throw error;
+  return Boolean(data);
+}
