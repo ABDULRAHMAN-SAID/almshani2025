@@ -1,0 +1,115 @@
+# نشر تحديث إلى الهواتف — بلا أن يحذف أحد التطبيق ويعيد تحميله.
+#
+# ما يصل بهذه الطريقة: كل ما هو شفرة أو نصّ أو تصميم — شاشة جديدة، إصلاح
+# عطل، تعديل كلمة. يصل إلى كل جهاز عند فتحة التطبيق التالية، تلقائيًّا.
+#
+# وما لا يصل: ما يمسّ الطبقة الأصلية — إذن جديد، أو مكتبة تحمل شفرة أصلية.
+# ذاك يحتاج بناءً جديدًا وتثبيتًا. وهذا نادر.
+#
+# والقاعدة الفاصلة: إن عدّلتَ app.json أو أضفتَ مكتبة فيها Android/iOS، ابنِ.
+# وفيما عدا ذلك، انشر تحديثًا.
+name: انشر تحديثًا
+
+on:
+  workflow_dispatch:
+    inputs:
+      message:
+        description: "ماذا تغيّر؟ (يظهر في سجلّ التحديثات)"
+        type: string
+        required: true
+        default: "تحسينات وإصلاحات"
+      expo_account:
+        description: "حساب Expo (اتركه فارغًا ليُؤخذ من الرمز)"
+        type: string
+        required: false
+        default: ""
+
+jobs:
+  update:
+    name: تحديث الهواتف
+    runs-on: ubuntu-latest
+    steps:
+      - name: أنزل المشروع
+        uses: actions/checkout@v4
+
+      - name: هيّئ Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: تحقّق من الأسرار
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          ANON: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+        run: |
+          missing=""
+          [ -z "$EXPO_TOKEN" ] && missing="$missing EXPO_TOKEN"
+          [ -z "$URL" ] && missing="$missing EXPO_PUBLIC_SUPABASE_URL"
+          [ -z "$ANON" ] && missing="$missing EXPO_PUBLIC_SUPABASE_ANON_KEY"
+          if [ -n "$missing" ]; then
+            echo "::error::ينقص سرّ:$missing"
+            exit 1
+          fi
+
+      - name: ثبّت المكتبات
+        run: npm ci
+
+      - name: افحص الأنواع
+        run: npm run typecheck
+
+      - name: افحص أن كل استعلام يطابق المخطط
+        run: npm run check:queries
+
+      - name: افحص المنطق الخالص
+        run: npm run test:units
+
+      - name: اربط المشروع بحساب Expo
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          if node -e "const c=require('./app.json');process.exit(c.expo?.extra?.eas?.projectId?0:1)"; then
+            echo "المشروع مربوط بالفعل."
+            exit 0
+          fi
+          account="${{ inputs.expo_account }}"
+          if [ -z "$account" ]; then
+            account=$(npx --yes eas-cli@latest whoami 2>/dev/null \
+              | sed -e 's/\x1b\[[0-9;]*m//g' | tr -d '\r' \
+              | grep -v '^[[:space:]]*$' | head -n 1 \
+              | sed -e 's/^[^A-Za-z0-9]*//' -e 's/[[:space:]].*$//')
+          fi
+          case "$account" in
+            *[!A-Za-z0-9._-]* | "" )
+              echo "::error::تعذّر تحديد حساب Expo. أعد التشغيل واكتب اسم الحساب في خانة «حساب Expo»."
+              exit 1 ;;
+          esac
+          echo "الحساب: $account"
+          npx --yes eas-cli@latest init --account "$account" --non-interactive
+
+      - name: انشر التحديث
+        # المفاتيح تُمرَّر هنا كما تُمرَّر في البناء: حزمة التحديث تحمل نسخة
+        # جديدة من الشفرة، وبلا المفاتيح تخرج نسخةٌ لا تعرف خادمها — فتصل
+        # الهواتف العاملة وتُعطّلها.
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+          EXPO_PUBLIC_USE_MOCK_DATA: "false"
+        run: |
+          npx --yes eas-cli@latest update \
+            --branch production \
+            --message "${{ inputs.message }}" \
+            --non-interactive
+
+      - name: اكتب الخلاصة
+        if: success()
+        run: |
+          {
+            echo "### التحديث نُشر"
+            echo ""
+            echo "يصل كل جهاز عند فتحة التطبيق التالية — بلا حذف ولا إعادة تحميل."
+            echo ""
+            echo "**ما تغيّر:** ${{ inputs.message }}"
+          } >> $GITHUB_STEP_SUMMARY

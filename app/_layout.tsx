@@ -8,6 +8,7 @@ import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { DemoRibbon } from "@/components/DemoRibbon";
 import { RestartNotice } from "@/components/RestartNotice";
+import { UpdateBanner } from "@/components/UpdateBanner";
 import { MisconfiguredNotice } from "@/components/MisconfiguredNotice";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { ToastHost } from "@/components/ToastHost";
@@ -78,6 +79,8 @@ export default function RootLayout() {
 
   if (!appReady) return null;
 
+  // بعد إضافة expo-updates صار بالإمكان إعادة التحميل بأمر واحد بدل أن
+  // يُطلب من صاحب الجهاز أن يُغلق ويفتح. وتبقى الرسالة لمن تعذّرت عليه.
   if (RTL_PENDING && !ignoreRtl) {
     return (
       <SafeAreaProvider onLayout={onLayoutRootView}>
@@ -104,6 +107,7 @@ export default function RootLayout() {
         <StatusBar style="light" backgroundColor={colors.primary} />
         <DemoRibbon />
         <OfflineBanner />
+        <UpdateBanner />
         <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }} />
         <ToastHost />
       </QueryClientProvider>

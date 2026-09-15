@@ -18,7 +18,8 @@
       },
       "env": {
         "EXPO_PUBLIC_USE_MOCK_DATA": "true"
-      }
+      },
+      "channel": "preview"
     },
     "production-apk": {
       "distribution": "internal",
@@ -28,7 +29,8 @@
       },
       "env": {
         "EXPO_PUBLIC_USE_MOCK_DATA": "false"
-      }
+      },
+      "channel": "production"
     },
     "production": {
       "autoIncrement": true,
@@ -37,7 +39,8 @@
       },
       "env": {
         "EXPO_PUBLIC_USE_MOCK_DATA": "false"
-      }
+      },
+      "channel": "production"
     }
   },
   "submit": {
