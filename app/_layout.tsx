@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { I18nManager } from "react-native";
+import { I18nManager, Platform } from "react-native";
 import { useFonts, Tajawal_400Regular, Tajawal_500Medium, Tajawal_700Bold } from "@expo-google-fonts/tajawal";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -7,6 +7,7 @@ import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { DemoRibbon } from "@/components/DemoRibbon";
+import { RestartNotice } from "@/components/RestartNotice";
 import { MisconfiguredNotice } from "@/components/MisconfiguredNotice";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { ToastHost } from "@/components/ToastHost";
@@ -16,10 +17,20 @@ import { isSupabaseConfigured } from "@/services/supabase";
 
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
-if (!I18nManager.isRTL) {
+/**
+ * أندرويد يقرأ اتّجاه التخطيط مرّة واحدة عند إنشاء الشاشة — قبل أن يصل هذا
+ * الفرض. فمن كانت لغة هاتفه غير عربية رأى، في أوّل فتحة بعد التثبيت، واجهةً
+ * عربية مقلوبة الاتّجاه. كان التعليق هنا يذكر ذلك ويمضي؛ وذِكرُ العطل ليس
+ * معالجةً له. فنلتقط الحالة ونقولها للمستخدم بدل أن يواجه واجهةً معطوبة
+ * لا يفهم سببها.
+ *
+ * ويُستثنى الويب: لا اتّجاه يُفرض فيه بهذه الطريقة، فلا موضع للرسالة أصلًا.
+ */
+const RTL_PENDING = Platform.OS !== "web" && !I18nManager.isRTL;
+
+if (RTL_PENDING) {
   I18nManager.allowRTL(true);
   I18nManager.forceRTL(true);
-  // يتطلب هذا إعادة تحميل JS مرة واحدة عند أول تشغيل على بعض المنصات ليأخذ التخطيط تأثيره الكامل.
 }
 
 const queryClient = new QueryClient({
@@ -49,6 +60,7 @@ export default function RootLayout() {
     Tajawal_700Bold,
   });
   const [appReady, setAppReady] = useState(false);
+  const [ignoreRtl, setIgnoreRtl] = useState(false);
 
   useEffect(() => {
     if (fontsLoaded || fontError) setAppReady(true);
@@ -65,6 +77,15 @@ export default function RootLayout() {
   }, [appReady]);
 
   if (!appReady) return null;
+
+  if (RTL_PENDING && !ignoreRtl) {
+    return (
+      <SafeAreaProvider onLayout={onLayoutRootView}>
+        <StatusBar style="dark" backgroundColor={colors.background} />
+        <RestartNotice onSkip={() => setIgnoreRtl(true)} />
+      </SafeAreaProvider>
+    );
+  }
 
   // نسخة حقيقية خرجت بلا مفاتيح: نقف مرة واحدة برسالة صريحة بدل أن يفشل كل
   // طلب على حدة برسالة شبكة تُقرأ خطأً على أنها ضعف إنترنت.
