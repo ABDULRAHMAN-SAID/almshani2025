@@ -42,7 +42,7 @@ export default function HomeScreen() {
   const thisWeek = useThisWeekActivities();
   const points = usePointsBalance();
   const weeklyQuiz = useWeeklyQuiz();
-  const { discussionEnabled, messagesEnabled, quizEnabled, hijriOffset } = useFeatures();
+  const { discussionEnabled, messagesEnabled, quizEnabled, chatEnabled, hijriOffset } = useFeatures();
 
   // ساعة القاعدة، تُحدَّث كل دقيقة.
   //
@@ -69,6 +69,7 @@ export default function HomeScreen() {
   const sections = HOME_SECTIONS.filter((section) => {
     if (section.key === "groups") return discussionEnabled;
     if (section.key === "messages") return messagesEnabled;
+    if (section.key === "chats") return chatEnabled;
     if (section.key === "quiz") return quizEnabled;
     return true;
   });

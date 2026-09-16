@@ -207,6 +207,14 @@ export default function AdminSettingsScreen() {
           />
           <View style={styles.divider} />
           <ToggleRow
+            icon="chatbubble-ellipses-outline"
+            label="المحادثات الخاصة والمجموعات"
+            hint="عند الإيقاف تختفي المحادثات والأصدقاء من التطبيق"
+            value={features.chatEnabled}
+            onChange={() => applyToggle("chatEnabled", "المحادثات الخاصة")}
+          />
+          <View style={styles.divider} />
+          <ToggleRow
             icon="chatbubbles-outline"
             label="المجموعات النقاشية"
             hint="لوحات نقاش عامة مُدارة — بلا رسائل خاصة بين المستخدمين"

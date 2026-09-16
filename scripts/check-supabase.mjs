@@ -112,6 +112,11 @@ const PROTECTED_TABLES = [
   "clubs",
   "club_menus",
   "flight_schedule",
+  "flight_routes",
+  "friendships",
+  "conversations",
+  "conversation_members",
+  "chat_messages",
 ];
 
 const VIEWS = ["quiz_questions_public", "leaderboard_view"];
@@ -129,6 +134,10 @@ const FUNCTIONS = [
   ["report_group_post", { p_post_id: ZERO(), p_reason: "—" }],
   ["mark_news_read", { p_news_id: ZERO() }],
   ["get_check_in_code_info", { p_activity_id: ZERO() }],
+  ["my_friends", {}],
+  ["my_conversations", {}],
+  ["search_members", { p_query: "اختبار" }],
+  ["start_direct_chat", { p_other: ZERO() }],
 ];
 
 /**
@@ -380,6 +389,8 @@ if (missingItems.length === 0) {
   // واحد عملٌ مخيف بلا داعٍ.
   const NEW_ONES = new Set([
     "clubs", "club_menus", "news_reads", "mark_news_read", "get_check_in_code_info", "flight_schedule",
+    "flight_routes", "friendships", "conversations", "conversation_members", "chat_messages",
+    "my_friends", "my_conversations", "search_members", "start_direct_chat",
   ]);
   const onlyNew = missingItems.every(
     (item) => NEW_ONES.has(item.name) || item.group === "أعمدة" || item.group === "قيم"

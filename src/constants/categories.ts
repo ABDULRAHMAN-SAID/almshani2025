@@ -93,6 +93,7 @@ export const HOME_SECTIONS: HomeSection[] = [
   { key: "officers-club", label: "نادي الضباط", icon: "ribbon-outline", tint: "#1C4468", route: "/sections/officers-club", group: "clubs" },
   { key: "nco-club", label: "نادي كبار ضباط الصف", icon: "shield-outline", tint: "#6B4E2E", route: "/sections/nco-club", group: "clubs" },
   { key: "news", label: "الأخبار", icon: "newspaper-outline", tint: "#1A5F7A", route: "/news", group: "news" },
+  { key: "chats", label: "المحادثات", icon: "chatbubble-ellipses-outline", tint: "#0F6E7B", route: "/chats", group: "connect" },
   { key: "quiz", label: "سؤال الأسبوع", icon: "help-circle-outline", tint: "#2C5282", route: "/quiz", group: "connect" },
   { key: "groups", label: "المجموعات النقاشية", icon: "chatbubbles-outline", tint: "#158A99", route: "/groups", group: "connect" },
   { key: "messages", label: "مراسلة الإدارة", icon: "mail-outline", tint: "#1C4468", route: "/compose", group: "connect" },

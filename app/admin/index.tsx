@@ -203,6 +203,12 @@ function OverviewTab() {
           onPress={() => router.push("/admin/checkin-codes")}
         />
         <ActionRow
+          icon="shield-checkmark-outline"
+          label="بلاغات المحادثات"
+          hint="رسالة واحدة رفعها صاحبها — والمحادثات نفسها لا تُقرأ"
+          onPress={() => router.push("/admin/chat-reports")}
+        />
+        <ActionRow
           icon="mail-unread-outline"
           label={newMessages > 0 ? `الرسائل الواردة (${newMessages} جديدة)` : "الرسائل الواردة"}
           hint="اقتراحات وطلبات المستخدمين والرد عليها"
