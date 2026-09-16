@@ -1,0 +1,128 @@
+# نسخة الآيفون: بناء التطبيق للويب ونشره على صفحات GitHub.
+#
+# ملفّ APK لا يُثبَّت على الآيفون — قيدٌ من Apple لا حيلة فيه. فمن معه آيفون
+# يفتح هذه النسخة في Safari ويضيفها إلى شاشته الرئيسية، فتعمل كالتطبيق
+# بالحساب نفسه وقاعدة البيانات نفسها.
+#
+# ولماذا تُبنى هنا لا على الحاسوب؟ لأن مفاتيح الخادم أسرارٌ في هذا المستودع،
+# والبناء بلا مفاتيح يخرج نسخةً تجريبية تعرض بياناتٍ ليست من الخادم — وهي
+# أسوأ من لا شيء، لأنها تبدو صحيحة.
+#
+# الأسرار المطلوبة (Settings ← Secrets and variables ← Actions):
+#   EXPO_PUBLIC_SUPABASE_URL
+#   EXPO_PUBLIC_SUPABASE_ANON_KEY
+
+name: نسخة الآيفون
+
+permissions:
+  contents: write
+
+on:
+  workflow_dispatch:
+    inputs:
+      pages_branch:
+        description: "الفرع الذي تنشر منه صفحات GitHub"
+        type: string
+        required: false
+        default: "claude/awesome-lovelace-wgke8g"
+      channel:
+        description: "قناة رمز التأكيد"
+        type: choice
+        default: email
+        options: [email, sms, "off"]
+
+jobs:
+  web:
+    name: ابنِ وانشر
+    runs-on: ubuntu-latest
+    steps:
+      - name: أنزل المشروع
+        uses: actions/checkout@v4
+
+      - name: هيّئ Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: تحقّق من الأسرار
+        run: |
+          missing=""
+          [ -z "${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}" ] && missing="$missing EXPO_PUBLIC_SUPABASE_URL"
+          [ -z "${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}" ] && missing="$missing EXPO_PUBLIC_SUPABASE_ANON_KEY"
+          if [ -n "$missing" ]; then
+            echo "::error::أسرار ناقصة:$missing — ضعها في Settings ← Secrets and variables ← Actions"
+            exit 1
+          fi
+          echo "المفتاحان موجودان."
+
+      - name: ثبّت المكتبات
+        run: npm ci
+
+      - name: اكتب ملفّ الربط
+        run: |
+          {
+            echo "EXPO_PUBLIC_SUPABASE_URL=${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}"
+            echo "EXPO_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}"
+            echo "EXPO_PUBLIC_USE_MOCK_DATA=false"
+            echo "EXPO_PUBLIC_VERIFY_CHANNEL=${{ inputs.channel }}"
+            echo "EXPO_PUBLIC_BUILD_STAMP=web $(TZ=Asia/Muscat date +'%Y-%m-%d %H:%M')"
+          } > .env
+          echo "كُتب .env"
+
+      - name: افحص الأنواع
+        run: npx tsc --noEmit
+
+      - name: افحص أن كل استعلام يطابق المخطط
+        run: npm run check:queries
+
+      - name: افحص المنطق الخالص
+        run: npm run test:units
+
+      - name: ابنِ نسخة الويب
+        run: npm run make:web
+
+      # النسخة التجريبية تعرض بياناتٍ مخترَعة بلا أن تقول ذلك. فإن تسرّبت إلى
+      # النشر ظنّها الناس التطبيق. والفحص هنا لا في عين القارئ.
+      - name: تأكّد أنها ليست النسخة التجريبية
+        run: |
+          if grep -rq "placeholder.supabase.co" docs/app; then
+            echo "::error::البناء خرج بلا مفاتيح الخادم — نسخة تجريبية. لم يُنشر شيء."
+            exit 1
+          fi
+          echo "البناء موصول بالخادم."
+
+      - name: انشر على فرع الصفحات
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PAGES_BRANCH: ${{ inputs.pages_branch }}
+        run: |
+          set -e
+          tmp=$(mktemp -d)
+          git clone --depth 1 --branch "$PAGES_BRANCH" \
+            "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "$tmp"
+          rm -rf "$tmp/docs/app"
+          mkdir -p "$tmp/docs"
+          cp -r docs/app "$tmp/docs/app"
+          : > "$tmp/docs/.nojekyll"
+          cd "$tmp"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A docs
+          if git diff --cached --quiet; then
+            echo "لا جديد — النسخة المنشورة هي هذه."
+            exit 0
+          fi
+          git commit -m "نسخة الويب: بناء $(TZ=Asia/Muscat date +'%Y-%m-%d %H:%M')"
+          git push origin "$PAGES_BRANCH"
+
+      - name: أين النسخة
+        if: success()
+        run: |
+          {
+            echo "### نسخة الآيفون جاهزة"
+            echo ""
+            echo "الرابط: https://abdulrahman-said.github.io/almshani2025/app/"
+            echo ""
+            echo "تُفتح في Safari، ثم زرّ المشاركة ← «إضافة إلى الشاشة الرئيسية»."
+          } >> $GITHUB_STEP_SUMMARY

@@ -12,7 +12,7 @@
  * النطاق فلا تُوجد، وتذهب روابط الشاشات إلى مسارات لا شيء فيها.
  */
 import { execFileSync } from "node:child_process";
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -29,6 +29,13 @@ execFileSync("npx", ["expo", "export", "--platform", "web", "--clear", "--output
   stdio: "inherit",
   env: { ...process.env, EXPO_BASE_URL: base, EXPO_OFFLINE: "1" },
 });
+
+// صفحة السقوط: الاستضافة الساكنة لا تعرف المسارات المتغيّرة — نشاطٌ بمعرّفه
+// أو قسمٌ بمفتاحه ليس ملفًّا على القرص. فمن فتح رابطًا مباشرًا إلى شاشة، أو
+// حدّث صفحةً هو فيها، يقع على 404. وصفحات GitHub تقدّم 404.html لكل مسار لا
+// تجده، وهي نسخة التطبيق نفسها — فيقرأ المُوجِّه العنوان عند الإقلاع ويفتح
+// الشاشة الصحيحة. جُرِّب: /sections/sports و/news يُفتحان مباشرةً بعده.
+copyFileSync(resolve(out, "+not-found.html"), resolve(out, "404.html"));
 
 // بلا هذا الملفّ يتجاهل Jekyll كل مجلّد يبدأ بشرطة سفلية — ومنها _expo التي
 // فيها شفرة التطبيق كلّها، فتُقدَّم صفحة بيضاء.
