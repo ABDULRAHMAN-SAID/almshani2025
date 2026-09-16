@@ -1,4 +1,5 @@
 import type { NewsItem, NewsScope } from "@/types/models";
+import { isVisible } from "@/utils/visibility";
 import { LIST_LIMIT, USE_MOCK_DATA } from "./config";
 import { MOCK_NEWS } from "./mockData";
 import { toNewsItem } from "./rowMappers";
@@ -28,9 +29,14 @@ export async function fetchNews(scope?: NewsScope): Promise<NewsItem[]> {
   return (data ?? []).map(toNewsItem);
 }
 
+/** الأخبار الظاهرة الآن — تُسقط ما لم يحن وقته وما انقضى. */
+export function visibleNews(items: NewsItem[]): NewsItem[] {
+  return items.filter((item) => isVisible(item));
+}
+
 /** أحدث خبر من كل نطاق — لبطاقة الصفحة الرئيسية. */
 export async function fetchLatestNews(perScope = 3): Promise<NewsItem[]> {
-  const all = await fetchNews();
+  const all = visibleNews(await fetchNews());
   const world = all.filter((item) => item.scope === "world").slice(0, perScope);
   const oman = all.filter((item) => item.scope === "oman").slice(0, perScope);
   return [...oman, ...world].sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
@@ -53,6 +59,9 @@ export interface NewsDraft {
   source: string;
   url?: string;
   image?: string;
+  /** نافذة الظهور — تُكتب عند النشر فيختفي الخبر في وقته بلا أن يُحذف. */
+  startsAt?: string;
+  endsAt?: string;
 }
 
 export async function publishNews(draft: NewsDraft): Promise<void> {
@@ -65,6 +74,8 @@ export async function publishNews(draft: NewsDraft): Promise<void> {
     source: draft.source.trim(),
     url: draft.url?.trim() || null,
     image: draft.image?.trim() || null,
+    starts_at: draft.startsAt ?? null,
+    ends_at: draft.endsAt ?? null,
   });
   if (error) throw error;
 }
@@ -91,6 +102,8 @@ export async function updateNews(id: string, draft: NewsDraft): Promise<void> {
       source: draft.source.trim(),
       url: draft.url?.trim() || null,
       image: draft.image?.trim() || null,
+      starts_at: draft.startsAt ?? null,
+      ends_at: draft.endsAt ?? null,
     })
     .eq("id", id);
   if (error) throw error;

@@ -8,7 +8,7 @@ import { QueryState } from "@/components/QueryState";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { colors, spacing } from "@/constants";
 import { NEWS_SCOPE_LABEL } from "@/constants/categories";
-import { fetchNews } from "@/services/newsService";
+import { fetchNews, visibleNews } from "@/services/newsService";
 import type { NewsScope } from "@/types/models";
 
 const FILTERS = [
@@ -24,7 +24,10 @@ export default function NewsScreen() {
     queryFn: () => fetchNews(),
   });
 
-  const list = (data ?? []).filter((item) => filter === "all" || item.scope === (filter as NewsScope));
+  // ما لم يحن وقته أو انقضى لا يُعرض: الوقت يُكتب عند النشر وتحترمه الشاشة.
+  const list = visibleNews(data ?? []).filter(
+    (item) => filter === "all" || item.scope === (filter as NewsScope)
+  );
 
   return (
     <View style={styles.screen}>

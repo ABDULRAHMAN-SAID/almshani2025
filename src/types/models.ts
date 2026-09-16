@@ -122,6 +122,10 @@ export interface Announcement {
   club?: ClubKey;
   /** مرفقات الإعلان: فيديو أو مقطع صوتي أو ملف. */
   attachments?: MediaAttachment[];
+  /** متى يبدأ ظهوره، و null يعني الآن. */
+  startsAt?: string;
+  /** متى يختفي، و null يعني أنه يبقى حتى يُحذف. */
+  endsAt?: string;
   publishedAt: string;
 }
 
@@ -285,5 +289,7 @@ export interface NewsItem {
   source: string;
   url?: string;
   image?: string;
+  startsAt?: string;
+  endsAt?: string;
   publishedAt: string;
 }

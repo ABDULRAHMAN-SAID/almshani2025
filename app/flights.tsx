@@ -6,15 +6,9 @@ import { FilterChips } from "@/components/FilterChips";
 import { ImageZoom } from "@/components/ImageZoom";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { colors, radius, spacing, typography } from "@/constants";
-import {
-  FLIGHTS,
-  FLIGHT_DAYS,
-  FLIGHT_EFFECTIVE,
-  FLIGHT_NOTES,
-  FLIGHT_SOURCE,
-} from "@/constants/flights";
+import { FLIGHT_DAYS, FLIGHT_EFFECTIVE, FLIGHT_SOURCE } from "@/constants/flights";
 import type { Flight } from "@/constants/flights";
-import { fetchFlightSchedule } from "@/services/flightService";
+import { fetchFlightRoutes, fetchFlightSchedule } from "@/services/flightService";
 import { omanWeekdayName } from "@/utils/date";
 
 /**
@@ -31,8 +25,15 @@ export default function FlightsScreen() {
 
   // الورقة الأصلية إن رُفعت — تُعرض أسفل المكتوب لمن أراد أن يقابل بينهما.
   const sheet = useQuery({ queryKey: ["flight-schedule"], queryFn: fetchFlightSchedule });
+  const routes = useQuery({ queryKey: ["flight-routes"], queryFn: fetchFlightRoutes });
 
-  const flights = useMemo(() => FLIGHTS.filter((flight) => flight.day === day), [day]);
+  const all = useMemo(() => routes.data ?? [], [routes.data]);
+  const flights = useMemo(
+    () => all.filter((flight) => flight.day === day && flight.stops.length > 0),
+    [all, day]
+  );
+  // المحطّات بلا جدول ثابت: صفوف بلا يوم، لها نصّ بدل المسار.
+  const notes = useMemo(() => all.filter((flight) => !flight.day && flight.note), [all]);
 
   return (
     <View style={styles.screen}>
@@ -54,7 +55,9 @@ export default function FlightsScreen() {
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {flights.length > 0 ? (
-          flights.map((flight) => <FlightCard key={`${flight.station}-${flight.day}`} flight={flight} />)
+          flights.map((flight) => (
+            <FlightCard key={flight.id ?? `${flight.station}-${flight.day}`} flight={flight} />
+          ))
         ) : (
           <View style={styles.none}>
             <Ionicons name="airplane-outline" size={22} color={colors.textMuted} />
@@ -62,15 +65,17 @@ export default function FlightsScreen() {
           </View>
         )}
 
-        <View style={styles.notes}>
-          <Text style={styles.notesTitle}>محطّات بلا جدول ثابت</Text>
-          {FLIGHT_NOTES.map((entry) => (
-            <View key={entry.place} style={styles.noteRow}>
-              <Text style={styles.notePlace}>{entry.place}</Text>
-              <Text style={styles.noteText}>{entry.note}</Text>
-            </View>
-          ))}
-        </View>
+        {notes.length > 0 ? (
+          <View style={styles.notes}>
+            <Text style={styles.notesTitle}>محطّات بلا جدول ثابت</Text>
+            {notes.map((entry) => (
+              <View key={entry.id ?? entry.station} style={styles.noteRow}>
+                <Text style={styles.notePlace}>{entry.station}</Text>
+                <Text style={styles.noteText}>{entry.note}</Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
 
         {sheet.data && sheet.data.images.length > 0 ? (
           <View style={styles.sheetBlock}>

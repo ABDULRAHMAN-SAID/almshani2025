@@ -16,6 +16,8 @@ export interface AppFeatures {
   pointsEnabled: boolean;
   discussionEnabled: boolean;
   messagesEnabled: boolean;
+  /** فرق التاريخ الهجري عن أم القرى بالأيام — عُمان يومٌ قبله غالبًا. */
+  hijriOffset: number;
 }
 
 export const DEFAULT_FEATURES: AppFeatures = {
@@ -24,6 +26,7 @@ export const DEFAULT_FEATURES: AppFeatures = {
   pointsEnabled: true,
   discussionEnabled: true,
   messagesEnabled: true,
+  hijriOffset: -1,
 };
 
 /** نسخة الوضع التجريبي — في الذاكرة، ليعمل التبديل بلا خادم. */
@@ -49,10 +52,32 @@ export async function fetchFeatures(): Promise<AppFeatures> {
     pointsEnabled: row.points_enabled !== false,
     discussionEnabled: row.discussion_enabled !== false,
     messagesEnabled: row.messages_enabled !== false,
+    hijriOffset: clampOffset(row.hijri_offset),
   };
 }
 
-const COLUMN: Record<keyof AppFeatures, string> = {
+/** حدّان: يومان قبل ويومان بعد. وما خرج عنهما خطأٌ لا ضبط. */
+function clampOffset(value: unknown): number {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return DEFAULT_FEATURES.hijriOffset;
+  return Math.max(-2, Math.min(2, Math.round(n)));
+}
+
+/** ضبط فرق التقويم — يظهر أثره عند كل من يفتح التطبيق، لا عند الإداري وحده. */
+export async function setHijriOffset(value: number): Promise<void> {
+  const offset = clampOffset(value);
+  if (USE_MOCK_DATA) {
+    mockFeatures = { ...mockFeatures, hijriOffset: offset };
+    return;
+  }
+  const { error } = await supabase
+    .from("app_settings")
+    .update({ hijri_offset: offset, updated_at: new Date().toISOString() })
+    .eq("id", 1);
+  if (error) throw error;
+}
+
+const COLUMN: Record<string, string> = {
   registrationEnabled: "registration_enabled",
   quizEnabled: "quiz_enabled",
   pointsEnabled: "points_enabled",

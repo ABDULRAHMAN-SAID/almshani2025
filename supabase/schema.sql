@@ -102,8 +102,13 @@ create table if not exists public.announcements (
   title text not null,
   description text not null,
   type text not null default 'عام',
+  -- نافذة الظهور: null في الأول تعني «الآن»، وفي الثاني «لا يختفي».
+  starts_at timestamptz,
+  ends_at timestamptz,
   published_at timestamptz not null default now()
 );
+
+create index if not exists announcements_window_idx on public.announcements (starts_at, ends_at);
 
 -- ============ المحتوى التوعوي ============
 create table if not exists public.awareness_articles (
@@ -130,10 +135,13 @@ create table if not exists public.news (
   source text not null default '',
   url text,
   image text,
+  starts_at timestamptz,
+  ends_at timestamptz,
   published_at timestamptz not null default now(),
   created_at timestamptz not null default now()
 );
 create index if not exists news_scope_published_idx on public.news (scope, published_at desc);
+create index if not exists news_window_idx on public.news (starts_at, ends_at);
 
 -- ما قرأه كلٌّ من الأخبار.
 --
@@ -200,6 +208,21 @@ create table if not exists public.flight_schedule (
   published_at timestamptz not null default now(),
   constraint flight_schedule_single_row check (id = 1)
 );
+
+-- ============ رحلات الطائرة ============
+-- صفٌّ لكل رحلة، يُحرَّر من لوحة الإدارة. والصفّ بلا يوم وبنصّ ملاحظة هو
+-- محطّة بلا جدول ثابت.
+create table if not exists public.flight_routes (
+  id uuid primary key default gen_random_uuid(),
+  station text not null,
+  day text not null default '',
+  aircraft text not null default '',
+  stops jsonb not null default '[]'::jsonb,
+  note text not null default '',
+  created_at timestamptz not null default now()
+);
+
+create index if not exists flight_routes_day_idx on public.flight_routes (day);
 
 -- ============ الإشعارات ============
 create table if not exists public.notifications (
@@ -299,6 +322,7 @@ alter table public.news enable row level security;
 alter table public.news_reads enable row level security;
 alter table public.club_menus enable row level security;
 alter table public.flight_schedule enable row level security;
+alter table public.flight_routes enable row level security;
 alter table public.clubs enable row level security;
 alter table public.notifications enable row level security;
 alter table public.points_transactions enable row level security;
@@ -322,6 +346,8 @@ create table if not exists public.app_settings (
   points_enabled boolean not null default true,
   discussion_enabled boolean not null default true,
   messages_enabled boolean not null default true,
+  -- فرق التقويم الهجري عن أم القرى بالأيام: عُمان يومٌ قبله غالبًا.
+  hijri_offset smallint not null default -1,
   updated_at timestamptz not null default now(),
   constraint app_settings_single_row check (id = 1)
 );
@@ -549,6 +575,14 @@ begin
 end $$;
 
 grant execute on function public.mark_news_read(uuid) to authenticated;
+
+drop policy if exists "flight_routes read" on public.flight_routes;
+create policy "flight_routes read" on public.flight_routes
+  for select to authenticated using (true);
+
+drop policy if exists "flight_routes admin write" on public.flight_routes;
+create policy "flight_routes admin write" on public.flight_routes
+  for all using (public.is_admin()) with check (public.is_admin());
 
 drop policy if exists "flight_schedule read" on public.flight_schedule;
 create policy "flight_schedule read" on public.flight_schedule

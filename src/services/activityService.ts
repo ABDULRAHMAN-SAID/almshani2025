@@ -1,4 +1,5 @@
 import type { Activity, Announcement, AwarenessArticle } from "@/types/models";
+import { isVisible } from "@/utils/visibility";
 import { USE_MOCK_DATA } from "./config";
 import { MOCK_ACTIVITIES, MOCK_ANNOUNCEMENTS, MOCK_AWARENESS } from "./mockData";
 import { toActivity, toAnnouncement, toAwarenessArticle } from "./rowMappers";
@@ -65,16 +66,22 @@ export async function fetchUpcomingActivities(excludeId?: string): Promise<Activ
 export async function fetchLatestAnnouncements(limit = 3): Promise<Announcement[]> {
   if (USE_MOCK_DATA) {
     return [...MOCK_ANNOUNCEMENTS]
+      .filter((item) => isVisible(item))
       .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt))
       .slice(0, limit);
   }
+  // نطلب أكثر من المطلوب ثم نُسقط ما لم يحن وقته أو انقضى: التصفية على
+  // الخادم بشرطين اختياريين تُكتب طويلة، وهذه قائمةٌ من ثلاثة.
   const { data, error } = await supabase
     .from("announcements")
     .select("*")
     .order("published_at", { ascending: false })
-    .limit(limit);
+    .limit(limit * 4);
   if (error) throw error;
-  return (data ?? []).map(toAnnouncement);
+  return (data ?? [])
+    .map(toAnnouncement)
+    .filter((item) => isVisible(item))
+    .slice(0, limit);
 }
 
 export async function fetchTodayAwareness(): Promise<AwarenessArticle | null> {

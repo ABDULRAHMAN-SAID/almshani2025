@@ -13,6 +13,8 @@ import { showToast } from "@/store/toastStore";
 import { REGISTRATION_LABEL } from "@/utils/registration";
 import type { RegistrationState } from "@/types/models";
 import { useFeatures, useSetFeature } from "@/hooks/useFeatures";
+import { setHijriOffset } from "@/services/settingsService";
+import { omanHijriLabel } from "@/utils/date";
 import type { AppFeatures } from "@/services/settingsService";
 import { toArabicMessage } from "@/utils/errors";
 
@@ -24,6 +26,19 @@ export default function AdminSettingsScreen() {
   const client = useQueryClient();
   const settings = useAdminSettingsStore();
   const features = useFeatures();
+
+  /** حدّان: يومان قبل ويومان بعد — وما خرج عنهما خطأٌ لا ضبط. */
+  const applyOffset = async (value: number) => {
+    const next = Math.max(-2, Math.min(2, value));
+    if (next === features.hijriOffset) return;
+    try {
+      await setHijriOffset(next);
+      await client.invalidateQueries({ queryKey: ["features"] });
+      showToast("ضُبط التاريخ الهجري", "success");
+    } catch (error) {
+      showToast(toArabicMessage(error, "تعذّر ضبط التاريخ"), "error");
+    }
+  };
   const setFeatureMutation = useSetFeature();
   const lock = useAdminStore((state) => state.lock);
 
@@ -134,6 +149,35 @@ export default function AdminSettingsScreen() {
             onPress={handleSavePin}
             style={{ marginTop: spacing.md }}
           />
+        </View>
+
+        {/* التقويم: رقمٌ يُضبط حين يختلف مطلع الشهر، لا ينتظر تحديثًا مني. */}
+        <Text style={styles.sectionLabel}>التاريخ الهجري</Text>
+        <View style={styles.card}>
+          <Text style={styles.cardHint}>
+            التطبيق يقرأ تقويم أم القرى، وعُمان تُعلن برؤية مجالسها فتختلف يومًا أحيانًا. اضبط
+            الفرق هنا فيراه كل من يفتح التطبيق.
+          </Text>
+          <View style={styles.hijriRow}>
+            <SecondaryButton
+              label="− يوم"
+              onPress={() => void applyOffset(features.hijriOffset - 1)}
+              style={styles.hijriButton}
+            />
+            <View style={styles.hijriValue}>
+              <Text style={styles.hijriToday}>{omanHijriLabel(new Date(), features.hijriOffset)}</Text>
+              <Text style={styles.hijriHint}>
+                {features.hijriOffset === 0
+                  ? "كما في أم القرى"
+                  : `${Math.abs(features.hijriOffset)} ${Math.abs(features.hijriOffset) === 1 ? "يوم" : "يومان"} ${features.hijriOffset < 0 ? "قبله" : "بعده"}`}
+              </Text>
+            </View>
+            <SecondaryButton
+              label="+ يوم"
+              onPress={() => void applyOffset(features.hijriOffset + 1)}
+              style={styles.hijriButton}
+            />
+          </View>
         </View>
 
         <Text style={styles.sectionLabel}>مفاتيح التشغيل</Text>
@@ -358,6 +402,11 @@ const styles = StyleSheet.create({
   toggleRow: { flexDirection: "row", alignItems: "center", gap: spacing.md, paddingVertical: spacing.md },
   toggleLabel: { ...typography.body, fontFamily: "Tajawal_500Medium" },
   toggleHint: { ...typography.caption, fontSize: 12, lineHeight: 18 },
+  hijriRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, marginTop: spacing.md },
+  hijriButton: { flex: 0, paddingHorizontal: spacing.lg },
+  hijriValue: { flex: 1, alignItems: "center", gap: 2 },
+  hijriToday: { ...typography.body, fontFamily: "Tajawal_700Bold" },
+  hijriHint: { ...typography.caption, fontSize: 11 },
   divider: { height: 1, backgroundColor: colors.border },
   linkRow: {
     flexDirection: "row",

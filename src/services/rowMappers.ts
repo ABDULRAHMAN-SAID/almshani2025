@@ -1,3 +1,4 @@
+import type { Flight } from "@/constants/flights";
 import type {
   ClubMenu,
   FlightSchedule,
@@ -106,6 +107,16 @@ export const toClubMenu = (row: Row): ClubMenu => ({
   publishedAt: day(row.published_at),
 });
 
+/** صفّ رحلة: محطّتها ويومها وطائرتها ومسارها، أو ملاحظة محطّة بلا يوم. */
+export const toFlightRoute = (row: Row): Flight => ({
+  id: text(row.id),
+  station: text(row.station),
+  day: text(row.day) as Flight["day"],
+  aircraft: text(row.aircraft),
+  stops: (Array.isArray(row.stops) ? row.stops : []) as Flight["stops"],
+  note: text(row.note),
+});
+
 export const toFlightSchedule = (row: Row): FlightSchedule => ({
   title: text(row.title),
   images: (Array.isArray(row.images) ? row.images : []).filter(
@@ -122,6 +133,8 @@ export const toAnnouncement = (row: Row): Announcement => ({
   image: optional(row.image),
   club: (optional(row.club) as Announcement["club"]) ?? undefined,
   attachments: (row.attachments as MediaAttachment[]) ?? [],
+  startsAt: optional(row.starts_at),
+  endsAt: optional(row.ends_at),
   publishedAt: day(row.published_at),
 });
 
@@ -182,5 +195,7 @@ export const toNewsItem = (row: Row): NewsItem => ({
   source: text(row.source),
   url: optional(row.url),
   image: optional(row.image),
+  startsAt: optional(row.starts_at),
+  endsAt: optional(row.ends_at),
   publishedAt: text(row.published_at),
 });

@@ -4,6 +4,7 @@ import { router } from "expo-router";
 import { ActivityCard } from "@/components/ActivityCard";
 import { AnnouncementCard } from "@/components/AnnouncementCard";
 import { AwarenessCard } from "@/components/AwarenessCard";
+import { AnnouncementSpotlight } from "@/components/AnnouncementSpotlight";
 import { CategoryCard } from "@/components/CategoryCard";
 import { EmptyState } from "@/components/EmptyState";
 import { EventHero } from "@/components/EventHero";
@@ -41,18 +42,19 @@ export default function HomeScreen() {
   const thisWeek = useThisWeekActivities();
   const points = usePointsBalance();
   const weeklyQuiz = useWeeklyQuiz();
-  const { discussionEnabled, messagesEnabled, quizEnabled } = useFeatures();
+  const { discussionEnabled, messagesEnabled, quizEnabled, hijriOffset } = useFeatures();
 
   // ساعة القاعدة، تُحدَّث كل دقيقة.
   //
   // ولا تُقرأ من ساعة الجهاز: من ضبط هاتفه على منطقة أخرى — أو سافر — تظل
   // الشاشة تقول توقيت عُمان، وهو التوقيت الذي تُعقد به المحاضرات ويُفتح به
   // التسجيل. وساعةٌ تقول غيره أسوأ من لا ساعة.
-  const [clock, setClock] = useState(() => omanFullDateLabel());
+  const [clock, setClock] = useState(() => omanFullDateLabel(new Date(), hijriOffset));
   useEffect(() => {
-    const id = setInterval(() => setClock(omanFullDateLabel()), 30_000);
+    setClock(omanFullDateLabel(new Date(), hijriOffset));
+    const id = setInterval(() => setClock(omanFullDateLabel(new Date(), hijriOffset)), 30_000);
     return () => clearInterval(id);
-  }, []);
+  }, [hijriOffset]);
 
   const answeredCount = weeklyQuiz.data?.questions.filter((question) => getAnsweredState(question.id)).length ?? 0;
 
@@ -118,6 +120,16 @@ export default function HomeScreen() {
           );
         })}
       </View>
+
+      {/* الإعلان أوّل ما يُرى بعد الأقسام: هو خبر اليوم لا صنفٌ يُتصفَّح. */}
+      {announcements.data && announcements.data.length > 0 ? (
+        <View style={styles.spotlight}>
+          <AnnouncementSpotlight
+            announcement={announcements.data[0]}
+            onPress={() => router.push("/announcements")}
+          />
+        </View>
+      ) : null}
 
       <View style={styles.section}>
         <SectionHeader title="النشاط القادم" />
@@ -236,15 +248,15 @@ export default function HomeScreen() {
         )}
       </View>
 
-      {announcements.data && announcements.data.length > 0 ? (
+      {announcements.data && announcements.data.length > 1 ? (
         <View style={styles.section}>
           <SectionHeader
-            title="آخر الإعلانات"
+            title="إعلانات أخرى"
             actionLabel="عرض الكل"
             onPressAction={() => router.push("/announcements")}
           />
           <View style={{ gap: spacing.sm }}>
-            {announcements.data.map((announcement) => (
+            {announcements.data.slice(1).map((announcement) => (
               <AnnouncementCard
                 key={announcement.id}
                 announcement={announcement}
@@ -309,6 +321,7 @@ const styles = StyleSheet.create({
   },
   groupSpaced: { marginTop: 6 },
   section: { marginTop: spacing.xl, paddingHorizontal: spacing.lg },
+  spotlight: { marginTop: spacing.lg, paddingHorizontal: spacing.lg },
   newsPlaceholder: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,

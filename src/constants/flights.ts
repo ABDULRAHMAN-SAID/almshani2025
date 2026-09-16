@@ -32,12 +32,17 @@ export interface FlightStop {
 }
 
 export interface Flight {
+  /** معرّف الصفّ على الخادم — يغيب في الجدول المكتوب داخل التطبيق. */
+  id?: string;
   /** الوجهة التي تُنسب إليها الرحلة في الورقة. */
   station: string;
-  day: FlightDay;
+  /** يومها، ويغيب في محطّة بلا جدول ثابت. */
+  day: FlightDay | "";
   /** الطائرة ورقمها كما في الورقة. */
   aircraft: string;
   stops: FlightStop[];
+  /** نصّ محطّة بلا جدول ثابت — «رحلة واحدة كل أسبوعين». */
+  note?: string;
 }
 
 const MUSN = "المصنعة";
@@ -233,11 +238,7 @@ export const FLIGHTS: Flight[] = [
   },
 ];
 
-/** ما كُتب أسفل الورقة عن المحطّتين اللتين لا جدول ثابت لهما. */
-export const FLIGHT_NOTES: { place: string; note: string }[] = [
-  { place: "المزيونة", note: "رحلة واحدة (CASA) كل أسبوعين" },
-  { place: "الحلانيات", note: "CASA أو NH-90 كل ثلاثاء" },
-];
+
 
 export const FLIGHT_EFFECTIVE = "ساري من ١٩ سبتمبر ٢٠٢٦ حتى إشعار آخر";
 export const FLIGHT_SOURCE = "جدول رحلات سلاح الجو السلطاني العماني — من السيب والمصنعة";

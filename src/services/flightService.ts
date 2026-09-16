@@ -1,7 +1,9 @@
 import type { FlightSchedule } from "@/types/models";
+import { FLIGHTS } from "@/constants/flights";
+import type { Flight, FlightStop } from "@/constants/flights";
 import { USE_MOCK_DATA } from "./config";
 import { MOCK_FLIGHT_SCHEDULE } from "./mockData";
-import { toFlightSchedule } from "./rowMappers";
+import { toFlightRoute, toFlightSchedule } from "./rowMappers";
 import { supabase } from "./supabase";
 
 /**
@@ -46,5 +48,58 @@ export async function publishFlightSchedule(draft: {
 export async function deleteFlightSchedule(): Promise<void> {
   if (USE_MOCK_DATA) return;
   const { error } = await supabase.from("flight_schedule").delete().eq("id", 1);
+  if (error) throw error;
+}
+
+/* ----------------------------- رحلات تُحرَّر ----------------------------- */
+
+/**
+ * الرحلات من الخادم.
+ *
+ * وكانت مكتوبة في شفرة التطبيق: من يعرف الجدول ويرى فيه رقمًا خطأً لا يملك
+ * تصحيحه، ينتظر تحديثًا أكتبه أنا. فصارت صفوفًا تُحرَّر وتُحذف وتُضاف من
+ * لوحة الإدارة.
+ *
+ * وحين لا يجيب الخادم — أو لم يُنفَّذ عليه التحديث بعد — يُقرأ الجدول
+ * المكتوب في التطبيق. فالورقة معروفة، ومن يفتح الشاشة يريد موعد رحلته لا
+ * رسالة عطل.
+ */
+export async function fetchFlightRoutes(): Promise<Flight[]> {
+  if (USE_MOCK_DATA) return FLIGHTS;
+  const { data, error } = await supabase.from("flight_routes").select("*");
+  if (error) throw error;
+  const rows = (data ?? []).map(toFlightRoute);
+  return rows.length > 0 ? rows : FLIGHTS;
+}
+
+export interface FlightRouteDraft {
+  id?: string;
+  station: string;
+  day: string;
+  aircraft: string;
+  stops: FlightStop[];
+  note?: string;
+}
+
+export async function saveFlightRoute(draft: FlightRouteDraft): Promise<void> {
+  if (USE_MOCK_DATA) return;
+  const row = {
+    station: draft.station.trim(),
+    day: draft.day.trim(),
+    aircraft: draft.aircraft.trim(),
+    // محطّة بلا مكان لا تُحفظ: خانةٌ فارغة في المسار تُقرأ رحلةً ناقصة.
+    stops: draft.stops.filter((stop) => stop.place.trim().length > 0),
+    note: draft.note?.trim() ?? "",
+  };
+  const query = draft.id
+    ? supabase.from("flight_routes").update(row).eq("id", draft.id)
+    : supabase.from("flight_routes").insert(row);
+  const { error } = await query;
+  if (error) throw error;
+}
+
+export async function deleteFlightRoute(id: string): Promise<void> {
+  if (USE_MOCK_DATA) return;
+  const { error } = await supabase.from("flight_routes").delete().eq("id", id);
   if (error) throw error;
 }

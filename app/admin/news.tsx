@@ -7,6 +7,7 @@ import { FilterChips } from "@/components/FilterChips";
 import { FormField } from "@/components/FormField";
 import { ImageField } from "@/components/ImageField";
 import { PrimaryButton } from "@/components/PrimaryButton";
+import { ScheduleField } from "@/components/ScheduleField";
 import { QueryState } from "@/components/QueryState";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { colors, radius, spacing, typography } from "@/constants";
@@ -16,6 +17,7 @@ import { showToast } from "@/store/toastStore";
 import type { NewsItem, NewsScope } from "@/types/models";
 import { formatArabicDate } from "@/utils/date";
 import { toArabicMessage } from "@/utils/errors";
+import { SCHEDULE_LABEL, scheduleState } from "@/utils/visibility";
 
 const SCOPES = [
   { key: "oman", label: NEWS_SCOPE_LABEL.oman },
@@ -41,6 +43,7 @@ export default function AdminNewsScreen() {
   const [source, setSource] = useState("");
   const [url, setUrl] = useState("");
   const [image, setImage] = useState("");
+  const [schedule, setSchedule] = useState<{ startsAt?: string; endsAt?: string }>({});
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["news"],
@@ -57,6 +60,7 @@ export default function AdminNewsScreen() {
     setBody("");
     setUrl("");
     setImage("");
+    setSchedule({});
   };
 
   const startEditing = (item: NewsItem) => {
@@ -68,6 +72,7 @@ export default function AdminNewsScreen() {
     setSource(item.source ?? "");
     setUrl(item.url ?? "");
     setImage(item.image ?? "");
+    setSchedule({ startsAt: item.startsAt, endsAt: item.endsAt });
     // النموذج أعلى الشاشة والقائمة أسفلها: بلا هذا يضغط المحرّر «تعديل»
     // فلا يرى شيئًا يتغيّر، والحقول امتلأت فوق ما يراه.
     scroller.current?.scrollTo({ y: 0, animated: true });
@@ -76,8 +81,8 @@ export default function AdminNewsScreen() {
   const publish = useMutation({
     mutationFn: () =>
       editingId
-        ? updateNews(editingId, { title, summary, body, scope, source, url, image })
-        : publishNews({ title, summary, body, scope, source, url, image }),
+        ? updateNews(editingId, { title, summary, body, scope, source, url, image, ...schedule })
+        : publishNews({ title, summary, body, scope, source, url, image, ...schedule }),
     onSuccess: () => {
       const wasEditing = editingId !== null;
       resetForm();
@@ -146,6 +151,7 @@ export default function AdminNewsScreen() {
             onChange={setImage}
             folder="news"
           />
+          <ScheduleField value={schedule} onChange={setSchedule} />
           <PrimaryButton
             label={editingId ? "احفظ التعديل" : "نشر الخبر"}
             onPress={() => publish.mutate()}
@@ -171,6 +177,7 @@ export default function AdminNewsScreen() {
                   <Text style={styles.rowMeta}>
                     {NEWS_SCOPE_LABEL[item.scope]} · {item.source} ·{" "}
                     {formatArabicDate(item.publishedAt.slice(0, 10))}
+                    {scheduleState(item) !== "live" ? ` · ${SCHEDULE_LABEL[scheduleState(item)]}` : ""}
                   </Text>
                 </View>
                 <Pressable

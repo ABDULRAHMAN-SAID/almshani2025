@@ -250,6 +250,8 @@ export async function addAnnouncement(
       image: announcement.image || null,
       club: announcement.club ?? null,
       attachments: announcement.attachments ?? [],
+      starts_at: announcement.startsAt ?? null,
+      ends_at: announcement.endsAt ?? null,
     });
     if (error) throw error;
     return announcement;
@@ -257,6 +259,26 @@ export async function addAnnouncement(
 
   pushMockAnnouncement(announcement);
   return announcement;
+}
+
+/** تعديل إعلان منشور — نصّه أو وقته. وبلا هذا كان النشر بابًا بلا رجعة. */
+export async function updateAnnouncement(
+  id: string,
+  patch: Partial<Omit<Announcement, "id" | "publishedAt">>
+): Promise<void> {
+  if (USE_MOCK_DATA) return;
+  const row: Record<string, unknown> = {};
+  if (patch.title !== undefined) row.title = patch.title.trim();
+  if (patch.description !== undefined) row.description = patch.description.trim();
+  if (patch.type !== undefined) row.type = patch.type;
+  if (patch.image !== undefined) row.image = patch.image || null;
+  if (patch.club !== undefined) row.club = patch.club ?? null;
+  if (patch.attachments !== undefined) row.attachments = patch.attachments;
+  // الوقت يُكتب دائمًا: تفريغُه هو ما يجعل الإعلان دائمًا بعد أن كان موقوتًا.
+  row.starts_at = patch.startsAt ?? null;
+  row.ends_at = patch.endsAt ?? null;
+  const { error } = await supabase.from("announcements").update(row).eq("id", id);
+  if (error) throw error;
 }
 
 export async function deleteAnnouncement(id: string): Promise<void> {

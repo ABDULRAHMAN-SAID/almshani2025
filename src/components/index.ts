@@ -1,6 +1,7 @@
 export * from "./ActivityCard";
 export * from "./ActivityListRow";
 export * from "./AnnouncementCard";
+export * from "./AnnouncementSpotlight";
 export * from "./AttachmentList";
 export * from "./AudioPlayer";
 export * from "./AwarenessCard";
@@ -25,6 +26,7 @@ export * from "./PointsHistoryRow";
 export * from "./PrimaryButton";
 export * from "./QueryState";
 export * from "./QuizQuestionCard";
+export * from "./ScheduleField";
 export * from "./SearchBar";
 export * from "./SecondaryButton";
 export * from "./SectionHeader";

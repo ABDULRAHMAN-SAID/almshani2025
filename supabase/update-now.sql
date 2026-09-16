@@ -285,6 +285,82 @@ drop policy if exists "flight_schedule admin write" on public.flight_schedule;
 create policy "flight_schedule admin write" on public.flight_schedule
   for all using (public.is_admin()) with check (public.is_admin());
 
+
+-- ============ ١٠) جدول الرحلات يُحرَّر من التطبيق ============
+-- كان مكتوبًا في شفرة التطبيق، فلا يملك من يعرف الجدول تغيير رقمٍ فيه إلا
+-- أن ينتظر تحديثًا. وصفٌّ لكل رحلة: محطّتها ويومها وطائرتها ومحطّات مسارها.
+-- والصفّ بلا يوم وبنصّ ملاحظة هو محطّة بلا جدول ثابت («المزيونة: رحلة كل
+-- أسبوعين»)، فتُحرَّر من الشاشة نفسها ولا تحتاج جدولًا ثانيًا.
+create table if not exists public.flight_routes (
+  id uuid primary key default gen_random_uuid(),
+  station text not null,
+  day text not null default '',
+  aircraft text not null default '',
+  stops jsonb not null default '[]'::jsonb,
+  note text not null default '',
+  created_at timestamptz not null default now()
+);
+
+create index if not exists flight_routes_day_idx on public.flight_routes (day);
+
+alter table public.flight_routes enable row level security;
+
+drop policy if exists "flight_routes read" on public.flight_routes;
+create policy "flight_routes read" on public.flight_routes
+  for select to authenticated using (true);
+
+drop policy if exists "flight_routes admin write" on public.flight_routes;
+create policy "flight_routes admin write" on public.flight_routes
+  for all using (public.is_admin()) with check (public.is_admin());
+
+-- البذرة: ما في ورقة ١٩ سبتمبر ٢٠٢٦. وتُزرع مرّة واحدة — الشرط على الخلوّ
+-- يمنع أن يعيد تنفيذُ الملفّ ما حذفه صاحبه أو يضاعف ما عدّله.
+insert into public.flight_routes (station, day, aircraft, stops, note)
+select * from (values
+  ('خصب','الأحد','C-130 · T92','[{"place":"المصنعة","depart":"10:00"},{"place":"خصب","arrive":"10:50","depart":"11:50"},{"place":"المصنعة","arrive":"12:40"}]'::jsonb,''),
+  ('خصب','الاثنين','C-130 · T44','[{"place":"المصنعة","depart":"09:00"},{"place":"خصب","arrive":"09:50","depart":"10:50"},{"place":"المصنعة","arrive":"11:40"}]'::jsonb,''),
+  ('خصب','الأربعاء','CASA · T60','[{"place":"المصنعة","depart":"09:00"},{"place":"خصب","arrive":"09:50","depart":"10:50"},{"place":"المصنعة","arrive":"11:40"}]'::jsonb,''),
+  ('خصب','الخميس','C-130 · T92','[{"place":"المصنعة","depart":"09:30"},{"place":"خصب","arrive":"10:20","depart":"11:20"},{"place":"المصنعة","arrive":"12:10"}]'::jsonb,''),
+  ('ثمريت','الأحد','A BUS · 134','[{"place":"السيب","depart":"13:45"},{"place":"ثمريت","arrive":"14:55","depart":"15:55"},{"place":"السيب","arrive":"17:05"}]'::jsonb,''),
+  ('ثمريت','الثلاثاء','A BUS · 134','[{"place":"السيب","depart":"09:00"},{"place":"ثمريت","arrive":"10:10","depart":"11:10"},{"place":"السيب","arrive":"12:20"}]'::jsonb,''),
+  ('ثمريت','الأربعاء','C-130 · T92','[{"place":"السيب","depart":"11:30"},{"place":"ثمريت","arrive":"13:15","depart":"14:15"},{"place":"السيب","arrive":"16:00"}]'::jsonb,''),
+  ('ثمريت','الخميس','A BUS · 134','[{"place":"السيب","depart":"09:00"},{"place":"ثمريت","arrive":"10:10","depart":"11:10"},{"place":"السيب","arrive":"12:20"}]'::jsonb,''),
+  ('صلالة','الأحد','A BUS · 134','[{"place":"السيب","depart":"09:00"},{"place":"صلالة","arrive":"10:15","depart":"11:30"},{"place":"السيب","arrive":"12:45"}]'::jsonb,''),
+  ('صلالة','الاثنين','A BUS · 134','[{"place":"السيب","depart":"12:20"},{"place":"صلالة","arrive":"13:35","depart":"14:50"},{"place":"السيب","arrive":"16:05"}]'::jsonb,''),
+  ('صلالة','الثلاثاء','A BUS · 134','[{"place":"السيب","depart":"13:20"},{"place":"صلالة","arrive":"14:35","depart":"15:50"},{"place":"السيب","arrive":"17:05"}]'::jsonb,''),
+  ('صلالة','الأربعاء','A BUS · 134','[{"place":"السيب","depart":"10:00"},{"place":"صلالة","arrive":"11:15","depart":"12:30"},{"place":"السيب","arrive":"13:45"}]'::jsonb,''),
+  ('صلالة','الخميس','A BUS · 134','[{"place":"السيب","depart":"13:30"},{"place":"صلالة","arrive":"14:45","depart":"16:00"},{"place":"السيب","arrive":"17:15"}]'::jsonb,''),
+  ('مصيرة','السبت','A BUS · 134','[{"place":"السيب","depart":"19:00"},{"place":"مصيرة","arrive":"19:40","depart":"20:40"},{"place":"السيب","arrive":"21:20"}]'::jsonb,''),
+  ('مصيرة','الاثنين','A BUS · 134','[{"place":"السيب","depart":"09:00"},{"place":"مصيرة","arrive":"09:40","depart":"10:40"},{"place":"السيب","arrive":"11:20"}]'::jsonb,''),
+  ('مصيرة','الثلاثاء','C-130 · T92','[{"place":"المصنعة","depart":"17:30"},{"place":"مصيرة","arrive":"18:20","depart":"19:20"},{"place":"المصنعة","arrive":"20:10"}]'::jsonb,''),
+  ('مصيرة','الأربعاء','A BUS · 134','[{"place":"السيب","depart":"15:00"},{"place":"مصيرة","arrive":"15:40","depart":"16:40"},{"place":"السيب","arrive":"17:20"}]'::jsonb,''),
+  ('مصيرة','الخميس','C-130 · T92','[{"place":"السيب","depart":"14:00"},{"place":"مصيرة","arrive":"14:50","depart":"15:50"},{"place":"السيب","arrive":"16:40"}]'::jsonb,''),
+  ('المزيونة','','','[]'::jsonb,'رحلة واحدة (CASA) كل أسبوعين')
+) as seed (station, day, aircraft, stops, note)
+where not exists (select 1 from public.flight_routes);
+
+
+-- ============ ١١) فرق التقويم الهجري ============
+-- ‏أم القرى تقويمٌ محسوب تُعلنه السعودية، وعُمان تُعلن برؤية مجالسها فتأتي
+-- يومًا قبله غالبًا لا دائمًا. فالفرق رقمٌ على الخادم تضبطه الإدارة حين
+-- يختلف مطلع الشهر، ويراه كل من فتح التطبيق — لا رقمٌ في الشفرة يُنتظر له
+-- تحديث، ولا رقمٌ في جهاز الإداري وحده.
+alter table public.app_settings add column if not exists hijri_offset smallint not null default -1;
+
+
+-- ============ ١٢) وقت ظهور الإعلان والخبر واختفائه ============
+-- الإعلان في القاعدة موقوت بطبعه: «التسجيل مفتوح حتى الخميس» يبقى معلّقًا
+-- شهرًا بعد أن أُغلق التسجيل فيقرؤه من يظنّه قائمًا، وحذفُه في وقته عملٌ
+-- يُنسى. فيُكتب الوقت مرّة عند النشر، ويتكفّل الباقي. و null في الأول يعني
+-- «الآن»، وفي الثاني «لا يختفي».
+alter table public.announcements add column if not exists starts_at timestamptz;
+alter table public.announcements add column if not exists ends_at timestamptz;
+alter table public.news add column if not exists starts_at timestamptz;
+alter table public.news add column if not exists ends_at timestamptz;
+
+create index if not exists announcements_window_idx on public.announcements (starts_at, ends_at);
+create index if not exists news_window_idx on public.news (starts_at, ends_at);
+
 -- ============================================================================
 -- تمّ. للتأكد من النادييْن:
 --   select unnest(enum_range(null::activity_category));

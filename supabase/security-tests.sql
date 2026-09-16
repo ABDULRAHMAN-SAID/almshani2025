@@ -362,6 +362,56 @@ begin
   n := pg_temp.attempt_write(b,
     'delete from storage.objects where bucket_id = ''activity-images''');
   perform pg_temp.log_result('مرفقات', 'B يحذف أغلفة الإدارة', 'ممنوع', n, n <= 0);
+  -- -------------------------------------------------------------------------
+  -- ما أُضيف بعد كتابة هذه الاختبارات: الأندية وقوائمها، وجدول الرحلات،
+  -- ونافذة ظهور الإعلان، وفرق التقويم. وكل جدولٍ جديد بابٌ جديد: يُفتَح
+  -- للقراءة ويُغلق للكتابة، ولا يُصدَّق ذلك حتى يُجرَّب.
+  -- -------------------------------------------------------------------------
+  n := pg_temp.attempt_write(b,
+    'update public.clubs set title = ''اسم مزيّف'' where key = ''OfficersClub''');
+  perform pg_temp.log_result('الأندية', 'B يغيّر اسم النادي', 'ممنوع', n, n <= 0);
+
+  n := pg_temp.attempt_write(b,
+    'insert into public.club_menus (club, week_start) values (''OfficersClub'', current_date)');
+  perform pg_temp.log_result('الأندية', 'B ينشر قائمة طعام', 'ممنوع', n, n <= 0);
+
+  n := pg_temp.attempt_write(b, 'delete from public.club_menus');
+  perform pg_temp.log_result('الأندية', 'B يحذف القوائم', 'ممنوع', n, n <= 0);
+
+  n := pg_temp.attempt_write(b,
+    'insert into public.flight_routes (station, day) values (''وهمية'', ''الأحد'')');
+  perform pg_temp.log_result('الرحلات', 'B يضيف رحلة', 'ممنوع', n, n <= 0);
+
+  n := pg_temp.attempt_write(b, 'update public.flight_routes set aircraft = ''مزيّفة''');
+  perform pg_temp.log_result('الرحلات', 'B يغيّر رحلة', 'ممنوع', n, n <= 0);
+
+  n := pg_temp.attempt_write(b, 'delete from public.flight_routes');
+  perform pg_temp.log_result('الرحلات', 'B يحذف الجدول كلّه', 'ممنوع', n, n <= 0);
+
+  n := pg_temp.attempt_write(b,
+    'insert into public.flight_schedule (id, title) values (1, ''مزيّف'') on conflict (id) do update set title = ''مزيّف''');
+  perform pg_temp.log_result('الرحلات', 'B يبدّل ورقة الجدول', 'ممنوع', n, n <= 0);
+
+  -- ونافذة الظهور: لو كُتبت من الهاتف لأخفى المهاجم كل إعلان بتقديم وقت
+  -- انتهائه، بلا أن يحذف صفًّا واحدًا — وهو تعطيلٌ لا يُرى في سجلّ حذف.
+  n := pg_temp.attempt_write(b,
+    'update public.announcements set ends_at = now() - interval ''1 day''');
+  perform pg_temp.log_result('الإعلانات', 'B يُخفي كل الإعلانات بالوقت', 'ممنوع', n, n <= 0);
+
+  n := pg_temp.attempt_write(b,
+    'update public.news set ends_at = now() - interval ''1 day''');
+  perform pg_temp.log_result('الأخبار', 'B يُخفي كل الأخبار بالوقت', 'ممنوع', n, n <= 0);
+
+  n := pg_temp.attempt_write(b, 'update public.app_settings set hijri_offset = 2 where id = 1');
+  perform pg_temp.log_result('الإعدادات', 'B يغيّر التاريخ الهجري للجميع', 'ممنوع', n, n <= 0);
+
+  -- والقراءة مسموحة: جدولٌ محجوبٌ عن القراءة يجعل الشاشة فارغة عند الجميع.
+  n := pg_temp.attempt_read(b, 'select count(*) from public.flight_routes');
+  perform pg_temp.log_result('ضوابط موجبة', 'B يقرأ جدول الرحلات', 'مسموح', n, n >= 0);
+
+  n := pg_temp.attempt_read(b, 'select count(*) from public.club_menus');
+  perform pg_temp.log_result('ضوابط موجبة', 'B يقرأ قوائم الطعام', 'مسموح', n, n >= 0);
+
 end
 $tests$;
 

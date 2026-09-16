@@ -8,6 +8,7 @@ import { ScreenHeader } from "@/components/ScreenHeader";
 import { tintBackground } from "@/constants/categories";
 import { colors, radius, spacing, typography } from "@/constants";
 import { useAnnouncements } from "@/hooks/useNotifications";
+import { isVisible } from "@/utils/visibility";
 import { formatArabicDate } from "@/utils/date";
 
 const TYPE_FILTERS = [
@@ -29,8 +30,10 @@ export default function AnnouncementsScreen() {
   const { data: announcements } = useAnnouncements();
   const [filterKey, setFilterKey] = useState("all");
 
+  // ما لم يحن وقته أو انقضى لا يُعرض هنا: الوقت يُكتب عند النشر، والشاشة
+  // تحترمه — وإلا فالحقل زينة، والإعلان المنتهي يبقى يُقرأ على أنه قائم.
   const visible = useMemo(() => {
-    const list = announcements ?? [];
+    const list = (announcements ?? []).filter((announcement) => isVisible(announcement));
     if (filterKey === "all") return list;
     return list.filter((announcement) => announcement.type === filterKey);
   }, [announcements, filterKey]);

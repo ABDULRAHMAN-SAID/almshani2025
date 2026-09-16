@@ -221,16 +221,26 @@ export function hijriOf(date: Date): HijriDate {
   return tabularHijri(date);
 }
 
-/** "5 ربيع الآخر 1448 هـ" بتوقيت عُمان. */
-export function omanHijriLabel(at: Date = new Date()): string {
-  const { day, month, year } = hijriOf(omanNow(at));
+/**
+ * فرق التقويم العُماني عن أم القرى — يومٌ غالبًا.
+ *
+ * ‏أم القرى تقويمٌ محسوب تُعلنه السعودية قبل الرؤية، وعُمان تُعلن برؤية
+ * مجالسها فتأتي يومًا بعده في الغالب لا دائمًا. ولذلك هو رقمٌ يُضبط من لوحة
+ * الإدارة حين يختلف الشهر، لا ثابتٌ في الشفرة أنتظر أنا لأغيّره.
+ */
+export const HIJRI_OMAN_OFFSET = -1;
+
+/** "4 ربيع الآخر 1448 هـ" بتوقيت عُمان وتقويمها. */
+export function omanHijriLabel(at: Date = new Date(), offsetDays = HIJRI_OMAN_OFFSET): string {
+  const shifted = new Date(omanNow(at).getTime() + offsetDays * 86_400_000);
+  const { day, month, year } = hijriOf(shifted);
   const name = HIJRI_MONTHS[Math.min(Math.max(month, 1), 12) - 1];
   return `${day} ${name} ${year} هـ`;
 }
 
 /** السطر الكامل أعلى الصفحة: ميلاديّ وهجريّ وساعة، كلّها بتوقيت عُمان. */
-export function omanFullDateLabel(at: Date = new Date()): string {
+export function omanFullDateLabel(at: Date = new Date(), hijriOffset = HIJRI_OMAN_OFFSET): string {
   const d = omanNow(at);
   const gregorian = `${ARABIC_WEEKDAYS[d.getDay()]} ${d.getDate()} ${ARABIC_MONTHS[d.getMonth()]}`;
-  return `${gregorian} · ${omanHijriLabel(at)} · ${omanClockLabel(at)}`;
+  return `${gregorian} · ${omanHijriLabel(at, hijriOffset)} · ${omanClockLabel(at)}`;
 }
