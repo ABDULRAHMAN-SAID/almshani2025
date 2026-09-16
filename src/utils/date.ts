@@ -90,3 +90,35 @@ export function omanDateTimeLabel(at: Date = new Date()): string {
   const period = hour < 12 ? "ص" : "م";
   return `${ARABIC_WEEKDAYS[d.getDay()]} ${d.getDate()} ${ARABIC_MONTHS[d.getMonth()]} · ${hour12}:${minute} ${period}`;
 }
+
+/** "١١:٠٢ م" بتوقيت عُمان — لوقت انتهاء رمز الحضور. */
+export function omanClockLabel(at: Date = new Date()): string {
+  const d = omanNow(at);
+  const hour = d.getHours();
+  const hour12 = hour % 12 === 0 ? 12 : hour % 12;
+  const minute = String(d.getMinutes()).padStart(2, "0");
+  return `${hour12}:${minute} ${hour < 12 ? "ص" : "م"}`;
+}
+
+/**
+ * ما بقي من الوقت: "باقٍ ٥٨ دقيقة"، "باقٍ ساعتان و١٥ دقيقة"، أو "انتهى".
+ *
+ * ويُحسب بالفرق لا بالمنطقة الزمنية: الفرق بين لحظتين واحدٌ أينما كانت ساعة
+ * الجهاز، فلا يُخطئ الحساب عند من ضبط هاتفه على غير توقيت السلطنة.
+ */
+export function remainingLabel(expiresAtIso: string, now: Date = new Date()): string {
+  const left = new Date(expiresAtIso).getTime() - now.getTime();
+  if (!Number.isFinite(left) || left <= 0) return "انتهى";
+  const minutes = Math.ceil(left / 60_000);
+  if (minutes < 60) return `باقٍ ${minutes} دقيقة`;
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  const hoursWord = hours === 1 ? "ساعة" : hours === 2 ? "ساعتان" : `${hours} ساعات`;
+  return rest === 0 ? `باقٍ ${hoursWord}` : `باقٍ ${hoursWord} و${rest} دقيقة`;
+}
+
+/** هل انقضى وقت الانتهاء؟ و null (بلا انتهاء) لا ينقضي أبدًا. */
+export function isExpired(expiresAtIso: string | null, now: Date = new Date()): boolean {
+  if (!expiresAtIso) return false;
+  return new Date(expiresAtIso).getTime() <= now.getTime();
+}

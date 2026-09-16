@@ -38,7 +38,7 @@ export function CategoryCard({
       ]}
     >
       <View style={[styles.iconWrap, { backgroundColor: tintBackground(tint) }]}>
-        <Ionicons name={icon} size={23} color={tint} />
+        <Ionicons name={icon} size={26} color={tint} />
       </View>
       <Text style={styles.label} numberOfLines={2}>
         {label}
@@ -51,10 +51,10 @@ const styles = StyleSheet.create({
   base: {
     borderRadius: radius.md,
     // حشوٌ ضيّق: الفراغ داخل الخليّة هو ما كان يباعد الأيقونات فوق وتحت.
-    paddingVertical: spacing.sm,
-    paddingHorizontal: 2,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: 1,
     alignItems: "center",
-    gap: 6,
+    gap: 4,
   },
   card: {
     backgroundColor: colors.surface,
@@ -65,11 +65,13 @@ const styles = StyleSheet.create({
   plain: { backgroundColor: "transparent" },
   pressed: { opacity: 0.9, transform: [{ scale: 0.98 }] },
   iconWrap: {
-    width: 46,
-    height: 46,
-    borderRadius: 14,
+    // أكبر قليلًا مع عمودٍ أضيق: الفراغ حول الأيقونة هو ما يُرى تباعدًا،
+    // وهو فرق عرض العمود عن عرضها — فكلّما كبرت ضاق.
+    width: 52,
+    height: 52,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
   },
-  label: { ...typography.h3, fontSize: 11, lineHeight: 15, textAlign: "center" },
+  label: { ...typography.h3, fontSize: 11, lineHeight: 14, textAlign: "center" },
 });

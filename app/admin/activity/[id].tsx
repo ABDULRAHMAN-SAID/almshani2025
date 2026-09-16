@@ -76,7 +76,7 @@ export default function ManageActivityScreen() {
     // لا رمز فيولّد غيره ويُبطل ما طُبع وعُلّق في القاعة.
     setCode(activity.checkInCode ?? "");
     void getCheckInCode(activity.id)
-      .then((saved) => saved && setCode(saved))
+      .then((saved) => saved && setCode(saved.code))
       .catch(() => undefined);
     setCoverImage(activity.coverImage ?? "");
     setWinners(
@@ -136,8 +136,10 @@ export default function ManageActivityScreen() {
       return;
     }
     try {
+      // بلا مدّة من هنا: المدّة تُختار في شاشة الرمز نفسها، وضبطُها صفرًا
+      // هنا يبقي الرمز كما كان يفعل قبل أن تُضاف المدد.
       const saved = await setCheckInCode(activity.id, code);
-      setCode(saved);
+      setCode(saved.code);
       client.invalidateQueries();
       logAction(`ضبط رمز حضور: ${activity.title}`);
       showToast("تم حفظ رمز الحضور", "success");

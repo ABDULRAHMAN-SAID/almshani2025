@@ -127,6 +127,7 @@ const FUNCTIONS = [
   ["reply_to_message", { p_message_id: ZERO(), p_body: "—" }],
   ["report_group_post", { p_post_id: ZERO(), p_reason: "—" }],
   ["mark_news_read", { p_news_id: ZERO() }],
+  ["get_check_in_code_info", { p_activity_id: ZERO() }],
 ];
 
 /**
@@ -141,6 +142,7 @@ const FIELDS = [
   ["announcements", "club", "إعلانات الأندية"],
   ["club_menus", "week_start", "أسبوع قائمة الطعام"],
   ["club_menus", "images", "صور القوائم الثلاث"],
+  ["activity_checkin_codes", "expires_at", "وقت انتهاء رمز الحضور"],
   ["clubs", "title", "اسم النادي"],
 ];
 
@@ -226,7 +228,9 @@ async function checkField(table, column, label) {
   if (error && (error.code === "42703" || error.code === "PGRST204" || missing(error))) {
     return record("أعمدة", `${table}.${column}`, "missing", label);
   }
-  record("أعمدة", `${table}.${column}`, "ok", label);
+  // خطأٌ آخر يعني أنّ الجدول محجوب عن الزائر، لا أنّ العمود موجود. وقولُ
+  // «موجود» عمّا لم يُقرأ كذبٌ يطمئن صاحبه إلى ما لم يُفحص.
+  record("أعمدة", `${table}.${column}`, error ? "guarded" : "ok", label);
 }
 
 async function checkEnumValue(table, column, value, label) {
@@ -373,7 +377,7 @@ if (missingItems.length === 0) {
   // ونقول أيّ ملفٍّ يُنفَّذ: النقص في الجديد وحده يعني أن آخر تحديث لم
   // يُنفَّذ، لا أن المخطّط كلّه ناقص — وإعادةُ المخطّط كلّه لمن ينقصه جدولٌ
   // واحد عملٌ مخيف بلا داعٍ.
-  const NEW_ONES = new Set(["clubs", "club_menus", "news_reads", "mark_news_read"]);
+  const NEW_ONES = new Set(["clubs", "club_menus", "news_reads", "mark_news_read", "get_check_in_code_info"]);
   const onlyNew = missingItems.every(
     (item) => NEW_ONES.has(item.name) || item.group === "أعمدة" || item.group === "قيم"
   );

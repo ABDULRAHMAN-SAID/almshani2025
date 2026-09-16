@@ -52,6 +52,11 @@ export default function CheckInScreen() {
         refreshPoints();
         showToast(`تم تسجيل حضورك بنجاح! +${result.pointsEarned} نقاط`, "success");
         router.back();
+      } else if (result.expired) {
+        // لا يُقال «رمز خاطئ» لرمزٍ صحيح انقضى وقته: من يقرأ ذلك يعيد الكتابة
+        // عشرًا، ومن يقرأ هذا يطلب رمزًا جديدًا من المشرف.
+        showToast("انتهت صلاحية هذا الرمز — اطلب من المشرف رمزًا جديدًا", "error");
+        setScanned(false);
       } else if (result.alreadyCheckedIn) {
         showToast("تم تسجيل حضورك مسبقًا لهذا النشاط", "info");
       } else {

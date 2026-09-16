@@ -282,7 +282,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     paddingVertical: spacing.xs,
-    paddingHorizontal: 2,
+    paddingHorizontal: 0,
     ...shadow.card,
   },
   grid: { flexDirection: "row", flexWrap: "wrap" },
@@ -304,10 +304,10 @@ const styles = StyleSheet.create({
   groupLabel: {
     ...typography.caption,
     color: colors.textMuted,
-    marginBottom: spacing.xs,
+    marginBottom: 2,
     marginHorizontal: spacing.sm,
   },
-  groupSpaced: { marginTop: spacing.sm },
+  groupSpaced: { marginTop: 6 },
   section: { marginTop: spacing.xl, paddingHorizontal: spacing.lg },
   newsPlaceholder: {
     backgroundColor: colors.surface,

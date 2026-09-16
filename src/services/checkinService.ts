@@ -12,6 +12,8 @@ export interface CheckInResult {
   success: boolean;
   pointsEarned: number;
   alreadyCheckedIn: boolean;
+  /** الرمز صحيح لكن وقته انقضى — وهذا غير «رمز خاطئ». */
+  expired: boolean;
   activityTitle?: string;
 }
 
@@ -25,22 +27,36 @@ export async function submitCheckIn(
     const award = (await fetchFeatures()).pointsEnabled ? adminSettings().pointsPerAction : 0;
     const activity = MOCK_ACTIVITIES.find((a) => a.id === activityId);
     if (!activity || !activity.checkInCode || activity.checkInCode !== code.trim().toUpperCase()) {
-      return { success: false, pointsEarned: 0, alreadyCheckedIn: false };
+      return { success: false, pointsEarned: 0, alreadyCheckedIn: false, expired: false };
     }
     if (checkedInMock.has(activityId)) {
-      return { success: false, pointsEarned: 0, alreadyCheckedIn: true, activityTitle: activity.title };
+      return {
+        success: false, pointsEarned: 0, alreadyCheckedIn: true, expired: false,
+        activityTitle: activity.title,
+      };
     }
     checkedInMock.add(activityId);
     if (award > 0) recordMockPoints({ reason, points: award, activityTitle: activity.title });
-    return { success: true, pointsEarned: award, alreadyCheckedIn: false, activityTitle: activity.title };
+    return {
+      success: true, pointsEarned: award, alreadyCheckedIn: false, expired: false,
+      activityTitle: activity.title,
+    };
   }
 
   const { data, error } = await supabase
     .rpc("submit_check_in", { p_activity_id: activityId, p_code: code.trim().toUpperCase(), p_reason: reason })
     .single();
   if (error) throw error;
-  const row = data as { success: boolean; points_earned: number };
-  return { success: row.success, pointsEarned: row.points_earned, alreadyCheckedIn: !row.success && row.points_earned === 0 };
+  // ‏expired عمودٌ أُضيف بعد نشر التطبيق: خادمٌ لم يُنفَّذ عليه التحديث بعد
+  // لا يرسله، فيُقرأ false ويبقى السلوك كما كان بلا عطل.
+  const row = data as { success: boolean; points_earned: number; expired?: boolean };
+  const expired = row.expired === true;
+  return {
+    success: row.success,
+    pointsEarned: row.points_earned,
+    expired,
+    alreadyCheckedIn: !row.success && !expired && row.points_earned === 0,
+  };
 }
 
 /** يبحث عن نشاط برمز حضور معروف — يُستخدم لملء بيانات شاشة تسجيل الحضور تجريبيًا. */

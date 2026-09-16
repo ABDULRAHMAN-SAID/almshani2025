@@ -120,39 +120,72 @@ export function generateCheckInCode(): string {
   return code;
 }
 
+/** رمز الحضور ووقت انتهائه. و null في الوقت يعني رمزًا لا ينتهي. */
+export interface CheckInCode {
+  code: string;
+  expiresAt: string | null;
+}
+
+/** المدد المعروضة على شاشة الرمز. صفر = بلا انتهاء. */
+export const CODE_DURATIONS: { minutes: number; label: string }[] = [
+  { minutes: 15, label: "١٥ دقيقة" },
+  { minutes: 30, label: "٣٠ دقيقة" },
+  { minutes: 60, label: "ساعة" },
+  { minutes: 180, label: "٣ ساعات" },
+  { minutes: 0, label: "بلا انتهاء" },
+];
+
+/** ذاكرة أوقات الانتهاء في وضع البيانات التجريبية — لا خادم هناك. */
+const mockExpiry = new Map<string, string | null>();
+
 /**
- * ضبط رمز الحضور. على الخادم يمرّ عبر دالة موثوقة تكتب في جدول محجوب تمامًا
- * عن العميل، حتى لا يقرأ أحد الرمز ويمنح نفسه نقاط حضور دون أن يحضر.
+ * ضبط رمز الحضور ومدّته. على الخادم يمرّ عبر دالة موثوقة تكتب في جدول محجوب
+ * تمامًا عن العميل، حتى لا يقرأ أحد الرمز ويمنح نفسه نقاط حضور دون أن يحضر.
+ *
+ * ووقت الانتهاء يُحسب على الخادم ويُرجَع منه، لا يُحسب هنا: ساعةُ الهاتف قد
+ * تكون مضبوطة على غير الحقيقة، فيُعرض على الشاشة وقتٌ يخالف ما يحكم به
+ * الخادم عند المسح.
  */
-export async function setCheckInCode(activityId: string, code: string): Promise<string> {
+export async function setCheckInCode(
+  activityId: string,
+  code: string,
+  minutes = 0
+): Promise<CheckInCode> {
   const normalized = code.trim().toUpperCase();
   if (!USE_MOCK_DATA) {
-    const { error } = await supabase.rpc("set_check_in_code", {
+    const { data, error } = await supabase.rpc("set_check_in_code", {
       p_activity_id: activityId,
       p_code: normalized,
+      p_minutes: minutes,
     });
     if (error) throw error;
-    return normalized;
+    return { code: normalized, expiresAt: (data as string | null) ?? null };
   }
   const activity = MOCK_ACTIVITIES.find((item) => item.id === activityId);
   if (activity) activity.checkInCode = normalized;
-  return normalized;
+  const expiresAt = minutes > 0 ? new Date(Date.now() + minutes * 60_000).toISOString() : null;
+  mockExpiry.set(activityId, expiresAt);
+  return { code: normalized, expiresAt };
 }
 
 /**
- * الرمز المحفوظ لنشاط، أو null إن لم يُضبط بعد.
+ * الرمز المحفوظ لنشاط ووقت انتهائه، أو null إن لم يُضبط بعد.
  *
  * والدالة موجودة على الخادم منذ أول يوم ولم يكن في التطبيق ما يناديها: صفّ
  * النشاط لا يحمل الرمز — عمدًا، فهو محجوب عن كل قراءة — فكانت خانة الرمز
  * تُفتح فارغة دائمًا، ويظنّ الإداري أن لا رمز فيولّد غيره ويُبطل ما طُبع.
  */
-export async function getCheckInCode(activityId: string): Promise<string | null> {
+export async function getCheckInCode(activityId: string): Promise<CheckInCode | null> {
   if (USE_MOCK_DATA) {
-    return MOCK_ACTIVITIES.find((item) => item.id === activityId)?.checkInCode ?? null;
+    const code = MOCK_ACTIVITIES.find((item) => item.id === activityId)?.checkInCode;
+    return code ? { code, expiresAt: mockExpiry.get(activityId) ?? null } : null;
   }
-  const { data, error } = await supabase.rpc("get_check_in_code", { p_activity_id: activityId });
+  const { data, error } = await supabase
+    .rpc("get_check_in_code_info", { p_activity_id: activityId })
+    .maybeSingle();
   if (error) throw error;
-  return (data as string | null) ?? null;
+  const row = data as { code?: string; expires_at?: string | null } | null;
+  return row?.code ? { code: row.code, expiresAt: row.expires_at ?? null } : null;
 }
 
 /** أعداد المسجّلين لكل نشاط — أرقام مجمّعة فقط، بلا أسماء أو أرقام هواتف. */

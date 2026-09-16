@@ -233,6 +233,9 @@ create index if not exists points_transactions_user_idx on public.points_transac
 create table if not exists public.activity_checkin_codes (
   activity_id uuid primary key references public.activities (id) on delete cascade,
   code text not null,
+  -- وقت انتهاء الرمز، و null يعني رمزًا دائمًا. ورمزٌ لا ينتهي يُصوَّر في
+  -- القاعة ويُرسل إلى من لم يحضر فتُحتسب له نقاط حضورٍ لم يحضره.
+  expires_at timestamptz,
   updated_at timestamptz not null default now()
 );
 
@@ -456,32 +459,44 @@ $$;
 grant execute on function public.submit_quiz_answer(uuid, smallint) to authenticated;
 
 -- تسجيل الحضور عبر رمز القاعة (QR أو إدخال يدوي) ومنح 10 نقاط عند أول تسجيل فقط
-create or replace function public.submit_check_in(p_activity_id uuid, p_code text, p_reason points_reason default 'lecture_attendance')
-returns table (success boolean, points_earned integer)
+create or replace function public.submit_check_in(
+  p_activity_id uuid, p_code text, p_reason points_reason default 'lecture_attendance'
+)
+returns table (success boolean, points_earned integer, expired boolean)
 language plpgsql security definer set search_path = public as $$
 declare
   v_expected text;
+  v_expires timestamptz;
   v_points integer := 10;
 begin
-  select code into v_expected from activity_checkin_codes where activity_id = p_activity_id;
-  if v_expected is null or v_expected <> p_code then
-    return query select false, 0;
+  select c.code, c.expires_at into v_expected, v_expires
+  from activity_checkin_codes c where c.activity_id = p_activity_id;
+
+  if v_expected is null or v_expected <> upper(trim(p_code)) then
+    return query select false, 0, false;
+    return;
+  end if;
+
+  -- «انتهت صلاحيته» لا «رمز خاطئ»: الأول يُفهم منه أن يطلب رمزًا جديدًا،
+  -- والثاني يُفهم منه أنه أخطأ في الكتابة فيعيدها عشرًا.
+  if v_expires is not null and v_expires <= now() then
+    return query select false, 0, true;
     return;
   end if;
 
   insert into activity_checkins (user_id, activity_id, code)
-  values (auth.uid(), p_activity_id, p_code)
+  values (auth.uid(), p_activity_id, upper(trim(p_code)))
   on conflict (user_id, activity_id) do nothing;
 
   if not found then
-    return query select false, 0; -- تم تسجيل الحضور مسبقًا
+    return query select false, 0, false; -- تم تسجيل الحضور مسبقًا
     return;
   end if;
 
   insert into points_transactions (user_id, reason, points, activity_id)
   values (auth.uid(), p_reason, v_points, p_activity_id);
 
-  return query select true, v_points;
+  return query select true, v_points, false;
 end;
 $$;
 grant execute on function public.submit_check_in(uuid, text, points_reason) to authenticated;
@@ -769,6 +784,42 @@ begin
 end;
 $$;
 grant execute on function public.set_check_in_code(uuid, text) to authenticated;
+
+-- وبمدّة: ترجع وقت الانتهاء ليُعرض كما حُفظ على الخادم لا كما حُسب على
+-- الهاتف — ساعةُ الهاتف قد تكون مضبوطة على غير الحقيقة.
+create or replace function public.set_check_in_code(p_activity_id uuid, p_code text, p_minutes integer)
+returns timestamptz language plpgsql security definer set search_path = public as $$
+declare v_expires timestamptz;
+begin
+  if not public.is_admin() then
+    raise exception 'forbidden';
+  end if;
+  v_expires := case
+    when p_minutes is null or p_minutes <= 0 then null
+    else now() + make_interval(mins => p_minutes)
+  end;
+  insert into activity_checkin_codes (activity_id, code, expires_at)
+  values (p_activity_id, upper(trim(p_code)), v_expires)
+  on conflict (activity_id) do update
+    set code = excluded.code, expires_at = excluded.expires_at, updated_at = now();
+  return v_expires;
+end;
+$$;
+grant execute on function public.set_check_in_code(uuid, text, integer) to authenticated;
+
+-- الرمز ووقت انتهائه معًا، بنداء واحد.
+create or replace function public.get_check_in_code_info(p_activity_id uuid)
+returns table (code text, expires_at timestamptz)
+language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_admin() then
+    raise exception 'forbidden';
+  end if;
+  return query
+    select c.code, c.expires_at from activity_checkin_codes c where c.activity_id = p_activity_id;
+end;
+$$;
+grant execute on function public.get_check_in_code_info(uuid) to authenticated;
 
 create or replace function public.get_check_in_code(p_activity_id uuid)
 returns text language plpgsql security definer set search_path = public as $$
