@@ -2,14 +2,26 @@ import { useEffect, useRef } from "react";
 import { Animated, Text, View } from "react-native";
 import { router } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
+import { JetFormation } from "@/components/JetFormation";
 import { Logo } from "@/components/Logo";
 import { PatternOverlay } from "@/components/PatternOverlay";
 import { colors, spacing, typography, themed } from "@/constants";
 import { useAuthStore } from "@/store/authStore";
 
-const MIN_SPLASH_MS = 1100;
+/**
+ * أقلّ ما تبقاه شاشة البداية.
+ *
+ * وكان ألفًا ومئة، وهي تكفي لشعارٍ يظهر. ثم صار فوقه تشكيلٌ يعبر في ألفٍ
+ * وسبعمئة وخمسين، فلو بقيت المدّة على حالها لقُطع الطيران في منتصفه — وطيرانٌ
+ * يُقطع أسوأ من لا طيران.
+ */
+const MIN_SPLASH_MS = 2050;
 
-/** شاشة البداية — شعار + اسم التطبيق، Animation هادئ، بدون تحميل طويل. */
+/**
+ * شاشة البداية — شعار واسم التطبيق، وفوقهما تشكيلٌ من المقاتلات يعبر صعودًا.
+ *
+ * والتشكيل خلف الشعار لا أمامه: هو تحيّةٌ لا حجاب، والاسم يجب أن يُقرأ.
+ */
 export default function SplashScreen() {
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(12)).current;
@@ -42,6 +54,7 @@ export default function SplashScreen() {
       style={styles.container}
     >
       <PatternOverlay opacity={0.08} />
+      <JetFormation />
       <Animated.View style={{ opacity, transform: [{ translateY }], alignItems: "center" }}>
         <Logo size="lg" style={styles.logo} />
         <Text style={styles.appName}>أنشطتي</Text>
