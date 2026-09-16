@@ -31,6 +31,12 @@ const PERSON_W = Math.round(PERSON_H * (173 / 640));
 /** ارتفاع السماء فوق رأسه: شمسٌ أو غيمٌ أو برق. */
 const SKY_H = 88;
 
+/**
+ * موضع الرسغ في الصورة، كسرًا من عرضها وطولها — يطبعه make-person.py.
+ * وهو محور تأرجح الكفّ: الرسغ يثبت والأصابع تتحرّك، كما في اليد الحقيقية.
+ */
+const WRIST_X = 0.334;
+
 interface WeatherSceneProps {
   /** رمز WMO كما يردّه المزوّد. */
   code: number;
@@ -109,6 +115,13 @@ export function WeatherScene({ code, isNight, windSpeed }: WeatherSceneProps) {
   const backY = step.interpolate({ inputRange: [0, 0.25, 0.5, 1], outputRange: [0, -LIFT, 0, 0] });
   const bodyY = step.interpolate({ inputRange: [0, 0.25, 0.5, 0.75, 1], outputRange: [0, DIP, 0, DIP, 0] });
   const shadowX = step.interpolate({ inputRange: [0, 0.25, 0.5, 0.75, 1], outputRange: [1, 0.9, 1, 0.9, 1] });
+  // الذراع تعاكس الساق: من تمشي قدماه وذراعه جامدة يبدو آليًّا. ودورانٌ حول
+  // الرسغ لا إزاحةٌ للكفّ كلّه: الإزاحة تكشف ما تحته، والدوران يُبقي أعلاه
+  // في مكانه ويحرّك أصابعه — وهو ما تفعله اليد.
+  const handSwing = step.interpolate({
+    inputRange: T,
+    outputRange: T.map((t) => `${(Math.cos(2 * Math.PI * t) * 8).toFixed(1)}deg`),
+  });
 
   // مواضع قطرات الرذاذ: ثابتة بين إعادات الرسم، وإلا تراقصت عشوائيًّا.
   const dropLeft = useMemo(() => [14, 34, 54, 74, 94], []);
@@ -187,6 +200,23 @@ export function WeatherScene({ code, isNight, windSpeed }: WeatherSceneProps) {
             accessibilityIgnoresInvertColors
           />
         </Animated.View>
+        <Animated.Image
+          source={require("@assets/images/weather/hand.png")}
+          style={[
+            styles.layer,
+            styles.personImage,
+            {
+              transform: [
+                { translateX: (WRIST_X - 0.5) * PERSON_W },
+                { rotate: handSwing },
+                { translateX: -(WRIST_X - 0.5) * PERSON_W },
+                { translateY: bodyY },
+              ],
+            },
+          ]}
+          resizeMode="contain"
+          accessibilityIgnoresInvertColors
+        />
         <Animated.Image
           source={require("@assets/images/weather/foot-back.png")}
           style={[styles.layer, styles.personImage, { transform: [{ translateX: backX }, { translateY: backY }] }]}

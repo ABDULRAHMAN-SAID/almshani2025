@@ -2,9 +2,10 @@
 """
 يُخرج صور شخصية الطقس من الصورة الأصلية:
 
-  assets/images/weather/person.png      — الجسم كلّه بلا القدمين
+  assets/images/weather/person.png      — الجسم بلا القدمين ولا اليد
   assets/images/weather/foot-front.png  — القدم الأمامية وحدها
   assets/images/weather/foot-back.png   — القدم الخلفية وحدها
+  assets/images/weather/hand.png        — الكفّ وحده
 
 ولماذا تُفصل القدمان؟ لأن الصورة الواحدة لا تمشي: الماشي تتقدّم ساقُه،
 والصورة الساكنة إن حُرّكت كلّها قفزت. والدشداشة تستر الساقين، فما يُرى من
@@ -12,7 +13,11 @@
 الصورة على قناتها الشفّافة نفسها وبمقاسها نفسه، وتُحرَّكان في التطبيق كلٌّ
 على حدة فوق الجسم.
 
-والملفّات الثلاثة بمقاسٍ واحد عمدًا: تُركَّب في التطبيق فوق بعضها بلا حساب
+واليد مثلها: الماشي تتأرجح ذراعه عكس ساقه، ومن تتحرّك قدماه وذراعه جامدة
+يبدو آليًّا. والكفُّ وحده يكفي — الكمّ فوقه ساكنٌ كما في الواقع، والحركة
+تختفي في الرسغ.
+
+والملفّات بمقاسٍ واحد عمدًا: تُركَّب في التطبيق فوق بعضها بلا حساب
 إزاحة، فلا يزيغ موضع قدمٍ إن تغيّر حجم العرض.
 """
 import numpy as np
@@ -55,6 +60,54 @@ def feet_mask(a: np.ndarray) -> np.ndarray:
     return m
 
 
+def hand_mask(a: np.ndarray) -> np.ndarray:
+    """بكسلات الكفّ: جلدٌ تحت الكمّ في وسط الصورة — لا وجهَ ولا قدم هناك."""
+    h, w = a.shape[:2]
+    r, g, b, al = (a[..., i].astype(np.int16) for i in range(4))
+    yy, xx = np.mgrid[0:h, 0:w]
+
+    # النطاق ينتهي قبل حبل الخنجر الذي يظهر تحت الكفّ: لونه دافئٌ كالجلد
+    # المظلّل فلا يفرّقه مرشّح لون، ويفرّقه الموضع.
+    zone = (
+        (yy >= int(h * 0.500)) & (yy <= int(h * 0.594))
+        & (xx >= int(w * 0.16)) & (xx <= int(w * 0.56))
+        & (al > 40)
+    )
+    # الجلد مضيئُه ومظلّمه: الظلّ على الكفّ يهبط إلى (٨٧، ٣٧، ٢٤) فلا يلتقطه
+    # حدٌّ على السطوع. والنسبة بين القنوات هي ما يبقى: الأحمر يزيد على الأخضر
+    # زيادةً بيّنة، والأزرق لا يعلوه — وهذا ما يفصله عن الأبيض والكحليّ.
+    skin = (r > 60) & (b < 130) & (r >= g * 1.25) & (g >= b * 0.9)
+    m = zone & skin
+    m = ndimage.binary_closing(m, np.ones((3, 3), bool))
+    m = ndimage.binary_opening(m, np.ones((3, 3), bool))
+    m = ndimage.binary_dilation(m, np.ones((3, 3), bool)) & zone
+    lab, n = ndimage.label(m)
+    if n:
+        areas = ndimage.sum(m, lab, index=np.arange(1, n + 1))
+        m = lab == (int(np.argmax(areas)) + 1)  # الكفّ أكبرها
+    return m
+
+
+def fill_from_below(a: np.ndarray, mask: np.ndarray) -> np.ndarray:
+    """يملأ المقنَّع بما تحته في العمود نفسه.
+
+    والكفّ يقع على الدشداشة البيضاء وحبل الخنجر: وتحته هما، وفوقه الساعد —
+    وهو جلدٌ كالكفّ. فالملء من أعلى يجرّ لون الجلد خطوطًا، ومن أسفل يعيد ما
+    خلف الكفّ حقًّا. والأفقيّ يمسح الأبيض في الكحليّ.
+    """
+    out = a.astype(np.float64).copy()
+    h, w = a.shape[:2]
+    for x in range(w):
+        col = mask[:, x]
+        if not col.any():
+            continue
+        ys = np.flatnonzero(col)
+        for run in np.split(ys, np.flatnonzero(np.diff(ys) > 1) + 1):
+            bottom = run[-1] + 1
+            out[run, x] = a[bottom, x] if bottom < h else 0
+    return out.round().clip(0, 255).astype(np.uint8)
+
+
 def split_feet(mask: np.ndarray, h: int, w: int) -> tuple[np.ndarray, np.ndarray]:
     """الأمامية أسفل وأيسر، والخلفية أعلى وأيمن — خطٌّ مائل يفصلهما."""
     yy, xx = np.mgrid[0:h, 0:w]
@@ -84,12 +137,21 @@ def main() -> None:
     front, back = split_feet(mask, h, w)
     print(f"القدمان: {int(mask.sum())} بكسلًا — أمامية {int(front.sum())}، خلفية {int(back.sum())}")
 
-    body = a.copy()
+    hand = hand_mask(a)
+    print(f"الكفّ: {int(hand.sum())} بكسلًا")
+
+    body = fill_from_below(a, hand)
     body[mask] = 0
     Image.fromarray(body, "RGBA").save(OUT / "person.png", optimize=True)
     only(a, front).save(OUT / "foot-front.png", optimize=True)
     only(a, back).save(OUT / "foot-back.png", optimize=True)
-    for name in ("person.png", "foot-front.png", "foot-back.png"):
+    only(a, hand).save(OUT / "hand.png", optimize=True)
+
+    # موضع الرسغ: أعلى الكفّ — محورُ تأرجحه في التطبيق، كسرًا من الصورة.
+    ys, xs = np.where(hand)
+    print(f"الرسغ: x={xs.mean() / w:.3f}  y={ys.min() / h:.3f} من الصورة")
+
+    for name in ("person.png", "foot-front.png", "foot-back.png", "hand.png"):
         print(name, (OUT / name).stat().st_size // 1024, "KB")
 
 
