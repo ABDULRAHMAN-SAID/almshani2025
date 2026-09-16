@@ -11,7 +11,8 @@ import {
   fetchFriends,
   removeFriend,
   respondToFriendRequest,
-  searchMembers,
+  findMemberByCode,
+  fetchMyCode,
   sendFriendRequest,
   startDirectChat,
 } from "@/services/chatService";
@@ -19,10 +20,11 @@ import { showToast } from "@/store/toastStore";
 import { toArabicMessage } from "@/utils/errors";
 
 /**
- * الأصدقاء: الطلبات الواردة، ثم أصدقائي، ثم البحث عن غيرهم.
+ * الأصدقاء: الطلبات الواردة، ثم أصدقائي، ثم رمزي وإضافة برمز.
  *
- * والبحث لا يعرض رقم أحد ولا يعمل بأقل من ثلاثة أحرف: الغرض أن تجد من
- * تعرف اسمه، لا أن يُستخرج دليل القاعدة بحروف الهجاء.
+ * والإضافة بالرمز لا بالاسم: الأسماء تتشابه في القاعدة فيُضاف غير المقصود،
+ * والبحث بالاسم كان يُخرج لمن كتب ثلاثة أحرف عشرين اسمًا. والرمز يعطيه
+ * صاحبه لمن يريد، فلا يصل إليه أحدٌ لم يُعطَه.
  */
 export default function FriendsScreen() {
   const client = useQueryClient();
@@ -30,10 +32,12 @@ export default function FriendsScreen() {
 
   const friends = useQuery({ queryKey: ["friends"], queryFn: fetchFriends });
   const requests = useQuery({ queryKey: ["friend-requests"], queryFn: fetchFriendRequests });
-  const results = useQuery({
-    queryKey: ["member-search", query.trim()],
-    enabled: query.trim().length >= 3,
-    queryFn: () => searchMembers(query),
+  // رمزي: يُعرض ليُعطى، لا ليُبحث به عنّي.
+  const myCode = useQuery({ queryKey: ["my-code"], queryFn: fetchMyCode });
+  const found = useQuery({
+    queryKey: ["member-by-code", query.trim().toUpperCase()],
+    enabled: query.trim().length === 6,
+    queryFn: () => findMemberByCode(query),
   });
 
   const refresh = () => void client.invalidateQueries();
@@ -147,38 +151,61 @@ export default function FriendsScreen() {
           ))
         )}
 
-        <Text style={styles.sectionLabel}>ابحث عن زميل</Text>
+        {/* رمزي: يُعطى لمن يريد إضافتي، ولا يصل إليّ أحد بدونه. */}
+        <Text style={styles.sectionLabel}>رمزي</Text>
+        {/*
+          نصٌّ يُحدَّد لا زرّ نسخ: زرّ النسخ يحتاج وحدة أصلية تُضاف إلى
+          التطبيق كلّه، ووحدةٌ أصلية جديدة تعني بناء نسخة كاملة لا تحديثًا
+          يصل في دقيقة — لأجل نسخ ستّة أحرف تُقرأ صوتًا.
+        */}
+        <View style={styles.codeCard}>
+          <Text selectable style={styles.codeText}>
+            {myCode.data || "——————"}
+          </Text>
+          <View style={styles.codeSide}>
+            <Ionicons name="finger-print-outline" size={17} color={colors.primary} />
+            <Text style={styles.hint}>المس مطوّلًا لنسخه</Text>
+          </View>
+        </View>
+        <Text style={styles.hint}>
+          أعطِ هذا الرمز لمن تريد أن يضيفك. ولا يجدك أحد بالاسم.
+        </Text>
+
+        <Text style={styles.sectionLabel}>أضف بالرمز</Text>
         <TextInput
           value={query}
-          onChangeText={setQuery}
-          placeholder="اكتب ثلاثة أحرف من اسمه"
+          onChangeText={(text) => setQuery(text.toUpperCase())}
+          placeholder="رمز من ستّة"
           placeholderTextColor={colors.textMuted}
-          style={styles.input}
-          textAlign="right"
+          style={[styles.input, styles.codeInput]}
+          textAlign="center"
+          autoCapitalize="characters"
+          autoCorrect={false}
+          maxLength={6}
         />
-        {query.trim().length > 0 && query.trim().length < 3 ? (
-          <Text style={styles.hint}>اكتب ثلاثة أحرف على الأقل.</Text>
+        {query.trim().length > 0 && query.trim().length < 6 ? (
+          <Text style={styles.hint}>الرمز ستّة أحرف وأرقام.</Text>
         ) : null}
-        {(results.data ?? []).map((person) => (
-          <View key={person.id} style={styles.row}>
+        {found.data ? (
+          <View style={styles.row}>
             <View style={styles.avatar}>
               <Ionicons name="person-outline" size={17} color={colors.textMuted} />
             </View>
             <Text style={styles.name} numberOfLines={1}>
-              {person.fullName}
+              {found.data.fullName}
             </Text>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={`إضافة ${person.fullName}`}
-              onPress={() => add.mutate(person.id)}
+              accessibilityLabel={`إضافة ${found.data.fullName}`}
+              onPress={() => found.data && add.mutate(found.data.id)}
               style={[styles.pill, styles.pillAccept]}
             >
               <Text style={styles.pillAcceptText}>إضافة</Text>
             </Pressable>
           </View>
-        ))}
-        {query.trim().length >= 3 && (results.data ?? []).length === 0 && !results.isLoading ? (
-          <Text style={styles.hint}>لا أحد بهذا الاسم.</Text>
+        ) : null}
+        {query.trim().length === 6 && !found.data && !found.isLoading ? (
+          <Text style={styles.hint}>لا حساب بهذا الرمز.</Text>
         ) : null}
       </ScrollView>
     </View>
@@ -232,4 +259,23 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   hint: { ...typography.caption, fontSize: 11 },
+  codeCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    borderRadius: radius.lg,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+  },
+  codeText: {
+    ...typography.h2,
+    letterSpacing: 6,
+    writingDirection: "ltr",
+    color: colors.primary,
+  },
+  codeSide: { alignItems: "center", gap: 2 },
+  codeInput: { ...typography.h3, letterSpacing: 6, writingDirection: "ltr" },
 });

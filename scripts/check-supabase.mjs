@@ -136,7 +136,8 @@ const FUNCTIONS = [
   ["get_check_in_code_info", { p_activity_id: ZERO() }],
   ["my_friends", {}],
   ["my_conversations", {}],
-  ["search_members", { p_query: "اختبار" }],
+  ["find_member_by_code", { p_code: "ABC234" }],
+  ["my_member_code", {}],
   ["start_direct_chat", { p_other: ZERO() }],
 ];
 
@@ -150,6 +151,7 @@ const FUNCTIONS = [
  */
 const FIELDS = [
   ["announcements", "club", "إعلانات الأندية"],
+  ["users", "code", "رمز الحساب"],
   ["club_menus", "week_start", "أسبوع قائمة الطعام"],
   ["club_menus", "images", "صور القوائم الثلاث"],
   ["activity_checkin_codes", "expires_at", "وقت انتهاء رمز الحضور"],
@@ -390,7 +392,7 @@ if (missingItems.length === 0) {
   const NEW_ONES = new Set([
     "clubs", "club_menus", "news_reads", "mark_news_read", "get_check_in_code_info", "flight_schedule",
     "flight_routes", "friendships", "conversations", "conversation_members", "chat_messages",
-    "my_friends", "my_conversations", "search_members", "start_direct_chat",
+    "my_friends", "my_conversations", "find_member_by_code", "my_member_code", "start_direct_chat",
   ]);
   const onlyNew = missingItems.every(
     (item) => NEW_ONES.has(item.name) || item.group === "أعمدة" || item.group === "قيم"

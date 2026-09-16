@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { router } from "expo-router";
+import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BottomSheet } from "@/components/BottomSheet";
@@ -13,6 +14,7 @@ import { usePointsBalance } from "@/hooks/usePoints";
 import { useUnreadCount } from "@/hooks/useNotifications";
 import { useRegistrationStore } from "@/store/registrationStore";
 import { changePassword, updateFullName } from "@/services/authService";
+import { fetchMyCode } from "@/services/chatService";
 import { showToast } from "@/store/toastStore";
 import { toArabicMessage } from "@/utils/errors";
 import { useFeatures } from "@/hooks/useFeatures";
@@ -26,6 +28,7 @@ export default function ProfileScreen() {
   const registeredCount = useRegistrationStore((state) => state.registeredIds.length);
   const { discussionEnabled, messagesEnabled } = useFeatures();
   const [editing, setEditing] = useState(false);
+  const myCode = useQuery({ queryKey: ["my-code"], queryFn: fetchMyCode });
   const [nameDraft, setNameDraft] = useState(user?.name ?? "");
   const [saving, setSaving] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
@@ -106,6 +109,12 @@ export default function ProfileScreen() {
         <View style={styles.profileInfo}>
           <Text style={styles.name}>{user?.name}</Text>
           <Text style={styles.phone}>{user?.phone}</Text>
+          {/* الرمز هنا لأنه يُسأل عنه: «أعطني رمزك لأضيفك». */}
+          {myCode.data ? (
+            <Text selectable style={styles.code}>
+              رمزي: {myCode.data}
+            </Text>
+          ) : null}
           {user?.email ? <Text style={styles.email}>{user.email}</Text> : null}
         </View>
         <Pressable accessibilityRole="button" onPress={openEdit} hitSlop={8}>
@@ -265,6 +274,7 @@ const styles = StyleSheet.create({
   name: { ...typography.h3 },
   email: { ...typography.caption, fontSize: 11.5, color: colors.textMuted },
   phone: { ...typography.bodyMuted },
+  code: { ...typography.caption, color: colors.primary, letterSpacing: 2, marginTop: 2 },
   list: { gap: spacing.sm, marginBottom: spacing.xl },
   row: {
     flexDirection: "row",

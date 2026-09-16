@@ -924,6 +924,83 @@ $bank$;
 -- ولفتح أسبوعٍ وإغلاق ما سواه، من التطبيق: الإدارة ← المسابقة.
 -- ============================================================================
 
+
+-- ============ ١٥) رمز الحساب: الإضافة بالرمز لا بالاسم ============
+-- الأسماء تتشابه في القاعدة: ثلاثة يحملون الاسم نفسه، فمن يضيف صديقًا بالاسم
+-- يضيف غيره. والبحث بالاسم بابٌ آخر: من كتب حرفين استخرج قائمة بمن في
+-- القاعدة. فلكل حساب رمزٌ من ستّة يعطيه صاحبه لمن يريد، ولا يُعرف إلا منه.
+alter table public.users add column if not exists code text;
+
+/** رمز من ستّة، بلا الحروف الملتبسة (O و0 و I و1) — يُملى صوتًا ويُكتب بلا خطأ. */
+create or replace function public.generate_member_code()
+returns text language plpgsql as $$
+declare
+  v_alphabet constant text := 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  v_code text;
+  v_try integer := 0;
+begin
+  loop
+    v_code := '';
+    for i in 1..6 loop
+      v_code := v_code || substr(v_alphabet, 1 + floor(random() * length(v_alphabet))::int, 1);
+    end loop;
+    exit when not exists (select 1 from public.users u where u.code = v_code);
+    v_try := v_try + 1;
+    if v_try > 50 then
+      raise exception 'could not generate code';
+    end if;
+  end loop;
+  return v_code;
+end $$;
+
+-- من سجّل قبل هذا التحديث يأخذ رمزه الآن.
+update public.users set code = public.generate_member_code() where code is null;
+
+create unique index if not exists users_code_idx on public.users (code);
+
+-- والحسابات الجديدة تأخذه عند إنشائها: لو تُرك للتطبيق لبقي حسابٌ بلا رمز
+-- كلّما أُنشئ من غير مساره.
+create or replace function public.set_member_code()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if new.code is null or trim(new.code) = '' then
+    new.code := public.generate_member_code();
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists users_set_code on public.users;
+create trigger users_set_code before insert on public.users
+  for each row execute function public.set_member_code();
+
+/**
+ * البحث عن عضو برمزه — تطابقٌ تامّ لا جزئي.
+ *
+ * ويُرجع الاسم والرمز وحدهما: لا هاتف ولا بريد. ومن لا يملك الرمز لا يصل
+ * إلى شيء — وهذا هو الفرق بين أن تُضيف من تعرفه وأن يُستخرج دليل القاعدة.
+ */
+create or replace function public.find_member_by_code(p_code text)
+returns table (id uuid, full_name text, code text)
+language sql security definer stable set search_path = public as $$
+  select u.id, u.full_name, u.code
+  from users u
+  where length(coalesce(trim(p_code), '')) = 6
+    and upper(trim(p_code)) = u.code
+    and u.id <> auth.uid()
+  limit 1;
+$$;
+grant execute on function public.find_member_by_code(text) to authenticated;
+
+/** رمزي أنا — يُعرض في حسابي لأُعطيه من يريد إضافتي. */
+create or replace function public.my_member_code()
+returns text language sql security definer stable set search_path = public as $$
+  select u.code from users u where u.id = auth.uid();
+$$;
+grant execute on function public.my_member_code() to authenticated;
+
+-- والبحث بالاسم يُزال: كان يُرجع عشرين اسمًا لمن كتب ثلاثة أحرف.
+drop function if exists public.search_members(text);
+
 -- ============================================================================
 -- تمّ. للتأكد من النادييْن:
 --   select unnest(enum_range(null::activity_category));

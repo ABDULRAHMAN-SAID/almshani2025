@@ -14,9 +14,7 @@ const MIN_PASSWORD = 6;
 
 /** شاشة إنشاء الحساب: الاسم ثلاثيًا، ورقم، وبريد، وكلمة مرور. */
 export default function RegisterScreen() {
-  const [firstName, setFirstName] = useState("");
-  const [secondName, setSecondName] = useState("");
-  const [familyName, setFamilyName] = useState("");
+  const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -27,9 +25,16 @@ export default function RegisterScreen() {
 
   // نحسب الأخطاء دائمًا، ولا نعرضها إلا بعد أول محاولة إرسال — فلا تظهر
   // الشاشة حمراء قبل أن يكتب المستخدم حرفًا واحدًا.
+  // الاسم ثلاثة فأكثر: «محمد سالم» يتكرّر في القاعدة عشرات المرّات، ومن
+  // يبحث عن صاحبه في قائمة يجد ثلاثة بالاسم نفسه. والثالث يفصل بينهم.
+  const nameParts = fullName.trim().split(/\s+/).filter(Boolean);
   const errors = {
-    firstName: firstName.trim() ? "" : "الاسم الأول مطلوب",
-    familyName: familyName.trim() ? "" : "اسم العائلة مطلوب",
+    fullName:
+      nameParts.length >= 3
+        ? ""
+        : nameParts.length === 0
+          ? "الاسم الكامل مطلوب"
+          : "اكتب اسمك الكامل — ثلاثة أسماء على الأقل",
     phone: isValidPhone(phone) ? "" : "رقم غير صحيح — مثال: 91234567",
     email: looksLikeEmail(email) ? "" : "بريد غير صحيح",
     password: password.length >= MIN_PASSWORD ? "" : `${MIN_PASSWORD} أحرف على الأقل`,
@@ -46,10 +51,12 @@ export default function RegisterScreen() {
     }
     setLoading(true);
     try {
+      // الخادم يحفظ الاسم مجزّأً كما كان: الأول، والثاني، وما بقي عائلةً.
+      // فالتغيير في الشاشة وحدها، ولا تُهاجر الحسابات القديمة.
       const result = await signUpWithPassword({
-        firstName,
-        secondName,
-        familyName,
+        firstName: nameParts[0] ?? "",
+        secondName: nameParts[1] ?? "",
+        familyName: nameParts.slice(2).join(" "),
         phone,
         email,
         password,
@@ -101,25 +108,12 @@ export default function RegisterScreen() {
 
         <View style={styles.form}>
           <FormField
-            label="الاسم الأول"
-            value={firstName}
-            onChangeText={setFirstName}
-            placeholder="عبدالله"
-            error={show("firstName")}
-          />
-          <FormField
-            label="الاسم الثاني"
-            value={secondName}
-            onChangeText={setSecondName}
-            placeholder="سالم"
-            hint="اسم الأب — اتركه فارغًا إن لم يكن جزءًا من اسمك"
-          />
-          <FormField
-            label="اسم العائلة"
-            value={familyName}
-            onChangeText={setFamilyName}
-            placeholder="الشحري"
-            error={show("familyName")}
+            label="الاسم الكامل"
+            value={fullName}
+            onChangeText={setFullName}
+            placeholder="عبدالله سالم الشحري"
+            hint="ثلاثة أسماء على الأقل، كما في السجلّات الرسمية"
+            error={show("fullName")}
           />
 
           <View style={styles.divider} />

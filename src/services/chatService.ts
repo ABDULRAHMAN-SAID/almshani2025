@@ -75,17 +75,32 @@ const mock = {
 
 /* ------------------------------- الأصدقاء ------------------------------- */
 
-export async function searchMembers(query: string): Promise<Person[]> {
-  if (query.trim().length < 3) return [];
+/**
+ * البحث عن عضو برمزه — تطابقٌ تامّ.
+ *
+ * وكان بالاسم، فيُرجع لمن كتب ثلاثة أحرف عشرين اسمًا من القاعدة، ويُضيف من
+ * أراد فلانًا فلانًا آخر يشاركه الاسم. والرمز يعطيه صاحبه لمن يريد.
+ */
+export async function findMemberByCode(code: string): Promise<Person | null> {
+  const clean = code.trim().toUpperCase();
+  if (clean.length !== 6) return null;
   if (USE_MOCK_DATA) {
-    return mock.friends.filter((person) => person.fullName.includes(query.trim()));
+    return clean === "AB12CD" ? { id: "mock-3", fullName: "ناصر بن علي العمري" } : null;
   }
-  const { data, error } = await supabase.rpc("search_members", { p_query: query.trim() });
+  const { data, error } = await supabase
+    .rpc("find_member_by_code", { p_code: clean })
+    .maybeSingle();
   if (error) throw error;
-  return ((data ?? []) as { id: string; full_name: string }[]).map((row) => ({
-    id: row.id,
-    fullName: row.full_name,
-  }));
+  const row = data as { id?: string; full_name?: string } | null;
+  return row?.id ? { id: row.id, fullName: row.full_name ?? "" } : null;
+}
+
+/** رمزي أنا — يُعرض في حسابي لأُعطيه من يريد إضافتي. */
+export async function fetchMyCode(): Promise<string> {
+  if (USE_MOCK_DATA) return "XK47PM";
+  const { data, error } = await supabase.rpc("my_member_code");
+  if (error) throw error;
+  return String(data ?? "");
 }
 
 export async function fetchFriends(): Promise<Person[]> {
