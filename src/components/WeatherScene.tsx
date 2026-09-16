@@ -17,6 +17,9 @@ import { Animated, Easing, Image, StyleSheet, View } from "react-native";
  * تُذكر.
  */
 
+/** قامة الرجل على الشاشة — يحتاجها محورُ الميل أيضًا. */
+const PERSON_H = 170;
+
 interface WeatherSceneProps {
   /** رمز WMO كما يردّه المزوّد. */
   code: number;
@@ -62,6 +65,7 @@ export function WeatherScene({ code, isNight, windSpeed }: WeatherSceneProps) {
   const drops = useLoop(1400, kind === "rain" || kind === "storm");
   const gust = useLoop(windy ? 2200 : 3800, windy || kind === "fog");
   const breathe = useLoop(5200);
+  const step = useLoop(1150);
 
   const cloudShift = drift.interpolate({ inputRange: [0, 1], outputRange: [0, 14] });
   const cloudShiftBack = drift.interpolate({ inputRange: [0, 1], outputRange: [0, -10] });
@@ -70,7 +74,21 @@ export function WeatherScene({ code, isNight, windSpeed }: WeatherSceneProps) {
   const gustShift = gust.interpolate({ inputRange: [0, 1], outputRange: [-26, 26] });
   const gustFade = gust.interpolate({ inputRange: [0, 0.2, 0.8, 1], outputRange: [0, 0.75, 0.75, 0] });
   const sunPulse = breathe.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1, 1.06, 1] });
-  const sway = breathe.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, -3, 0] });
+  // خطوةٌ ونصف خطوة: القامة ترتفع مرّتين في الدورة الواحدة — مرّةً لكلّ
+  // قدم — ويميل الجذع معها. وهذه مشيةُ ثابتٍ في مكانه، لا مشيُ ساقين:
+  // الساقان تحتاجان صورًا متعدّدة للخطوة الواحدة، والصورة هنا واحدة.
+  const bob = step.interpolate({
+    inputRange: [0, 0.25, 0.5, 0.75, 1],
+    outputRange: [0, -3.2, 0, -3.2, 0],
+  });
+  const lean = step.interpolate({
+    inputRange: [0, 0.25, 0.5, 0.75, 1],
+    outputRange: ["0deg", "1.4deg", "0deg", "-1.4deg", "0deg"],
+  });
+  const shift = step.interpolate({
+    inputRange: [0, 0.25, 0.5, 0.75, 1],
+    outputRange: [0, -1.8, 0, 1.8, 0],
+  });
 
   // مواضع قطرات الرذاذ: ثابتة بين إعادات الرسم، وإلا تراقصت عشوائيًّا.
   const dropLeft = useMemo(() => [14, 34, 54, 74, 94], []);
@@ -134,9 +152,25 @@ export function WeatherScene({ code, isNight, windSpeed }: WeatherSceneProps) {
       {/* ——— الشخصية ———
           صورةٌ حقيقية اختارها صاحب التطبيق، لا شكلًا مرسومًا بالشفرة: رسمُ
           إنسانٍ بمنحنياتٍ مكتوبة بيدٍ لا يبلغ الواقعية مهما صُقل.
-          وتتنفّس تنفّسًا خفيفًا — ثلاث نقاطٍ صعودًا ونزولًا في خمس ثوانٍ —
-          فتبدو حيّةً بلا أن تشدّ العين عن الأرقام. */}
-      <Animated.View style={[styles.person, { transform: [{ translateY: sway }] }]}>
+          وتمشي: ترتفع القامة مرّتين في كل دورة — مرّةً لكل قدم — ويميل
+          الجذع معها ويتقدّم قليلًا ثم يتأخّر. */}
+      <Animated.View
+        style={[
+          styles.person,
+          {
+            transform: [
+              { translateX: shift },
+              { translateY: bob },
+              // الميل حول القدمين لا حول الوسط: الدوران في React Native يقع
+              // على مركز العنصر، فيتأرجح الرجل كالبندول وتطير قدماه. والنزول
+              // نصفَ القامة ثم الدوران ثم العودة ينقل المحور إلى الأرض.
+              { translateY: PERSON_H / 2 },
+              { rotate: lean },
+              { translateY: -PERSON_H / 2 },
+            ],
+          },
+        ]}
+      >
         <Image
           source={require("@assets/images/weather/person.png")}
           style={[styles.personImage, { opacity: isNight ? 0.92 : 1 }]}
@@ -209,6 +243,6 @@ const styles = StyleSheet.create({
   // alignSelf لا left/right: هذه تنقلب مع اتّجاه الواجهة فيقف الرجل في الطرف.
   person: { position: "absolute", bottom: 0, alignSelf: "center" },
   // نسبة الصورة ١٧٣ × ٦٤٠.
-  personImage: { width: 46, height: 170 },
+  personImage: { width: 46, height: PERSON_H },
 
 });
