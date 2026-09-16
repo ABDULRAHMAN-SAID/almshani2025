@@ -260,3 +260,9 @@ export function hijriMonthOf(date: Date, offsetDays = HIJRI_OMAN_OFFSET): { name
   const { month, year } = hijriOf(shifted);
   return { name: HIJRI_MONTHS[Math.min(Math.max(month, 1), 12) - 1], year, month };
 }
+
+/** تاريخ اليوم بتوقيت عُمان على صورة «2026-09-17» — للمقارنة مع تواريخ ISO. */
+export function omanTodayIso(at: Date = new Date()): string {
+  const d = omanNow(at);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}

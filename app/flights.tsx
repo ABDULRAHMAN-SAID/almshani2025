@@ -7,10 +7,10 @@ import { FlyPast } from "@/components/FlyPast";
 import { ImageZoom } from "@/components/ImageZoom";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { colors, radius, shadow, spacing, typography, themed } from "@/constants";
-import { FLIGHT_DAYS, FLIGHT_EFFECTIVE, FLIGHT_SOURCE } from "@/constants/flights";
+import { FLIGHT_DAYS, FLIGHT_EFFECTIVE, FLIGHT_NOTICES, FLIGHT_SOURCE } from "@/constants/flights";
 import type { Flight } from "@/constants/flights";
 import { fetchFlightRoutes, fetchFlightSchedule } from "@/services/flightService";
-import { omanWeekdayName } from "@/utils/date";
+import { formatArabicDate, formatArabicWeekday, omanTodayIso, omanWeekdayName } from "@/utils/date";
 
 /**
  * جدول الرحلات مكتوبًا، مرتّبًا بالأيام.
@@ -42,6 +42,10 @@ export default function FlightsScreen() {
   // المحطّات بلا جدول ثابت: صفوف بلا يوم، لها نصّ بدل المسار.
   const notes = useMemo(() => all.filter((flight) => !flight.day && flight.note), [all]);
 
+  // تنبيهات هذا اليوم التي لم ينقضِ تاريخها بعد.
+  const todayIso = omanTodayIso();
+  const notices = FLIGHT_NOTICES.filter((notice) => notice.day === day && notice.date >= todayIso);
+
   return (
     <View style={styles.screen}>
       {/* الرأس والمصدر وأيّام الأسبوع في شريطٍ واحد ناعم، والقائمة تحته. */}
@@ -62,9 +66,45 @@ export default function FlightsScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {notices.map((notice) => (
+          <View key={`${notice.date}-${notice.station}`} style={styles.notice}>
+            <View style={styles.noticeHead}>
+              <View style={styles.noticeIcon}>
+                <Ionicons name="alert-circle" size={18} color={colors.textOnPrimary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.noticeTitle}>تغيير توقيت رحلة {notice.station}</Text>
+                <Text style={styles.noticeDate}>
+                  {formatArabicWeekday(notice.date)} · {formatArabicDate(notice.date)}
+                </Text>
+              </View>
+            </View>
+            {notice.legs.map((leg) => (
+              <View key={leg.from} style={styles.legRow}>
+                <Text style={styles.legFrom}>من {leg.from}</Text>
+                <View style={styles.legTimes}>
+                  <Text style={styles.legTime}>
+                    <Text style={styles.legLabel}>التسجيل </Text>
+                    {leg.checkIn}
+                  </Text>
+                  <Text style={styles.legTime}>
+                    <Text style={styles.legLabel}>الإقلاع </Text>
+                    {leg.depart}
+                  </Text>
+                </View>
+              </View>
+            ))}
+            <Text style={styles.noticeFoot}>يُعمل بهذا التوقيت لهذا اليوم فقط، ثم يعود الجدول المعتاد.</Text>
+          </View>
+        ))}
+
         {flights.length > 0 ? (
           flights.map((flight) => (
-            <FlightCard key={flight.id ?? `${flight.station}-${flight.day}`} flight={flight} />
+            <FlightCard
+              key={flight.id ?? `${flight.station}-${flight.day}`}
+              flight={flight}
+              changed={notices.some((notice) => notice.station === flight.station)}
+            />
           ))
         ) : (
           <View style={styles.none}>
@@ -116,14 +156,15 @@ export default function FlightsScreen() {
  * الورقة تُقرأ بمعرفة أن الأيسر وصولٌ والأيمن إقلاع، ومن لا يعرف ذلك يقرأ
  * رقمًا مكان رقم — ويصل بعد أن تُقلع.
  */
-function FlightCard({ flight }: { flight: Flight }) {
+function FlightCard({ flight, changed }: { flight: Flight; changed?: boolean }) {
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, changed && styles.cardChanged]}>
       <View style={styles.cardHead}>
         <View style={styles.icon}>
           <Ionicons name="airplane-outline" size={17} color={colors.primary} />
         </View>
         <Text style={styles.station}>{flight.station}</Text>
+        {changed ? <Text style={styles.changedTag}>تغيّر اليوم — انظر التنبيه</Text> : null}
         <Text style={styles.aircraft}>{flight.aircraft}</Text>
       </View>
 
@@ -174,7 +215,50 @@ const styles = themed(() => ({
     gap: spacing.sm,
     ...shadow.subtle,
   },
+  cardChanged: { opacity: 0.62 },
+  changedTag: {
+    ...typography.caption,
+    fontSize: 10.5,
+    color: colors.warning,
+    backgroundColor: colors.warningSoft,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+    borderRadius: radius.pill,
+    overflow: "hidden",
+  },
   cardHead: { flexDirection: "row", alignItems: "center", gap: spacing.md, marginBottom: spacing.xs },
+  notice: {
+    backgroundColor: colors.primary,
+    borderRadius: 20,
+    padding: spacing.lg,
+    gap: spacing.sm,
+    ...shadow.card,
+  },
+  noticeHead: { flexDirection: "row", alignItems: "center", gap: spacing.md, marginBottom: spacing.xs },
+  noticeIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.16)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  noticeTitle: { fontFamily: "Tajawal_700Bold", fontSize: 16, color: colors.textOnPrimary },
+  noticeDate: { ...typography.caption, color: colors.textOnPrimaryMuted },
+  legRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    backgroundColor: "rgba(255,255,255,0.10)",
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  legFrom: { fontFamily: "Tajawal_500Medium", fontSize: 14, color: colors.textOnPrimary, width: 84 },
+  legTimes: { flex: 1, flexDirection: "row", justifyContent: "flex-end", gap: spacing.lg },
+  legTime: { fontFamily: "Tajawal_700Bold", fontSize: 15, color: colors.textOnPrimary, writingDirection: "ltr" },
+  legLabel: { fontFamily: "Tajawal_400Regular", fontSize: 11, color: colors.textOnPrimaryMuted },
+  noticeFoot: { ...typography.caption, fontSize: 11.5, color: colors.textOnPrimaryMuted, marginTop: 2 },
   icon: {
     width: 36,
     height: 36,
