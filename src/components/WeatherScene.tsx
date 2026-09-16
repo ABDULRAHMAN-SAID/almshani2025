@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef } from "react";
-import { Animated, Easing, Image, StyleSheet, View } from "react-native";
+import { Animated, Easing, StyleSheet, View } from "react-native";
 
 /**
- * مشهد الطقس: رجلٌ واقف، وفوقه سماءٌ تتبدّل بحال الجوّ.
+ * مشهد الطقس: سماءٌ حيّة تتبدّل بحال الجوّ.
  *
- * ولماذا رسمٌ لا أيقونة؟ لأن الأيقونة تقول الحالة، والمشهد يقول الإحساس بها:
- * شمسٌ على رأسه في الظهيرة، أو غيمٌ يمرّ، أو رذاذٌ ينزل، أو خطوط ريحٍ تسحب
- * الهواء. ومن يفتح الشاشة يعرف جوّ يومه قبل أن يقرأ رقمًا.
+ * ولماذا مشهدٌ لا أيقونة؟ لأن الأيقونة تقول الحالة، والمشهد يقول الإحساس بها:
+ * شمسٌ تنبض، أو غيمٌ يمرّ، أو رذاذٌ ينزل، أو خطوط ريحٍ تسحب الهواء. ومن يفتح
+ * الشاشة يعرف جوّ يومه قبل أن يقرأ رقمًا.
  *
  * ومرسومٌ بمستطيلاتٍ ودوائر لا بملفّ رسوميّات: إضافة مكتبة رسمٍ تعني وحدةً
  * أصليّة جديدة، وبناءً جديدًا، وتثبيتًا على كل هاتف — ثمنٌ باهظ لصورة. وهذه
@@ -130,17 +130,11 @@ export function WeatherScene({ code, isNight, windSpeed }: WeatherSceneProps) {
         </Animated.View>
       ) : null}
 
-      {/* ——— الشخص ———
-          صورةٌ مرسومة لا أشكالٌ مركّبة: المستطيلات والدوائر سقفها شكلٌ
-          هندسي، والصورة فيها منحنى وتظليلٌ وحافّةٌ ناعمة. ورُسمت بمنحنيات
-          Bezier ثم صُغِّرت ثلاث مرّات — scripts/draw-person.py، فتُعاد متى
-          شئنا تغييرها. */}
-      <Image
-        source={require("@assets/images/weather/person.png")}
-        style={[styles.person, { opacity: isNight ? 0.94 : 1 }]}
-        resizeMode="contain"
-        accessibilityIgnoresInvertColors
-      />
+      {/* ——— موضع الشخصية ———
+          كانت هنا شخصيةٌ مرسومة بالشفرة، ورُفعت: رسمُ إنسانٍ بمنحنياتٍ مكتوبة
+          بيدٍ لا يبلغ الواقعية مهما صُقل، وصورةٌ رديئة أسوأ من لا صورة.
+          والمكان محفوظ: متى وُضع ملفٌّ حقيقي في
+          assets/images/weather/person.png أُعيد هذا السطر وحده. */}
     </View>
   );
 }
@@ -151,7 +145,7 @@ const SOFT = "rgba(255,255,255,0.55)";
 const styles = StyleSheet.create({
   // ارتفاعٌ يكفي السماء والشخص بلا تصادم: السماء في أعلى ثمانين،
   // والشخص يقف تحتها بقامته كاملة.
-  scene: { width: 214, height: 208, alignSelf: "center" },
+  scene: { width: 214, height: 124, alignSelf: "center" },
 
   sun: { position: "absolute", top: 0, left: 0, right: 0, alignItems: "center", justifyContent: "center" },
   sunCore: { width: 46, height: 46, borderRadius: 23, backgroundColor: "#FFD166" },
@@ -202,7 +196,5 @@ const styles = StyleSheet.create({
 
   windRow: { position: "absolute", top: 92, right: 2, alignItems: "flex-end" },
   windLine: { height: 3, borderRadius: 2, backgroundColor: "rgba(255,255,255,0.5)" },
-
-  person: { position: "absolute", bottom: -4, alignSelf: "center", width: 132, height: 158 },
 
 });
