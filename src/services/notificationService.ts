@@ -1,6 +1,8 @@
 import type { AppNotification, Announcement } from "@/types/models";
 import { LIST_LIMIT, USE_MOCK_DATA } from "./config";
 import { MOCK_ANNOUNCEMENTS, MOCK_NOTIFICATIONS } from "./mockData";
+import { noticeAnnouncements } from "@/constants/flights";
+import { isVisible } from "@/utils/visibility";
 import { toAnnouncement, toNotification } from "./rowMappers";
 import { supabase } from "./supabase";
 
@@ -56,16 +58,21 @@ export function pushMockNotification(title: string, body: string): void {
 }
 
 export async function fetchAllAnnouncements(): Promise<Announcement[]> {
-  if (USE_MOCK_DATA) {
-    return [...MOCK_ANNOUNCEMENTS].sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
-  }
+  // تنبيهات الرحلات تُشتقّ في التطبيق لا تُقرأ من الخادم، فتُضاف هنا لتظهر
+  // مع سائر الإعلانات مرتَّبةً بتاريخها.
+  const notices = noticeAnnouncements().filter((item) => isVisible(item));
+  const sorted = (list: Announcement[]) =>
+    [...list, ...notices].sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
+
+  if (USE_MOCK_DATA) return sorted(MOCK_ANNOUNCEMENTS);
+
   const { data, error } = await supabase
     .from("announcements")
     .select("*")
     .order("published_at", { ascending: false })
     .limit(LIST_LIMIT);
   if (error) throw error;
-  return (data ?? []).map(toAnnouncement);
+  return sorted((data ?? []).map(toAnnouncement));
 }
 
 /** حذف إشعار مُرسَل — من لوحة الإدارة. */

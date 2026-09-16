@@ -13,6 +13,8 @@
  * المصنعة ١٠:٠٠، تصل خصب ١٠:٥٠، تقلع منها ١١:٥٠، وتعود المصنعة ١٢:٤٠.
  */
 
+import type { Announcement } from "@/types/models";
+
 /** أيام الأسبوع في الجدول — لا جمعة فيه. */
 export const FLIGHT_DAYS = [
   "السبت",
@@ -245,6 +247,7 @@ export const FLIGHT_SOURCE = "جدول رحلات سلاح الجو السلطا
 
 /* ---------------------------- تنبيهات بتاريخ ---------------------------- */
 
+
 /**
  * تغييرٌ ليومٍ بعينه، لا للجدول.
  *
@@ -281,3 +284,41 @@ export const FLIGHT_NOTICES: FlightNotice[] = [
     ],
   },
 ];
+
+/**
+ * التنبيه إعلانًا.
+ *
+ * من يفتح «الرحلات» يرى التنبيه — ومن لا يفتحها لا يعلم. والرسالة تصل مساء
+ * الأربعاء لمن يسافر صباح الخميس، فلا تُترك في شاشةٍ قد لا تُفتح: تُشتقّ منها
+ * إعلانٌ يظهر في الرئيسية وفي «الإعلانات» بلا أن يُكتب مرّتين ولا أن يُنسى
+ * حذفه — نافذةُ ظهوره تنتهي بانتهاء يومه بتوقيت عُمان.
+ *
+ * ولها معرّفٌ ثابت مشتقٌّ من تاريخها ومحطّتها لا رقمٌ عشوائي: القوائم تُرسم
+ * بالمفاتيح، ومفتاحٌ يتغيّر كل رسمة يُعيد بناء البطاقة بلا داعٍ.
+ */
+export function noticeAnnouncements(): Announcement[] {
+  return FLIGHT_NOTICES.map((notice) => {
+    const legs = notice.legs
+      .map((leg) => `من ${leg.from}: التسجيل ${leg.checkIn} — الإقلاع ${leg.depart}.`)
+      .join("\n");
+    return {
+      id: `flight-notice-${notice.date}-${notice.station}`,
+      title: `تغيير توقيت رحلة ${notice.station} — ${notice.day}`,
+      description: `${legs}\nيُعمل بهذا التوقيت لهذا اليوم فقط، ثم يعود الجدول المعتاد.`,
+      type: "تنبيه" as const,
+      publishedAt: notice.date,
+      // ينتهي بانتهاء يومه: منتصف ليل اليوم التالي بتوقيت عُمان.
+      endsAt: `${nextDayIso(notice.date)}T00:00:00+04:00`,
+    };
+  });
+}
+
+function nextDayIso(iso: string): string {
+  const [year, month, day] = iso.split("-").map(Number);
+  // الظهيرة لا منتصف الليل: الإضافة من منتصف الليل تنزلق يومًا في المناطق
+  // التي يتغيّر فيها التوقيت الصيفي.
+  const date = new Date(year, month - 1, day, 12);
+  date.setDate(date.getDate() + 1);
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
