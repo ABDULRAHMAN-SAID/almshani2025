@@ -203,6 +203,6 @@ const styles = StyleSheet.create({
   windRow: { position: "absolute", top: 92, right: 2, alignItems: "flex-end" },
   windLine: { height: 3, borderRadius: 2, backgroundColor: "rgba(255,255,255,0.5)" },
 
-  person: { position: "absolute", bottom: -6, left: 0, right: 0, height: 150, alignSelf: "center" },
+  person: { position: "absolute", bottom: -4, alignSelf: "center", width: 132, height: 158 },
 
 });
