@@ -74,6 +74,36 @@ begin
   );
 end $$;
 
+/**
+ * زائر بلا حساب: الدور anon بلا أيّ مطالبة هوية.
+ *
+ * وهذا ما يملكه أيّ أحد فعلًا — المفتاح العام داخل كل نسخة من التطبيق،
+ * يُستخرج من الملفّ في دقائق. فما يقرؤه هذا الدور يُقرأ من الإنترنت بلا
+ * حساب ولا إذن.
+ */
+create or replace function pg_temp.as_visitor() returns void
+language plpgsql as $$
+begin
+  perform set_config('role', 'anon', true);
+  perform set_config('request.jwt.claims', json_build_object('role', 'anon')::text, true);
+end $$;
+
+/** يحاول الزائر قراءة جدول. يُرجع عدد الصفوف التي وصلت إليه. */
+create or replace function pg_temp.visitor_read(p_sql text)
+returns integer language plpgsql as $$
+declare n integer;
+begin
+  perform pg_temp.as_visitor();
+  begin
+    execute p_sql into n;
+  exception when others then
+    n := -1;
+  end;
+  execute 'reset role';
+  perform set_config('request.jwt.claims', '', true);
+  return coalesce(n, 0);
+end $$;
+
 create or replace function pg_temp.as_owner() returns void
 language plpgsql as $$
 begin
@@ -478,6 +508,48 @@ begin
     'insert into public.friendships (requester_id, addressee_id, status) values ('
       || quote_literal(a) || '::uuid, ' || quote_literal(b) || '::uuid, ''accepted'')');
   perform pg_temp.log_result('الصداقة', 'B ينشئ صداقةً مقبولة باسم A', 'ممنوع', n, n <= 0);
+
+  -- ===================== زائر بلا حساب =====================
+  -- المفتاح العام داخل كل نسخة من التطبيق، ويُستخرج منه في دقائق. فكل ما
+  -- يقرؤه الدور anon يُقرأ من الإنترنت بلا حساب — ولا يكفي أن تُقفل الشاشة.
+
+  n := pg_temp.visitor_read('select count(*) from public.activities');
+  perform pg_temp.log_result('زائر', 'يقرأ الأنشطة بلا حساب', 'ممنوع', n, n <= 0);
+
+  n := pg_temp.visitor_read('select count(*) from public.announcements');
+  perform pg_temp.log_result('زائر', 'يقرأ الإعلانات بلا حساب', 'ممنوع', n, n <= 0);
+
+  n := pg_temp.visitor_read('select count(*) from public.activity_results');
+  perform pg_temp.log_result('زائر', 'يقرأ أسماء الفائزين بلا حساب', 'ممنوع', n, n <= 0);
+
+  n := pg_temp.visitor_read('select count(*) from public.group_posts');
+  perform pg_temp.log_result('زائر', 'يقرأ مشاركات المجموعات بلا حساب', 'ممنوع', n, n <= 0);
+
+  n := pg_temp.visitor_read('select count(*) from public.discussion_groups');
+  perform pg_temp.log_result('زائر', 'يرى المجموعات بلا حساب', 'ممنوع', n, n <= 0);
+
+  n := pg_temp.visitor_read('select count(*) from public.awareness_articles');
+  perform pg_temp.log_result('زائر', 'يقرأ التوعية بلا حساب', 'ممنوع', n, n <= 0);
+
+  n := pg_temp.visitor_read('select count(*) from public.app_contact');
+  perform pg_temp.log_result('زائر', 'يقرأ بيانات التواصل بلا حساب', 'ممنوع', n, n <= 0);
+
+  n := pg_temp.visitor_read('select count(*) from public.flight_routes');
+  perform pg_temp.log_result('زائر', 'يقرأ جدول الرحلات بلا حساب', 'ممنوع', n, n <= 0);
+
+  n := pg_temp.visitor_read('select count(*) from public.news');
+  perform pg_temp.log_result('زائر', 'يقرأ الأخبار بلا حساب', 'ممنوع', n, n <= 0);
+
+  n := pg_temp.visitor_read('select count(*) from public.users');
+  perform pg_temp.log_result('زائر', 'يقرأ الأعضاء بلا حساب', 'ممنوع', n, n <= 0);
+
+  n := pg_temp.visitor_read('select count(*) from public.chat_messages');
+  perform pg_temp.log_result('زائر', 'يقرأ الرسائل الخاصة بلا حساب', 'ممنوع', n, n <= 0);
+
+  -- ومفاتيح التشغيل تبقى مقروءة: التطبيق يقرؤها قبل الدخول ليعرف أيّ
+  -- الأقسام مفتوح، وليس فيها إلا مفاتيح نعم/لا.
+  n := pg_temp.visitor_read('select count(*) from public.app_settings');
+  perform pg_temp.log_result('ضوابط موجبة', 'الزائر يقرأ مفاتيح التشغيل', 'مسموح', n, n >= 1);
 
   delete from public.chat_messages where conversation_id = v_conv;
   delete from public.conversation_members where conversation_id = v_conv;

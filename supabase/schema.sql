@@ -395,16 +395,22 @@ drop policy if exists "users update own row" on public.users;
 create policy "users update own row" on public.users
   for update using (auth.uid() = id) with check (auth.uid() = id);
 
--- قراءة عامة للمحتوى غير الحساس، الكتابة من الإدارة فقط (Service Role)
+-- قراءة للمسجَّلين، والكتابة للإدارة وحدها.
+--
+-- و«to authenticated» ليست تفصيلًا: بدونها تنطبق السياسة على الدور anon
+-- أيضًا — وهو الدور الذي يحمله المفتاح العام الموجود داخل كل نسخة من
+-- التطبيق ويستطيع أيّ أحد استخراجه. فكانت الأنشطة والإعلانات والتوعية
+-- وأسماء الفائزين ومشاركات المجموعات تُقرأ من الإنترنت بلا حساب أصلًا.
+-- وجدولُ الرحلات والأخبار وقوائم الأندية كانت مقفلة، وهذه لم تكن.
 drop policy if exists "activities public read" on public.activities;
 create policy "activities public read" on public.activities
-  for select using (true);
+  for select to authenticated using (true);
 drop policy if exists "activity_results public read" on public.activity_results;
 create policy "activity_results public read" on public.activity_results
-  for select using (true);
+  for select to authenticated using (true);
 drop policy if exists "announcements public read" on public.announcements;
 create policy "announcements public read" on public.announcements
-  for select using (true);
+  for select to authenticated using (true);
 drop policy if exists "news read" on public.news;
 -- للمسجَّلين وحدهم: المفتاح العام داخل ملفّ التطبيق، ولا داعي لأن يُقرأ ما
 -- تنشره القاعدة لمنسوبيها من غير منتسب.
@@ -413,7 +419,7 @@ create policy "news read" on public.news
 
 drop policy if exists "awareness public read" on public.awareness_articles;
 create policy "awareness public read" on public.awareness_articles
-  for select using (true);
+  for select to authenticated using (true);
 
 -- التسجيلات: كل مستخدم يرى ويُنشئ تسجيلاته فقط
 drop policy if exists "registrations read own" on public.registrations;
@@ -1006,7 +1012,7 @@ alter table public.app_contact enable row level security;
 
 drop policy if exists "contact public read" on public.app_contact;
 create policy "contact public read" on public.app_contact
-  for select using (true);
+  for select to authenticated using (true);
 
 drop policy if exists "contact admin write" on public.app_contact;
 create policy "contact admin write" on public.app_contact
@@ -1121,7 +1127,7 @@ alter table public.discussion_groups enable row level security;
 
 drop policy if exists "groups public read" on public.discussion_groups;
 create policy "groups public read" on public.discussion_groups
-  for select using (true);
+  for select to authenticated using (true);
 
 drop policy if exists "groups admin write" on public.discussion_groups;
 create policy "groups admin write" on public.discussion_groups
@@ -1145,7 +1151,7 @@ alter table public.group_posts enable row level security;
 
 drop policy if exists "posts public read" on public.group_posts;
 create policy "posts public read" on public.group_posts
-  for select using (true);
+  for select to authenticated using (true);
 
 -- الكتابة: باسم المستخدم نفسه، في مجموعة غير مقفلة، وإن كانت مقيّدة بنشاط
 -- فلا يكتب فيها إلا من سجّل في ذلك النشاط فعلًا.
