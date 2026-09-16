@@ -12,6 +12,7 @@ export * from "./EventHero";
 export * from "./FilterChips";
 export * from "./HeaderBand";
 export * from "./ImageField";
+export * from "./ImageZoom";
 export * from "./LeaderboardRow";
 export * from "./LoadingSkeleton";
 export * from "./MediaField";

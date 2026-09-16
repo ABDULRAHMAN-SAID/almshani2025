@@ -1,6 +1,7 @@
 import type {
   ClubMenu,
   ClubProfile,
+  FlightSchedule,
   Activity,
   Announcement,
   AppNotification,
@@ -346,6 +347,12 @@ export const MOCK_ACTIVITIES: Activity[] = [
 ];
 
 /** ملفّا النادييْن — نسخة العرض وحدها. */
+export const MOCK_FLIGHT_SCHEDULE: FlightSchedule = {
+  title: "جدول رحلات الطيران من السيب والمصنعة — ساري حتى إشعار آخر",
+  images: [],
+  publishedAt: iso(-2),
+};
+
 export const MOCK_CLUBS: ClubProfile[] = [
   { key: "OfficersClub", title: "نادي الضباط" },
   { key: "SeniorNcoClub", title: "نادي كبار ضباط الصف" },

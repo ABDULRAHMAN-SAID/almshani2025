@@ -98,6 +98,19 @@ export interface ClubMenu {
   publishedAt: string;
 }
 
+/**
+ * جدول رحلات الطائرة: صورة الورقة المعلّقة، لا جدولٌ يُعاد كتابته.
+ *
+ * الجدول يصدر من سلاح الجو ورقةً واحدة فيها ستّة أيام وخمس محطّات وأوقاتها،
+ * وإعادةُ كتابته في التطبيق كل أسبوع خطأٌ ينتظر أن يقع: من ينسخ رقمًا خطأً
+ * يُفوّت على أحدهم رحلته. فتُرفع الورقة كما هي، وتُكبَّر لتُقرأ.
+ */
+export interface FlightSchedule {
+  title: string;
+  images: string[];
+  publishedAt: string;
+}
+
 export interface Announcement {
   id: string;
   title: string;

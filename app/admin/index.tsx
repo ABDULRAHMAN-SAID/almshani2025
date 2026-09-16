@@ -187,8 +187,14 @@ function OverviewTab() {
         <ActionRow
           icon="restaurant-outline"
           label="الأندية وقوائم طعامها"
-          hint="اسم النادي وصورته، وقائمة طعام الأسبوع"
+          hint="اسم النادي، وصور قائمة طعام الأسبوع"
           onPress={() => router.push("/admin/club-menu")}
+        />
+        <ActionRow
+          icon="airplane-outline"
+          label="جدول الرحلات"
+          hint="صوّر ورقة جدول الطيران وارفعها — تُقرأ مكبَّرة في التطبيق"
+          onPress={() => router.push("/admin/flights")}
         />
         <ActionRow
           icon="qr-code-outline"

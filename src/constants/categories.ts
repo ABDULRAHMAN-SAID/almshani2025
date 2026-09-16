@@ -47,10 +47,11 @@ export const CATEGORY_META: Record<ActivityCategory, CategoryMeta> = {
  * تجعل الشبكة تُمسح بالنظر: من يريد طعام النادي ينزل إلى «الأندية» ولا يقرأ
  * ما سواها.
  */
-export type HomeGroup = "clubs" | "activities" | "awareness" | "news" | "connect";
+export type HomeGroup = "clubs" | "services" | "activities" | "awareness" | "news" | "connect";
 
 export const HOME_GROUP_LABEL: Record<HomeGroup, string> = {
   clubs: "الأندية",
+  services: "خدمات",
   activities: "الأنشطة",
   awareness: "التوعية والسلامة",
   news: "الأخبار والإعلانات",
@@ -60,6 +61,7 @@ export const HOME_GROUP_LABEL: Record<HomeGroup, string> = {
 /** ترتيب الأشرطة في الصفحة. الأندية أوّلًا: هي أكثر ما يُفتح يوميًّا. */
 export const HOME_GROUP_ORDER: HomeGroup[] = [
   "clubs",
+  "services",
   "activities",
   "awareness",
   "news",
@@ -77,6 +79,7 @@ export interface HomeSection {
 
 /** الأقسام المعروضة في شبكة الأيقونات الرئيسية (أعلى الصفحة الرئيسية). */
 export const HOME_SECTIONS: HomeSection[] = [
+  { key: "flights", label: "جدول الرحلات", icon: "airplane-outline", tint: "#1C4468", route: "/flights", group: "services" },
   { key: "competitions", label: "المسابقات", icon: "trophy-outline", tint: "#C7A252", route: "/sections/competitions", group: "activities" },
   { key: "lectures", label: "المحاضرات", icon: "mic-outline", tint: "#0B2545", route: "/sections/lectures", group: "activities" },
   { key: "calendar", label: "التقويم", icon: "calendar-outline", tint: "#2C7A7B", route: "/calendar", group: "activities" },

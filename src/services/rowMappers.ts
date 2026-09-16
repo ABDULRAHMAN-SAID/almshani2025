@@ -1,5 +1,6 @@
 import type {
   ClubMenu,
+  FlightSchedule,
   ClubProfile,
   Activity,
   ActivityResult,
@@ -102,6 +103,14 @@ export const toClubMenu = (row: Row): ClubMenu => ({
   club: row.club as ClubMenu["club"],
   weekStart: day(row.week_start),
   images: toMenuImages(row),
+  publishedAt: day(row.published_at),
+});
+
+export const toFlightSchedule = (row: Row): FlightSchedule => ({
+  title: text(row.title),
+  images: (Array.isArray(row.images) ? row.images : []).filter(
+    (entry): entry is string => typeof entry === "string" && entry.length > 0
+  ),
   publishedAt: day(row.published_at),
 });
 

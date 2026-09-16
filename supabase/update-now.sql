@@ -1,5 +1,5 @@
 -- ============================================================================
--- آخر تحديث للخادم — قوائم الأندية، ونقطة قراءة الخبر، ورمز حضورٍ ينتهي
+-- آخر تحديث للخادم — قوائم الأندية، ونقطة الخبر، ورمزٌ ينتهي، وجدول الرحلات
 -- ============================================================================
 -- الصقه كاملًا في Supabase ← SQL Editor ← Run.
 -- تنفيذه مرّتين لا يضرّ: كل جملة فيه تتخطّى ما هو موجود.
@@ -260,6 +260,30 @@ begin
 end;
 $$;
 grant execute on function public.submit_check_in(uuid, text, points_reason) to authenticated;
+
+
+-- ============ ٩) جدول رحلات الطائرة ============
+-- صفٌّ واحد لا أكثر: الجدول المعلّق في القاعدة واحد، يصدر «ساريًا حتى إشعار
+-- آخر»، وإذا صدر غيره بطل الأول. ولو تراكمت الصفوف لقرأ بعض الناس جدولًا
+-- أُبطل — والخطأ هنا رجلٌ يقف في المطار لرحلةٍ لا تُقلع. والقيد id = 1 هو
+-- ما يجعل ذلك مستحيلًا لا متروكًا للانتباه.
+create table if not exists public.flight_schedule (
+  id smallint primary key default 1,
+  title text not null default '',
+  images jsonb not null default '[]'::jsonb,
+  published_at timestamptz not null default now(),
+  constraint flight_schedule_single_row check (id = 1)
+);
+
+alter table public.flight_schedule enable row level security;
+
+drop policy if exists "flight_schedule read" on public.flight_schedule;
+create policy "flight_schedule read" on public.flight_schedule
+  for select to authenticated using (true);
+
+drop policy if exists "flight_schedule admin write" on public.flight_schedule;
+create policy "flight_schedule admin write" on public.flight_schedule
+  for all using (public.is_admin()) with check (public.is_admin());
 
 -- ============================================================================
 -- تمّ. للتأكد من النادييْن:

@@ -111,6 +111,7 @@ const PROTECTED_TABLES = [
   "news_reads",
   "clubs",
   "club_menus",
+  "flight_schedule",
 ];
 
 const VIEWS = ["quiz_questions_public", "leaderboard_view"];
@@ -377,7 +378,9 @@ if (missingItems.length === 0) {
   // ونقول أيّ ملفٍّ يُنفَّذ: النقص في الجديد وحده يعني أن آخر تحديث لم
   // يُنفَّذ، لا أن المخطّط كلّه ناقص — وإعادةُ المخطّط كلّه لمن ينقصه جدولٌ
   // واحد عملٌ مخيف بلا داعٍ.
-  const NEW_ONES = new Set(["clubs", "club_menus", "news_reads", "mark_news_read", "get_check_in_code_info"]);
+  const NEW_ONES = new Set([
+    "clubs", "club_menus", "news_reads", "mark_news_read", "get_check_in_code_info", "flight_schedule",
+  ]);
   const onlyNew = missingItems.every(
     (item) => NEW_ONES.has(item.name) || item.group === "أعمدة" || item.group === "قيم"
   );

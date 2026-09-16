@@ -191,6 +191,16 @@ create table if not exists public.club_menus (
 create index if not exists club_menus_club_week_idx
   on public.club_menus (club, week_start desc);
 
+-- ============ جدول رحلات الطائرة ============
+-- صفٌّ واحد: الجدول المعلّق في القاعدة واحد، وإذا صدر غيره بطل الأول.
+create table if not exists public.flight_schedule (
+  id smallint primary key default 1,
+  title text not null default '',
+  images jsonb not null default '[]'::jsonb,
+  published_at timestamptz not null default now(),
+  constraint flight_schedule_single_row check (id = 1)
+);
+
 -- ============ الإشعارات ============
 create table if not exists public.notifications (
   id uuid primary key default gen_random_uuid(),
@@ -288,6 +298,7 @@ alter table public.awareness_articles enable row level security;
 alter table public.news enable row level security;
 alter table public.news_reads enable row level security;
 alter table public.club_menus enable row level security;
+alter table public.flight_schedule enable row level security;
 alter table public.clubs enable row level security;
 alter table public.notifications enable row level security;
 alter table public.points_transactions enable row level security;
@@ -538,6 +549,14 @@ begin
 end $$;
 
 grant execute on function public.mark_news_read(uuid) to authenticated;
+
+drop policy if exists "flight_schedule read" on public.flight_schedule;
+create policy "flight_schedule read" on public.flight_schedule
+  for select to authenticated using (true);
+
+drop policy if exists "flight_schedule admin write" on public.flight_schedule;
+create policy "flight_schedule admin write" on public.flight_schedule
+  for all using (public.is_admin()) with check (public.is_admin());
 
 drop policy if exists "clubs read" on public.clubs;
 create policy "clubs read" on public.clubs
