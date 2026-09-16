@@ -21,7 +21,8 @@ export async function fetchFlightSchedule(): Promise<FlightSchedule | null> {
     .select("*")
     .eq("id", 1)
     .maybeSingle();
-  if (error) throw error;
+  // والورقة المصوّرة زيادةٌ على المكتوب: غيابها لا يُسقط الشاشة.
+  if (error) return null;
   if (!data) return null;
   const schedule = toFlightSchedule(data);
   return schedule.images.length > 0 || schedule.title ? schedule : null;
@@ -67,7 +68,11 @@ export async function deleteFlightSchedule(): Promise<void> {
 export async function fetchFlightRoutes(): Promise<Flight[]> {
   if (USE_MOCK_DATA) return FLIGHTS;
   const { data, error } = await supabase.from("flight_routes").select("*");
-  if (error) throw error;
+  // الخطأ لا يُرفع هنا وحده من بين كل استعلامات التطبيق: الجدول ثابتٌ معروف
+  // ومكتوبٌ في التطبيق، فخادمٌ لم يُنفَّذ عليه التحديث بعد — أو شبكةٌ مقطوعة —
+  // يُجاب عنه بالورقة التي في اليد، لا بشاشة عطل. وقد وقع هذا بعينه: أضفتُ
+  // الجدول إلى الخادم فاختفت الرحلات عند من لم ينفّذ التحديث، وهي عنده أصلًا.
+  if (error) return FLIGHTS;
   const rows = (data ?? []).map(toFlightRoute);
   return rows.length > 0 ? rows : FLIGHTS;
 }

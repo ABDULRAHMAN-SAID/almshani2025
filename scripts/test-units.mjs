@@ -313,6 +313,17 @@ function runAll(tz) {
   check("الرحلات", "كل يوم من أيام الورقة معروف", [],
     flights.FLIGHTS.filter((f) => !flights.FLIGHT_DAYS.includes(f.day)).map((f) => f.day));
 
+  // والجدول المكتوب هو الجواب حين يعطب الخادم: أُضيف جدول الرحلات إلى
+  // الخادم، فاختفت الرحلات عند من لم ينفّذ التحديث — والجدول عنده في
+  // التطبيق أصلًا. فيُفحص أنّ ما في الشفرة كاملٌ يكفي وحده.
+  const byDay = {};
+  for (const f of flights.FLIGHTS) byDay[f.day] = (byDay[f.day] ?? 0) + 1;
+  check("الرحلات", "ثماني عشرة رحلة في الجدول المكتوب", 18, flights.FLIGHTS.length);
+  check("الرحلات", "لكل يوم رحلاته", "1,3,3,3,4,4",
+    Object.values(byDay).sort((a, b) => a - b).join(","));
+  check("الرحلات", "لا محطّة بلا يوم", [],
+    flights.FLIGHTS.filter((f) => !f.day).map((f) => f.station));
+
   // ---- المرفقات ----
   // طبقة الرفع كلّها كانت بلا تحقّق واحد: حدودها وامتداداتها وفكّ ترميزها.
   const overLimit = (kind, size) => {
