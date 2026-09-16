@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { I18nManager, Platform } from "react-native";
+import { I18nManager, Platform, useColorScheme } from "react-native";
 import { useFonts, Tajawal_400Regular, Tajawal_500Medium, Tajawal_700Bold } from "@expo-google-fonts/tajawal";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { Stack } from "expo-router";
+import { Stack, router } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { DemoRibbon } from "@/components/DemoRibbon";
@@ -12,7 +12,8 @@ import { UpdateBanner } from "@/components/UpdateBanner";
 import { MisconfiguredNotice } from "@/components/MisconfiguredNotice";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { ToastHost } from "@/components/ToastHost";
-import { colors } from "@/constants";
+import { colors, setColorScheme, takeRoute, type ColorScheme } from "@/constants";
+import { useSettingsStore } from "@/store/settingsStore";
 import { USE_MOCK_DATA } from "@/services/config";
 import { isSupabaseConfigured } from "@/services/supabase";
 
@@ -63,21 +64,44 @@ export default function RootLayout() {
   const [appReady, setAppReady] = useState(false);
   const [ignoreRtl, setIgnoreRtl] = useState(false);
 
+  // المظهر: ما اختاره المستخدم، أو إعداد هاتفه إن ترك الاختيار «تلقائي».
+  // ويُحسب قبل أوّل رسم لا بعده: لو رُسمت الشاشة فاتحةً ثم انقلبت داكنة
+  // لومضت في وجه من فتح التطبيق في الظلمة.
+  const themePreference = useSettingsStore((state) => state.theme);
+  const settingsHydrated = useSettingsStore((state) => state.hasHydrated);
+  const systemScheme = useColorScheme();
+  const scheme: ColorScheme =
+    themePreference === "system" ? (systemScheme === "dark" ? "dark" : "light") : themePreference;
+  setColorScheme(scheme);
+
   useEffect(() => {
     if (fontsLoaded || fontError) setAppReady(true);
   }, [fontsLoaded, fontError]);
 
   // ولو لم يصل الخطّ ولم يُعلن فشله — وهذا يقع حين يُقطع الطلب بلا ردّ.
+  // والمهلة نفسها تغطّي قراءة الإعدادات: تخزينٌ لا يردّ لا يوقف التطبيق.
+  const [timedOut, setTimedOut] = useState(false);
   useEffect(() => {
-    const timer = setTimeout(() => setAppReady(true), FONT_WAIT_MS);
+    const timer = setTimeout(() => {
+      setAppReady(true);
+      setTimedOut(true);
+    }, FONT_WAIT_MS);
     return () => clearTimeout(timer);
   }, []);
+
+  // بعد إعادة التركيب لتبديل المظهر: عُد إلى الشاشة التي بُدّل منها.
+  useEffect(() => {
+    const path = takeRoute();
+    if (!path) return;
+    const timer = setTimeout(() => router.push(path as never), 60);
+    return () => clearTimeout(timer);
+  }, [scheme]);
 
   const onLayoutRootView = useCallback(() => {
     if (appReady) SplashScreen.hideAsync().catch(() => undefined);
   }, [appReady]);
 
-  if (!appReady) return null;
+  if (!appReady || !(settingsHydrated || timedOut)) return null;
 
   // بعد إضافة expo-updates صار بالإمكان إعادة التحميل بأمر واحد بدل أن
   // يُطلب من صاحب الجهاز أن يُغلق ويفتح. وتبقى الرسالة لمن تعذّرت عليه.
@@ -101,10 +125,13 @@ export default function RootLayout() {
     );
   }
 
+  // ‏key={scheme}: تبديل المظهر يعيد تركيب الشجرة كلّها، فتُقرأ اللوحة
+  // الجديدة في كل شاشة. وإعادة الرسم وحدها لا تكفي: الشاشات المركّبة تحت
+  // الإعدادات لا تُعاد إلا إن تغيّر ما تعتمد عليه — وهي لا تعتمد على شيء.
   return (
-    <SafeAreaProvider onLayout={onLayoutRootView}>
+    <SafeAreaProvider key={scheme} onLayout={onLayoutRootView}>
       <QueryClientProvider client={queryClient}>
-        <StatusBar style="light" backgroundColor={colors.primary} />
+        <StatusBar style="light" backgroundColor={scheme === "dark" ? colors.background : colors.primary} />
         <DemoRibbon />
         <OfflineBanner />
         <UpdateBanner />

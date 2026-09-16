@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
+import { Pressable, ScrollView, Switch, Text, TextInput, View } from "react-native";
 import { router } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { ImageField } from "@/components/ImageField";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { CATEGORY_META, tintBackground, type ActivityCategory } from "@/constants/categories";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 import { addMockActivity } from "@/services/adminService";
 import { useAdminSettingsStore } from "@/store/adminSettingsStore";
 import { showToast } from "@/store/toastStore";
@@ -203,7 +203,7 @@ function Field({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg, paddingTop: 0, paddingBottom: spacing.xxl },
   field: { marginBottom: spacing.md },
@@ -241,4 +241,4 @@ const styles = StyleSheet.create({
   },
   switchLabel: { ...typography.body, fontFamily: "Tajawal_500Medium" },
   switchHint: { ...typography.caption },
-});
+}));

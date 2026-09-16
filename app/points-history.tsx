@@ -1,9 +1,9 @@
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { EmptyState } from "@/components/EmptyState";
 import { PointsHistoryRow } from "@/components/PointsHistoryRow";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 import { usePointsBalance, usePointsHistory } from "@/hooks/usePoints";
 
 export default function PointsHistoryScreen() {
@@ -35,7 +35,7 @@ export default function PointsHistoryScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   screen: { flex: 1, backgroundColor: colors.background },
   balanceCard: {
     alignItems: "center",
@@ -49,4 +49,4 @@ const styles = StyleSheet.create({
   balanceValue: { fontFamily: "Tajawal_700Bold", fontSize: 30, color: colors.textPrimary },
   balanceLabel: { ...typography.bodyMuted },
   content: { padding: spacing.lg, paddingTop: spacing.lg },
-});
+}));

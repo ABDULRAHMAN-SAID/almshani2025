@@ -6,7 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { PatternOverlay } from "@/components/PatternOverlay";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 import { useRefreshPoints } from "@/hooks/usePoints";
 import { findDemoCheckInActivity, submitCheckIn } from "@/services/checkinService";
 import { showToast } from "@/store/toastStore";
@@ -156,7 +156,7 @@ export default function CheckInScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   screen: { flex: 1, backgroundColor: colors.primary },
   activityLabel: { textAlign: "center", color: "rgba(255,255,255,0.85)", fontFamily: "Tajawal_500Medium", marginBottom: spacing.md },
   cameraWrap: {
@@ -201,4 +201,4 @@ const styles = StyleSheet.create({
   },
   switchModeBtn: { alignItems: "center", padding: spacing.lg },
   switchModeText: { color: colors.gold, fontFamily: "Tajawal_500Medium", fontSize: 13 },
-});
+}));

@@ -244,3 +244,19 @@ export function omanFullDateLabel(at: Date = new Date(), hijriOffset = HIJRI_OMA
   const gregorian = `${ARABIC_WEEKDAYS[d.getDay()]} ${d.getDate()} ${ARABIC_MONTHS[d.getMonth()]}`;
   return `${gregorian} · ${omanHijriLabel(at, hijriOffset)} · ${omanClockLabel(at)}`;
 }
+
+/** «٤ ربيع الآخر ١٤٤٨ هـ» ليومٍ بعينه — لعناوين التقويم، لا لليوم الحاضر. */
+export function hijriLabelFor(isoDate: string, offsetDays = HIJRI_OMAN_OFFSET): string {
+  const date = parseIsoDate(isoDate);
+  date.setDate(date.getDate() + offsetDays);
+  const { day, month, year } = hijriOf(date);
+  return `${day} ${HIJRI_MONTHS[Math.min(Math.max(month, 1), 12) - 1]} ${year} هـ`;
+}
+
+/** اسم الشهر الهجري وسنته لتاريخٍ ما — يُستعمل لمدى الشهر في رأس التقويم. */
+export function hijriMonthOf(date: Date, offsetDays = HIJRI_OMAN_OFFSET): { name: string; year: number; month: number } {
+  const shifted = new Date(date);
+  shifted.setDate(shifted.getDate() + offsetDays);
+  const { month, year } = hijriOf(shifted);
+  return { name: HIJRI_MONTHS[Math.min(Math.max(month, 1), 12) - 1], year, month };
+}

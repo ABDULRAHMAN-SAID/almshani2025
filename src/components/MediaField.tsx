@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 import { MAX_RECORDING_MS, useAudioRecorder } from "@/hooks/useAudioRecorder";
 import {
   type MediaAttachment,
@@ -178,7 +178,7 @@ export function MediaField({ label, hint, value, onChange, folder, tools, max = 
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   wrap: { marginBottom: spacing.md },
   label: { ...typography.h3, fontSize: 14, marginBottom: spacing.xs, marginTop: spacing.sm },
   hint: { ...typography.caption, marginBottom: spacing.sm, lineHeight: 19 },
@@ -218,4 +218,4 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   limit: { ...typography.caption, fontSize: 11, marginTop: spacing.xs, color: colors.warning },
-});
+}));

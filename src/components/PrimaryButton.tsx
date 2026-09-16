@@ -1,5 +1,5 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text, type ViewStyle } from "react-native";
-import { colors, radius, spacing, typography } from "@/constants";
+import { ActivityIndicator, Pressable, Text, type ViewStyle } from "react-native";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 
 interface PrimaryButtonProps {
   label: string;
@@ -32,7 +32,7 @@ export function PrimaryButton({ label, onPress, disabled, loading, style }: Prim
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   base: {
     backgroundColor: colors.primary,
     borderRadius: radius.md,
@@ -43,4 +43,4 @@ const styles = StyleSheet.create({
   },
   pressed: { backgroundColor: colors.primaryDark },
   disabled: { opacity: 0.5 },
-});
+}));

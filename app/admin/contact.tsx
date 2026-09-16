@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ScrollView, Text, TextInput, View } from "react-native";
 import { router } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 import { saveContact } from "@/services/contactService";
 import { type ContactInfo, useAdminSettingsStore } from "@/store/adminSettingsStore";
 import { toArabicMessage } from "@/utils/errors";
@@ -90,7 +90,7 @@ export default function AdminContactScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg, paddingTop: 0, paddingBottom: spacing.xxl },
   intro: { ...typography.caption, lineHeight: 21, marginBottom: spacing.sm },
@@ -105,4 +105,4 @@ const styles = StyleSheet.create({
     height: 50,
   },
   multiline: { height: 84, paddingTop: spacing.md, textAlignVertical: "top" },
-});
+}));

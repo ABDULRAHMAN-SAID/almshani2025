@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AttachmentList } from "@/components/AttachmentList";
@@ -9,7 +9,7 @@ import { PrimaryButton } from "@/components/PrimaryButton";
 import { QueryState } from "@/components/QueryState";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { SecondaryButton } from "@/components/SecondaryButton";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 import { deleteMessage, fetchAllMessages, markMessageRead, replyToMessage } from "@/services/messageService";
 import { useAdminSettingsStore } from "@/store/adminSettingsStore";
 import { showToast } from "@/store/toastStore";
@@ -193,7 +193,7 @@ export default function AdminInboxScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   screen: { flex: 1, backgroundColor: colors.background },
   filters: { flexDirection: "row", gap: spacing.sm, paddingHorizontal: spacing.lg, paddingBottom: spacing.md },
   chip: {
@@ -250,4 +250,4 @@ const styles = StyleSheet.create({
   deleteButton: { borderColor: colors.danger, paddingHorizontal: spacing.lg },
   sheetTitle: { ...typography.h2, textAlign: "center" },
   sheetBody: { ...typography.caption, textAlign: "center", marginTop: spacing.sm, lineHeight: 21 },
-});
+}));

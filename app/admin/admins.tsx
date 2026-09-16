@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { BottomSheet } from "@/components/BottomSheet";
@@ -9,7 +9,7 @@ import { PrimaryButton } from "@/components/PrimaryButton";
 import { QueryState } from "@/components/QueryState";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { SecondaryButton } from "@/components/SecondaryButton";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 import {
   type AdminRole,
   type FoundMember,
@@ -228,7 +228,7 @@ export default function AdminAccountsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xxl },
   myRole: {
@@ -283,4 +283,4 @@ const styles = StyleSheet.create({
   none: { ...typography.caption, lineHeight: 22 },
   sheetTitle: { ...typography.h3, marginBottom: spacing.xs },
   sheetBody: { ...typography.caption, lineHeight: 22, marginBottom: spacing.sm },
-});
+}));

@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { EmptyState } from "@/components/EmptyState";
@@ -10,7 +10,7 @@ import { PrimaryButton } from "@/components/PrimaryButton";
 import { ScheduleField } from "@/components/ScheduleField";
 import { QueryState } from "@/components/QueryState";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 import { NEWS_SCOPE_LABEL } from "@/constants/categories";
 import { deleteNews, fetchNews, publishNews, updateNews } from "@/services/newsService";
 import { showToast } from "@/store/toastStore";
@@ -207,7 +207,7 @@ export default function AdminNewsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xxl },
   sectionLabel: { ...typography.caption, marginTop: spacing.sm },
@@ -233,4 +233,4 @@ const styles = StyleSheet.create({
   rowTitle: { ...typography.body, lineHeight: 24 },
   rowMeta: { ...typography.caption, fontSize: 11 },
   cancelEdit: { ...typography.caption, color: colors.primary, textAlign: "center" },
-});
+}));

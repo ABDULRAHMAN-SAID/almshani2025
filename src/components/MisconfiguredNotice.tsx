@@ -1,6 +1,6 @@
-import { StyleSheet, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 
 /**
  * شاشة حاجزة تظهر حين يُبنى التطبيق للعمل على الخادم الحقيقي لكنه خرج بلا
@@ -35,7 +35,7 @@ export function MisconfiguredNotice() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   screen: {
     flex: 1,
     backgroundColor: colors.background,
@@ -68,4 +68,4 @@ const styles = StyleSheet.create({
   step: { ...typography.caption, lineHeight: 22, color: colors.textSecondary },
   mono: { fontFamily: "Tajawal_700Bold", color: colors.marineDeep },
   footnote: { ...typography.caption, color: colors.textMuted, textAlign: "center" },
-});
+}));

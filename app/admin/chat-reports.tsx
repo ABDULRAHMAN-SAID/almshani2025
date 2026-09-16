@@ -1,9 +1,9 @@
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import { EmptyState } from "@/components/EmptyState";
 import { QueryState } from "@/components/QueryState";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 import { fetchChatReports } from "@/services/chatService";
 import { formatArabicDate } from "@/utils/date";
 
@@ -48,7 +48,7 @@ export default function AdminChatReportsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg, gap: spacing.sm, paddingBottom: spacing.xxl },
   hint: { ...typography.caption, lineHeight: 20, marginBottom: spacing.xs },
@@ -62,4 +62,4 @@ const styles = StyleSheet.create({
   },
   body: { ...typography.body, fontSize: 14, lineHeight: 22 },
   meta: { ...typography.caption, fontSize: 11 },
-});
+}));

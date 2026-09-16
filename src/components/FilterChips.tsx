@@ -1,8 +1,8 @@
 import { useState } from "react";
 import type { LayoutChangeEvent, NativeScrollEvent, NativeSyntheticEvent } from "react-native";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { colors, radius, spacing } from "@/constants";
+import { colors, radius, spacing, themed } from "@/constants";
 
 export interface FilterChipItem {
   key: string;
@@ -93,7 +93,7 @@ function Fade({ side }: { side: "start" | "end" }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   row: { gap: spacing.sm, paddingEnd: spacing.lg },
   chip: {
     paddingHorizontal: spacing.md,
@@ -110,4 +110,4 @@ const styles = StyleSheet.create({
   fade: { position: "absolute", top: 0, bottom: 0, width: 28 },
   fadeStart: { start: 0 },
   fadeEnd: { end: 0, transform: [{ scaleX: -1 }] },
-});
+}));

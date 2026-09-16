@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 import { OCCASION_TINT, occasionsOfYear, type Occasion } from "@/constants/occasions";
 import { arabicMonthName } from "@/utils/date";
 import { arabicNumber } from "@/utils/weather";
@@ -188,7 +188,7 @@ export function YearPlanner({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   wrap: { gap: spacing.md },
 
   banner: {
@@ -264,4 +264,4 @@ const styles = StyleSheet.create({
   listDot: { width: 7, height: 7, borderRadius: 4 },
   listLabel: { ...typography.body, fontSize: 13, flex: 1 },
   listDate: { ...typography.caption, fontSize: 11.5 },
-});
+}));

@@ -1,5 +1,6 @@
-import { Image, StyleSheet, View, type ViewStyle } from "react-native";
+import { Image, View, type ViewStyle } from "react-native";
 
+import { themed } from "@/constants";
 const SIZES = { sm: 40, md: 56, lg: 124 } as const;
 
 interface LogoProps {
@@ -24,11 +25,11 @@ export function Logo({ size = "md", style }: LogoProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   wrapper: {
     alignItems: "center",
     justifyContent: "center",
     // الشعار نفسه بخلفية شفافة، فيظهر بشكل صحيح فوق أي خلفية (كحلية أو فاتحة).
     backgroundColor: "transparent",
   },
-});
+}));

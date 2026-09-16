@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
@@ -7,7 +7,7 @@ import { ActivityListRow } from "@/components/ActivityListRow";
 import { EmptyState } from "@/components/EmptyState";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { SearchBar } from "@/components/SearchBar";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 import { useAllActivities } from "@/hooks/useActivities";
 import { useAnnouncements } from "@/hooks/useNotifications";
 import { fetchAwarenessLibrary } from "@/services/awarenessService";
@@ -133,7 +133,7 @@ export default function SearchScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   screen: { flex: 1, backgroundColor: colors.background },
   searchWrap: { paddingHorizontal: spacing.lg, marginBottom: spacing.md },
   content: { padding: spacing.lg, paddingTop: 0 },
@@ -151,4 +151,4 @@ const styles = StyleSheet.create({
   rowText: { flex: 1, gap: 2 },
   rowTitle: { ...typography.body, fontFamily: "Tajawal_500Medium" },
   rowMeta: { ...typography.caption },
-});
+}));

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -8,7 +8,7 @@ import { PatternOverlay } from "@/components/PatternOverlay";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { WeatherScene } from "@/components/WeatherScene";
-import { colors, radius, shadow, spacing, typography } from "@/constants";
+import { colors, radius, shadow, spacing, typography, themed } from "@/constants";
 import { tintBackground } from "@/constants/categories";
 import { PLACES } from "@/constants/places";
 import { skyFor } from "@/constants/weatherSky";
@@ -358,7 +358,7 @@ function PlaceRow({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   screen: { flex: 1, backgroundColor: colors.background },
 
   sky: {
@@ -490,4 +490,4 @@ const styles = StyleSheet.create({
   placeOptionLabel: { ...typography.body, flex: 1 },
   placeOptionActive: { fontFamily: "Tajawal_700Bold" },
   placeHint: { ...typography.caption, color: colors.textMuted },
-});
+}));

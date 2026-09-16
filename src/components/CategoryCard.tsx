@@ -1,7 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { tintBackground } from "@/constants/categories";
-import { colors, radius, shadow, spacing, typography } from "@/constants";
+import { colors, radius, shadow, spacing, typography, themed } from "@/constants";
 
 interface CategoryCardProps {
   label: string;
@@ -47,7 +47,7 @@ export function CategoryCard({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   base: {
     borderRadius: radius.md,
     // حشوٌ ضيّق: الفراغ داخل الخليّة هو ما كان يباعد الأيقونات فوق وتحت.
@@ -74,4 +74,4 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   label: { ...typography.h3, fontSize: 11, lineHeight: 14, textAlign: "center" },
-});
+}));

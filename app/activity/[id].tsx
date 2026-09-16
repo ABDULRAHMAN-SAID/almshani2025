@@ -12,7 +12,7 @@ import { QueryState } from "@/components/QueryState";
 import { SecondaryButton } from "@/components/SecondaryButton";
 import { CATEGORY_META, tintBackground } from "@/constants/categories";
 import { CATEGORY_COVER } from "@/constants/covers";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 import { useAuth } from "@/hooks/useAuth";
 import { fetchActivityById } from "@/services/activityService";
 import { canRegister, cancelRegistration, registerForActivity } from "@/services/registrationService";
@@ -280,7 +280,7 @@ function InfoRow({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   screen: { flex: 1, backgroundColor: colors.background },
   cover: {
     paddingBottom: spacing.xl,
@@ -350,4 +350,4 @@ const styles = StyleSheet.create({
   sheetTitle: { ...typography.h2, textAlign: "center", marginBottom: spacing.md, fontSize: 18 },
   sheetBody: { ...typography.body, textAlign: "center", fontFamily: "Tajawal_500Medium" },
   sheetMeta: { ...typography.caption, textAlign: "center", marginTop: 4 },
-});
+}));

@@ -1,8 +1,8 @@
 import { type ReactNode } from "react";
-import { StyleSheet, View, type ViewStyle } from "react-native";
+import { View, type ViewStyle } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors, radius, spacing } from "@/constants";
+import { colors, radius, spacing, themed } from "@/constants";
 import { PatternOverlay } from "./PatternOverlay";
 
 interface HeaderBandProps {
@@ -37,7 +37,7 @@ export function HeaderBand({ children, overlap = 0, style }: HeaderBandProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   band: {
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.lg,
@@ -47,4 +47,4 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   content: { gap: spacing.lg },
-});
+}));

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -11,7 +11,7 @@ import { ScreenHeader } from "@/components/ScreenHeader";
 import { SearchBar } from "@/components/SearchBar";
 import { SecondaryButton } from "@/components/SecondaryButton";
 import { CATEGORY_META, tintBackground } from "@/constants/categories";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 import { useAllActivities } from "@/hooks/useActivities";
 import { useAnnouncements, useNotifications } from "@/hooks/useNotifications";
 import { useLeaderboard } from "@/hooks/usePoints";
@@ -638,7 +638,7 @@ function ActionRow({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   screen: { flex: 1, backgroundColor: colors.background },
   tabBar: {
     flexDirection: "row",
@@ -722,4 +722,4 @@ const styles = StyleSheet.create({
   sheetTitle: { ...typography.h2, textAlign: "center" },
   sheetBody: { ...typography.bodyMuted, textAlign: "center", marginTop: spacing.sm, lineHeight: 22 },
   note: { ...typography.caption, lineHeight: 20, marginTop: spacing.xl, textAlign: "center" },
-});
+}));

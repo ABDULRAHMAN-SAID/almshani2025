@@ -1,6 +1,6 @@
-import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 import { CATEGORY_META } from "@/constants/categories";
 import type { Announcement } from "@/types/models";
 import { formatArabicDate } from "@/utils/date";
@@ -39,7 +39,7 @@ export function AnnouncementCard({ announcement, onPress }: AnnouncementCardProp
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   card: {
     flexDirection: "row",
     alignItems: "center",
@@ -61,4 +61,4 @@ const styles = StyleSheet.create({
   content: { flex: 1, gap: 2 },
   title: { ...typography.body, fontFamily: "Tajawal_500Medium" },
   date: { ...typography.caption },
-});
+}));

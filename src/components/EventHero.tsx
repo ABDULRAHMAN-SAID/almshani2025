@@ -3,7 +3,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { CATEGORY_META } from "@/constants/categories";
 import { CATEGORY_COVER } from "@/constants/covers";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 import type { Activity } from "@/types/models";
 import { formatArabicTime, relativeDayLabel } from "@/utils/date";
 import { PatternOverlay } from "./PatternOverlay";
@@ -67,7 +67,7 @@ export function EventHero({ activity, onViewDetails, onRegister }: EventHeroProp
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   card: {
     backgroundColor: colors.primary,
     borderRadius: radius.lg,
@@ -92,4 +92,4 @@ const styles = StyleSheet.create({
   actions: { flexDirection: "row", gap: spacing.sm },
   detailsButton: { flex: 1, borderColor: "rgba(255,255,255,0.5)", backgroundColor: "transparent" },
   registerButton: { flex: 1, backgroundColor: colors.accent },
-});
+}));

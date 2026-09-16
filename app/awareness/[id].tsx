@@ -7,7 +7,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { PatternOverlay } from "@/components/PatternOverlay";
 import { QueryState } from "@/components/QueryState";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 import { CATEGORY_COVER } from "@/constants/covers";
 import type { ActivityCategory } from "@/constants/categories";
 import { fetchAwarenessArticle } from "@/services/awarenessService";
@@ -104,7 +104,7 @@ export default function AwarenessArticleScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   screen: { flex: 1, backgroundColor: colors.background },
   cover: {
     paddingBottom: spacing.xl,
@@ -147,4 +147,4 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
   },
   noteText: { ...typography.caption, flex: 1, lineHeight: 19 },
-});
+}));

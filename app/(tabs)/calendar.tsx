@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { ActivityListRow } from "@/components/ActivityListRow";
 import { CalendarMonth } from "@/components/CalendarMonth";
 import { YearPlanner } from "@/components/YearPlanner";
@@ -7,11 +7,11 @@ import { EmptyState } from "@/components/EmptyState";
 import { FilterChips } from "@/components/FilterChips";
 import { CALENDAR_FILTERS } from "@/constants/categories";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 import { useAllActivities } from "@/hooks/useActivities";
 import { useFeatures } from "@/hooks/useFeatures";
 import { router } from "expo-router";
-import { formatArabicDate, formatArabicWeekday } from "@/utils/date";
+import { formatArabicDate, formatArabicWeekday, hijriLabelFor } from "@/utils/date";
 import { TODAY_ISO, groupActivitiesByDate } from "@/utils/calendar";
 
 type CalendarView = "month" | "year";
@@ -80,14 +80,20 @@ export default function CalendarScreen() {
               onSelectDate={setSelectedIso}
               onPrevMonth={goPrevMonth}
               onNextMonth={goNextMonth}
+              hijriOffset={hijriOffset}
             />
 
             <View style={styles.daySection}>
-              <Text style={styles.dayHeading}>
-                {selectedIso
-                  ? `${formatArabicWeekday(selectedIso)} · ${formatArabicDate(selectedIso)}`
-                  : "اختر يومًا لعرض أنشطته"}
-              </Text>
+              <View>
+                <Text style={styles.dayHeading}>
+                  {selectedIso
+                    ? `${formatArabicWeekday(selectedIso)} · ${formatArabicDate(selectedIso)}`
+                    : "اختر يومًا لعرض أنشطته"}
+                </Text>
+                {selectedIso ? (
+                  <Text style={styles.dayHijri}>{hijriLabelFor(selectedIso, hijriOffset)}</Text>
+                ) : null}
+              </View>
               {selectedActivities.length > 0 ? (
                 <View style={{ gap: spacing.sm }}>
                   {selectedActivities.map((activity) => (
@@ -144,7 +150,7 @@ function ToggleButton({ label, active, onPress }: { label: string; active: boole
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   screen: { flex: 1, backgroundColor: colors.background },
   header: {
     flexDirection: "row",
@@ -170,6 +176,7 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl },
   daySection: { marginTop: spacing.xl, gap: spacing.md },
   dayHeading: { ...typography.h3 },
+  dayHijri: { ...typography.caption, marginTop: 2 },
   yearHead: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.xl },
   yearArrow: { fontFamily: "Tajawal_700Bold", fontSize: 26, color: colors.primary },
   yearLabel: { ...typography.h2, textAlign: "center" },
@@ -177,4 +184,4 @@ const styles = StyleSheet.create({
   monthHeading: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   monthName: { ...typography.h3 },
   monthCount: { ...typography.caption },
-});
+}));

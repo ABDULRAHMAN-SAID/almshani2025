@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
-import { Animated, StyleSheet, View, type ViewStyle } from "react-native";
-import { colors, radius } from "@/constants";
+import { Animated, View, type ViewStyle } from "react-native";
+import { colors, radius, themed } from "@/constants";
 
 interface SkeletonBlockProps {
   width?: number | `${number}%`;
@@ -42,11 +42,11 @@ export function ActivitySkeletonCard() {
 
 export { SkeletonBlock };
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   card: {
     width: 220,
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
     padding: 12,
   },
-});
+}));

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
@@ -7,7 +7,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { FilterChips } from "@/components/FilterChips";
 import { tintBackground } from "@/constants/categories";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 import { fetchAwarenessLibrary } from "@/services/awarenessService";
 import { formatArabicDate } from "@/utils/date";
 
@@ -91,7 +91,7 @@ export default function AwarenessScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   screen: { flex: 1, backgroundColor: colors.background },
   header: { paddingHorizontal: spacing.lg, gap: 2, marginBottom: spacing.md },
   title: { ...typography.h1 },
@@ -114,4 +114,4 @@ const styles = StyleSheet.create({
   cardSummary: { ...typography.bodyMuted, lineHeight: 21 },
   more: { flexDirection: "row", alignItems: "center", gap: 2, marginTop: spacing.xs },
   moreLabel: { fontFamily: "Tajawal_500Medium", fontSize: 13, color: colors.primary },
-});
+}));

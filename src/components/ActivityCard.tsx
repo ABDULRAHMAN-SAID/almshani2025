@@ -1,8 +1,8 @@
-import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { CATEGORY_META } from "@/constants/categories";
 import { CATEGORY_COVER } from "@/constants/covers";
-import { colors, radius, shadow, spacing, typography } from "@/constants";
+import { colors, radius, shadow, spacing, typography, themed } from "@/constants";
 import type { Activity } from "@/types/models";
 import { formatArabicDate, formatArabicTime } from "@/utils/date";
 import { REGISTRATION_COLOR, REGISTRATION_LABEL } from "@/utils/registration";
@@ -51,7 +51,7 @@ export function ActivityCard({ activity, onPress }: ActivityCardProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   card: {
     width: 200,
     backgroundColor: colors.surface,
@@ -79,4 +79,4 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
   },
   statusText: { fontFamily: "Tajawal_500Medium", fontSize: 12 },
-});
+}));

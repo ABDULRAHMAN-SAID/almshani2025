@@ -1,6 +1,6 @@
 import { type ReactNode } from "react";
-import { Modal, Pressable, StyleSheet, View } from "react-native";
-import { colors, radius, spacing } from "@/constants";
+import { Modal, Pressable, View } from "react-native";
+import { colors, radius, spacing, themed } from "@/constants";
 
 interface BottomSheetProps {
   visible: boolean;
@@ -22,7 +22,7 @@ export function BottomSheet({ visible, onClose, children }: BottomSheetProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   overlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: "flex-end" },
   sheet: {
     backgroundColor: colors.surface,
@@ -39,4 +39,4 @@ const styles = StyleSheet.create({
     backgroundColor: colors.border,
     marginBottom: spacing.lg,
   },
-});
+}));

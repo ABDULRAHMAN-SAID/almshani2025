@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { BottomSheet } from "@/components/BottomSheet";
@@ -7,7 +7,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { SecondaryButton } from "@/components/SecondaryButton";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 import { deleteAwarenessArticle, publishAwarenessArticle } from "@/services/adminService";
 import { fetchAwarenessLibrary } from "@/services/awarenessService";
 import { useAdminSettingsStore } from "@/store/adminSettingsStore";
@@ -227,7 +227,7 @@ function Field({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg, paddingTop: 0, paddingBottom: spacing.xxl },
   guardCard: {
@@ -272,4 +272,4 @@ const styles = StyleSheet.create({
   divider: { height: 1, backgroundColor: colors.border },
   sheetTitle: { ...typography.h2, textAlign: "center" },
   sheetBody: { ...typography.bodyMuted, textAlign: "center", marginTop: spacing.sm, lineHeight: 22 },
-});
+}));

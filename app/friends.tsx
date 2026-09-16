@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { EmptyState } from "@/components/EmptyState";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 import {
   fetchFriendRequests,
   fetchFriends,
@@ -212,7 +212,7 @@ export default function FriendsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg, gap: spacing.sm, paddingBottom: spacing.xxl },
   sectionLabel: { ...typography.body, fontFamily: "Tajawal_700Bold", marginTop: spacing.md },
@@ -278,4 +278,4 @@ const styles = StyleSheet.create({
   },
   codeSide: { alignItems: "center", gap: 2 },
   codeInput: { ...typography.h3, letterSpacing: 6, writingDirection: "ltr" },
-});
+}));

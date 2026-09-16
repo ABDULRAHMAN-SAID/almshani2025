@@ -21,7 +21,13 @@ export default function TabsLayout() {
         headerShown: false,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
-        tabBarStyle: { height: 60, paddingBottom: 8, paddingTop: 6, borderTopColor: colors.border },
+        tabBarStyle: {
+          height: 60,
+          paddingBottom: 8,
+          paddingTop: 6,
+          borderTopColor: colors.border,
+          backgroundColor: colors.surface,
+        },
         tabBarLabelStyle: { fontFamily: "Tajawal_500Medium", fontSize: 11 },
       }}
     >

@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { ImageField } from "@/components/ImageField";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 import { useAllActivities } from "@/hooks/useActivities";
 import { createGroup } from "@/services/groupService";
 import { useAdminSettingsStore } from "@/store/adminSettingsStore";
@@ -182,7 +182,7 @@ export default function NewGroupScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg, paddingTop: 0, paddingBottom: spacing.xxl },
   notice: {
@@ -232,4 +232,4 @@ const styles = StyleSheet.create({
   optionBody: { flex: 1, gap: 2 },
   optionLabel: { ...typography.body, fontSize: 14, fontFamily: "Tajawal_500Medium" },
   optionHint: { ...typography.caption, fontSize: 11, lineHeight: 18 },
-});
+}));

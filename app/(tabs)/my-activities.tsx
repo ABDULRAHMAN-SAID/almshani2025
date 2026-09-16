@@ -1,11 +1,11 @@
 import { useMemo, useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, Text, View } from "react-native";
 import { router } from "expo-router";
 import { ActivityListRow } from "@/components/ActivityListRow";
 import { EmptyState } from "@/components/EmptyState";
 import { FilterChips } from "@/components/FilterChips";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors, spacing, typography } from "@/constants";
+import { colors, spacing, typography, themed } from "@/constants";
 import { useAllActivities } from "@/hooks/useActivities";
 import { useRegistrationStore } from "@/store/registrationStore";
 import { ACTIVITY_FORMS, pluralizeAr } from "@/utils/arabic";
@@ -90,11 +90,11 @@ export default function MyActivitiesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   screen: { flex: 1, backgroundColor: colors.background },
   header: { paddingHorizontal: spacing.lg, gap: 2, marginBottom: spacing.md },
   title: { ...typography.h1 },
   subtitle: { ...typography.bodyMuted },
   filters: { paddingHorizontal: spacing.lg, marginBottom: spacing.md },
   content: { padding: spacing.lg, paddingTop: 0 },
-});
+}));

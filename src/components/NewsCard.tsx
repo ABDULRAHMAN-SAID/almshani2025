@@ -1,7 +1,7 @@
-import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 import { NEWS_SCOPE_LABEL } from "@/constants/categories";
 import type { NewsItem } from "@/types/models";
 import { relativeDayLabel } from "@/utils/date";
@@ -73,7 +73,7 @@ export function NewsCard({ item, onPress, compact }: NewsCardProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   card: {
     padding: spacing.lg,
     borderRadius: radius.lg,
@@ -106,4 +106,4 @@ const styles = StyleSheet.create({
   summary: { ...typography.caption, lineHeight: 21 },
   more: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 },
   moreText: { ...typography.caption, color: colors.primary, fontSize: 12 },
-});
+}));

@@ -1,7 +1,7 @@
-import { StyleSheet, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { SecondaryButton } from "./SecondaryButton";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 
 interface RestartNoticeProps {
   onSkip: () => void;
@@ -38,7 +38,7 @@ export function RestartNotice({ onSkip }: RestartNoticeProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   screen: {
     flex: 1,
     alignItems: "center",
@@ -74,4 +74,4 @@ const styles = StyleSheet.create({
   },
   step: { ...typography.body, lineHeight: 30, textAlign: "right" },
   skip: { marginTop: spacing.lg },
-});
+}));

@@ -1,11 +1,11 @@
-import { Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, Linking, Pressable, ScrollView, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams } from "expo-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { EmptyState } from "@/components/EmptyState";
 import { QueryState } from "@/components/QueryState";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 import { NEWS_SCOPE_LABEL } from "@/constants/categories";
 import { fetchNewsItem, hasReadNews, markNewsRead } from "@/services/newsService";
 import { useRefreshPoints } from "@/hooks/usePoints";
@@ -124,7 +124,7 @@ export default function NewsItemScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.sm },
   image: {
@@ -175,4 +175,4 @@ const styles = StyleSheet.create({
   },
   pressed: { opacity: 0.75 },
   sourceText: { ...typography.body, color: colors.primary },
-});
+}));

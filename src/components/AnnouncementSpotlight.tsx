@@ -1,6 +1,6 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, radius, shadow, spacing, typography } from "@/constants";
+import { colors, radius, shadow, spacing, typography, themed } from "@/constants";
 import type { Announcement } from "@/types/models";
 
 interface AnnouncementSpotlightProps {
@@ -45,7 +45,7 @@ export function AnnouncementSpotlight({ announcement, onPress }: AnnouncementSpo
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   card: {
     backgroundColor: colors.accent,
     borderRadius: radius.lg + 2,
@@ -75,4 +75,4 @@ const styles = StyleSheet.create({
   body: { ...typography.body, fontSize: 13, lineHeight: 21, color: "rgba(255,255,255,0.88)" },
   footer: { flexDirection: "row", alignItems: "center", gap: spacing.xs, marginTop: 2 },
   more: { ...typography.caption, color: colors.textOnPrimary },
-});
+}));

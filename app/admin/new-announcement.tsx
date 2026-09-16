@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
 import { BottomSheet } from "@/components/BottomSheet";
@@ -9,7 +9,7 @@ import { ImageField } from "@/components/ImageField";
 import { MediaField } from "@/components/MediaField";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 import { addAnnouncement, deleteAnnouncement, updateAnnouncement } from "@/services/adminService";
 import { useAnnouncements } from "@/hooks/useNotifications";
 import { SCHEDULE_LABEL, scheduleState } from "@/utils/visibility";
@@ -278,7 +278,7 @@ export default function NewAnnouncementScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg, paddingTop: 0, paddingBottom: spacing.xxl },
   label: { ...typography.h3, fontSize: 14, marginBottom: spacing.sm, marginTop: spacing.md },
@@ -323,4 +323,4 @@ const styles = StyleSheet.create({
   iconButton: { padding: spacing.xs },
   sheetTitle: { ...typography.h2, textAlign: "center" },
   sheetBody: { ...typography.bodyMuted, textAlign: "center", marginTop: spacing.sm, lineHeight: 22 },
-});
+}));

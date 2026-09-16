@@ -1,6 +1,6 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, spacing, typography } from "@/constants";
+import { colors, spacing, typography, themed } from "@/constants";
 
 interface SectionHeaderProps {
   title: string;
@@ -22,7 +22,7 @@ export function SectionHeader({ title, actionLabel, onPressAction }: SectionHead
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   row: {
     flexDirection: "row",
     alignItems: "center",
@@ -31,4 +31,4 @@ const styles = StyleSheet.create({
   },
   action: { flexDirection: "row", alignItems: "center", gap: 2 },
   actionLabel: { fontFamily: "Tajawal_500Medium", fontSize: 13, color: colors.accent },
-});
+}));

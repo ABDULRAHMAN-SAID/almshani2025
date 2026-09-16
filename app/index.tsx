@@ -1,10 +1,10 @@
 import { useEffect, useRef } from "react";
-import { Animated, StyleSheet, Text, View } from "react-native";
+import { Animated, Text, View } from "react-native";
 import { router } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Logo } from "@/components/Logo";
 import { PatternOverlay } from "@/components/PatternOverlay";
-import { colors, spacing, typography } from "@/constants";
+import { colors, spacing, typography, themed } from "@/constants";
 import { useAuthStore } from "@/store/authStore";
 
 const MIN_SPLASH_MS = 1100;
@@ -52,7 +52,7 @@ export default function SplashScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   container: {
     flex: 1,
     backgroundColor: colors.primary,
@@ -69,4 +69,4 @@ const styles = StyleSheet.create({
     marginVertical: spacing.sm,
   },
   subtitle: { fontFamily: "Tajawal_400Regular", fontSize: 15, color: "rgba(255,255,255,0.75)" },
-});
+}));

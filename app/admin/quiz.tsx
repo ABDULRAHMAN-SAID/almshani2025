@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { EmptyState } from "@/components/EmptyState";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { SecondaryButton } from "@/components/SecondaryButton";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 import { addQuizQuestion, deleteQuizQuestion, fetchAdminQuiz, setQuizStatus } from "@/services/adminService";
 import { useAdminSettingsStore } from "@/store/adminSettingsStore";
 import { showToast } from "@/store/toastStore";
@@ -244,7 +244,7 @@ export default function AdminQuizScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg, paddingTop: 0, paddingBottom: spacing.xxl },
   weekCard: {
@@ -298,4 +298,4 @@ const styles = StyleSheet.create({
   inputMultiline: { height: 90, paddingTop: spacing.md, textAlignVertical: "top" },
   optionInputRow: { flexDirection: "row", alignItems: "center", gap: spacing.md, marginBottom: spacing.sm },
   note: { ...typography.caption, lineHeight: 20, marginTop: spacing.xl, textAlign: "center" },
-});
+}));

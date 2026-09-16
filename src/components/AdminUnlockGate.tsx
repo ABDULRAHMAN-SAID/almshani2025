@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Pressable, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { PatternOverlay } from "@/components/PatternOverlay";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 import { useAdminStore } from "@/store/adminStore";
 import { showToast } from "@/store/toastStore";
 
@@ -114,7 +114,7 @@ export function AdminUnlockGate() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   screen: { flex: 1, backgroundColor: colors.primary },
   body: { flex: 1, alignItems: "center", justifyContent: "center", padding: spacing.xl, gap: spacing.sm },
   icon: {
@@ -162,4 +162,4 @@ const styles = StyleSheet.create({
     marginTop: spacing.xl,
     maxWidth: 340,
   },
-});
+}));

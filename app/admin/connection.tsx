@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 import { useConnection } from "@/hooks/useConnection";
 import { verifyAdminAccess } from "@/services/adminAuthService";
 import { SUPABASE_URL, USE_MOCK_DATA } from "@/services/config";
@@ -229,7 +229,7 @@ function Row({ label, value }: { label: string; value: string }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg, paddingTop: 0, paddingBottom: spacing.xxl },
   summary: {
@@ -279,4 +279,4 @@ const styles = StyleSheet.create({
   },
   noticeText: { ...typography.caption, flex: 1, lineHeight: 21, color: colors.textSecondary },
   mono: { fontFamily: "Tajawal_700Bold", color: colors.marineDeep },
-});
+}));

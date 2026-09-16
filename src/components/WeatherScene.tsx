@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
-import { Animated, Easing, Image, StyleSheet, View } from "react-native";
+import { Animated, Easing, Image, View } from "react-native";
 
+import { themed } from "@/constants";
 /**
  * مشهد الطقس: رجلٌ بالزيّ العُماني، وفوقه سماءٌ تتبدّل بحال الجوّ.
  *
@@ -17,8 +18,9 @@ import { Animated, Easing, Image, StyleSheet, View } from "react-native";
  * تُذكر.
  */
 
-/** قامة الرجل على الشاشة — يحتاجها محورُ الميل أيضًا. */
-const PERSON_H = 170;
+/** قامة الرجل على الشاشة، وعرضه بنسبة الصورة (١٧٣ × ٦٤٠). */
+const PERSON_H = 236;
+const PERSON_W = 64;
 
 interface WeatherSceneProps {
   /** رمز WMO كما يردّه المزوّد. */
@@ -65,6 +67,7 @@ export function WeatherScene({ code, isNight, windSpeed }: WeatherSceneProps) {
   const drops = useLoop(1400, kind === "rain" || kind === "storm");
   const gust = useLoop(windy ? 2200 : 3800, windy || kind === "fog");
   const breathe = useLoop(5200);
+  const step = useLoop(1250);
 
   const cloudShift = drift.interpolate({ inputRange: [0, 1], outputRange: [0, 14] });
   const cloudShiftBack = drift.interpolate({ inputRange: [0, 1], outputRange: [0, -10] });
@@ -73,17 +76,28 @@ export function WeatherScene({ code, isNight, windSpeed }: WeatherSceneProps) {
   const gustShift = gust.interpolate({ inputRange: [0, 1], outputRange: [-26, 26] });
   const gustFade = gust.interpolate({ inputRange: [0, 0.2, 0.8, 1], outputRange: [0, 0.75, 0.75, 0] });
   const sunPulse = breathe.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1, 1.06, 1] });
-  // وقفةٌ حيّة، لا مشي.
+  // المشي: دميةٌ مقصوصة لا صورةٌ تُهزّ.
   //
-  // جُرّبت المشية بالإيقاع: ترتفع القامة مرّتين في الدورة ويميل الجذع. وهي
-  // من صورةٍ واحدةٍ ساكنة تُقرأ قفزًا لا مشيًا — والعين محقّة: الماشي تتقدّم
-  // ساقُه، والقافزُ ترتفع قامته وحدها. ولا حيلة في ذلك: الخطوة الواحدة
-  // تحتاج أربع صورٍ للرجل نفسه بأوضاع ساقٍ مختلفة، وليس عندنا إلا واحدة.
-  // فرُفع الإيقاع وبقي نَفَسٌ بطيء لا يكاد يُرى — نقطةٌ واحدة في خمس ثوانٍ.
-  const breath = breathe.interpolate({
-    inputRange: [0, 0.5, 1],
-    outputRange: [0, -1.2, 0],
-  });
+  // جُرّب هزّ الصورة كلّها فقُرئ قفزًا، والعين محقّة: الماشي تتقدّم ساقُه
+  // لا قامته. والدشداشة تستر الساقين، فما يُرى من المشي هو القدمان تحت
+  // الحاشية. فقُصّت كلُّ قدمٍ صورةً وحدها (scripts/make-person.py) وتتحرّكان
+  // هنا على تضادّ: حين تتقدّم إحداهما تتأخّر الأخرى، والمتقدّمة ترتفع عن
+  // الأرض في نصف مسارها. والجسم ينخفض قليلًا عند كل وقعة قدم لا يرتفع —
+  // فالارتفاع قفز والانخفاض وزن.
+  //
+  // والمنحنى جيبيٌّ مقرَّب بثماني نقاط: الحركة الخطّية ذهابًا وإيابًا تبدو
+  // آلية، والجيبية تتمهّل عند طرفي الخطوة كما تفعل قدمٌ حقيقية.
+  const T = [0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1];
+  const STRIDE = 11;
+  const wave = T.map((t) => -Math.cos(2 * Math.PI * t) * STRIDE); // −8 → +8 → −8
+  const frontX = step.interpolate({ inputRange: T, outputRange: wave });
+  const backX = step.interpolate({ inputRange: T, outputRange: wave.map((v) => -v) });
+  // الرفع: القدم تعلو وهي تمرّ من الخلف إلى الأمام (النصف الثاني للأمامية،
+  // والأوّل للخلفية) وتبقى على الأرض في نصفها الآخر.
+  const frontY = step.interpolate({ inputRange: [0, 0.5, 0.75, 1], outputRange: [0, 0, -5, 0] });
+  const backY = step.interpolate({ inputRange: [0, 0.25, 0.5, 1], outputRange: [0, -5, 0, 0] });
+  const bodyY = step.interpolate({ inputRange: [0, 0.25, 0.5, 0.75, 1], outputRange: [0, 1.6, 0, 1.6, 0] });
+  const shadowX = step.interpolate({ inputRange: [0, 0.25, 0.5, 0.75, 1], outputRange: [1, 0.9, 1, 0.9, 1] });
 
   // مواضع قطرات الرذاذ: ثابتة بين إعادات الرسم، وإلا تراقصت عشوائيًّا.
   const dropLeft = useMemo(() => [14, 34, 54, 74, 94], []);
@@ -145,20 +159,34 @@ export function WeatherScene({ code, isNight, windSpeed }: WeatherSceneProps) {
       ) : null}
 
       {/* ——— الشخصية ———
-          صورةٌ حقيقية اختارها صاحب التطبيق، لا شكلًا مرسومًا بالشفرة: رسمُ
-          إنسانٍ بمنحنياتٍ مكتوبة بيدٍ لا يبلغ الواقعية مهما صُقل.
-          ويتنفّس تنفّسًا بطيئًا لا يكاد يُرى. ولا يمشي: المشي من صورةٍ
-          واحدة يُقرأ قفزًا. */}
-      <Animated.View
-        style={[styles.person, { transform: [{ translateY: breath }] }]}
-      >
-        <Image
-          source={require("@assets/images/weather/person.png")}
-          style={[styles.personImage, { opacity: isNight ? 0.92 : 1 }]}
+          صورةٌ حقيقية اختارها صاحب التطبيق، لا شكلًا مرسومًا بالشفرة. وثلاث
+          طبقاتٍ بمقاسٍ واحد فوق بعضها: الجسم بلا قدمين، ثم القدم الخلفية،
+          ثم الأمامية — فلا حسابَ إزاحةٍ لموضع قدم. */}
+      <View style={styles.person}>
+        {/* الظلّ تحت القدمين لا تحت وسط الصورة: الرجل يواجه اليسار وقدماه
+            في يسارها والبشتُ يملأ يمينها. */}
+        <Animated.View style={[styles.shadow, { transform: [{ translateX: -9 }, { scaleX: shadowX }] }]} />
+        <Animated.View style={[styles.layer, { transform: [{ translateY: bodyY }] }]}>
+          <Image
+            source={require("@assets/images/weather/person.png")}
+            style={[styles.personImage, { opacity: isNight ? 0.92 : 1 }]}
+            resizeMode="contain"
+            accessibilityIgnoresInvertColors
+          />
+        </Animated.View>
+        <Animated.Image
+          source={require("@assets/images/weather/foot-back.png")}
+          style={[styles.layer, styles.personImage, { transform: [{ translateX: backX }, { translateY: backY }] }]}
           resizeMode="contain"
           accessibilityIgnoresInvertColors
         />
-      </Animated.View>
+        <Animated.Image
+          source={require("@assets/images/weather/foot-front.png")}
+          style={[styles.layer, styles.personImage, { transform: [{ translateX: frontX }, { translateY: frontY }] }]}
+          resizeMode="contain"
+          accessibilityIgnoresInvertColors
+        />
+      </View>
     </View>
   );
 }
@@ -166,10 +194,10 @@ export function WeatherScene({ code, isNight, windSpeed }: WeatherSceneProps) {
 const WHITE = "rgba(255,255,255,0.95)";
 const SOFT = "rgba(255,255,255,0.55)";
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   // ارتفاعٌ يكفي السماء والشخص بلا تصادم: السماء في أعلى مئة،
   // والشخص يقف تحتها بقامته كاملة.
-  scene: { width: 214, height: 252, alignSelf: "center" },
+  scene: { width: 214, height: 322, alignSelf: "center" },
 
   sun: { position: "absolute", top: 0, left: 0, right: 0, alignItems: "center", justifyContent: "center" },
   sunCore: { width: 46, height: 46, borderRadius: 23, backgroundColor: "#FFD166" },
@@ -222,8 +250,18 @@ const styles = StyleSheet.create({
   windLine: { height: 3, borderRadius: 2, backgroundColor: "rgba(255,255,255,0.5)" },
 
   // alignSelf لا left/right: هذه تنقلب مع اتّجاه الواجهة فيقف الرجل في الطرف.
-  person: { position: "absolute", bottom: 0, alignSelf: "center" },
-  // نسبة الصورة ١٧٣ × ٦٤٠.
-  personImage: { width: 46, height: PERSON_H },
+  person: { position: "absolute", bottom: 0, alignSelf: "center", width: PERSON_W, height: PERSON_H },
+  layer: { position: "absolute", top: 0, width: PERSON_W, height: PERSON_H },
+  personImage: { width: PERSON_W, height: PERSON_H },
+  // ظلٌّ على الأرض يربط القدمين بها — بلا أرضٍ يبدو الماشي معلّقًا.
+  shadow: {
+    position: "absolute",
+    bottom: 1,
+    alignSelf: "center",
+    width: PERSON_W + 6,
+    height: 8,
+    borderRadius: 999,
+    backgroundColor: "rgba(0,0,0,0.20)",
+  },
 
-});
+}));

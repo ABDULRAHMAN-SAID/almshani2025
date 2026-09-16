@@ -1,6 +1,6 @@
-import { Image, StyleSheet, Text, View } from "react-native";
+import { Image, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 import type { ClubMenu } from "@/types/models";
 import { formatArabicDate, parseIsoDate } from "@/utils/date";
 
@@ -46,7 +46,7 @@ export function ClubMenuCard({ menu }: ClubMenuCardProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   card: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
@@ -68,4 +68,4 @@ const styles = StyleSheet.create({
   // الورقة المصوّرة طويلة: contain لا cover، فقصُّ أعلاها وأسفلها يُخفي أيامًا.
   image: { width: "100%", height: 420, borderRadius: radius.md, backgroundColor: colors.background },
   empty: { ...typography.caption },
-});
+}));

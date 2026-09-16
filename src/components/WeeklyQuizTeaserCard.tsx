@@ -1,6 +1,6 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 import type { PublicWeeklyQuiz } from "@/services/quizService";
 import { QUESTION_FORMS, pluralizeAr } from "@/utils/arabic";
 
@@ -36,7 +36,7 @@ export function WeeklyQuizTeaserCard({ quiz, answeredCount, onPress }: WeeklyQui
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   card: {
     flexDirection: "row",
     alignItems: "center",
@@ -58,4 +58,4 @@ const styles = StyleSheet.create({
   eyebrow: { ...typography.caption, color: "#8a6d2c" },
   title: { ...typography.h3 },
   subtitle: { ...typography.bodyMuted, fontSize: 12.5 },
-});
+}));

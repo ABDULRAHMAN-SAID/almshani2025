@@ -1,5 +1,5 @@
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
-import { colors, radius, spacing, typography } from "@/constants";
+import { Pressable, Text, TextInput, View } from "react-native";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 
 export interface ScheduleValue {
   startsAt?: string;
@@ -124,7 +124,7 @@ function Chip({ label, active, onPress }: { label: string; active: boolean; onPr
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   wrap: { gap: spacing.sm },
   label: { ...typography.caption, marginTop: spacing.sm },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs },
@@ -153,4 +153,4 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     writingDirection: "ltr",
   },
-});
+}));

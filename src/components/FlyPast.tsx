@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { themed } from "@/constants";
 import {
   AccessibilityInfo,
   Animated,
@@ -56,7 +57,7 @@ interface FlyPastProps {
   duration?: number;
 }
 
-export function FlyPast({ width: planeWidth = 268, duration = 2700 }: FlyPastProps) {
+export function FlyPast({ width: planeWidth = 250, duration = 3400 }: FlyPastProps) {
   const { width } = useWindowDimensions();
   const [gone, setGone] = useState(false);
   const [still, setStill] = useState(false);
@@ -78,7 +79,9 @@ export function FlyPast({ width: planeWidth = 268, duration = 2700 }: FlyPastPro
         Animated.timing(progress, {
           toValue: 1,
           duration,
-          easing: Easing.linear,
+          // تمهّلٌ في الدخول والخروج: طائرةٌ تقطع الشاشة بسرعةٍ واحدة تبدو
+          // مقذوفة، والهادئة تظهر وتمضي.
+          easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
         }).start(({ finished }) => {
           if (finished && !cancelled) setGone(true);
@@ -116,8 +119,8 @@ export function FlyPast({ width: planeWidth = 268, duration = 2700 }: FlyPastPro
   const translateX = progress.interpolate({ inputRange: [0, 1], outputRange: [edge, -edge] });
   const translateY = progress.interpolate({ inputRange: [0, 1], outputRange: [34, -34] });
   const opacity = progress.interpolate({
-    inputRange: [0, 0.1, 0.86, 1],
-    outputRange: [0, 1, 1, 0],
+    inputRange: [0, 0.12, 0.84, 1],
+    outputRange: [0, 0.92, 0.92, 0],
   });
 
   return (
@@ -165,7 +168,7 @@ export function FlyPast({ width: planeWidth = 268, duration = 2700 }: FlyPastPro
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   sky: {
     ...StyleSheet.absoluteFillObject,
     alignItems: "center",
@@ -179,4 +182,4 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-});
+}));

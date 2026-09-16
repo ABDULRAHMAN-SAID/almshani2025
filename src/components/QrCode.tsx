@@ -1,7 +1,8 @@
 import { useMemo } from "react";
-import { StyleSheet, View } from "react-native";
+import { View } from "react-native";
 import qrcode from "qrcode-generator";
 
+import { themed } from "@/constants";
 interface QrCodeProps {
   value: string;
   /** طول ضلع الرمز بالبكسل. */
@@ -60,7 +61,7 @@ export function QrCode({ value, size = 220 }: QrCodeProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   frame: { backgroundColor: "#FFFFFF" },
   row: { flexDirection: "row" },
-});
+}));

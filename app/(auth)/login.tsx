@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { router } from "expo-router";
 import { FormField } from "@/components/FormField";
 import { Logo } from "@/components/Logo";
 import { PrimaryButton } from "@/components/PrimaryButton";
-import { colors, spacing, typography } from "@/constants";
+import { colors, spacing, typography, themed } from "@/constants";
 import { useAuth } from "@/hooks/useAuth";
 import { signInWithPassword } from "@/services/authService";
 import { showToast } from "@/store/toastStore";
@@ -108,7 +108,7 @@ export default function LoginScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   flex: { flex: 1, backgroundColor: colors.background },
   content: { flexGrow: 1, justifyContent: "center", padding: spacing.xl, gap: spacing.xl },
   header: { alignItems: "center", gap: spacing.xs },
@@ -121,4 +121,4 @@ const styles = StyleSheet.create({
   footer: { flexDirection: "row", justifyContent: "center", alignItems: "center", gap: spacing.xs },
   footerText: { ...typography.caption, fontSize: 13 },
   footerLink: { ...typography.caption, fontSize: 13, color: colors.marineDeep, fontFamily: "Tajawal_700Bold" },
-});
+}));

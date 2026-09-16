@@ -1,6 +1,6 @@
-import { StyleSheet, TextInput, View } from "react-native";
+import { TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 
 interface SearchBarProps {
   value: string;
@@ -24,7 +24,7 @@ export function SearchBar({ value, onChangeText, placeholder = "ابحث عن ن
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   container: {
     flexDirection: "row",
     alignItems: "center",
@@ -37,4 +37,4 @@ const styles = StyleSheet.create({
     height: 48,
   },
   input: { ...typography.body, flex: 1 },
-});
+}));

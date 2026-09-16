@@ -1,8 +1,8 @@
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, Text, View } from "react-native";
 import { EmptyState } from "@/components/EmptyState";
 import { QuizQuestionCard } from "@/components/QuizQuestionCard";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { colors, spacing, typography } from "@/constants";
+import { colors, spacing, typography, themed } from "@/constants";
 import { useWeeklyQuiz } from "@/hooks/useWeeklyQuiz";
 import { useRefreshPoints } from "@/hooks/usePoints";
 import { getAnsweredState, submitQuizAnswer } from "@/services/quizService";
@@ -47,9 +47,9 @@ export default function WeeklyQuizScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl },
   weekLabel: { ...typography.caption, textAlign: "center", marginBottom: 2 },
   hint: { ...typography.bodyMuted, textAlign: "center" },
-});
+}));

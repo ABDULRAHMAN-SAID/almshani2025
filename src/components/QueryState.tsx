@@ -1,7 +1,7 @@
 import { type ReactNode } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 import { SkeletonBlock } from "./LoadingSkeleton";
 import { SecondaryButton } from "./SecondaryButton";
 import { isNetworkError, toArabicMessage } from "@/utils/errors";
@@ -54,7 +54,7 @@ export function QueryState({ isLoading, error, onRetry, children }: QueryStatePr
   return <>{children}</>;
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   pad: { padding: spacing.lg },
   errorBox: {
     alignItems: "center",
@@ -76,4 +76,4 @@ const styles = StyleSheet.create({
   },
   title: { ...typography.h3, textAlign: "center" },
   body: { ...typography.caption, textAlign: "center", marginTop: spacing.xs, lineHeight: 20 },
-});
+}));

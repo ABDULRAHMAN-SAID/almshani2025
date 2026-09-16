@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 import type { PublicQuizQuestion } from "@/services/quizService";
 import { showToast } from "@/store/toastStore";
 import { toArabicMessage } from "@/utils/errors";
@@ -88,7 +88,7 @@ export function QuizQuestionCard({ question, index, total, initialResult, onSubm
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   card: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.lg, gap: spacing.md },
   headRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   category: { ...typography.caption, fontFamily: "Tajawal_500Medium", color: colors.primary },
@@ -112,4 +112,4 @@ const styles = StyleSheet.create({
   feedbackGood: {},
   feedbackBad: {},
   feedbackText: { fontFamily: "Tajawal_500Medium", fontSize: 13 },
-});
+}));

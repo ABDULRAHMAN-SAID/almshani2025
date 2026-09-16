@@ -1,6 +1,6 @@
-import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { Image, Modal, Pressable, ScrollView, Text, useWindowDimensions, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 
 interface ImageZoomProps {
   uri: string | null;
@@ -54,7 +54,7 @@ export function ImageZoom({ uri, onClose }: ImageZoomProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   screen: { flex: 1, backgroundColor: "#000" },
   fill: { flex: 1 },
   center: { flexGrow: 1, alignItems: "center", justifyContent: "center" },
@@ -77,4 +77,4 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
   },
   closeText: { ...typography.caption, color: colors.textOnPrimary },
-});
+}));

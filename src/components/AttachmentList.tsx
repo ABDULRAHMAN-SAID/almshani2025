@@ -1,7 +1,7 @@
 import { Image, Linking, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { ResizeMode, Video } from "expo-av";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 import { type MediaAttachment, formatBytes, formatDuration } from "@/services/uploadService";
 import { showToast } from "@/store/toastStore";
 import { AudioPlayer } from "./AudioPlayer";
@@ -103,7 +103,7 @@ export function AttachmentList({ attachments, onRemove, onDark }: AttachmentList
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   wrap: { gap: spacing.sm, marginTop: spacing.sm },
   item: { position: "relative" },
   image: { width: "100%", height: 190, borderRadius: radius.md, backgroundColor: colors.backgroundDeep },
@@ -148,4 +148,4 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-});
+}));

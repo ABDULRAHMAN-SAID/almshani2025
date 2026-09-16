@@ -1,6 +1,6 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 import type { AppNotification } from "@/types/models";
 import { formatArabicDate } from "@/utils/date";
 
@@ -33,7 +33,7 @@ export function NotificationCard({ notification, onPress }: NotificationCardProp
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   card: {
     flexDirection: "row",
     backgroundColor: colors.surface,
@@ -65,4 +65,4 @@ const styles = StyleSheet.create({
   unreadTitle: { fontFamily: "Tajawal_500Medium" },
   body: { ...typography.bodyMuted },
   date: { ...typography.caption, marginTop: 2 },
-});
+}));

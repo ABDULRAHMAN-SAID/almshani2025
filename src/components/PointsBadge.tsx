@@ -1,6 +1,6 @@
-import { Pressable, StyleSheet, Text } from "react-native";
+import { Pressable, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, radius, spacing } from "@/constants";
+import { colors, radius, spacing, themed } from "@/constants";
 
 interface PointsBadgeProps {
   points: number;
@@ -21,7 +21,7 @@ export function PointsBadge({ points, onPress }: PointsBadgeProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   badge: {
     flexDirection: "row",
     alignItems: "center",
@@ -33,4 +33,4 @@ const styles = StyleSheet.create({
   },
   pressed: { opacity: 0.8 },
   text: { fontFamily: "Tajawal_700Bold", fontSize: 13, color: "#8a6d2c" },
-});
+}));

@@ -1,6 +1,6 @@
-import { StyleSheet, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 import { POINTS_REASON_LABEL, type PointsTransaction } from "@/types/models";
 import { formatArabicDate } from "@/utils/date";
 
@@ -27,7 +27,7 @@ export function PointsHistoryRow({ transaction }: { transaction: PointsTransacti
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   row: {
     flexDirection: "row",
     alignItems: "center",
@@ -48,4 +48,4 @@ const styles = StyleSheet.create({
   title: { ...typography.body, fontFamily: "Tajawal_500Medium" },
   subtitle: { ...typography.caption },
   points: { fontFamily: "Tajawal_700Bold", fontSize: 15, color: colors.success },
-});
+}));

@@ -9,10 +9,22 @@ export const REGISTRATION_LABEL: Record<RegistrationState, string> = {
   full: "اكتمل العدد",
 };
 
+// دوالّ قراءة لا قيمًا: الكائن يُبنى مرّةً عند تحميل الملفّ، ولو حُفظ اللون
+// فيه لتجمّد على لوحة النهار وبقيت الحالة خضراءَ النهار في مظهر الليل.
 export const REGISTRATION_COLOR: Record<RegistrationState, string> = {
-  open: colors.success,
-  closed: colors.textMuted,
-  upcoming: colors.gold,
-  ended: colors.textMuted,
-  full: colors.warning,
+  get open() {
+    return colors.success;
+  },
+  get closed() {
+    return colors.textMuted;
+  },
+  get upcoming() {
+    return colors.gold;
+  },
+  get ended() {
+    return colors.textMuted;
+  },
+  get full() {
+    return colors.warning;
+  },
 };

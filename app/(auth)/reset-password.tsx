@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import * as Linking from "expo-linking";
 import { FormField } from "@/components/FormField";
 import { PrimaryButton } from "@/components/PrimaryButton";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 import { changePassword, openRecoverySession } from "@/services/authService";
 import { showToast } from "@/store/toastStore";
 import { toArabicMessage } from "@/utils/errors";
@@ -142,7 +142,7 @@ export default function ResetPasswordScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   flex: { flex: 1, backgroundColor: colors.background },
   content: { flexGrow: 1, justifyContent: "center", padding: spacing.xl, gap: spacing.md },
   center: {
@@ -167,4 +167,4 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   submit: { marginTop: spacing.lg, alignSelf: "stretch" },
-});
+}));

@@ -10,7 +10,7 @@ import { FilterChips } from "@/components/FilterChips";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { SECTION_DEFINITIONS } from "@/constants/sections";
 import { CATEGORY_COVER } from "@/constants/covers";
-import { colors, spacing, typography } from "@/constants";
+import { colors, spacing, typography, themed } from "@/constants";
 import { useAllActivities } from "@/hooks/useActivities";
 import { useAnnouncements } from "@/hooks/useNotifications";
 import { useQuery } from "@tanstack/react-query";
@@ -156,7 +156,7 @@ export default function SectionScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   screen: { flex: 1, backgroundColor: colors.background },
   announcements: { gap: spacing.sm, marginBottom: spacing.lg },
   banner: {
@@ -178,4 +178,4 @@ const styles = StyleSheet.create({
   filters: { paddingHorizontal: spacing.lg, marginBottom: spacing.md },
   content: { padding: spacing.lg, paddingTop: 0 },
   count: { ...typography.caption, marginBottom: spacing.sm },
-});
+}));

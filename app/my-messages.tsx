@@ -1,4 +1,4 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
@@ -7,7 +7,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { QueryState } from "@/components/QueryState";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 import { useAuth } from "@/hooks/useAuth";
 import { fetchMyMessages } from "@/services/messageService";
 import type { MessageStatus, UserMessage } from "@/types/models";
@@ -105,7 +105,7 @@ function MessageCard({ message }: { message: UserMessage }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg, paddingTop: 0, paddingBottom: spacing.xxl, gap: spacing.md },
   card: {
@@ -138,4 +138,4 @@ const styles = StyleSheet.create({
   replyHead: { flexDirection: "row", alignItems: "center", gap: 6 },
   replyTitle: { fontFamily: "Tajawal_700Bold", fontSize: 12, color: colors.success, flex: 1 },
   replyBody: { ...typography.body, fontSize: 13, lineHeight: 22, marginTop: spacing.xs },
-});
+}));

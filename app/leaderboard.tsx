@@ -1,7 +1,7 @@
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, Text, View } from "react-native";
 import { LeaderboardRow } from "@/components/LeaderboardRow";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { colors, spacing, typography } from "@/constants";
+import { colors, spacing, typography, themed } from "@/constants";
 import { useAuth } from "@/hooks/useAuth";
 import { useLeaderboard } from "@/hooks/usePoints";
 
@@ -25,8 +25,8 @@ export default function LeaderboardScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   screen: { flex: 1, backgroundColor: colors.background },
   hint: { ...typography.bodyMuted, textAlign: "center", marginTop: spacing.sm },
   content: { padding: spacing.lg },
-});
+}));

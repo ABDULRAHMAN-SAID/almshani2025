@@ -1,6 +1,6 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 import type { AwarenessArticle } from "@/types/models";
 
 interface AwarenessCardProps {
@@ -28,7 +28,7 @@ export function AwarenessCard({ article, onPress }: AwarenessCardProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   card: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
@@ -42,4 +42,4 @@ const styles = StyleSheet.create({
   summary: { ...typography.bodyMuted, marginBottom: spacing.sm },
   readMore: { flexDirection: "row", alignItems: "center", gap: 2, alignSelf: "flex-start" },
   readMoreLabel: { fontFamily: "Tajawal_500Medium", fontSize: 13, color: colors.primary },
-});
+}));

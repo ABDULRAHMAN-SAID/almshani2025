@@ -1,11 +1,11 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { EmptyState } from "@/components/EmptyState";
 import { QueryState } from "@/components/QueryState";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 import { fetchConversations, fetchFriendRequests } from "@/services/chatService";
 import { relativeDayLabel } from "@/utils/date";
 
@@ -114,7 +114,7 @@ export default function ChatsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   screen: { flex: 1, backgroundColor: colors.background },
   actions: { flexDirection: "row", gap: spacing.sm, paddingHorizontal: spacing.lg },
   action: {
@@ -165,4 +165,4 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   dotText: { ...typography.caption, fontSize: 11, color: colors.textOnPrimary },
-});
+}));

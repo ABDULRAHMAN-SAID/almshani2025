@@ -1,12 +1,12 @@
 import { useMemo, useState } from "react";
-import { Image, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, ScrollView, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { AttachmentList } from "@/components/AttachmentList";
 import { EmptyState } from "@/components/EmptyState";
 import { FilterChips } from "@/components/FilterChips";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { tintBackground } from "@/constants/categories";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 import { useAnnouncements } from "@/hooks/useNotifications";
 import { isVisible } from "@/utils/visibility";
 import { formatArabicDate } from "@/utils/date";
@@ -86,7 +86,7 @@ export default function AnnouncementsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   screen: { flex: 1, backgroundColor: colors.background },
   filters: { paddingHorizontal: spacing.lg, marginBottom: spacing.md },
   content: { padding: spacing.lg, paddingTop: 0 },
@@ -112,4 +112,4 @@ const styles = StyleSheet.create({
     backgroundColor: colors.backgroundDeep,
   },
   cardBody: { ...typography.bodyMuted, lineHeight: 21 },
-});
+}));

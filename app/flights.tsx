@@ -1,12 +1,12 @@
 import { useMemo, useState } from "react";
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, ScrollView, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import { FilterChips } from "@/components/FilterChips";
 import { FlyPast } from "@/components/FlyPast";
 import { ImageZoom } from "@/components/ImageZoom";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, shadow, spacing, typography, themed } from "@/constants";
 import { FLIGHT_DAYS, FLIGHT_EFFECTIVE, FLIGHT_SOURCE } from "@/constants/flights";
 import type { Flight } from "@/constants/flights";
 import { fetchFlightRoutes, fetchFlightSchedule } from "@/services/flightService";
@@ -19,6 +19,10 @@ import { omanWeekdayName } from "@/utils/date";
  * الأسبوع»، فيجد جوابه بلا لمسة. والجمعة لا رحلة فيها، فيُفتح على السبت.
  *
  * وتعبر طائرةٌ مرّةً واحدة عند الفتح ثم تختفي — تحيّةُ الشاشة لا زينتها.
+ *
+ * والتصميم هادئ عمدًا: لا حدودَ سوداء ولا أرقامًا غليظة. من يفتح الجدول
+ * يبحث عن وقتٍ واحد، والصخبُ حوله يبطئ العثور عليه. فالبطاقة سطحٌ ناعم
+ * بظلٍّ خفيف، والوقتُ متوسّط الوزن، واللونُ القويّ للمحطّة الوسطى وحدها.
  */
 export default function FlightsScreen() {
   const today = omanWeekdayName();
@@ -40,21 +44,22 @@ export default function FlightsScreen() {
 
   return (
     <View style={styles.screen}>
-      <ScreenHeader title="جدول الرحلات" />
-
-      <View style={styles.head}>
-        <Text style={styles.source}>{FLIGHT_SOURCE}</Text>
-        <Text style={styles.effective}>{FLIGHT_EFFECTIVE}</Text>
+      {/* الرأس والمصدر وأيّام الأسبوع في شريطٍ واحد ناعم، والقائمة تحته. */}
+      <View style={styles.band}>
+        <ScreenHeader title="جدول الرحلات" />
+        <View style={styles.head}>
+          <Text style={styles.source}>{FLIGHT_SOURCE}</Text>
+          <Text style={styles.effective}>{FLIGHT_EFFECTIVE}</Text>
+        </View>
+        <FilterChips
+          items={FLIGHT_DAYS.map((entry) => ({
+            key: entry,
+            label: entry === today ? `${entry} · اليوم` : entry,
+          }))}
+          activeKey={day}
+          onChange={setDay}
+        />
       </View>
-
-      <FilterChips
-        items={FLIGHT_DAYS.map((entry) => ({
-          key: entry,
-          label: entry === today ? `${entry} · اليوم` : entry,
-        }))}
-        activeKey={day}
-        onChange={setDay}
-      />
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {flights.length > 0 ? (
@@ -63,7 +68,9 @@ export default function FlightsScreen() {
           ))
         ) : (
           <View style={styles.none}>
-            <Ionicons name="airplane-outline" size={22} color={colors.textMuted} />
+            <View style={styles.noneIcon}>
+              <Ionicons name="airplane-outline" size={22} color={colors.textMuted} />
+            </View>
             <Text style={styles.noneText}>لا رحلات يوم {day}</Text>
           </View>
         )}
@@ -147,50 +154,73 @@ function FlightCard({ flight }: { flight: Flight }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   screen: { flex: 1, backgroundColor: colors.background },
-  head: { paddingHorizontal: spacing.lg, paddingBottom: spacing.sm, gap: 2 },
-  source: { ...typography.caption, lineHeight: 18 },
-  effective: { ...typography.caption, fontSize: 11, color: colors.primary },
+  band: {
+    backgroundColor: colors.surface,
+    paddingBottom: spacing.md,
+    borderBottomLeftRadius: 26,
+    borderBottomRightRadius: 26,
+    ...shadow.subtle,
+  },
+  head: { paddingHorizontal: spacing.lg, paddingBottom: spacing.md, gap: 2 },
+  source: { ...typography.caption, lineHeight: 18, color: colors.textSecondary },
+  effective: { ...typography.caption, fontSize: 11 },
   content: { padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xxl },
   card: {
     backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderRadius: 20,
     padding: spacing.lg,
     gap: spacing.sm,
+    ...shadow.subtle,
   },
-  cardHead: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  cardHead: { flexDirection: "row", alignItems: "center", gap: spacing.md, marginBottom: spacing.xs },
   icon: {
-    width: 30,
-    height: 30,
-    borderRadius: radius.sm,
-    backgroundColor: "rgba(11,37,69,0.08)",
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: colors.background,
     alignItems: "center",
     justifyContent: "center",
   },
-  station: { ...typography.body, flex: 1, fontFamily: "Tajawal_700Bold" },
-  aircraft: { ...typography.caption, fontSize: 11, writingDirection: "ltr" },
-  stop: { flexDirection: "row", alignItems: "flex-start", gap: spacing.sm },
-  dotColumn: { alignItems: "center", width: 12, paddingTop: 6 },
-  dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.border },
-  dotMid: { backgroundColor: colors.primary },
-  line: { width: 1, flex: 1, minHeight: 16, backgroundColor: colors.border },
-  place: { ...typography.body, fontSize: 14, width: 74 },
+  station: { ...typography.body, flex: 1, fontFamily: "Tajawal_700Bold", fontSize: 16 },
+  aircraft: {
+    ...typography.caption,
+    fontSize: 11,
+    writingDirection: "ltr",
+    backgroundColor: colors.background,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+    borderRadius: radius.pill,
+    overflow: "hidden",
+  },
+  stop: { flexDirection: "row", alignItems: "flex-start", gap: spacing.md },
+  dotColumn: { alignItems: "center", width: 12, paddingTop: 7 },
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.border },
+  dotMid: { backgroundColor: colors.marine, width: 10, height: 10, borderRadius: 5 },
+  line: { width: 1.5, flex: 1, minHeight: 18, backgroundColor: colors.border, borderRadius: 1 },
+  place: { ...typography.body, fontSize: 14, width: 74, color: colors.textSecondary },
   times: { flex: 1, flexDirection: "row", justifyContent: "flex-end", gap: spacing.lg },
-  time: { ...typography.body, fontSize: 14, fontFamily: "Tajawal_700Bold", writingDirection: "ltr" },
+  time: { ...typography.body, fontSize: 14.5, fontFamily: "Tajawal_500Medium", writingDirection: "ltr" },
   timeLabel: { ...typography.caption, fontSize: 11, fontFamily: "Tajawal_400Regular" },
-  none: { alignItems: "center", gap: spacing.sm, paddingVertical: spacing.xl },
+  none: { alignItems: "center", gap: spacing.md, paddingVertical: spacing.xxl },
+  noneIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.surface,
+    alignItems: "center",
+    justifyContent: "center",
+    ...shadow.subtle,
+  },
   noneText: { ...typography.caption },
   notes: {
     backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderRadius: 20,
     padding: spacing.lg,
     gap: spacing.sm,
     marginTop: spacing.sm,
+    ...shadow.subtle,
   },
   notesTitle: { ...typography.body, fontFamily: "Tajawal_700Bold" },
   noteRow: { flexDirection: "row", gap: spacing.md },
@@ -202,7 +232,5 @@ const styles = StyleSheet.create({
     height: 260,
     borderRadius: radius.md,
     backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
   },
-});
+}));

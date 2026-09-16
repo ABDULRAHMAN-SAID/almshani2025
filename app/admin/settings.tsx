@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
+import { Pressable, ScrollView, Switch, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { SecondaryButton } from "@/components/SecondaryButton";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 import { useAdminSettingsStore } from "@/store/adminSettingsStore";
 import { useAdminStore } from "@/store/adminStore";
 import { showToast } from "@/store/toastStore";
@@ -386,7 +386,7 @@ function LinkRow({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg, paddingTop: 0, paddingBottom: spacing.xxl },
   sectionLabel: { ...typography.h3, marginTop: spacing.xl, marginBottom: spacing.sm },
@@ -446,4 +446,4 @@ const styles = StyleSheet.create({
   chipTextActive: { color: colors.textOnPrimary },
   hint: { ...typography.caption, lineHeight: 20, marginTop: spacing.sm },
   note: { ...typography.caption, lineHeight: 20, marginTop: spacing.xl, textAlign: "center" },
-});
+}));

@@ -1,7 +1,7 @@
-import { Pressable, StyleSheet, Text } from "react-native";
+import { Pressable, Text } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 import { useWeather } from "@/hooks/useWeather";
 import { describeWeather, tempLabel } from "@/utils/weather";
 
@@ -35,7 +35,7 @@ export function WeatherChip() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   chip: {
     flexDirection: "row",
     alignItems: "center",
@@ -49,4 +49,4 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.8 },
   temp: { fontFamily: "Tajawal_700Bold", fontSize: 12.5, color: colors.textOnPrimary },
   place: { ...typography.caption, fontSize: 11, color: colors.textOnPrimaryMuted, flexShrink: 1 },
-});
+}));

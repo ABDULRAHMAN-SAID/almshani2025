@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { EmptyState } from "@/components/EmptyState";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 import { createGroupChat, fetchFriends } from "@/services/chatService";
 import { showToast } from "@/store/toastStore";
 import { toArabicMessage } from "@/utils/errors";
@@ -92,7 +92,7 @@ export default function NewGroupScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg, gap: spacing.sm, paddingBottom: spacing.xxl },
   label: { ...typography.caption, marginTop: spacing.sm },
@@ -120,4 +120,4 @@ const styles = StyleSheet.create({
   },
   rowOn: { borderColor: colors.primary },
   name: { ...typography.body, fontSize: 14, flex: 1 },
-});
+}));

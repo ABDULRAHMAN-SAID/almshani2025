@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Audio } from "expo-av";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 import { formatDuration } from "@/services/uploadService";
 import { showToast } from "@/store/toastStore";
 import { toArabicMessage } from "@/utils/errors";
@@ -105,7 +105,7 @@ export function AudioPlayer({ url, durationMs, label = "مقطع صوتي", onDa
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   wrap: {
     flexDirection: "row",
     alignItems: "center",
@@ -121,4 +121,4 @@ const styles = StyleSheet.create({
   track: { height: 4, borderRadius: 2, overflow: "hidden" },
   fill: { height: "100%", borderRadius: 2 },
   time: { ...typography.caption, fontSize: 11, minWidth: 36, textAlign: "left" },
-});
+}));

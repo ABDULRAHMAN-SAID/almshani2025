@@ -1,6 +1,6 @@
-import { StyleSheet, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, spacing, typography } from "@/constants";
+import { colors, spacing, typography, themed } from "@/constants";
 
 interface EmptyStateProps {
   icon?: keyof typeof Ionicons.glyphMap;
@@ -20,7 +20,7 @@ export function EmptyState({ icon = "calendar-outline", title, subtitle }: Empty
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   container: { alignItems: "center", paddingVertical: spacing.xxl, paddingHorizontal: spacing.xl },
   iconWrap: {
     width: 64,
@@ -33,4 +33,4 @@ const styles = StyleSheet.create({
   },
   title: { ...typography.h3, textAlign: "center" },
   subtitle: { ...typography.bodyMuted, textAlign: "center", marginTop: spacing.xs },
-});
+}));

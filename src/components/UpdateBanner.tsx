@@ -1,7 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 import { useAppUpdate } from "@/hooks/useAppUpdate";
 
 /**
@@ -40,7 +40,7 @@ export function UpdateBanner() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   bar: {
     flexDirection: "row",
     alignItems: "center",
@@ -56,4 +56,4 @@ const styles = StyleSheet.create({
   texts: { flex: 1, gap: 1 },
   title: { ...typography.body, color: colors.textOnPrimary, fontFamily: "Tajawal_700Bold", fontSize: 14 },
   hint: { ...typography.caption, color: "rgba(255,255,255,0.88)", fontSize: 12 },
-});
+}));

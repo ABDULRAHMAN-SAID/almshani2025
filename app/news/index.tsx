@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
+import { ScrollView, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import { EmptyState } from "@/components/EmptyState";
 import { FilterChips } from "@/components/FilterChips";
 import { NewsCard } from "@/components/NewsCard";
 import { QueryState } from "@/components/QueryState";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { colors, spacing } from "@/constants";
+import { colors, spacing, themed } from "@/constants";
 import { NEWS_SCOPE_LABEL } from "@/constants/categories";
 import { fetchNews, visibleNews } from "@/services/newsService";
 import type { NewsScope } from "@/types/models";
@@ -46,7 +46,7 @@ export default function NewsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xxl },
-});
+}));

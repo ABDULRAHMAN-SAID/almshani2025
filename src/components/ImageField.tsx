@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Image, Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 import { pickImage, uploadImage } from "@/services/uploadService";
 import { showToast } from "@/store/toastStore";
 import { toArabicMessage } from "@/utils/errors";
@@ -75,7 +75,7 @@ export function ImageField({ label, hint, value, onChange, folder }: ImageFieldP
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   wrap: { marginBottom: spacing.md },
   label: { ...typography.h3, fontSize: 14, marginBottom: spacing.xs, marginTop: spacing.sm },
   hint: { ...typography.caption, marginBottom: spacing.sm, lineHeight: 19 },
@@ -104,4 +104,4 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-});
+}));

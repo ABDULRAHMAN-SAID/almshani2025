@@ -1,8 +1,8 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { EmptyState } from "@/components/EmptyState";
 import { NotificationCard } from "@/components/NotificationCard";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { colors, spacing, typography } from "@/constants";
+import { colors, spacing, typography, themed } from "@/constants";
 import { useAuth } from "@/hooks/useAuth";
 import { useNotifications, useRefreshNotifications, useUnreadCount } from "@/hooks/useNotifications";
 import { markAllNotificationsRead, markNotificationRead } from "@/services/notificationService";
@@ -74,9 +74,9 @@ export default function NotificationsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   screen: { flex: 1, backgroundColor: colors.background },
   markAll: { fontFamily: "Tajawal_500Medium", fontSize: 12.5, color: colors.accent },
   unreadLine: { ...typography.caption, paddingHorizontal: spacing.lg, marginBottom: spacing.sm },
   content: { padding: spacing.lg, paddingTop: spacing.sm },
-});
+}));

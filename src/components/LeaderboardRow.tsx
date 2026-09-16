@@ -1,6 +1,6 @@
-import { StyleSheet, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 import type { LeaderboardEntry } from "@/types/models";
 
 interface LeaderboardRowProps {
@@ -31,7 +31,7 @@ export function LeaderboardRow({ entry, isMe }: LeaderboardRowProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   row: {
     flexDirection: "row",
     alignItems: "center",
@@ -55,4 +55,4 @@ const styles = StyleSheet.create({
   nameMe: { fontFamily: "Tajawal_700Bold" },
   pointsWrap: { flexDirection: "row", alignItems: "center", gap: 4 },
   points: { fontFamily: "Tajawal_700Bold", fontSize: 13, color: colors.textPrimary },
-});
+}));

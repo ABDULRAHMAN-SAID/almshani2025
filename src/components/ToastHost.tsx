@@ -1,8 +1,8 @@
 import { useEffect, useRef } from "react";
-import { Animated, Keyboard, StyleSheet, Text } from "react-native";
+import { Animated, Keyboard, Text } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, radius, spacing } from "@/constants";
+import { colors, radius, spacing, themed } from "@/constants";
 import { useToastStore } from "@/store/toastStore";
 
 const ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
@@ -69,7 +69,7 @@ export function ToastHost() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   container: {
     position: "absolute",
     alignSelf: "center",
@@ -90,4 +90,4 @@ const styles = StyleSheet.create({
   },
   text: { fontFamily: "Tajawal_500Medium", fontSize: 14, color: colors.textPrimary, flexShrink: 1 },
   textOnFill: { color: "#FFFFFF", fontFamily: "Tajawal_700Bold" },
-});
+}));

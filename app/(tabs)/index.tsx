@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, Text, View } from "react-native";
 import { router } from "expo-router";
 import { ActivityCard } from "@/components/ActivityCard";
 import { AnnouncementCard } from "@/components/AnnouncementCard";
@@ -17,7 +17,7 @@ import { SectionHeader } from "@/components/SectionHeader";
 import { WeatherChip } from "@/components/WeatherChip";
 import { WeeklyQuizTeaserCard } from "@/components/WeeklyQuizTeaserCard";
 import { HOME_GROUP_LABEL, HOME_GROUP_ORDER, HOME_SECTIONS } from "@/constants/categories";
-import { colors, radius, shadow, spacing, typography } from "@/constants";
+import { colors, radius, shadow, spacing, typography, themed } from "@/constants";
 import { useAuth } from "@/hooks/useAuth";
 import {
   useHeroActivity,
@@ -285,7 +285,7 @@ export default function HomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { paddingBottom: spacing.xxl },
   header: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
@@ -353,4 +353,4 @@ const styles = StyleSheet.create({
   weekRow: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   weekDay: { ...typography.caption, width: 64 },
   weekTitle: { ...typography.body, flex: 1, fontFamily: "Tajawal_500Medium" },
-});
+}));

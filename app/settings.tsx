@@ -1,11 +1,18 @@
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, Switch, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import Constants from "expo-constants";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, getColorScheme, radius, rememberRoute, spacing, typography, themed } from "@/constants";
 import { BUILD_STAMP } from "@/services/config";
 import { useAppUpdate } from "@/hooks/useAppUpdate";
-import { useSettingsStore } from "@/store/settingsStore";
+import { useSettingsStore, type ThemePreference } from "@/store/settingsStore";
+import { useColorScheme } from "react-native";
+
+const THEME_OPTIONS: { value: ThemePreference; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+  { value: "system", label: "تلقائي", icon: "phone-portrait-outline" },
+  { value: "light", label: "فاتح", icon: "sunny-outline" },
+  { value: "dark", label: "داكن", icon: "moon-outline" },
+];
 
 const PRIVACY_POINTS = [
   "لا يعرض التطبيق رقم هاتفك لأي مستخدم آخر",
@@ -35,8 +42,16 @@ function installedVersion(): string {
 }
 
 export default function SettingsScreen() {
-  const { activityReminders, announcementAlerts, quizReminders, toggle } = useSettingsStore();
+  const { activityReminders, announcementAlerts, quizReminders, theme, toggle, setTheme } = useSettingsStore();
   const { checkNow, checking } = useAppUpdate();
+  const systemScheme = useColorScheme();
+
+  const chooseTheme = (next: ThemePreference) => {
+    const nextScheme = next === "system" ? (systemScheme === "dark" ? "dark" : "light") : next;
+    // التبديل يعيد تركيب التطبيق كلّه؛ نحفظ هذه الشاشة لنعود إليها بعده.
+    if (nextScheme !== getColorScheme()) rememberRoute("/settings");
+    setTheme(next);
+  };
 
   return (
     <View style={styles.screen}>
@@ -68,6 +83,38 @@ export default function SettingsScreen() {
             value={quizReminders}
             onChange={() => toggle("quizReminders")}
           />
+        </View>
+
+        <Text style={styles.sectionLabel}>المظهر</Text>
+        <View style={styles.card}>
+          <View style={styles.segment}>
+            {THEME_OPTIONS.map((option) => {
+              const active = theme === option.value;
+              return (
+                <Pressable
+                  key={option.value}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  onPress={() => chooseTheme(option.value)}
+                  style={[styles.segmentItem, active && styles.segmentItemActive]}
+                >
+                  <Ionicons
+                    name={option.icon}
+                    size={17}
+                    color={active ? colors.textOnPrimary : colors.textSecondary}
+                  />
+                  <Text style={[styles.segmentLabel, active && styles.segmentLabelActive]}>{option.label}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          <Text style={styles.segmentHint}>
+            {theme === "system"
+              ? "يتبع إعداد الهاتف: يُظلم إذا أظلم ويُضيء إذا أضاء."
+              : theme === "dark"
+                ? "مظهرٌ داكن دائمًا — أريح للعين في الليل ويوفّر البطارية."
+                : "مظهرٌ فاتح دائمًا مهما كان إعداد الهاتف."}
+          </Text>
         </View>
 
         <Text style={styles.sectionLabel}>اللغة</Text>
@@ -167,7 +214,7 @@ function ToggleRow({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg, paddingTop: spacing.sm },
   sectionLabel: { ...typography.h3, marginTop: spacing.lg, marginBottom: spacing.sm },
@@ -180,7 +227,28 @@ const styles = StyleSheet.create({
   rowPressed: { opacity: 0.6 },
   rowValue: { ...typography.caption },
   divider: { height: 1, backgroundColor: colors.border },
+  segment: {
+    flexDirection: "row",
+    backgroundColor: colors.background,
+    borderRadius: radius.md,
+    padding: 3,
+    marginTop: spacing.md,
+    gap: 3,
+  },
+  segmentItem: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 9,
+    borderRadius: radius.sm,
+  },
+  segmentItemActive: { backgroundColor: colors.primary },
+  segmentLabel: { fontFamily: "Tajawal_500Medium", fontSize: 13, color: colors.textSecondary },
+  segmentLabelActive: { color: colors.textOnPrimary },
+  segmentHint: { ...typography.caption, paddingVertical: spacing.md, lineHeight: 19 },
   privacyRow: { flexDirection: "row", alignItems: "flex-start", gap: spacing.sm, paddingVertical: spacing.sm },
   privacyText: { ...typography.bodyMuted, flex: 1, lineHeight: 20 },
   footer: { ...typography.caption, textAlign: "center", marginTop: spacing.xl, lineHeight: 19 },
-});
+}));

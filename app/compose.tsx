@@ -4,7 +4,6 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   View,
@@ -16,7 +15,7 @@ import { MediaField } from "@/components/MediaField";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 import { useAuth } from "@/hooks/useAuth";
 import { EmptyState } from "@/components/EmptyState";
 import { sendMessage } from "@/services/messageService";
@@ -181,7 +180,7 @@ export default function ComposeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg, paddingTop: 0, paddingBottom: spacing.xxl },
   label: { ...typography.h3, fontSize: 14, marginBottom: spacing.sm, marginTop: spacing.md },
@@ -221,4 +220,4 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   noticeText: { ...typography.caption, flex: 1, lineHeight: 20, color: colors.textSecondary },
-});
+}));

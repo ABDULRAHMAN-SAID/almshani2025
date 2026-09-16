@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
+import { Pressable, ScrollView, Switch, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -9,7 +9,7 @@ import { PrimaryButton } from "@/components/PrimaryButton";
 import { QueryState } from "@/components/QueryState";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { SecondaryButton } from "@/components/SecondaryButton";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 import { deleteGroup, fetchGroups, updateGroup } from "@/services/groupService";
 import { useAdminSettingsStore } from "@/store/adminSettingsStore";
 import { showToast } from "@/store/toastStore";
@@ -168,7 +168,7 @@ export default function AdminGroupsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   screen: { flex: 1, backgroundColor: colors.background },
   masterSwitch: {
     flexDirection: "row",
@@ -210,4 +210,4 @@ const styles = StyleSheet.create({
   actionLabel: { ...typography.caption, fontSize: 11 },
   sheetTitle: { ...typography.h2, textAlign: "center" },
   sheetBody: { ...typography.caption, textAlign: "center", marginTop: spacing.sm, lineHeight: 21 },
-});
+}));

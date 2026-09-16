@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { QrCode } from "@/components/QrCode";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 import {
   CODE_DURATIONS,
   generateCheckInCode,
@@ -140,7 +140,7 @@ export default function CheckInQrScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   screen: { flex: 1, backgroundColor: colors.background },
   body: { alignItems: "center", gap: spacing.md, padding: spacing.lg, paddingBottom: spacing.xxl },
   activity: { ...typography.h3, textAlign: "center" },
@@ -196,4 +196,4 @@ const styles = StyleSheet.create({
   chipText: { ...typography.caption, color: colors.textPrimary },
   chipTextActive: { color: colors.textOnPrimary },
   makerHint: { ...typography.caption, fontSize: 11, lineHeight: 18 },
-});
+}));

@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { FormField } from "@/components/FormField";
 import { PrimaryButton } from "@/components/PrimaryButton";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 import { useAuth } from "@/hooks/useAuth";
 import { USE_MOCK_DATA } from "@/services/config";
 import {
@@ -158,7 +158,7 @@ export default function VerifyScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   flex: { flex: 1, backgroundColor: colors.background },
   content: { flexGrow: 1, padding: spacing.xl, paddingTop: spacing.xxl, gap: spacing.lg },
   back: { alignSelf: "flex-start" },
@@ -201,4 +201,4 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     color: colors.danger,
   },
-});
+}));

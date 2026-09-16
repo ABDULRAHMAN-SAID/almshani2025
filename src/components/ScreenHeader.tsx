@@ -1,9 +1,9 @@
 import { type ReactNode } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
-import { colors, spacing, typography } from "@/constants";
+import { colors, spacing, typography, themed } from "@/constants";
 
 interface ScreenHeaderProps {
   title: string;
@@ -45,7 +45,7 @@ export function ScreenHeader({ title, action, onDark }: ScreenHeaderProps) {
  * ملتصق بالساعة. ولا يظهر ذلك في متصفّح ولا في محاكٍ بلا نتوء — يظهر على
  * أوّل هاتف حقيقي، وهو أوّل ما تقع عليه العين في كل شاشة.
  */
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -57,4 +57,4 @@ const styles = StyleSheet.create({
   },
   title: { ...typography.h3, flex: 1, textAlign: "center" },
   action: { minWidth: 22, alignItems: "flex-start" },
-});
+}));

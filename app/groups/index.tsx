@@ -1,4 +1,4 @@
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, ScrollView, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
@@ -6,7 +6,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { QueryState } from "@/components/QueryState";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 import { fetchGroups } from "@/services/groupService";
 import type { DiscussionGroup } from "@/types/models";
 import { useFeatures } from "@/hooks/useFeatures";
@@ -106,7 +106,7 @@ function GroupCard({ group }: { group: DiscussionGroup }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg, paddingTop: 0, paddingBottom: spacing.xxl, gap: spacing.md },
   rules: {
@@ -137,4 +137,4 @@ const styles = StyleSheet.create({
   metaRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 2 },
   meta: { ...typography.caption, fontSize: 11 },
   metaDot: { color: colors.textMuted, fontSize: 11 },
-});
+}));

@@ -2,7 +2,7 @@ import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { CATEGORY_META, tintBackground } from "@/constants/categories";
 import { CATEGORY_COVER } from "@/constants/covers";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 import type { Activity } from "@/types/models";
 import { formatArabicDate, formatArabicTime } from "@/utils/date";
 import { REGISTRATION_COLOR, REGISTRATION_LABEL } from "@/utils/registration";
@@ -53,7 +53,7 @@ export function ActivityListRow({ activity, showDate, onPress }: ActivityListRow
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   row: {
     flexDirection: "row",
     alignItems: "center",
@@ -85,4 +85,4 @@ const styles = StyleSheet.create({
   meta: { ...typography.caption },
   pill: { paddingHorizontal: spacing.sm, paddingVertical: 3, borderRadius: radius.pill },
   pillText: { fontFamily: "Tajawal_500Medium", fontSize: 11 },
-});
+}));

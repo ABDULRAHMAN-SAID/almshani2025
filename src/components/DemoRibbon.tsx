@@ -1,6 +1,6 @@
-import { StyleSheet, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, spacing, typography } from "@/constants";
+import { colors, spacing, typography, themed } from "@/constants";
 import { USE_MOCK_DATA } from "@/services/config";
 
 /**
@@ -24,7 +24,7 @@ export function DemoRibbon() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   bar: {
     flexDirection: "row",
     alignItems: "center",
@@ -40,4 +40,4 @@ const styles = StyleSheet.create({
     fontFamily: "Tajawal_500Medium",
     fontSize: 11,
   },
-});
+}));

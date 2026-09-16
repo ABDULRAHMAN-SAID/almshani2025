@@ -1,5 +1,5 @@
-import { Pressable, StyleSheet, Text, type ViewStyle } from "react-native";
-import { colors, radius, spacing } from "@/constants";
+import { Pressable, Text, type ViewStyle } from "react-native";
+import { colors, radius, spacing, themed } from "@/constants";
 
 interface SecondaryButtonProps {
   label: string;
@@ -22,7 +22,7 @@ export function SecondaryButton({ label, onPress, disabled, style, textColor }: 
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   base: {
     borderWidth: 1.5,
     borderColor: colors.primary,
@@ -36,4 +36,4 @@ const styles = StyleSheet.create({
   pressed: { backgroundColor: colors.background },
   disabled: { opacity: 0.5 },
   label: { fontFamily: "Tajawal_500Medium", fontSize: 15, color: colors.primary },
-});
+}));

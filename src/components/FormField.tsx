@@ -1,8 +1,8 @@
 import { forwardRef, useState } from "react";
 import type { TextInput as RNTextInput, TextInputProps } from "react-native";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, spacing, typography, themed } from "@/constants";
 
 interface FormFieldProps extends Omit<TextInputProps, "style"> {
   label: string;
@@ -69,7 +69,7 @@ export const FormField = forwardRef<RNTextInput, FormFieldProps>(function FormFi
   );
 });
 
-const styles = StyleSheet.create({
+const styles = themed(() => ({
   wrap: { gap: spacing.xs },
   label: { ...typography.body, fontFamily: "Tajawal_500Medium", fontSize: 13.5 },
   field: {
@@ -88,4 +88,4 @@ const styles = StyleSheet.create({
   eye: { paddingStart: spacing.sm },
   hint: { ...typography.caption, fontSize: 11.5, lineHeight: 17 },
   error: { ...typography.caption, fontSize: 11.5, lineHeight: 17, color: colors.danger },
-});
+}));
