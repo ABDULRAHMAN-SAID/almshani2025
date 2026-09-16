@@ -1,13 +1,16 @@
 import { useMemo, useState } from "react";
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BottomSheet } from "@/components/BottomSheet";
-import { EmptyState } from "@/components/EmptyState";
+import { PatternOverlay } from "@/components/PatternOverlay";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { colors, radius, spacing, typography } from "@/constants";
+import { colors, radius, shadow, spacing, typography } from "@/constants";
 import { tintBackground } from "@/constants/categories";
 import { PLACES } from "@/constants/places";
+import { skyFor } from "@/constants/weatherSky";
 import { useForecast, useWeatherPlace } from "@/hooks/useWeather";
 import { useWeatherStore } from "@/store/weatherStore";
 import { omanWeekdayName } from "@/utils/date";
@@ -18,16 +21,19 @@ import {
   hourLabel,
   nextHours,
   tempLabel,
+  type DayPoint,
+  type HourPoint,
 } from "@/utils/weather";
 
 /**
  * الطقس حيث أنت.
  *
- * والشاشة تقول دائمًا لأيّ مكانٍ هذا الطقس — بالاسم وبمصدره: موقعك أم مكان
- * اخترته. وطقسٌ بلا مكان يُقرأ على أنه طقس «هنا» أينما كنت، وهو أسوأ من
- * لا طقس لمن يخطّط لرحلة أو لتمرين في العراء.
+ * والسماء خلف الرقم ليست زينة: اللون أوّل ما تقرؤه العين، فيعرف من فتح
+ * الشاشة أنّ الدنيا صحوٌ أو مطرٌ أو ليل قبل أن يقرأ حرفًا. وشاشةٌ بيضاء
+ * تعرض «٣٠°» تقول الرقم ولا تقول الجوّ.
  */
 export default function WeatherScreen() {
+  const insets = useSafeAreaInsets();
   const place = useWeatherPlace();
   const coords = place.data?.status === "ok" ? place.data.coords : null;
   const forecast = useForecast(coords);
@@ -37,6 +43,7 @@ export default function WeatherScreen() {
 
   const data = forecast.data;
   const look = data ? describeWeather(data.code, data.isNight) : null;
+  const sky = skyFor(data?.code ?? 0, data?.isNight ?? false);
   const hours = useMemo(() => (data ? nextHours(data, 12) : []), [data]);
   const days = useMemo(() => (data ? comingDays(data, 5) : []), [data]);
 
@@ -51,119 +58,115 @@ export default function WeatherScreen() {
     setPicking(false);
   };
 
+  const label = place.data?.status === "ok" ? place.data.label : "تحديد المكان…";
+  const source =
+    place.data?.status !== "ok" ? "" : place.data.manual ? "مكان مختار" : "موقعك الحالي";
+
   return (
     <View style={styles.screen}>
-      <ScreenHeader title="الطقس" />
-
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={{ paddingBottom: insets.bottom + spacing.xxl }}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
-        {/* المكان ومصدره — وزرّ التبديل إلى مكان آخر، في متناول الإبهام. */}
-        <Pressable accessibilityRole="button" onPress={() => setPicking(true)} style={styles.placeRow}>
-          <Ionicons name="location-outline" size={18} color={colors.primary} />
-          <Text style={styles.placeName}>
-            {place.data?.status === "ok" ? place.data.label : "تحديد المكان…"}
-          </Text>
-          {/* ولا يُكتب «مكان مختار» حين يتعذّر تحديد الموقع: لم يُختر شيء بعد،
-              والسطر يقول حينها ما يُغني عن كذبٍ صغير — لا شيء. */}
-          <Text style={styles.placeSource}>
-            {place.data?.status !== "ok" ? "" : place.data.manual ? "مكان مختار" : "موقعك الحالي"}
-          </Text>
-          <Ionicons name="chevron-back" size={16} color={colors.textMuted} />
-        </Pressable>
+        {/* السماء: الرأس والمكان والدرجة في لوحٍ واحد ملوّن بحالة الجوّ. */}
+        <LinearGradient colors={sky.colors} start={{ x: 0.2, y: 0 }} end={{ x: 0.8, y: 1 }} style={styles.sky}>
+          <PatternOverlay />
+          <ScreenHeader title="الطقس" onDark />
 
-        {place.data && place.data.status !== "ok" ? (
-          <LocationProblem status={place.data.status} onRetry={() => place.refetch()} onPick={() => setPicking(true)} />
-        ) : null}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="تغيير المكان"
+            onPress={() => setPicking(true)}
+            style={({ pressed }) => [styles.placeChip, pressed && styles.pressed]}
+          >
+            <Ionicons name="location" size={14} color="#fff" />
+            <Text style={styles.placeName}>{label}</Text>
+            {source ? <Text style={[styles.placeSource, { color: sky.muted }]}>· {source}</Text> : null}
+            <Ionicons name="chevron-down" size={14} color={sky.muted} />
+          </Pressable>
 
-        {forecast.isError ? (
-          <View style={styles.problem}>
-            <Ionicons name="cloud-offline-outline" size={22} color={colors.warning} />
-            <Text style={styles.problemText}>
-              {forecast.error instanceof Error ? forecast.error.message : "تعذّر جلب الطقس"}
-            </Text>
-            <PrimaryButton label="أعد المحاولة" onPress={() => forecast.refetch()} />
-          </View>
-        ) : null}
-
-        {data && look ? (
-          <>
-            <View style={styles.hero}>
-              <View style={[styles.heroIcon, { backgroundColor: tintBackground(look.tint, 0.14) }]}>
-                <Ionicons name={look.icon} size={44} color={look.tint} />
+          {data && look ? (
+            <View style={styles.heroBody}>
+              <Ionicons name={look.icon} size={92} color="#fff" style={styles.heroIcon} />
+              <View style={styles.tempRow}>
+                <Text style={styles.heroTemp}>{tempLabel(data.temperature)}</Text>
               </View>
-              <Text style={styles.heroTemp}>{tempLabel(data.temperature)}</Text>
               <Text style={styles.heroLabel}>{look.label}</Text>
-              {/* بالكلمات لا بالسهام: «٣١°↑ / ٢٦°↓» في سطر عربي يعيد ترتيب
-                  نفسه فتقرأ العين الصغرى مكان العظمى. والكلمة لا تنقلب. */}
-              <View style={styles.heroRange}>
-                <Text style={styles.rangeText}>
-                  العظمى {tempLabel(data.todayMax)} · الصغرى {tempLabel(data.todayMin)}
-                </Text>
-                <Text style={styles.rangeText}>الحرارة كأنها {tempLabel(data.apparent)}</Text>
+
+              <View style={styles.statRow}>
+                <Stat muted={sky.muted} label="العظمى" value={tempLabel(data.todayMax)} />
+                <View style={[styles.statLine, { backgroundColor: sky.muted }]} />
+                <Stat muted={sky.muted} label="الصغرى" value={tempLabel(data.todayMin)} />
+                <View style={[styles.statLine, { backgroundColor: sky.muted }]} />
+                <Stat muted={sky.muted} label="كأنها" value={tempLabel(data.apparent)} />
               </View>
             </View>
-
-            {/* الساعات القادمة — تبدأ من الساعة الحالية للمكان لا من أوّل اليوم. */}
-            <View style={styles.card}>
-              <Text style={styles.cardTitle}>الساعات القادمة</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hoursRow}>
-                {hours.map((point) => {
-                  const hourLook = describeWeather(point.code, point.isNight);
-                  return (
-                    <View key={point.time} style={styles.hourCell}>
-                      <Text style={styles.hourTime}>{hourLabel(point.hour)}</Text>
-                      <Ionicons name={hourLook.icon} size={22} color={hourLook.tint} />
-                      <Text style={styles.hourTemp}>{tempLabel(point.temperature)}</Text>
-                      <Text style={styles.hourRain}>
-                        {point.precipitation > 0 ? `${arabicNumber(point.precipitation)}٪` : "—"}
-                      </Text>
-                    </View>
-                  );
-                })}
-              </ScrollView>
+          ) : (
+            <View style={styles.heroEmpty}>
+              <Text style={[styles.heroLabel, { color: sky.muted }]}>
+                {forecast.isError ? "تعذّر جلب الطقس" : "يُجلب الطقس…"}
+              </Text>
             </View>
+          )}
+        </LinearGradient>
 
-            <View style={styles.factRow}>
-              <Fact icon="water-outline" label="الرطوبة" value={`${arabicNumber(Math.round(data.humidity))}٪`} />
-              <Fact icon="navigate-outline" label="الرياح" value={`${arabicNumber(Math.round(data.windSpeed))} كم/س`} />
-            </View>
-            <View style={styles.factRow}>
-              <Fact icon="sunny-outline" label="الشروق" value={clockOf(data.sunrise)} />
-              <Fact icon="moon-outline" label="الغروب" value={clockOf(data.sunset)} />
-            </View>
+        <View style={styles.body}>
+          {place.data && place.data.status !== "ok" ? (
+            <LocationProblem
+              status={place.data.status}
+              onRetry={() => place.refetch()}
+              onPick={() => setPicking(true)}
+            />
+          ) : null}
 
-            {days.length > 0 ? (
+          {forecast.isError ? (
+            <View style={styles.problem}>
+              <Ionicons name="cloud-offline-outline" size={22} color={colors.warning} />
+              <Text style={styles.problemText}>
+                {forecast.error instanceof Error ? forecast.error.message : "تعذّر جلب الطقس"}
+              </Text>
+              <PrimaryButton label="أعد المحاولة" onPress={() => forecast.refetch()} />
+            </View>
+          ) : null}
+
+          {data ? (
+            <>
               <View style={styles.card}>
-                <Text style={styles.cardTitle}>الأيام القادمة</Text>
-                {days.map((day) => {
-                  const dayLook = describeWeather(day.code);
-                  return (
-                    <View key={day.date} style={styles.dayRow}>
-                      <Text style={styles.dayName}>{omanWeekdayName(new Date(`${day.date}T09:00:00`))}</Text>
-                      <Ionicons name={dayLook.icon} size={20} color={dayLook.tint} />
-                      <Text style={styles.dayLabel} numberOfLines={1}>
-                        {dayLook.label}
-                      </Text>
-                      <Text style={styles.dayTemps}>{tempLabel(day.max)}</Text>
-                      <Text style={styles.dayMin}>{tempLabel(day.min)}</Text>
-                    </View>
-                  );
-                })}
+                <Text style={styles.cardTitle}>الساعات القادمة</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hoursRow}>
+                  {hours.map((point) => (
+                    <HourCell key={point.time} point={point} hours={hours} />
+                  ))}
+                </ScrollView>
               </View>
-            ) : null}
 
-            <Text style={styles.source}>
-              المصدر: Open-Meteo · حُدّث {clockOf(data.observedAt)} بتوقيت المكان
-            </Text>
-          </>
-        ) : null}
+              <View style={styles.tiles}>
+                <Tile icon="water-outline" tint="#2C7A7B" label="الرطوبة" value={`${arabicNumber(Math.round(data.humidity))}٪`} />
+                <Tile icon="navigate-outline" tint="#2C5282" label="الرياح" value={`${arabicNumber(Math.round(data.windSpeed))}`} unit="كم/س" />
+              </View>
+              <View style={styles.tiles}>
+                <Tile icon="partly-sunny-outline" tint="#B7791F" label="الشروق" value={clockOf(data.sunrise)} />
+                <Tile icon="moon-outline" tint="#434190" label="الغروب" value={clockOf(data.sunset)} />
+              </View>
 
-        {!data && !forecast.isError && place.data?.status === "ok" ? (
-          <EmptyState icon="partly-sunny-outline" title="يُجلب الطقس…" />
-        ) : null}
+              {days.length > 0 ? (
+                <View style={styles.card}>
+                  <Text style={styles.cardTitle}>الأيام القادمة</Text>
+                  <View style={{ gap: spacing.md }}>
+                    {days.map((day) => (
+                      <DayRow key={day.date} day={day} days={days} />
+                    ))}
+                  </View>
+                </View>
+              ) : null}
+
+              <Text style={styles.source}>
+                المصدر: Open-Meteo · حُدّث {clockOf(data.observedAt)} بتوقيت المكان
+              </Text>
+            </>
+          ) : null}
+        </View>
       </ScrollView>
 
       <BottomSheet visible={picking} onClose={() => setPicking(false)}>
@@ -188,6 +191,103 @@ export default function WeatherScreen() {
           ))}
         </ScrollView>
       </BottomSheet>
+    </View>
+  );
+}
+
+/* ------------------------------ أجزاء ------------------------------ */
+
+function Stat({ label, value, muted }: { label: string; value: string; muted: string }) {
+  return (
+    <View style={styles.stat}>
+      <Text style={[styles.statLabel, { color: muted }]}>{label}</Text>
+      <Text style={styles.statValue}>{value}</Text>
+    </View>
+  );
+}
+
+/**
+ * خليّة ساعة: الحرارة عمودًا لا رقمًا وحده.
+ *
+ * اثنتا عشرة درجةً متقاربة تُقرأ سطرًا من الأرقام لا منحنى يوم. والعمود
+ * يُظهر أين يعلو الحرّ وأين ينزل بلمحة، والرقم فوقه لمن أراد الدقّة.
+ */
+function HourCell({ point, hours }: { point: HourPoint; hours: HourPoint[] }) {
+  const look = describeWeather(point.code, point.isNight);
+  const temps = hours.map((hour) => hour.temperature);
+  const min = Math.min(...temps);
+  const max = Math.max(...temps);
+  const span = Math.max(1, max - min);
+  // بين ١٤ و٤٦: عمودٌ لا يختفي عند أبرد ساعة ولا يطغى عند أحرّها.
+  const height = 14 + ((point.temperature - min) / span) * 32;
+
+  return (
+    <View style={styles.hourCell}>
+      <Text style={styles.hourTime}>{hourLabel(point.hour)}</Text>
+      <Ionicons name={look.icon} size={20} color={look.tint} />
+      <Text style={styles.hourTemp}>{tempLabel(point.temperature)}</Text>
+      <View style={styles.barTrack}>
+        <View style={[styles.bar, { height, backgroundColor: look.tint }]} />
+      </View>
+      <Text style={[styles.hourRain, point.precipitation === 0 && styles.hourRainOff]}>
+        {point.precipitation > 0 ? `${arabicNumber(point.precipitation)}٪` : "—"}
+      </Text>
+    </View>
+  );
+}
+
+/**
+ * صفّ يوم: شريط يصل بين صغراه وعظماه.
+ *
+ * ورقمان متجاوران لا يقولان إن كان الغد أحرّ أم أبرد إلا بالحساب. والشريط
+ * يقوله بموضعه: من كان شريطه أبعد إلى اليمين فهو الأحرّ.
+ */
+function DayRow({ day, days }: { day: DayPoint; days: DayPoint[] }) {
+  const look = describeWeather(day.code);
+  const lows = days.map((item) => item.min);
+  const highs = days.map((item) => item.max);
+  const floor = Math.min(...lows);
+  const ceiling = Math.max(...highs);
+  const span = Math.max(1, ceiling - floor);
+  const start = ((day.min - floor) / span) * 100;
+  const width = Math.max(8, ((day.max - day.min) / span) * 100);
+
+  return (
+    <View style={styles.dayRow}>
+      <Text style={styles.dayName}>{omanWeekdayName(new Date(`${day.date}T09:00:00`))}</Text>
+      <Ionicons name={look.icon} size={19} color={look.tint} />
+      <Text style={styles.dayMin}>{tempLabel(day.min)}</Text>
+      <View style={styles.rangeTrack}>
+        <View style={[styles.rangeFill, { start: `${start}%`, width: `${width}%`, backgroundColor: look.tint }]} />
+      </View>
+      <Text style={styles.dayMax}>{tempLabel(day.max)}</Text>
+    </View>
+  );
+}
+
+function Tile({
+  icon,
+  tint,
+  label,
+  value,
+  unit,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  tint: string;
+  label: string;
+  value: string;
+  unit?: string;
+}) {
+  return (
+    <View style={[styles.tile, shadow.subtle]}>
+      <View style={[styles.tileIcon, { backgroundColor: tintBackground(tint, 0.12) }]}>
+        <Ionicons name={icon} size={18} color={tint} />
+      </View>
+      <Text style={styles.tileLabel}>{label}</Text>
+      <View style={styles.tileValueRow}>
+        <Text style={styles.tileValue}>{value}</Text>
+        {unit ? <Text style={styles.tileUnit}>{unit}</Text> : null}
+      </View>
     </View>
   );
 }
@@ -233,24 +333,6 @@ function LocationProblem({
   );
 }
 
-function Fact({
-  icon,
-  label,
-  value,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  value: string;
-}) {
-  return (
-    <View style={styles.fact}>
-      <Ionicons name={icon} size={18} color={colors.primary} />
-      <Text style={styles.factLabel}>{label}</Text>
-      <Text style={styles.factValue}>{value}</Text>
-    </View>
-  );
-}
-
 function PlaceRow({
   label,
   hint,
@@ -276,74 +358,113 @@ function PlaceRow({
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.lg, paddingTop: spacing.sm, gap: spacing.md },
 
-  placeRow: {
+  sky: {
+    paddingBottom: spacing.xxl + spacing.lg,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+    overflow: "hidden",
+  },
+  placeChip: {
+    alignSelf: "center",
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.sm,
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
+    gap: 6,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: 6,
+    borderRadius: radius.pill,
+    backgroundColor: "rgba(255,255,255,0.14)",
+    maxWidth: "90%",
   },
-  placeName: { ...typography.body, fontFamily: "Tajawal_700Bold" },
-  placeSource: { ...typography.caption, flex: 1, textAlign: "left", color: colors.textMuted },
+  pressed: { opacity: 0.85 },
+  placeName: { fontFamily: "Tajawal_700Bold", fontSize: 14, color: "#fff" },
+  placeSource: { fontFamily: "Tajawal_400Regular", fontSize: 12 },
 
-  hero: {
+  heroBody: { alignItems: "center", marginTop: spacing.lg },
+  heroEmpty: { alignItems: "center", paddingVertical: spacing.xxl },
+  heroIcon: { marginBottom: spacing.xs },
+  tempRow: { flexDirection: "row", alignItems: "flex-start" },
+  heroTemp: {
+    fontFamily: "Tajawal_700Bold",
+    fontSize: 76,
+    lineHeight: 92,
+    color: "#fff",
+    letterSpacing: -1,
+  },
+  heroLabel: { fontFamily: "Tajawal_500Medium", fontSize: 17, color: "#fff", marginTop: -spacing.sm },
+
+  statRow: {
+    flexDirection: "row",
     alignItems: "center",
+    gap: spacing.lg,
+    marginTop: spacing.lg,
+    paddingHorizontal: spacing.lg,
+  },
+  stat: { alignItems: "center", gap: 2, minWidth: 54 },
+  statLabel: { fontFamily: "Tajawal_400Regular", fontSize: 12 },
+  statValue: { fontFamily: "Tajawal_700Bold", fontSize: 17, color: "#fff" },
+  statLine: { width: 1, height: 26, opacity: 0.35 },
+
+  // البطاقات تصعد فوق حافّة السماء قليلًا، فيبدو اللوحان طبقتين لا شريطين.
+  body: { paddingHorizontal: spacing.lg, gap: spacing.md, marginTop: -spacing.xl },
+
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg + 4,
+    padding: spacing.lg,
+    gap: spacing.md,
+    ...shadow.subtle,
+  },
+  cardTitle: { ...typography.h3, fontSize: 15 },
+
+  hoursRow: { gap: spacing.lg, paddingHorizontal: 2, alignItems: "flex-end" },
+  hourCell: { alignItems: "center", gap: 6, minWidth: 46 },
+  hourTime: { ...typography.caption, fontSize: 11 },
+  hourTemp: { fontFamily: "Tajawal_700Bold", fontSize: 14, color: colors.textPrimary },
+  barTrack: { height: 46, justifyContent: "flex-end" },
+  bar: { width: 6, borderRadius: 3, opacity: 0.85 },
+  hourRain: { fontFamily: "Tajawal_500Medium", fontSize: 10.5, color: colors.info },
+  hourRainOff: { color: colors.border },
+
+  tiles: { flexDirection: "row", gap: spacing.md },
+  tile: {
+    flex: 1,
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
-    paddingVertical: spacing.xl,
-    paddingHorizontal: spacing.lg,
-    gap: spacing.xs,
+    padding: spacing.md,
+    gap: 4,
   },
-  heroIcon: {
-    width: 84,
-    height: 84,
-    borderRadius: 26,
+  tileIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 11,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: spacing.sm,
+    marginBottom: 2,
   },
-  heroTemp: { fontFamily: "Tajawal_700Bold", fontSize: 58, lineHeight: 70, color: colors.textPrimary },
-  heroLabel: { ...typography.h3, color: colors.textSecondary },
-  heroRange: { alignItems: "center", gap: 2, marginTop: spacing.sm },
-  rangeText: { ...typography.bodyMuted },
+  tileLabel: { ...typography.caption, fontSize: 11.5 },
+  tileValueRow: { flexDirection: "row", alignItems: "baseline", gap: 4 },
+  tileValue: { fontFamily: "Tajawal_700Bold", fontSize: 19, color: colors.textPrimary },
+  tileUnit: { ...typography.caption, fontSize: 11 },
 
-  card: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.lg, gap: spacing.md },
-  cardTitle: { ...typography.h3 },
-
-  hoursRow: { gap: spacing.lg, paddingHorizontal: 2 },
-  hourCell: { alignItems: "center", gap: 6, minWidth: 48 },
-  hourTime: { ...typography.caption },
-  hourTemp: { fontFamily: "Tajawal_700Bold", fontSize: 15, color: colors.textPrimary },
-  hourRain: { ...typography.caption, fontSize: 10, color: colors.info },
-
-  factRow: { flexDirection: "row", gap: spacing.md },
-  fact: {
+  dayRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  dayName: { ...typography.body, fontSize: 13.5, width: 58 },
+  dayMin: { ...typography.caption, fontSize: 12.5, width: 34, textAlign: "center" },
+  dayMax: { fontFamily: "Tajawal_700Bold", fontSize: 13.5, color: colors.textPrimary, width: 34, textAlign: "center" },
+  rangeTrack: {
     flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    padding: spacing.md,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.backgroundDeep,
+    overflow: "hidden",
   },
-  factLabel: { ...typography.caption, flex: 1 },
-  factValue: { fontFamily: "Tajawal_700Bold", fontSize: 14, color: colors.textPrimary },
+  rangeFill: { position: "absolute", top: 0, bottom: 0, borderRadius: 3, opacity: 0.85 },
 
-  dayRow: { flexDirection: "row", alignItems: "center", gap: spacing.md },
-  dayName: { ...typography.body, width: 62 },
-  dayLabel: { ...typography.bodyMuted, flex: 1 },
-  dayTemps: { fontFamily: "Tajawal_700Bold", fontSize: 14, color: colors.textPrimary, minWidth: 34, textAlign: "left" },
-  dayMin: { ...typography.caption, minWidth: 30, textAlign: "left" },
-
-  source: { ...typography.caption, textAlign: "center", marginTop: spacing.sm },
+  source: { ...typography.caption, textAlign: "center", marginTop: spacing.xs },
 
   problem: {
     backgroundColor: colors.warningSoft,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     padding: spacing.lg,
     gap: spacing.md,
     alignItems: "center",
