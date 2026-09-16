@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef } from "react";
-import { Animated, Easing, StyleSheet, View } from "react-native";
-import { WalkingPerson } from "./WalkingPerson";
+import { Animated, Easing, Image, StyleSheet, View } from "react-native";
 
 /**
  * مشهد الطقس: رجلٌ واقف، وفوقه سماءٌ تتبدّل بحال الجوّ.
@@ -131,10 +130,17 @@ export function WeatherScene({ code, isNight, windSpeed }: WeatherSceneProps) {
         </Animated.View>
       ) : null}
 
-      {/* ——— الشخص ——— */}
-      <View style={styles.person}>
-        <WalkingPerson isNight={isNight} />
-      </View>
+      {/* ——— الشخص ———
+          صورةٌ مرسومة لا أشكالٌ مركّبة: المستطيلات والدوائر سقفها شكلٌ
+          هندسي، والصورة فيها منحنى وتظليلٌ وحافّةٌ ناعمة. ورُسمت بمنحنيات
+          Bezier ثم صُغِّرت ثلاث مرّات — scripts/draw-person.py، فتُعاد متى
+          شئنا تغييرها. */}
+      <Image
+        source={require("@assets/images/weather/person.png")}
+        style={[styles.person, { opacity: isNight ? 0.94 : 1 }]}
+        resizeMode="contain"
+        accessibilityIgnoresInvertColors
+      />
     </View>
   );
 }
@@ -197,6 +203,6 @@ const styles = StyleSheet.create({
   windRow: { position: "absolute", top: 92, right: 2, alignItems: "flex-end" },
   windLine: { height: 3, borderRadius: 2, backgroundColor: "rgba(255,255,255,0.5)" },
 
-  person: { position: "absolute", bottom: 0, left: 0, right: 0, alignItems: "center" },
+  person: { position: "absolute", bottom: -6, left: 0, right: 0, height: 150, alignSelf: "center" },
 
 });
