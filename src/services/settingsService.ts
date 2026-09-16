@@ -18,6 +18,8 @@ export interface AppFeatures {
   messagesEnabled: boolean;
   /** الدردشة الخاصة والمجموعات. */
   chatEnabled: boolean;
+  /** الطقس والموقع — بطاقة الرئيسية وشاشة الطقس. */
+  weatherEnabled: boolean;
   /** فرق التاريخ الهجري عن أم القرى بالأيام — عُمان يومٌ قبله غالبًا. */
   hijriOffset: number;
 }
@@ -29,6 +31,7 @@ export const DEFAULT_FEATURES: AppFeatures = {
   discussionEnabled: true,
   messagesEnabled: true,
   chatEnabled: true,
+  weatherEnabled: true,
   hijriOffset: -1,
 };
 
@@ -56,6 +59,7 @@ export async function fetchFeatures(): Promise<AppFeatures> {
     discussionEnabled: row.discussion_enabled !== false,
     messagesEnabled: row.messages_enabled !== false,
     chatEnabled: row.chat_enabled !== false,
+    weatherEnabled: row.weather_enabled !== false,
     hijriOffset: clampOffset(row.hijri_offset),
   };
 }
@@ -88,6 +92,7 @@ const COLUMN: Record<string, string> = {
   discussionEnabled: "discussion_enabled",
   messagesEnabled: "messages_enabled",
   chatEnabled: "chat_enabled",
+  weatherEnabled: "weather_enabled",
 };
 
 export async function setFeature(key: keyof AppFeatures, value: boolean): Promise<void> {

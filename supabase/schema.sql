@@ -1624,6 +1624,9 @@ grant execute on function public.report_chat_message(uuid, text) to authenticate
 -- ============ ٥) مفتاح التشغيل ============
 -- الدردشة تُطفأ من لوحة الإدارة كبقية الميزات.
 alter table public.app_settings add column if not exists chat_enabled boolean not null default true;
+-- الطقس: مفتاحه هنا لا في الجهاز، فإيقافه يُخفيه عن الجميع ويمنع التطبيق
+-- من طلب موقع أحد.
+alter table public.app_settings add column if not exists weather_enabled boolean not null default true;
 
 -- ============ رمز الحساب: الإضافة بالرمز لا بالاسم ============
 -- الأسماء تتشابه في القاعدة: ثلاثة يحملون الاسم نفسه، فمن يضيف صديقًا بالاسم

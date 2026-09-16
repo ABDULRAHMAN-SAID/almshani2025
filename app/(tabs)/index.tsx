@@ -14,6 +14,7 @@ import { Logo } from "@/components/Logo";
 import { PointsBadge } from "@/components/PointsBadge";
 import { NewsCard } from "@/components/NewsCard";
 import { SectionHeader } from "@/components/SectionHeader";
+import { WeatherChip } from "@/components/WeatherChip";
 import { WeeklyQuizTeaserCard } from "@/components/WeeklyQuizTeaserCard";
 import { HOME_GROUP_LABEL, HOME_GROUP_ORDER, HOME_SECTIONS } from "@/constants/categories";
 import { colors, radius, shadow, spacing, typography } from "@/constants";
@@ -42,7 +43,8 @@ export default function HomeScreen() {
   const thisWeek = useThisWeekActivities();
   const points = usePointsBalance();
   const weeklyQuiz = useWeeklyQuiz();
-  const { discussionEnabled, messagesEnabled, quizEnabled, chatEnabled, hijriOffset } = useFeatures();
+  const { discussionEnabled, messagesEnabled, quizEnabled, chatEnabled, weatherEnabled, hijriOffset } =
+    useFeatures();
 
   // ساعة القاعدة، تُحدَّث كل دقيقة.
   //
@@ -70,6 +72,7 @@ export default function HomeScreen() {
     if (section.key === "groups") return discussionEnabled;
     if (section.key === "messages") return messagesEnabled;
     if (section.key === "chats") return chatEnabled;
+    if (section.key === "weather") return weatherEnabled;
     if (section.key === "quiz") return quizEnabled;
     return true;
   });
@@ -77,7 +80,12 @@ export default function HomeScreen() {
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       <HeaderBand overlap={44}>
-        <Text style={styles.clock}>{clock}</Text>
+        {/* سطر الساعة: التاريخ من جهة والطقس من الأخرى — كلاهما ممّا
+            يُنظر إليه أوّل ما يُفتح التطبيق. */}
+        <View style={styles.clockRow}>
+          <Text style={styles.clock}>{clock}</Text>
+          {weatherEnabled ? <WeatherChip /> : null}
+        </View>
 
         <View style={styles.header}>
           <Logo size="sm" />
@@ -307,12 +315,18 @@ const styles = StyleSheet.create({
   */
   gridItem: { width: "25%" },
   // ‏textAlign "left" اتجاهٌ مطلق لا نسبيّ، فيبقى يسارًا في واجهة تُقرأ يمينًا.
+  clockRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    marginBottom: -spacing.sm,
+  },
   clock: {
     ...typography.caption,
     fontSize: 11,
     color: "rgba(255,255,255,0.72)",
     textAlign: "left",
-    marginBottom: -spacing.sm,
+    flex: 1,
   },
   groupLabel: {
     ...typography.caption,

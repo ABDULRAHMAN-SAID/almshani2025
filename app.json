@@ -20,7 +20,8 @@
       "bundleIdentifier": "com.rafo.anshatati.salala",
       "infoPlist": {
         "CFBundleAllowMixedLocalizations": true,
-        "NSMicrophoneUsageDescription": "يستخدم التطبيق الميكروفون لتسجيل مقطع صوتي قصير عند إرفاقه بمشاركة أو رسالة."
+        "NSMicrophoneUsageDescription": "يستخدم التطبيق الميكروفون لتسجيل مقطع صوتي قصير عند إرفاقه بمشاركة أو رسالة.",
+        "NSLocationWhenInUseUsageDescription": "يستخدم التطبيق موقعك لعرض طقس المكان الذي أنت فيه. ولا يُحفظ موقعك ولا يُرسل إلى إدارة التطبيق."
       }
     },
     "android": {
@@ -32,7 +33,9 @@
       "permissions": [
         "RECORD_AUDIO",
         "CAMERA",
-        "INTERNET"
+        "INTERNET",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
       ]
     },
     "web": {
@@ -68,6 +71,15 @@
         "expo-av",
         {
           "microphonePermission": "يستخدم التطبيق الميكروفون لتسجيل مقطع صوتي قصير عند إرفاقه بمشاركة أو رسالة."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "يستخدم التطبيق موقعك لعرض طقس المكان الذي أنت فيه. ولا يُحفظ موقعك ولا يُرسل إلى إدارة التطبيق.",
+          "locationWhenInUsePermission": "يستخدم التطبيق موقعك لعرض طقس المكان الذي أنت فيه. ولا يُحفظ موقعك ولا يُرسل إلى إدارة التطبيق.",
+          "isIosBackgroundLocationEnabled": false,
+          "isAndroidBackgroundLocationEnabled": false
         }
       ]
     ],

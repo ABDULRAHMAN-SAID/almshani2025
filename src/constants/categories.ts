@@ -80,6 +80,7 @@ export interface HomeSection {
 /** الأقسام المعروضة في شبكة الأيقونات الرئيسية (أعلى الصفحة الرئيسية). */
 export const HOME_SECTIONS: HomeSection[] = [
   { key: "flights", label: "جدول الرحلات", icon: "airplane-outline", tint: "#1C4468", route: "/flights", group: "services" },
+  { key: "weather", label: "الطقس", icon: "partly-sunny-outline", tint: "#2C7A7B", route: "/weather", group: "services" },
   { key: "competitions", label: "المسابقات", icon: "trophy-outline", tint: "#C7A252", route: "/sections/competitions", group: "activities" },
   { key: "lectures", label: "المحاضرات", icon: "mic-outline", tint: "#0B2545", route: "/sections/lectures", group: "activities" },
   { key: "calendar", label: "التقويم", icon: "calendar-outline", tint: "#2C7A7B", route: "/calendar", group: "activities" },
