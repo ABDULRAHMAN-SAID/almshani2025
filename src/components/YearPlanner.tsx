@@ -1,5 +1,6 @@
 import { useMemo } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { colors, radius, spacing, typography } from "@/constants";
 import { OCCASION_TINT, occasionsOfYear, type Occasion } from "@/constants/occasions";
 import { arabicMonthName } from "@/utils/date";
@@ -62,6 +63,27 @@ export function YearPlanner({
 
   return (
     <View style={styles.wrap}>
+      {/* رأسٌ كرأس اللوحة المعلّقة: سماءٌ وشعارٌ واسمٌ وسنةٌ كبيرة. والتقويم
+          الرسمي يُعرف من رأسه قبل أن تُقرأ أرقامه. */}
+      <LinearGradient
+        colors={["#8FC0E8", "#2E6FA8", "#123A63"]}
+        start={{ x: 0.1, y: 0 }}
+        end={{ x: 0.9, y: 1 }}
+        style={styles.banner}
+      >
+        <Image
+          source={require("@assets/images/logo/logo.png")}
+          style={styles.crest}
+          resizeMode="contain"
+          accessibilityIgnoresInvertColors
+        />
+        <View style={styles.bannerText}>
+          <Text style={styles.bannerTitle}>سلاح الجو السلطاني العُماني</Text>
+          <Text style={styles.bannerSub}>قاعدة صلالة الجوية</Text>
+        </View>
+        <Text style={styles.bannerYear}>{year}</Text>
+      </LinearGradient>
+
       <View style={styles.legendRow}>
         {legend.map((item) => (
           <View key={item.kind} style={styles.legendItem}>
@@ -168,6 +190,21 @@ export function YearPlanner({
 
 const styles = StyleSheet.create({
   wrap: { gap: spacing.md },
+
+  banner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: radius.lg,
+    overflow: "hidden",
+  },
+  crest: { width: 46, height: 46 },
+  bannerText: { flex: 1, gap: 1 },
+  bannerTitle: { fontFamily: "Tajawal_700Bold", fontSize: 14.5, color: "#fff" },
+  bannerSub: { fontFamily: "Tajawal_400Regular", fontSize: 11.5, color: "rgba(255,255,255,0.8)" },
+  bannerYear: { fontFamily: "Tajawal_700Bold", fontSize: 30, color: "#fff", letterSpacing: 1 },
 
   legendRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.md, justifyContent: "center" },
   legendItem: { flexDirection: "row", alignItems: "center", gap: 5 },
