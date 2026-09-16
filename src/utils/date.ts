@@ -127,3 +127,110 @@ export function isExpired(expiresAtIso: string | null, now: Date = new Date()): 
 export function omanWeekdayName(at: Date = new Date()): string {
   return ARABIC_WEEKDAYS[omanNow(at).getDay()];
 }
+
+/* --------------------------- التاريخ الهجري --------------------------- */
+
+const HIJRI_MONTHS = [
+  "محرّم",
+  "صفر",
+  "ربيع الأول",
+  "ربيع الآخر",
+  "جمادى الأولى",
+  "جمادى الآخرة",
+  "رجب",
+  "شعبان",
+  "رمضان",
+  "شوّال",
+  "ذو القعدة",
+  "ذو الحجّة",
+];
+
+interface HijriDate {
+  day: number;
+  month: number;
+  year: number;
+}
+
+/** اليوم اليولياني — جسرٌ بين التقويمين، وبه تُحسب الهجري حسابًا. */
+function julianDay(year: number, month: number, day: number): number {
+  let y = year;
+  let m = month;
+  if (m < 3) {
+    y -= 1;
+    m += 12;
+  }
+  const a = Math.floor(y / 100);
+  const b = 2 - a + Math.floor(a / 4);
+  return (
+    Math.floor(365.25 * (y + 4716)) + Math.floor(30.6001 * (m + 1)) + day + b - 1524
+  );
+}
+
+/**
+ * التقويم الهجري الحسابي (الجدولي).
+ *
+ * وهو احتياطٌ لا أصل: يقارب أم القرى ولا يطابقه دائمًا، فقد يختلف عنه يومًا.
+ * ولا يُستعمل إلا حين لا يعرف الجهاز التقويم الهجري أصلًا — وحينها يومٌ
+ * مقارب خيرٌ من فراغ.
+ */
+function tabularHijri(date: Date): HijriDate {
+  // والإزاحة يوم: قِيس الحساب على أم القرى ثلاث سنين، فكان بلا إزاحة يبعد
+  // يومين في أسوأ حالاته، ومعها يومًا ونصفًا — والأقرب أولى ما دام تقريبًا.
+  const jd = julianDay(date.getFullYear(), date.getMonth() + 1, date.getDate()) + 1;
+  const l0 = jd - 1948440 + 10632;
+  const n = Math.floor((l0 - 1) / 10631);
+  let l = l0 - 10631 * n + 354;
+  const j =
+    Math.floor((10985 - l) / 5316) * Math.floor((50 * l) / 17719) +
+    Math.floor(l / 5670) * Math.floor((43 * l) / 15238);
+  l =
+    l -
+    Math.floor((30 - j) / 15) * Math.floor((17719 * j) / 50) -
+    Math.floor(j / 16) * Math.floor((15238 * j) / 43) +
+    29;
+  const month = Math.floor((24 * l) / 709);
+  const day = l - Math.floor((709 * month) / 24);
+  return { day, month, year: 30 * n + j - 30 };
+}
+
+/**
+ * التاريخ الهجري ليومٍ ميلادي.
+ *
+ * يُسأل الجهاز أولًا بتقويم أم القرى — وهو المعتمد في الجزيرة، وعليه تُبنى
+ * التقاويم المطبوعة — فإن لم يعرفه حُسب حسابًا. ولا يُقرأ الناتج بلغة عربية
+ * ثم يُعرض كما هو: نطلبه بأرقام لاتينية ونكتب اسم الشهر بأنفسنا، ليأتي
+ * السطر على صورة بقية تواريخ التطبيق لا على صورتين مختلفتين في سطر واحد.
+ */
+export function hijriOf(date: Date): HijriDate {
+  try {
+    const parts = new Intl.DateTimeFormat("en-u-ca-islamic-umalqura-nu-latn", {
+      day: "numeric",
+      month: "numeric",
+      year: "numeric",
+    }).formatToParts(date);
+    const read = (type: string) => Number(parts.find((part) => part.type === type)?.value);
+    const day = read("day");
+    const month = read("month");
+    const year = read("year");
+    if ([day, month, year].every((value) => Number.isFinite(value) && value > 0)) {
+      return { day, month, year };
+    }
+  } catch {
+    /* جهازٌ لا يعرف التقويم الهجري */
+  }
+  return tabularHijri(date);
+}
+
+/** "5 ربيع الآخر 1448 هـ" بتوقيت عُمان. */
+export function omanHijriLabel(at: Date = new Date()): string {
+  const { day, month, year } = hijriOf(omanNow(at));
+  const name = HIJRI_MONTHS[Math.min(Math.max(month, 1), 12) - 1];
+  return `${day} ${name} ${year} هـ`;
+}
+
+/** السطر الكامل أعلى الصفحة: ميلاديّ وهجريّ وساعة، كلّها بتوقيت عُمان. */
+export function omanFullDateLabel(at: Date = new Date()): string {
+  const d = omanNow(at);
+  const gregorian = `${ARABIC_WEEKDAYS[d.getDay()]} ${d.getDate()} ${ARABIC_MONTHS[d.getMonth()]}`;
+  return `${gregorian} · ${omanHijriLabel(at)} · ${omanClockLabel(at)}`;
+}

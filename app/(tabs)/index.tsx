@@ -28,7 +28,7 @@ import {
 import { usePointsBalance } from "@/hooks/usePoints";
 import { useWeeklyQuiz } from "@/hooks/useWeeklyQuiz";
 import { getAnsweredState } from "@/services/quizService";
-import { formatArabicWeekday, omanDateTimeLabel } from "@/utils/date";
+import { formatArabicWeekday, omanFullDateLabel } from "@/utils/date";
 import { useFeatures } from "@/hooks/useFeatures";
 
 export default function HomeScreen() {
@@ -48,9 +48,9 @@ export default function HomeScreen() {
   // ولا تُقرأ من ساعة الجهاز: من ضبط هاتفه على منطقة أخرى — أو سافر — تظل
   // الشاشة تقول توقيت عُمان، وهو التوقيت الذي تُعقد به المحاضرات ويُفتح به
   // التسجيل. وساعةٌ تقول غيره أسوأ من لا ساعة.
-  const [clock, setClock] = useState(() => omanDateTimeLabel());
+  const [clock, setClock] = useState(() => omanFullDateLabel());
   useEffect(() => {
-    const id = setInterval(() => setClock(omanDateTimeLabel()), 30_000);
+    const id = setInterval(() => setClock(omanFullDateLabel()), 30_000);
     return () => clearInterval(id);
   }, []);
 
