@@ -5,23 +5,61 @@ import { router } from "expo-router";
 import { FormField } from "@/components/FormField";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { colors, radius, spacing, typography } from "@/constants";
-import { looksLikeEmail, sendPasswordReset } from "@/services/authService";
+import { changePassword, looksLikeEmail, sendPasswordReset, verifyPasswordReset } from "@/services/authService";
 import { showToast } from "@/store/toastStore";
 import { toArabicMessage } from "@/utils/errors";
 
+const MIN_PASSWORD = 6;
+
 /**
- * استعادة كلمة المرور بالبريد.
+ * استعادة كلمة المرور برمزٍ يُكتب — لا برابطٍ يُفتح.
  *
- * لا نخبر المستخدم أنّ البريد «غير مسجَّل»: ذلك يكشف من له حساب ومن ليس له
- * لأي شخص يجرّب عناوين. الرسالة واحدة في الحالتين، والرابط لا يصل إلا لمن
- * يملك الصندوق فعلًا.
+ * والرابط كان يفشل بصمت: يُفتح في متصفّح الهاتف، فإن لم يُسلّمه المتصفّح إلى
+ * التطبيق وقف صاحبه أمام صفحة لا يعرف ما يفعل بها. والرمز يُكتب هنا كما
+ * يُكتب رمز التسجيل تمامًا، ثم تُكتب كلمة المرور في الشاشة نفسها — بلا
+ * متصفّح ولا انتقال.
+ *
+ * ولا نخبر المستخدم أنّ البريد «غير مسجَّل»: ذلك يكشف من له حساب ومن ليس له
+ * لأي شخص يجرّب عناوين. الجواب واحد في الحالتين.
  */
 export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
+  const [code, setCode] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
 
   const valid = looksLikeEmail(email);
+  const passwordError =
+    password.length < MIN_PASSWORD
+      ? `${MIN_PASSWORD} أحرف على الأقل`
+      : confirm !== password
+        ? "كلمتا المرور غير متطابقتين"
+        : "";
+
+  /** الرمز ثم كلمة المرور في نداءين: الأول يفتح جلسة الاستعادة، والثاني يكتب. */
+  const handleReset = async () => {
+    if (code.trim().length < 4) {
+      showToast("اكتب الرمز الذي وصلك", "error");
+      return;
+    }
+    if (passwordError) {
+      showToast(passwordError, "error");
+      return;
+    }
+    setLoading(true);
+    try {
+      await verifyPasswordReset(email, code);
+      await changePassword(password);
+      showToast("تم تغيير كلمة المرور — ادخل بها الآن", "success");
+      router.replace("/(auth)/login");
+    } catch (error) {
+      showToast(toArabicMessage(error, "تعذّر تغيير كلمة المرور"), "error");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async () => {
     if (!valid) {
@@ -33,7 +71,7 @@ export default function ForgotPasswordScreen() {
       await sendPasswordReset(email);
       setSent(true);
     } catch (error) {
-      showToast(toArabicMessage(error, "تعذّر إرسال الرابط"), "error");
+      showToast(toArabicMessage(error, "تعذّر إرسال الرمز"), "error");
     } finally {
       setLoading(false);
     }
@@ -53,28 +91,67 @@ export default function ForgotPasswordScreen() {
         </Pressable>
 
         {sent ? (
-          <View style={styles.done}>
-            <View style={styles.doneIcon}>
-              <Ionicons name="mail-open-outline" size={30} color={colors.success} />
+          <>
+            <View style={styles.head}>
+              <Text style={styles.title}>اكتب الرمز</Text>
+              <Text style={styles.subtitle}>
+                إن كان لهذا البريد حساب فقد وصله رمز من ستّة أرقام. اكتبه هنا مع كلمة المرور
+                الجديدة.
+              </Text>
             </View>
-            <Text style={styles.title}>تفقّد بريدك</Text>
-            <Text style={styles.body}>
-              إن كان هناك حساب بهذا البريد فقد وصله رابط لتعيين كلمة مرور جديدة. افتح الرابط من
-              الهاتف نفسه.
-            </Text>
-            <Text style={styles.note}>لم يصل شيء؟ تحقّق من مجلد الرسائل غير المرغوبة (Spam).</Text>
+
+            <FormField
+              label="الرمز"
+              value={code}
+              onChangeText={setCode}
+              placeholder="000000"
+              keyboardType="number-pad"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            <FormField
+              label="كلمة المرور الجديدة"
+              value={password}
+              onChangeText={setPassword}
+              placeholder="٦ أحرف على الأقل"
+              secureTextEntry
+              autoCapitalize="none"
+            />
+            <FormField
+              label="أعد كتابتها"
+              value={confirm}
+              onChangeText={setConfirm}
+              placeholder="نفس كلمة المرور"
+              secureTextEntry
+              autoCapitalize="none"
+              onSubmitEditing={handleReset}
+              returnKeyType="go"
+            />
+
             <PrimaryButton
-              label="رجوع لتسجيل الدخول"
-              onPress={() => router.replace("/(auth)/login")}
+              label="غيّر كلمة المرور"
+              onPress={handleReset}
+              loading={loading}
+              disabled={!code || !password || !confirm}
               style={styles.submit}
             />
-          </View>
+
+            <Text style={styles.note}>
+              لم يصل شيء؟ تحقّق من مجلد الرسائل غير المرغوبة (Spam)، أو أعد الإرسال.
+            </Text>
+            <PrimaryButton
+              label="أعد إرسال الرمز"
+              onPress={handleSubmit}
+              loading={loading}
+              style={styles.submit}
+            />
+          </>
         ) : (
           <>
             <View style={styles.head}>
               <Text style={styles.title}>استعادة كلمة المرور</Text>
               <Text style={styles.subtitle}>
-                اكتب بريدك المسجَّل، ونرسل إليه رابطًا لتعيين كلمة مرور جديدة.
+                اكتب بريدك المسجَّل، ونرسل إليه رمزًا من ستّة أرقام لتعيين كلمة مرور جديدة.
               </Text>
             </View>
 
@@ -91,7 +168,7 @@ export default function ForgotPasswordScreen() {
             />
 
             <PrimaryButton
-              label="إرسال الرابط"
+              label="أرسل الرمز"
               onPress={handleSubmit}
               loading={loading}
               disabled={!email}

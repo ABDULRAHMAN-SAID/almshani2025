@@ -337,7 +337,29 @@ export async function sendPasswordReset(email: string): Promise<void> {
   const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
     redirectTo: passwordResetRedirect(),
   });
-  if (error) throw authError(error, "تعذّر إرسال رابط الاستعادة");
+  if (error) throw authError(error, "تعذّر إرسال رمز الاستعادة");
+}
+
+/**
+ * استعادة برمزٍ يُكتب، لا برابطٍ يُفتح.
+ *
+ * والرابط كان يفشل بصمت: يُفتح في متصفّح الهاتف، فإن لم يُسلّمه المتصفّح إلى
+ * التطبيق وقف صاحبه أمام صفحة بيضاء لا يعرف ما يفعل بها — وهذا واقعٌ لا
+ * افتراض، وقع هنا. والرمز يُكتب في التطبيق كما يُكتب رمز التسجيل تمامًا، بلا
+ * متصفّح ولا انتقال بين تطبيقين.
+ *
+ * ورسالة البريد نفسها هي التي تحدّد أيّهما يصل: قالب الاستعادة الذي فيه
+ * ‏{{ .Token }} يرسل رمزًا، والذي فيه {{ .ConfirmationURL }} يرسل رابطًا.
+ * فإن لم يصل رمز فالقالب على الخادم هو ما يُعدَّل، لا التطبيق.
+ */
+export async function verifyPasswordReset(email: string, code: string): Promise<void> {
+  if (USE_MOCK_DATA) return;
+  const { error } = await supabase.auth.verifyOtp({
+    email: email.trim().toLowerCase(),
+    token: code.trim(),
+    type: "recovery",
+  });
+  if (error) throw authError(error, "الرمز غير صحيح أو انتهت صلاحيته");
 }
 
 /**

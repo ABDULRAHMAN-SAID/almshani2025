@@ -343,14 +343,22 @@ const CONFIRM_EMAIL = `<!doctype html>
 // ورابطُه يذهب إلى Site URL لا إلى التطبيق. والتطبيق يمرّر anshatati://reset-password
 // صراحةً، لكن الخادم لا يقبل وجهةً ليست في قائمة المسموح — فكان يتجاهلها
 // ويرسل إلى الويب، فيقف طالبُ الاستعادة أمام صفحة لا تُعيده إلى مكان.
+/**
+ * رسالة الاستعادة: رمزٌ يُكتب، لا رابطٌ يُفتح.
+ *
+ * والرابط كان يفشل بصمت: يُفتح داخل متصفّح تطبيق البريد، وهذا المتصفّح لا
+ * يُسلّم المخطّط الخاص anshatati:// إلى التطبيق في كثير من الهواتف — فيقف
+ * صاحبه أمام صفحة لا تُعيده إلى مكان. والرمز يُكتب في التطبيق كما يُكتب رمز
+ * التسجيل، فلا متصفّح بينهما.
+ */
 const RECOVERY_EMAIL = `<!doctype html>
 <html dir="rtl" lang="ar"><body style="font-family:system-ui,-apple-system,'Segoe UI',sans-serif;background:#f4f6f9;margin:0;padding:32px">
   <div style="max-width:440px;margin:0 auto;background:#fff;border-radius:16px;padding:32px;text-align:center">
     <h1 style="margin:0 0 8px;font-size:20px;color:#0a2340">أنشطتي — قاعدة صلالة الجوية</h1>
-    <p style="margin:0 0 24px;color:#5b6b80;line-height:1.9">طلبتَ تغيير كلمة مرورك.</p>
-    <a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#0a2340;color:#fff;text-decoration:none;padding:14px 28px;border-radius:10px;font-size:16px">افتح التطبيق وغيّر كلمة المرور</a>
+    <p style="margin:0 0 24px;color:#5b6b80;line-height:1.9">طلبتَ تغيير كلمة مرورك. اكتب هذا الرمز في التطبيق:</p>
+    <div style="display:inline-block;background:#0a2340;color:#fff;padding:16px 32px;border-radius:12px;font-size:32px;letter-spacing:8px;font-weight:700;direction:ltr">{{ .Token }}</div>
     <p style="margin:24px 0 0;color:#7a8699;font-size:13px;line-height:1.9">
-      الرابط صالح لساعة واحدة ويُستعمل مرة واحدة.<br>
+      الرمز صالح لساعة واحدة ويُستعمل مرة واحدة.<br>
       إن لم تطلب هذا فتجاهل الرسالة — كلمة مرورك لم تتغيّر.
     </p>
   </div>
