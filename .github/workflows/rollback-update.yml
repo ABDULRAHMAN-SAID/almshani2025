@@ -30,10 +30,13 @@ jobs:
     name: أعد الهواتف إلى النسخة العاملة
     runs-on: ubuntu-latest
     steps:
+      # بالرقم الكامل لا المختصر، وبالتاريخ كلّه: actions/checkout يبحث عن
+      # المختصر بين أسماء الفروع والوسوم فلا يجده، ويقف بـ«فشل git» بلا بيان.
       - name: أنزل النسخة السابقة
         uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
+          fetch-depth: 0
 
       - name: هيّئ Node
         uses: actions/setup-node@v4
