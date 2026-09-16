@@ -18,9 +18,18 @@ import { themed } from "@/constants";
  * تُذكر.
  */
 
-/** قامة الرجل على الشاشة، وعرضه بنسبة الصورة (١٧٣ × ٦٤٠). */
-const PERSON_H = 236;
-const PERSON_W = 64;
+/**
+ * قامة الرجل على الشاشة — الرقم الوحيد الذي يُغيَّر لتكبيره أو تصغيره.
+ *
+ * وعرضه وطولُ خطوته وارتفاعُ قدمه وظلّه كلّها كسورٌ منه، لا أرقامًا مكتوبة:
+ * صُغّر مرّةً فبقيت الخطوة على مقاس القامة السابقة، فصار يزحف لا يمشي.
+ * ونسبةُ العرض إلى الطول من الصورة نفسها (١٧٣ × ٦٤٠).
+ */
+const PERSON_H = 152;
+const PERSON_W = Math.round(PERSON_H * (173 / 640));
+
+/** ارتفاع السماء فوق رأسه: شمسٌ أو غيمٌ أو برق. */
+const SKY_H = 88;
 
 interface WeatherSceneProps {
   /** رمز WMO كما يردّه المزوّد. */
@@ -88,15 +97,17 @@ export function WeatherScene({ code, isNight, windSpeed }: WeatherSceneProps) {
   // والمنحنى جيبيٌّ مقرَّب بثماني نقاط: الحركة الخطّية ذهابًا وإيابًا تبدو
   // آلية، والجيبية تتمهّل عند طرفي الخطوة كما تفعل قدمٌ حقيقية.
   const T = [0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1];
-  const STRIDE = 11;
-  const wave = T.map((t) => -Math.cos(2 * Math.PI * t) * STRIDE); // −8 → +8 → −8
+  const STRIDE = PERSON_H * 0.047;
+  const LIFT = PERSON_H * 0.021;
+  const DIP = PERSON_H * 0.0068;
+  const wave = T.map((t) => -Math.cos(2 * Math.PI * t) * STRIDE);
   const frontX = step.interpolate({ inputRange: T, outputRange: wave });
   const backX = step.interpolate({ inputRange: T, outputRange: wave.map((v) => -v) });
   // الرفع: القدم تعلو وهي تمرّ من الخلف إلى الأمام (النصف الثاني للأمامية،
   // والأوّل للخلفية) وتبقى على الأرض في نصفها الآخر.
-  const frontY = step.interpolate({ inputRange: [0, 0.5, 0.75, 1], outputRange: [0, 0, -5, 0] });
-  const backY = step.interpolate({ inputRange: [0, 0.25, 0.5, 1], outputRange: [0, -5, 0, 0] });
-  const bodyY = step.interpolate({ inputRange: [0, 0.25, 0.5, 0.75, 1], outputRange: [0, 1.6, 0, 1.6, 0] });
+  const frontY = step.interpolate({ inputRange: [0, 0.5, 0.75, 1], outputRange: [0, 0, -LIFT, 0] });
+  const backY = step.interpolate({ inputRange: [0, 0.25, 0.5, 1], outputRange: [0, -LIFT, 0, 0] });
+  const bodyY = step.interpolate({ inputRange: [0, 0.25, 0.5, 0.75, 1], outputRange: [0, DIP, 0, DIP, 0] });
   const shadowX = step.interpolate({ inputRange: [0, 0.25, 0.5, 0.75, 1], outputRange: [1, 0.9, 1, 0.9, 1] });
 
   // مواضع قطرات الرذاذ: ثابتة بين إعادات الرسم، وإلا تراقصت عشوائيًّا.
@@ -165,7 +176,9 @@ export function WeatherScene({ code, isNight, windSpeed }: WeatherSceneProps) {
       <View style={styles.person}>
         {/* الظلّ تحت القدمين لا تحت وسط الصورة: الرجل يواجه اليسار وقدماه
             في يسارها والبشتُ يملأ يمينها. */}
-        <Animated.View style={[styles.shadow, { transform: [{ translateX: -9 }, { scaleX: shadowX }] }]} />
+        <Animated.View
+          style={[styles.shadow, { transform: [{ translateX: -PERSON_W * 0.14 }, { scaleX: shadowX }] }]}
+        />
         <Animated.View style={[styles.layer, { transform: [{ translateY: bodyY }] }]}>
           <Image
             source={require("@assets/images/weather/person.png")}
@@ -197,7 +210,7 @@ const SOFT = "rgba(255,255,255,0.55)";
 const styles = themed(() => ({
   // ارتفاعٌ يكفي السماء والشخص بلا تصادم: السماء في أعلى مئة،
   // والشخص يقف تحتها بقامته كاملة.
-  scene: { width: 214, height: 322, alignSelf: "center" },
+  scene: { width: 214, height: PERSON_H + SKY_H, alignSelf: "center" },
 
   sun: { position: "absolute", top: 0, left: 0, right: 0, alignItems: "center", justifyContent: "center" },
   sunCore: { width: 46, height: 46, borderRadius: 23, backgroundColor: "#FFD166" },
@@ -259,7 +272,7 @@ const styles = themed(() => ({
     bottom: 1,
     alignSelf: "center",
     width: PERSON_W + 6,
-    height: 8,
+    height: 6,
     borderRadius: 999,
     backgroundColor: "rgba(0,0,0,0.20)",
   },
