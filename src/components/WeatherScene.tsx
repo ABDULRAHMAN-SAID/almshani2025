@@ -207,7 +207,7 @@ const styles = StyleSheet.create({
   person: { position: "absolute", bottom: 16, start: 0, end: 0, alignItems: "center" },
   head: { width: 19, height: 19, borderRadius: 10, backgroundColor: WHITE, marginBottom: 3 },
   body: { width: 28, height: 38, borderTopStartRadius: 13, borderTopEndRadius: 13, borderRadius: 7, backgroundColor: WHITE },
-  arm: { position: "absolute", top: 26, end: -7, width: 7, height: 24, borderRadius: 4, backgroundColor: "rgba(255,255,255,0.72)" },
+  arm: { position: "absolute", top: 10, end: -6, width: 6, height: 22, borderRadius: 3, backgroundColor: "rgba(255,255,255,0.7)" },
   legs: { flexDirection: "row", marginTop: 2 },
   leg: { width: 7, height: 20, borderRadius: 4, backgroundColor: "rgba(255,255,255,0.8)" },
 
@@ -217,10 +217,10 @@ const styles = StyleSheet.create({
     start: 0,
     end: 0,
     alignSelf: "center",
-    width: 74,
-    height: 9,
+    width: 54,
+    height: 7,
     marginHorizontal: "auto",
     borderRadius: 999,
-    backgroundColor: "rgba(0,0,0,0.10)",
+    backgroundColor: "rgba(0,0,0,0.07)",
   },
 });
