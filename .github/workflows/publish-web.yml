@@ -39,10 +39,14 @@ jobs:
       - name: أنزل المشروع
         uses: actions/checkout@v4
 
+      # ‏Node 22 لا 20: الرسم الساكن يشغّل شفرة التطبيق في Node ليكتب صفحاتها،
+      # وفيها عميل Supabase الذي يطلب WebSocket — وهي غير موجودة أصلًا في
+      # Node 20. فينكسر البناء بعد أربعين ثانية برسالة عن WebSocket لا عن
+      # التطبيق، ولا تخرج صفحة HTML واحدة.
       - name: هيّئ Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: تحقّق من الأسرار

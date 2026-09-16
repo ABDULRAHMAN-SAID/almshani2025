@@ -12,7 +12,7 @@
  * النطاق فلا تُوجد، وتذهب روابط الشاشات إلى مسارات لا شيء فيها.
  */
 import { execFileSync } from "node:child_process";
-import { copyFileSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -35,7 +35,16 @@ execFileSync("npx", ["expo", "export", "--platform", "web", "--clear", "--output
 // حدّث صفحةً هو فيها، يقع على 404. وصفحات GitHub تقدّم 404.html لكل مسار لا
 // تجده، وهي نسخة التطبيق نفسها — فيقرأ المُوجِّه العنوان عند الإقلاع ويفتح
 // الشاشة الصحيحة. جُرِّب: /sections/sports و/news يُفتحان مباشرةً بعده.
-copyFileSync(resolve(out, "+not-found.html"), resolve(out, "404.html"));
+// وغيابها ليس تفصيلًا يُتخطّى: معناه أن الرسم الساكن انكسر فلم تُكتب صفحة
+// HTML واحدة، وأن ما في المجلّد أصولٌ بلا تطبيق. فالوقوف هنا برسالة مفهومة
+// خيرٌ من نشر مجلّد يفتحه الناس على بياض.
+const notFound = resolve(out, "+not-found.html");
+if (!existsSync(notFound)) {
+  console.error("\n✖ لم يُنتج البناء صفحات HTML — انكسر الرسم الساكن.");
+  console.error("  تحقّق من نسخة Node (تحتاج 22 فأعلى) ومن سجلّ البناء أعلاه.\n");
+  process.exit(1);
+}
+copyFileSync(notFound, resolve(out, "404.html"));
 
 // بلا هذا الملفّ يتجاهل Jekyll كل مجلّد يبدأ بشرطة سفلية — ومنها _expo التي
 // فيها شفرة التطبيق كلّها، فتُقدَّم صفحة بيضاء.

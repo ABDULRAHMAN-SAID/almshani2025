@@ -44,8 +44,13 @@
     font-size:20px; font-weight:700; padding:18px; border-radius:14px;
   }
   .download:active{opacity:.9}
-  .download.alt{background:var(--navy); font-size:18px; padding:16px}
+  .download.alt{background:var(--navy)}
   .note{margin:0 0 14px; font-size:14.5px; color:var(--muted)}
+  .pick{text-align:center; margin:0 0 16px; font-size:17px; color:var(--muted); font-weight:400}
+  .plat{display:block; font-size:13px; font-weight:400; opacity:.85; margin-bottom:2px}
+  .or{display:flex; align-items:center; gap:12px; margin:18px 0; color:var(--muted); font-size:14px}
+  .or::before,.or::after{content:""; flex:1; height:1px; background:var(--line)}
+  .steps{display:grid; gap:16px}
   .size{display:block; text-align:center; color:var(--muted); font-size:13px; margin-top:10px}
   h2{font-size:18px; margin:0 0 12px}
   ol{margin:0; padding-inline-start:22px}
@@ -75,41 +80,49 @@
 
 <main class="wrap">
   <div class="card">
+    <p class="pick">اختر جهازك</p>
+
     <a class="download" href="https://github.com/ABDULRAHMAN-SAID/almshani2025/releases/latest/download/anshatati.apk">
-      ⬇️ حمّل التطبيق
+      <span class="plat">أندرويد</span>⬇️ حمّل التطبيق
     </a>
-    <span class="size">ملفّ APK لأجهزة أندرويد · يُحدَّث نفسه بعد التثبيت</span>
+    <span class="size">ملفّ APK · يُحدَّث نفسه بعد التثبيت</span>
+
+    <div class="or"><span>أو</span></div>
+
+    <a class="download alt" href="/almshani2025/app/">
+      <span class="plat">آيفون وآيباد</span>افتح النسخة
+    </a>
+    <span class="size">تُفتح في Safari وتُضاف إلى الشاشة الرئيسية</span>
   </div>
 
-  <div class="card">
-    <h2>آيفون؟</h2>
-    <p class="note">
-      ملفّ APK لا يُثبَّت على الآيفون — هذا قيدٌ من Apple، لا عيبٌ في التطبيق.
-      ولأصحاب الآيفون نسخةٌ تفتح في Safari بالحساب نفسه والبيانات نفسها:
-    </p>
-    <a class="download alt" href="/almshani2025/app/">افتح النسخة على الآيفون</a>
-    <ol style="margin-top:16px">
-      <li>افتح الرابط أعلاه في <b>Safari</b> (لا في تطبيق آخر).</li>
-      <li>اضغط زرّ <b>المشاركة</b> — المربّع الذي يخرج منه سهم أسفل الشاشة.</li>
-      <li>اختر <b>«إضافة إلى الشاشة الرئيسية»</b>، فتصير أيقونةً تُفتح كالتطبيق.</li>
-    </ol>
-    <div class="warn">
-      نسخة المتصفّح تعمل داخل Safari: الأنشطة والأندية والرحلات والأخبار والمحادثات كلّها فيها.
-      وما يحتاج عتاد الهاتف — مسح الباركود بالكاميرا والإشعارات — قد لا يعمل فيها كما يعمل في نسخة أندرويد.
+  <div class="steps">
+    <div class="card">
+      <h2>على أندرويد</h2>
+      <ol>
+        <li>اضغط زرّ <b>حمّل التطبيق</b> أعلاه.</li>
+        <li>افتح الملفّ بعد نزوله (يجده الهاتف في <b>التنزيلات</b>).</li>
+        <li>سيسألك الهاتف: <b>«السماح بالتثبيت من هذا المصدر»</b> — اضغط <b>السماح</b> ثم <b>تثبيت</b>.</li>
+        <li>افتح التطبيق وأنشئ حسابك باسمك الكامل وبريدك، ويصلك رمز تأكيد.</li>
+      </ol>
+      <div class="warn">
+        رسالة «مصدر غير معروف» طبيعية لأن التطبيق داخليّ ولا يُوزَّع من متجر Google.
+        وهو لا يطلب رتبتك ولا رقمك العسكري ولا موقعك.
+      </div>
     </div>
-  </div>
 
-  <div class="card">
-    <h2>خطوات التثبيت</h2>
-    <ol>
-      <li>اضغط زرّ <b>حمّل التطبيق</b> أعلاه.</li>
-      <li>افتح الملفّ بعد نزوله (يجده الهاتف في <b>التنزيلات</b>).</li>
-      <li>سيسألك الهاتف: <b>«السماح بالتثبيت من هذا المصدر»</b> — اضغط <b>السماح</b> ثم <b>تثبيت</b>.</li>
-      <li>افتح التطبيق وأنشئ حسابك باسمك الكامل وبريدك، ويصلك رمز تأكيد.</li>
-    </ol>
-    <div class="warn">
-      رسالة «مصدر غير معروف» طبيعية لأن التطبيق داخليّ ولا يُوزَّع من متجر Google.
-      وهو لا يطلب رتبتك ولا رقمك العسكري ولا موقعك.
+    <div class="card">
+      <h2>على آيفون</h2>
+      <ol>
+        <li>اضغط زرّ <b>افتح النسخة</b> أعلاه — لا بدّ أن يُفتح في <b>Safari</b>.</li>
+        <li>اضغط زرّ <b>المشاركة</b> — المربّع الذي يخرج منه سهم أسفل الشاشة.</li>
+        <li>اختر <b>«إضافة إلى الشاشة الرئيسية»</b>، فتصير أيقونةً تُفتح كالتطبيق.</li>
+        <li>أنشئ حسابك كما في أندرويد تمامًا — الحساب والبيانات واحدة في النسختين.</li>
+      </ol>
+      <div class="warn">
+        ملفّ APK لا يُثبَّت على الآيفون — قيدٌ من Apple لا عيبٌ في التطبيق، ولهذا لأصحاب الآيفون نسختهم.
+        وهي تعمل داخل Safari: الأنشطة والأندية والرحلات والأخبار والمحادثات كلّها فيها،
+        وما يحتاج عتاد الهاتف — الإشعارات ومسح الباركود بالكاميرا — قد لا يعمل فيها كما يعمل في نسخة أندرويد.
+      </div>
     </div>
   </div>
 
