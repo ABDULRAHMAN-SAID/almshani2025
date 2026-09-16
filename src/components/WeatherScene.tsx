@@ -65,7 +65,6 @@ export function WeatherScene({ code, isNight, windSpeed }: WeatherSceneProps) {
   const drops = useLoop(1400, kind === "rain" || kind === "storm");
   const gust = useLoop(windy ? 2200 : 3800, windy || kind === "fog");
   const breathe = useLoop(5200);
-  const step = useLoop(1150);
 
   const cloudShift = drift.interpolate({ inputRange: [0, 1], outputRange: [0, 14] });
   const cloudShiftBack = drift.interpolate({ inputRange: [0, 1], outputRange: [0, -10] });
@@ -74,20 +73,16 @@ export function WeatherScene({ code, isNight, windSpeed }: WeatherSceneProps) {
   const gustShift = gust.interpolate({ inputRange: [0, 1], outputRange: [-26, 26] });
   const gustFade = gust.interpolate({ inputRange: [0, 0.2, 0.8, 1], outputRange: [0, 0.75, 0.75, 0] });
   const sunPulse = breathe.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1, 1.06, 1] });
-  // خطوةٌ ونصف خطوة: القامة ترتفع مرّتين في الدورة الواحدة — مرّةً لكلّ
-  // قدم — ويميل الجذع معها. وهذه مشيةُ ثابتٍ في مكانه، لا مشيُ ساقين:
-  // الساقان تحتاجان صورًا متعدّدة للخطوة الواحدة، والصورة هنا واحدة.
-  const bob = step.interpolate({
-    inputRange: [0, 0.25, 0.5, 0.75, 1],
-    outputRange: [0, -3.2, 0, -3.2, 0],
-  });
-  const lean = step.interpolate({
-    inputRange: [0, 0.25, 0.5, 0.75, 1],
-    outputRange: ["0deg", "1.4deg", "0deg", "-1.4deg", "0deg"],
-  });
-  const shift = step.interpolate({
-    inputRange: [0, 0.25, 0.5, 0.75, 1],
-    outputRange: [0, -1.8, 0, 1.8, 0],
+  // وقفةٌ حيّة، لا مشي.
+  //
+  // جُرّبت المشية بالإيقاع: ترتفع القامة مرّتين في الدورة ويميل الجذع. وهي
+  // من صورةٍ واحدةٍ ساكنة تُقرأ قفزًا لا مشيًا — والعين محقّة: الماشي تتقدّم
+  // ساقُه، والقافزُ ترتفع قامته وحدها. ولا حيلة في ذلك: الخطوة الواحدة
+  // تحتاج أربع صورٍ للرجل نفسه بأوضاع ساقٍ مختلفة، وليس عندنا إلا واحدة.
+  // فرُفع الإيقاع وبقي نَفَسٌ بطيء لا يكاد يُرى — نقطةٌ واحدة في خمس ثوانٍ.
+  const breath = breathe.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [0, -1.2, 0],
   });
 
   // مواضع قطرات الرذاذ: ثابتة بين إعادات الرسم، وإلا تراقصت عشوائيًّا.
@@ -152,24 +147,10 @@ export function WeatherScene({ code, isNight, windSpeed }: WeatherSceneProps) {
       {/* ——— الشخصية ———
           صورةٌ حقيقية اختارها صاحب التطبيق، لا شكلًا مرسومًا بالشفرة: رسمُ
           إنسانٍ بمنحنياتٍ مكتوبة بيدٍ لا يبلغ الواقعية مهما صُقل.
-          وتمشي: ترتفع القامة مرّتين في كل دورة — مرّةً لكل قدم — ويميل
-          الجذع معها ويتقدّم قليلًا ثم يتأخّر. */}
+          ويتنفّس تنفّسًا بطيئًا لا يكاد يُرى. ولا يمشي: المشي من صورةٍ
+          واحدة يُقرأ قفزًا. */}
       <Animated.View
-        style={[
-          styles.person,
-          {
-            transform: [
-              { translateX: shift },
-              { translateY: bob },
-              // الميل حول القدمين لا حول الوسط: الدوران في React Native يقع
-              // على مركز العنصر، فيتأرجح الرجل كالبندول وتطير قدماه. والنزول
-              // نصفَ القامة ثم الدوران ثم العودة ينقل المحور إلى الأرض.
-              { translateY: PERSON_H / 2 },
-              { rotate: lean },
-              { translateY: -PERSON_H / 2 },
-            ],
-          },
-        ]}
+        style={[styles.person, { transform: [{ translateY: breath }] }]}
       >
         <Image
           source={require("@assets/images/weather/person.png")}
