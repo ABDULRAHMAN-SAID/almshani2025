@@ -1,92 +1,193 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
-import { EmptyState } from "@/components/EmptyState";
+import { FilterChips } from "@/components/FilterChips";
 import { ImageZoom } from "@/components/ImageZoom";
-import { QueryState } from "@/components/QueryState";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { colors, radius, spacing, typography } from "@/constants";
+import {
+  FLIGHTS,
+  FLIGHT_DAYS,
+  FLIGHT_EFFECTIVE,
+  FLIGHT_NOTES,
+  FLIGHT_SOURCE,
+} from "@/constants/flights";
+import type { Flight } from "@/constants/flights";
 import { fetchFlightSchedule } from "@/services/flightService";
-import { formatArabicDate } from "@/utils/date";
+import { omanWeekdayName } from "@/utils/date";
 
 /**
- * جدول رحلات الطائرة كما عُلِّق على اللوحة.
+ * جدول الرحلات مكتوبًا، مرتّبًا بالأيام.
  *
- * صورةٌ لا جدولٌ أُعيدت كتابته: الورقة تصدر من سلاح الجو بستّة أيام وخمس
- * محطّات وأوقاتها، ونسخُها بالأيدي كل مرّة خطأٌ ينتظر أن يقع — ومن يقرأ رقمًا
- * أُخطئ في نقله يقف في المطار لرحلةٍ لا تُقلع.
+ * ويُفتح على يوم اليوم: من يفتح الشاشة يسأل «متى تقلع اليوم» لا «ماذا في
+ * الأسبوع»، فيجد جوابه بلا لمسة. والجمعة لا رحلة فيها، فيُفتح على السبت.
  */
 export default function FlightsScreen() {
+  const today = omanWeekdayName();
+  const initial = FLIGHT_DAYS.find((day) => day === today) ?? FLIGHT_DAYS[0];
+  const [day, setDay] = useState<string>(initial);
   const [zoom, setZoom] = useState<string | null>(null);
-  const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ["flight-schedule"],
-    queryFn: fetchFlightSchedule,
-  });
+
+  // الورقة الأصلية إن رُفعت — تُعرض أسفل المكتوب لمن أراد أن يقابل بينهما.
+  const sheet = useQuery({ queryKey: ["flight-schedule"], queryFn: fetchFlightSchedule });
+
+  const flights = useMemo(() => FLIGHTS.filter((flight) => flight.day === day), [day]);
 
   return (
     <View style={styles.screen}>
       <ScreenHeader title="جدول الرحلات" />
-      <QueryState isLoading={isLoading} error={error} onRetry={() => void refetch()}>
-        {data && data.images.length > 0 ? (
-          <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-            <View style={styles.head}>
-              <Text style={styles.title}>{data.title || "جدول رحلات الطيران"}</Text>
-              <Text style={styles.meta}>نُشر {formatArabicDate(data.publishedAt)}</Text>
-            </View>
 
-            <View style={styles.tip}>
-              <Ionicons name="search-outline" size={16} color={colors.primary} />
-              <Text style={styles.tipText}>المس الصورة لتكبيرها وقراءة الأوقات</Text>
-            </View>
+      <View style={styles.head}>
+        <Text style={styles.source}>{FLIGHT_SOURCE}</Text>
+        <Text style={styles.effective}>{FLIGHT_EFFECTIVE}</Text>
+      </View>
 
-            {data.images.map((image) => (
-              <Pressable
-                key={image}
-                accessibilityRole="button"
-                accessibilityLabel="تكبير الجدول"
-                onPress={() => setZoom(image)}
-              >
-                <Image source={{ uri: image }} style={styles.sheet} resizeMode="contain" />
+      <FilterChips
+        items={FLIGHT_DAYS.map((entry) => ({
+          key: entry,
+          label: entry === today ? `${entry} · اليوم` : entry,
+        }))}
+        activeKey={day}
+        onChange={setDay}
+      />
+
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {flights.length > 0 ? (
+          flights.map((flight) => <FlightCard key={`${flight.station}-${flight.day}`} flight={flight} />)
+        ) : (
+          <View style={styles.none}>
+            <Ionicons name="airplane-outline" size={22} color={colors.textMuted} />
+            <Text style={styles.noneText}>لا رحلات يوم {day}</Text>
+          </View>
+        )}
+
+        <View style={styles.notes}>
+          <Text style={styles.notesTitle}>محطّات بلا جدول ثابت</Text>
+          {FLIGHT_NOTES.map((entry) => (
+            <View key={entry.place} style={styles.noteRow}>
+              <Text style={styles.notePlace}>{entry.place}</Text>
+              <Text style={styles.noteText}>{entry.note}</Text>
+            </View>
+          ))}
+        </View>
+
+        {sheet.data && sheet.data.images.length > 0 ? (
+          <View style={styles.sheetBlock}>
+            <Text style={styles.notesTitle}>الورقة الأصلية</Text>
+            <Text style={styles.noteText}>المس الصورة لتكبيرها.</Text>
+            {sheet.data.images.map((image) => (
+              <Pressable key={image} accessibilityRole="button" onPress={() => setZoom(image)}>
+                <Image source={{ uri: image }} style={styles.sheetImage} resizeMode="contain" />
               </Pressable>
             ))}
-          </ScrollView>
-        ) : (
-          <EmptyState
-            icon="airplane-outline"
-            title="لا يوجد جدول منشور"
-            subtitle="حين تُعلَّق ورقة الجدول الجديدة سترفعها الإدارة هنا."
-          />
-        )}
-      </QueryState>
+          </View>
+        ) : null}
+      </ScrollView>
 
       <ImageZoom uri={zoom} onClose={() => setZoom(null)} />
     </View>
   );
 }
 
+/**
+ * رحلة واحدة: الوجهة والطائرة، ثم المحطّات الثلاث بأوقاتها.
+ *
+ * والوصول والإقلاع مفصولان بكلمتيهما لا بعمودين من الأرقام كما في الورقة:
+ * الورقة تُقرأ بمعرفة أن الأيسر وصولٌ والأيمن إقلاع، ومن لا يعرف ذلك يقرأ
+ * رقمًا مكان رقم — ويصل بعد أن تُقلع.
+ */
+function FlightCard({ flight }: { flight: Flight }) {
+  return (
+    <View style={styles.card}>
+      <View style={styles.cardHead}>
+        <View style={styles.icon}>
+          <Ionicons name="airplane-outline" size={17} color={colors.primary} />
+        </View>
+        <Text style={styles.station}>{flight.station}</Text>
+        <Text style={styles.aircraft}>{flight.aircraft}</Text>
+      </View>
+
+      {flight.stops.map((stop, index) => (
+        <View key={`${stop.place}-${index}`} style={styles.stop}>
+          <View style={styles.dotColumn}>
+            <View style={[styles.dot, index === 1 && styles.dotMid]} />
+            {index < flight.stops.length - 1 ? <View style={styles.line} /> : null}
+          </View>
+          <Text style={styles.place}>{stop.place}</Text>
+          <View style={styles.times}>
+            {stop.arrive ? (
+              <Text style={styles.time}>
+                <Text style={styles.timeLabel}>وصول </Text>
+                {stop.arrive}
+              </Text>
+            ) : null}
+            {stop.depart ? (
+              <Text style={styles.time}>
+                <Text style={styles.timeLabel}>إقلاع </Text>
+                {stop.depart}
+              </Text>
+            ) : null}
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
+  head: { paddingHorizontal: spacing.lg, paddingBottom: spacing.sm, gap: 2 },
+  source: { ...typography.caption, lineHeight: 18 },
+  effective: { ...typography.caption, fontSize: 11, color: colors.primary },
   content: { padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xxl },
-  head: { gap: 2 },
-  title: { ...typography.h3 },
-  meta: { ...typography.caption, fontSize: 11 },
-  tip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
+  card: {
     backgroundColor: colors.surface,
+    borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.lg,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    padding: spacing.lg,
+    gap: spacing.sm,
   },
-  tipText: { ...typography.caption },
-  // عالية: الورقة عريضة، وتصغيرها إلى ارتفاع بطاقة يجعل أرقامها نقاطًا.
-  sheet: {
+  cardHead: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  icon: {
+    width: 30,
+    height: 30,
+    borderRadius: radius.sm,
+    backgroundColor: "rgba(11,37,69,0.08)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  station: { ...typography.body, flex: 1, fontFamily: "Tajawal_700Bold" },
+  aircraft: { ...typography.caption, fontSize: 11, writingDirection: "ltr" },
+  stop: { flexDirection: "row", alignItems: "flex-start", gap: spacing.sm },
+  dotColumn: { alignItems: "center", width: 12, paddingTop: 6 },
+  dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.border },
+  dotMid: { backgroundColor: colors.primary },
+  line: { width: 1, flex: 1, minHeight: 16, backgroundColor: colors.border },
+  place: { ...typography.body, fontSize: 14, width: 74 },
+  times: { flex: 1, flexDirection: "row", justifyContent: "flex-end", gap: spacing.lg },
+  time: { ...typography.body, fontSize: 14, fontFamily: "Tajawal_700Bold", writingDirection: "ltr" },
+  timeLabel: { ...typography.caption, fontSize: 11, fontFamily: "Tajawal_400Regular" },
+  none: { alignItems: "center", gap: spacing.sm, paddingVertical: spacing.xl },
+  noneText: { ...typography.caption },
+  notes: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.lg,
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
+  notesTitle: { ...typography.body, fontFamily: "Tajawal_700Bold" },
+  noteRow: { flexDirection: "row", gap: spacing.md },
+  notePlace: { ...typography.caption, color: colors.textPrimary, width: 74 },
+  noteText: { ...typography.caption, flex: 1, lineHeight: 20 },
+  sheetBlock: { gap: spacing.sm, marginTop: spacing.sm },
+  sheetImage: {
     width: "100%",
-    height: 320,
+    height: 260,
     borderRadius: radius.md,
     backgroundColor: colors.surface,
     borderWidth: 1,

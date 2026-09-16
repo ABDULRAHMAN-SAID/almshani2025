@@ -122,3 +122,8 @@ export function isExpired(expiresAtIso: string | null, now: Date = new Date()): 
   if (!expiresAtIso) return false;
   return new Date(expiresAtIso).getTime() <= now.getTime();
 }
+
+/** اسم يوم اليوم بتوقيت عُمان — يُفتح به جدول الرحلات على يومه. */
+export function omanWeekdayName(at: Date = new Date()): string {
+  return ARABIC_WEEKDAYS[omanNow(at).getDay()];
+}

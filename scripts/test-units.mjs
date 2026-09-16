@@ -38,11 +38,13 @@ const MODULES = [
   "src/utils/errors.ts",
   "src/services/rowMappers.ts",
   "src/utils/media.ts",
+  "src/constants/flights.ts",
 ];
 
 const work = mkdtempSync(join(tmpdir(), "anshatati-units-"));
 mkdirSync(join(work, "src/utils"), { recursive: true });
 mkdirSync(join(work, "src/services"), { recursive: true });
+mkdirSync(join(work, "src/constants"), { recursive: true });
 
 for (const file of MODULES) {
   // استيراد الأنواع وحده يُمحى عند التجريد؛ نُبدّل مسار الاسم المستعار بملف
@@ -90,6 +92,7 @@ const dates = await load("src/utils/date.ts");
 const calendar = await load("src/utils/calendar.ts");
 const arabic = await load("src/utils/arabic.ts");
 const errors = await load("src/utils/errors.ts");
+const flights = await load("src/constants/flights.ts");
 const mappers = await load("src/services/rowMappers.ts");
 const media = await load("src/utils/media.ts");
 
@@ -261,6 +264,36 @@ function runAll(tz) {
   // ولا يبتلع هذا ما ليس منه: صلاحيةٌ مرفوضة تبقى صلاحية.
   check("الأخطاء", "منع RLS يبقى منعًا", "ليست لديك صلاحية لهذه العملية.",
     errors.toArabicMessage({ code: "42501", message: "new row violates row-level security policy" }));
+
+  // ---- جدول الرحلات ----
+  // منقولٌ عن ورقة، ونقلُ الأرقام بالأيدي هو بابُ الخطأ: رقمٌ واحد يخطئ
+  // يوقف رجلًا في المطار. فتُفحص بنيته كلّها: كل رحلة ثلاث محطّات، الأولى
+  // إقلاع بلا وصول، والأخيرة وصول بلا إقلاع، وكل وقت على صيغة ساعة:دقيقة،
+  // وكل رحلة تعود من حيث بدأت.
+  const badTime = flights.FLIGHTS.filter((f) =>
+    f.stops.some((s) => [s.arrive, s.depart].some((t) => t !== undefined && !/^\d{2}:\d{2}$/.test(t)))
+  );
+  check("الرحلات", "كل الأوقات بصيغة صحيحة", [], badTime.map((f) => f.station + " " + f.day));
+  check("الرحلات", "كل رحلة ثلاث محطّات", [],
+    flights.FLIGHTS.filter((f) => f.stops.length !== 3).map((f) => f.station + " " + f.day));
+  check("الرحلات", "تبدأ بإقلاع بلا وصول", [],
+    flights.FLIGHTS.filter((f) => f.stops[0].arrive || !f.stops[0].depart).map((f) => f.station));
+  check("الرحلات", "تنتهي بوصول بلا إقلاع", [],
+    flights.FLIGHTS.filter((f) => f.stops[2].depart || !f.stops[2].arrive).map((f) => f.station));
+  check("الرحلات", "تعود من حيث بدأت", [],
+    flights.FLIGHTS.filter((f) => f.stops[0].place !== f.stops[2].place).map((f) => f.station));
+  // والأوقات تتقدّم: وصولٌ قبل إقلاعه، أو عودةٌ قبل ذهابها، خطأُ نقلٍ ظاهر.
+  const mins = (t) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3));
+  check("الرحلات", "الأوقات متتابعة", [],
+    flights.FLIGHTS.filter((f) => {
+      const seq = [f.stops[0].depart, f.stops[1].arrive, f.stops[1].depart, f.stops[2].arrive].map(mins);
+      return seq.some((t, i) => i > 0 && t <= seq[i - 1]);
+    }).map((f) => f.station + " " + f.day));
+  // ويومٌ واحد لا تكون فيه رحلتان إلى محطّة واحدة.
+  const keys = flights.FLIGHTS.map((f) => f.station + "|" + f.day);
+  check("الرحلات", "لا تكرار لمحطّة في يوم", keys.length, new Set(keys).size);
+  check("الرحلات", "كل يوم من أيام الورقة معروف", [],
+    flights.FLIGHTS.filter((f) => !flights.FLIGHT_DAYS.includes(f.day)).map((f) => f.day));
 
   // ---- المرفقات ----
   // طبقة الرفع كلّها كانت بلا تحقّق واحد: حدودها وامتداداتها وفكّ ترميزها.
