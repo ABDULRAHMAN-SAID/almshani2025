@@ -179,8 +179,12 @@ function runAll(tz) {
   // ---- ترجمة الأخطاء ----
   check("الأخطاء", "رسالة الخدمة العربية تمرّ", "كلمة المرور غير صحيحة",
     errors.toArabicMessage(new Error("كلمة المرور غير صحيحة")));
-  check("الأخطاء", "الإنجليزية المجهولة تسقط للبديل", "بديل",
+  // المجهول يسقط للبديل، ويحمل معه كلام الخادم: البديل وحده لا يُعرَف منه شيء.
+  check("الأخطاء", "الإنجليزية المجهولة تسقط للبديل", "بديل\n(Unexpected)",
     errors.toArabicMessage(new Error("Unexpected"), "بديل"));
+  check("الأخطاء", "بلا نصّ يبقى البديل وحده", "بديل", errors.toArabicMessage({}, "بديل"));
+  check("الأخطاء", "كلام الخادم يُقصّ ولا يُطيل الرسالة", true,
+    errors.toArabicMessage(new Error("x".repeat(400)), "بديل").length < 170);
   check("الأخطاء", "الشبكة", "لا يوجد اتصال بالإنترنت. تحقّق من الشبكة وحاول مرة أخرى.",
     errors.toArabicMessage(new Error("Network request failed")));
   check("الأخطاء", "رمز التكرار", "هذا العنصر مسجَّل مسبقًا.", errors.toArabicMessage({ code: "23505" }));

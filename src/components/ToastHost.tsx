@@ -12,7 +12,7 @@ const ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
 };
 
 /** كم يبقى كل نوع على الشاشة. النجاح والخطأ يُقرآن، والخبر العابر يمرّ. */
-const HOLD: Record<string, number> = { success: 3200, error: 4000, info: 2200 };
+const HOLD: Record<string, number> = { success: 3200, error: 6000, info: 2200 };
 
 /**
  * يُركّب مرة واحدة في الجذر — يعرض رسالة قصيرة تؤكّد ما حدث.

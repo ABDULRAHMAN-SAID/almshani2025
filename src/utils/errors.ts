@@ -18,7 +18,7 @@ const NETWORK_HINTS = ["network request failed", "failed to fetch", "networkerro
  * يعرف أنّ عليه — أو على الإدارة — تنفيذ ملفّ التحديث مرّة واحدة.
  */
 const SCHEMA_BEHIND =
-  "الخادم ينقصه تحديث قاعدة البيانات لهذه الميزة. افتح Supabase ← SQL Editor ونفّذ ملفّ التحديث (supabase/update-now.sql) مرّة واحدة، ثم أعد المحاولة.";
+  "الخادم لا يعرف هذه الميزة بعد. إن نُفِّذ ملفّ التحديث للتوّ فانتظر دقيقة وأعد المحاولة، وإلا فنفّذ supabase/update-now.sql في Supabase ← SQL Editor مرّة واحدة.";
 
 /** رموز Postgres/Supabase التي لها معنى واضح للمستخدم. */
 const CODE_MESSAGES: Record<string, string> = {
@@ -115,5 +115,10 @@ export function toArabicMessage(error: unknown, fallback = "تعذّر إتما�
   // تُرمى ويُعرض «تعذّر إتمام العملية» مكانها.
   if (ARABIC.test(text)) return text;
 
-  return fallback;
+  // لم نعرف السبب. وهنا كان يُقال «تعذّر نشر القائمة» وحدها، فيقف صاحبها
+  // أمام جملة تصف ما لم يقع ولا تقول لِمَ — فيعيد المحاولة، أو يظنّ العطل
+  // في هاتفه، ولا سبيل له ولا لنا إلى معرفة ما قاله الخادم. فنضمّ كلامه
+  // كما هو: قد لا يفهمه، لكنه يصوّره ويرسله، فيُعرف العطل في دقيقة بدل يوم.
+  const detail = text.trim().replace(/\s+/g, " ").slice(0, 140);
+  return detail ? `${fallback}\n(${detail})` : fallback;
 }
