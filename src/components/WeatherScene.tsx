@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef } from "react";
 import { Animated, Easing, StyleSheet, View } from "react-native";
+import { WalkingPerson } from "./WalkingPerson";
 
 /**
  * مشهد الطقس: رجلٌ واقف، وفوقه سماءٌ تتبدّل بحال الجوّ.
@@ -113,7 +114,7 @@ export function WeatherScene({ code, isNight, windSpeed }: WeatherSceneProps) {
           {dropLeft.map((left, index) => (
             <View
               key={left}
-              style={[styles.drop, { start: left, height: index % 2 === 0 ? 12 : 8 }]}
+              style={[styles.drop, { left, height: index % 2 === 0 ? 13 : 9 }]}
             />
           ))}
         </Animated.View>
@@ -130,19 +131,10 @@ export function WeatherScene({ code, isNight, windSpeed }: WeatherSceneProps) {
         </Animated.View>
       ) : null}
 
-      {/* ——— الرجل ——— */}
+      {/* ——— الشخص ——— */}
       <View style={styles.person}>
-        <View style={styles.head} />
-        <View>
-          <View style={styles.body} />
-          <View style={styles.arm} />
-        </View>
-        <View style={styles.legs}>
-          <View style={styles.leg} />
-          <View style={[styles.leg, { marginStart: 6 }]} />
-        </View>
+        <WalkingPerson isNight={isNight} />
       </View>
-      <View style={styles.ground} />
     </View>
   );
 }
@@ -151,9 +143,11 @@ const WHITE = "rgba(255,255,255,0.95)";
 const SOFT = "rgba(255,255,255,0.55)";
 
 const styles = StyleSheet.create({
-  scene: { width: 210, height: 172, alignSelf: "center" },
+  // ارتفاعٌ يكفي السماء والشخص بلا تصادم: السماء في أعلى ثمانين،
+  // والشخص يقف تحتها بقامته كاملة.
+  scene: { width: 214, height: 208, alignSelf: "center" },
 
-  sun: { position: "absolute", top: 2, start: 0, end: 0, alignItems: "center", justifyContent: "center" },
+  sun: { position: "absolute", top: 0, left: 0, right: 0, alignItems: "center", justifyContent: "center" },
   sunCore: { width: 46, height: 46, borderRadius: 23, backgroundColor: "#FFD166" },
   sunHalo: {
     position: "absolute",
@@ -181,18 +175,18 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(11,31,58,0.95)",
   },
 
-  cloudBack: { position: "absolute", top: 26, start: 32, flexDirection: "row", alignItems: "flex-end" },
-  cloudFront: { position: "absolute", top: 8, start: 74, flexDirection: "row", alignItems: "flex-end" },
+  cloudBack: { position: "absolute", top: 18, left: 34, flexDirection: "row", alignItems: "flex-end" },
+  cloudFront: { position: "absolute", top: 2, left: 78, flexDirection: "row", alignItems: "flex-end" },
   puff: { borderRadius: 999, backgroundColor: SOFT },
   puffLight: { borderRadius: 999, backgroundColor: WHITE },
 
-  rainRow: { position: "absolute", top: 64, start: 52, flexDirection: "row", width: 116, height: 16 },
-  drop: { position: "absolute", width: 3, borderRadius: 2, backgroundColor: "rgba(255,255,255,0.75)" },
+  rainRow: { position: "absolute", top: 56, left: 54, flexDirection: "row", width: 112, height: 16 },
+  drop: { position: "absolute", width: 3.5, borderRadius: 2, backgroundColor: "rgba(255,255,255,0.75)" },
 
   bolt: {
     position: "absolute",
-    top: 58,
-    start: 104,
+    top: 52,
+    left: 106,
     width: 10,
     height: 22,
     backgroundColor: "#FFD166",
@@ -200,27 +194,9 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
 
-  windRow: { position: "absolute", top: 96, end: 4, alignItems: "flex-end" },
+  windRow: { position: "absolute", top: 92, right: 2, alignItems: "flex-end" },
   windLine: { height: 3, borderRadius: 2, backgroundColor: "rgba(255,255,255,0.5)" },
 
-  // الرجل: أشكالٌ بسيطة لا وجه لها. ملامحُ في هذا الحجم تصير بقعًا.
-  person: { position: "absolute", bottom: 16, start: 0, end: 0, alignItems: "center" },
-  head: { width: 19, height: 19, borderRadius: 10, backgroundColor: WHITE, marginBottom: 3 },
-  body: { width: 28, height: 38, borderTopStartRadius: 13, borderTopEndRadius: 13, borderRadius: 7, backgroundColor: WHITE },
-  arm: { position: "absolute", top: 10, end: -6, width: 6, height: 22, borderRadius: 3, backgroundColor: "rgba(255,255,255,0.7)" },
-  legs: { flexDirection: "row", marginTop: 2 },
-  leg: { width: 7, height: 20, borderRadius: 4, backgroundColor: "rgba(255,255,255,0.8)" },
+  person: { position: "absolute", bottom: 0, left: 0, right: 0, alignItems: "center" },
 
-  ground: {
-    position: "absolute",
-    bottom: 10,
-    start: 0,
-    end: 0,
-    alignSelf: "center",
-    width: 54,
-    height: 7,
-    marginHorizontal: "auto",
-    borderRadius: 999,
-    backgroundColor: "rgba(0,0,0,0.07)",
-  },
 });
