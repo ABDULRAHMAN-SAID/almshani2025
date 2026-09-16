@@ -66,6 +66,22 @@ export async function publishClubMenu(draft: ClubMenuDraft): Promise<void> {
   if (error) throw error;
 }
 
+/**
+ * حذف قائمة أسبوع.
+ *
+ * ولم يكن لها حذف ولا نقل: من نشر قائمة نادٍ في نادٍ آخر — وهو خطأٌ تكفي فيه
+ * لمسةٌ واحدة على شريحة الاسم — بقيت منشورةً عنده بلا سبيل إلى رفعها.
+ */
+export async function deleteClubMenu(club: ClubKey, weekStart: string): Promise<void> {
+  if (USE_MOCK_DATA) return;
+  const { error } = await supabase
+    .from("club_menus")
+    .delete()
+    .eq("club", club)
+    .eq("week_start", weekStart);
+  if (error) throw error;
+}
+
 /* ------------------------------ النادي نفسه ------------------------------ */
 
 /**

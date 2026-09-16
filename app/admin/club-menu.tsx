@@ -1,12 +1,21 @@
 import { useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { BottomSheet } from "@/components/BottomSheet";
 import { ImageField } from "@/components/ImageField";
 import { PrimaryButton } from "@/components/PrimaryButton";
+import { SecondaryButton } from "@/components/SecondaryButton";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { colors, radius, spacing, typography } from "@/constants";
 import { CATEGORY_META } from "@/constants/categories";
-import { fetchClub, fetchClubMenu, publishClubMenu, updateClub, weekStartOf } from "@/services/menuService";
+import {
+  deleteClubMenu,
+  fetchClub,
+  fetchClubMenu,
+  publishClubMenu,
+  updateClub,
+  weekStartOf,
+} from "@/services/menuService";
 import { showToast } from "@/store/toastStore";
 import type { ClubKey } from "@/types/models";
 import { formatArabicDate } from "@/utils/date";
@@ -30,6 +39,7 @@ export default function AdminClubMenuScreen() {
   const [club, setClub] = useState<ClubKey>("OfficersClub");
   const [images, setImages] = useState<string[]>(["", "", ""]);
   const [clubTitle, setClubTitle] = useState("");
+  const [askDelete, setAskDelete] = useState(false);
 
   const weekStart = weekStartOf();
 
@@ -65,7 +75,25 @@ export default function AdminClubMenuScreen() {
     onError: (e) => showToast(toArabicMessage(e, "تعذّر نشر القائمة"), "error"),
   });
 
+  const remove = useMutation({
+    mutationFn: () => deleteClubMenu(club, weekStart),
+    onSuccess: () => {
+      void client.invalidateQueries();
+      setImages(["", "", ""]);
+      setAskDelete(false);
+      showToast("حُذفت قائمة هذا الأسبوع", "success");
+    },
+    onError: (e) => {
+      setAskDelete(false);
+      showToast(toArabicMessage(e, "تعذّر حذف القائمة"), "error");
+    },
+  });
+
   const uploaded = images.filter((url) => url.trim().length > 0).length;
+  const published = current.data?.weekStart === weekStart && current.data.images.length > 0;
+  // اسم النادي المختار — يُكتب على الأزرار نفسها لا فوق الشاشة وحدها: من
+  // نشر في النادي الخطأ لم يكن الاسم أمام إصبعه لحظة الضغط.
+  const clubName = CATEGORY_META[club].label;
 
   return (
     <View style={styles.screen}>
@@ -99,7 +127,7 @@ export default function AdminClubMenuScreen() {
           textAlign="right"
         />
         <PrimaryButton
-          label="احفظ العنوان"
+          label="احفظ عنوان هذا النادي"
           onPress={() => saveTitle.mutate()}
           disabled={clubTitle.trim().length < 2}
           loading={saveTitle.isPending}
@@ -125,13 +153,35 @@ export default function AdminClubMenuScreen() {
         ))}
 
         <PrimaryButton
-          label="انشر قائمة الأسبوع"
+          label={`انشر قائمة ${clubName}`}
           onPress={() => publish.mutate()}
           disabled={uploaded === 0}
           loading={publish.isPending}
           style={{ marginTop: spacing.lg }}
         />
+
+        {published ? (
+          <SecondaryButton label="احذف قائمة هذا الأسبوع" onPress={() => setAskDelete(true)} />
+        ) : null}
       </ScrollView>
+
+      <BottomSheet visible={askDelete} onClose={() => setAskDelete(false)}>
+        <Text style={styles.sheetTitle}>حذف القائمة</Text>
+        <Text style={styles.sheetBody}>
+          ستُحذف قائمة هذا الأسبوع من {clubName} بصورها، ولن يراها أحد بعدها.
+        </Text>
+        <PrimaryButton
+          label="حذف نهائيًا"
+          onPress={() => remove.mutate()}
+          loading={remove.isPending}
+          style={{ marginTop: spacing.lg, backgroundColor: colors.danger }}
+        />
+        <SecondaryButton
+          label="تراجع"
+          onPress={() => setAskDelete(false)}
+          style={{ marginTop: spacing.sm }}
+        />
+      </BottomSheet>
     </View>
   );
 }
@@ -154,6 +204,8 @@ const styles = StyleSheet.create({
   chipText: { ...typography.caption, color: colors.textPrimary },
   chipTextActive: { color: colors.textOnPrimary },
   week: { ...typography.body, fontFamily: "Tajawal_700Bold" },
+  sheetTitle: { ...typography.h2, textAlign: "center" },
+  sheetBody: { ...typography.bodyMuted, textAlign: "center", marginTop: spacing.sm, lineHeight: 22 },
   weekHint: { ...typography.caption, fontSize: 11, lineHeight: 18, marginTop: -spacing.sm },
   input: {
     backgroundColor: colors.surface,
