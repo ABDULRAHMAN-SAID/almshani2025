@@ -2,16 +2,17 @@ import { useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { ActivityListRow } from "@/components/ActivityListRow";
 import { CalendarMonth } from "@/components/CalendarMonth";
+import { YearPlanner } from "@/components/YearPlanner";
 import { EmptyState } from "@/components/EmptyState";
 import { FilterChips } from "@/components/FilterChips";
 import { CALENDAR_FILTERS } from "@/constants/categories";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors, radius, spacing, typography } from "@/constants";
 import { useAllActivities } from "@/hooks/useActivities";
+import { useFeatures } from "@/hooks/useFeatures";
 import { router } from "expo-router";
-import { ACTIVITY_FORMS, pluralizeAr } from "@/utils/arabic";
-import { arabicMonthName, formatArabicDate, formatArabicWeekday } from "@/utils/date";
-import { TODAY_ISO, groupActivitiesByDate, groupActivitiesByMonth } from "@/utils/calendar";
+import { formatArabicDate, formatArabicWeekday } from "@/utils/date";
+import { TODAY_ISO, groupActivitiesByDate } from "@/utils/calendar";
 
 type CalendarView = "month" | "year";
 
@@ -19,6 +20,7 @@ export default function CalendarScreen() {
   // الرأس أوّل عنصر في الشاشة، فيقع تحت شريط الحالة بلا هذه.
   const insets = useSafeAreaInsets();
   const { data: activities, isLoading } = useAllActivities();
+  const { hijriOffset } = useFeatures();
   const [view, setView] = useState<CalendarView>("month");
   const [filterKey, setFilterKey] = useState("all");
   const [cursor, setCursor] = useState(() => {
@@ -35,7 +37,10 @@ export default function CalendarScreen() {
   }, [activities, filterKey]);
 
   const byDate = useMemo(() => groupActivitiesByDate(filtered), [filtered]);
-  const byMonth = useMemo(() => groupActivitiesByMonth(filtered, cursor.year), [filtered, cursor.year]);
+  const countsByDate = useMemo(
+    () => Object.fromEntries(Object.entries(byDate).map(([iso, list]) => [iso, list.length])),
+    [byDate]
+  );
 
   const selectedActivities = selectedIso ? byDate[selectedIso] ?? [] : [];
 
@@ -96,29 +101,29 @@ export default function CalendarScreen() {
           </>
         ) : (
           <View style={{ gap: spacing.lg }}>
-            <Text style={styles.yearLabel}>{cursor.year}</Text>
-            {Array.from({ length: 12 }, (_, monthIndex) => {
-              const monthActivities = byMonth[monthIndex] ?? [];
-              return (
-                <View key={monthIndex} style={styles.monthBlock}>
-                  <View style={styles.monthHeading}>
-                    <Text style={styles.monthName}>{arabicMonthName(monthIndex)}</Text>
-                    <Text style={styles.monthCount}>
-                      {monthActivities.length > 0
-                        ? pluralizeAr(monthActivities.length, ACTIVITY_FORMS)
-                        : "لا توجد أنشطة"}
-                    </Text>
-                  </View>
-                  {monthActivities.length > 0 ? (
-                    <View style={{ gap: spacing.sm }}>
-                      {monthActivities.map((activity) => (
-                        <ActivityListRow key={activity.id} activity={activity} showDate onPress={() => openActivity(activity.id)} />
-                      ))}
-                    </View>
-                  ) : null}
-                </View>
-              );
-            })}
+            <View style={styles.yearHead}>
+              <Pressable accessibilityRole="button" onPress={() => setCursor((c) => ({ ...c, year: c.year - 1 }))} hitSlop={10}>
+                <Text style={styles.yearArrow}>‹</Text>
+              </Pressable>
+              <Text style={styles.yearLabel}>{cursor.year}</Text>
+              <Pressable accessibilityRole="button" onPress={() => setCursor((c) => ({ ...c, year: c.year + 1 }))} hitSlop={10}>
+                <Text style={styles.yearArrow}>›</Text>
+              </Pressable>
+            </View>
+
+            <YearPlanner
+              year={cursor.year}
+              countsByDate={countsByDate}
+              hijriOffset={hijriOffset}
+              todayIso={TODAY_ISO}
+              selectedIso={selectedIso}
+              onSelectDate={(iso) => {
+                setSelectedIso(iso);
+                const [, month] = iso.split("-");
+                setCursor({ year: Number(iso.slice(0, 4)), monthIndex: Number(month) - 1 });
+                setView("month");
+              }}
+            />
           </View>
         )}
       </ScrollView>
@@ -165,6 +170,8 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl },
   daySection: { marginTop: spacing.xl, gap: spacing.md },
   dayHeading: { ...typography.h3 },
+  yearHead: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.xl },
+  yearArrow: { fontFamily: "Tajawal_700Bold", fontSize: 26, color: colors.primary },
   yearLabel: { ...typography.h2, textAlign: "center" },
   monthBlock: { gap: spacing.sm },
   monthHeading: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
