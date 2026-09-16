@@ -199,6 +199,28 @@ function runAll(tz) {
   check("الأخطاء", "حجم كبير من نصّ الرسالة", "الملفّ أكبر من الحدّ المسموح به. اختر ملفًّا أصغر.",
     errors.toArabicMessage(new Error("Payload too large")));
 
+  // نقص الخادم: صنفٌ كان كلّه يسقط في الرسالة البديلة، فيقرأ الناشر «تعذّر
+  // نشر القائمة» ويعيد المحاولة عشرًا وهي لا تنجح مرّة — والعطل أنّ الجدول
+  // لم يُنشأ بعد. وهذه الفحوص تثبت أن كل صورة من صوره تقول ما يُعمل.
+  const behind = errors.toArabicMessage({ code: "42P01", message: "relation \"club_menus\" does not exist" }, "تعذّر نشر القائمة");
+  check("الأخطاء", "جدول غير موجود يُسمّى الحلّ", true, behind.includes("update-now.sql"));
+  check("الأخطاء", "جدول غير موجود ليس البديل", false, behind === "تعذّر نشر القائمة");
+  for (const [name, err] of [
+    ["عمود غير موجود", { code: "42703", message: 'column announcements.club does not exist' }],
+    ["دالة غير موجودة", { code: "42883", message: "function mark_news_read(uuid) does not exist" }],
+    ["لا مفتاح فريد للـ upsert", { code: "42P10", message: "there is no unique or exclusion constraint matching the ON CONFLICT specification" }],
+    ["جدول خارج ذاكرة المخطّط", { code: "PGRST205", message: "Could not find the table 'public.club_menus' in the schema cache" }],
+    ["عمود خارج ذاكرة المخطّط", { code: "PGRST204", message: "Could not find the 'club' column of 'announcements' in the schema cache" }],
+    ["قيمة تصنيف لا يعرفها الخادم", { code: "22P02", message: 'invalid input value for enum activity_category: "OfficersClub"' }],
+    ["نصّ بلا رمز", new Error('Could not find the table \'public.clubs\' in the schema cache')],
+  ]) {
+    check("الأخطاء", name + " ← تحديث قاعدة البيانات", true,
+      errors.toArabicMessage(err, "تعذّر نشر القائمة").includes("update-now.sql"));
+  }
+  // ولا يبتلع هذا ما ليس منه: صلاحيةٌ مرفوضة تبقى صلاحية.
+  check("الأخطاء", "منع RLS يبقى منعًا", "ليست لديك صلاحية لهذه العملية.",
+    errors.toArabicMessage({ code: "42501", message: "new row violates row-level security policy" }));
+
   // ---- المرفقات ----
   // طبقة الرفع كلّها كانت بلا تحقّق واحد: حدودها وامتداداتها وفكّ ترميزها.
   const overLimit = (kind, size) => {

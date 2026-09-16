@@ -11,9 +11,29 @@ const ARABIC = /[\u0600-\u06FF]/;
 /** أخطاء الشبكة: لا اتصال، انقطاع، أو مهلة. */
 const NETWORK_HINTS = ["network request failed", "failed to fetch", "networkerror", "timeout", "econnrefused", "enotfound"];
 
+/**
+ * ما يُقال حين يكون نقصُ الخادم هو السبب.
+ *
+ * ويُسمّى الحلّ لا العطل فقط: من يقرأ «تعذّر» يعيد المحاولة، ومن يقرأ هذا
+ * يعرف أنّ عليه — أو على الإدارة — تنفيذ ملفّ التحديث مرّة واحدة.
+ */
+const SCHEMA_BEHIND =
+  "الخادم ينقصه تحديث قاعدة البيانات لهذه الميزة. افتح Supabase ← SQL Editor ونفّذ ملفّ التحديث (supabase/update-now.sql) مرّة واحدة، ثم أعد المحاولة.";
+
 /** رموز Postgres/Supabase التي لها معنى واضح للمستخدم. */
 const CODE_MESSAGES: Record<string, string> = {
   "23505": "هذا العنصر مسجَّل مسبقًا.",
+  // صنفٌ واحد من الأخطاء معناه واحد: الخادم أقدمُ من التطبيق — جدولٌ أو
+  // عمودٌ أو دالةٌ يطلبها التطبيق ولم تُنشأ بعد. وكان يُقال لمن يراه «تعذّر
+  // نشر القائمة» بلا سبب، فيعيد المحاولة عشرًا وهي لا تنجح مرّة: ليس العطل
+  // فيه ولا في شبكته، ولا يُصلحه إلا تنفيذ ملفّ التحديث على الخادم.
+  "42P01": SCHEMA_BEHIND,
+  "42703": SCHEMA_BEHIND,
+  "42883": SCHEMA_BEHIND,
+  "42P10": SCHEMA_BEHIND,
+  PGRST202: SCHEMA_BEHIND,
+  PGRST204: SCHEMA_BEHIND,
+  PGRST205: SCHEMA_BEHIND,
   "23503": "لا يمكن إتمام العملية لارتباط هذا العنصر بعناصر أخرى.",
   "23514": "إحدى القيم خارج النطاق المسموح.",
   "42501": "ليست لديك صلاحية لهذه العملية.",
@@ -54,6 +74,9 @@ export function toArabicMessage(error: unknown, fallback = "تعذّر إتما�
 
   const candidate = error as MaybeSupabaseError | null;
   const code = candidate && typeof candidate.code === "string" ? candidate.code : "";
+  // قيمةٌ لا يعرفها الخادم في نوعٍ مُعدَّد — كقسمٍ جديد أُضيف في التطبيق ولم
+  // يُضف على الخادم. رمزها 22P02 نفسه الذي لسوء الصياغة، فيُفصل عنه بنصّه.
+  if (/invalid input value for enum/i.test(readText(error))) return SCHEMA_BEHIND;
   if (code && CODE_MESSAGES[code]) return CODE_MESSAGES[code];
 
   const status = candidate && typeof candidate.status === "number" ? candidate.status : 0;
@@ -76,6 +99,13 @@ export function toArabicMessage(error: unknown, fallback = "تعذّر إتما�
   }
   if (/quota|storage limit|insufficient storage/.test(lower)) {
     return "مساحة التخزين على الخادم ممتلئة. على الإدارة حذف مرفقات قديمة أو توسيع الخطة.";
+  }
+  if (
+    /could not find the (table|function|column)|does not exist|schema cache|no unique or exclusion constraint/i.test(
+      lower
+    )
+  ) {
+    return SCHEMA_BEHIND;
   }
   if (lower.includes("forbidden")) return "ليست لديك صلاحية لهذه العملية.";
   if (lower.includes("jwt")) return "انتهت صلاحية جلستك، سجّل الدخول من جديد.";

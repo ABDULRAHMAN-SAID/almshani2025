@@ -281,12 +281,18 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg + 4,
     borderWidth: 1,
     borderColor: colors.border,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.xs,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: 2,
     ...shadow.card,
   },
   grid: { flexDirection: "row", flexWrap: "wrap" },
-  gridItem: { width: "33.33%" },
+  /*
+    أربعة في الصف لا ثلاثة.
+    عرض الخليّة هو ما يباعد الأيقونات جانبًا: أيقونة عرضها ٤٦ في عمودٍ عرضه
+    ١١٧ يبقى حولها سبعون نقطة فراغ، فتُقرأ الشبكة متناثرة. وبأربعة أعمدة
+    يصير الفراغ بينها النصف، ويبقى للاسم سطران يسعان أطول الأسماء.
+  */
+  gridItem: { width: "25%" },
   // ‏textAlign "left" اتجاهٌ مطلق لا نسبيّ، فيبقى يسارًا في واجهة تُقرأ يمينًا.
   clock: {
     ...typography.caption,
@@ -298,10 +304,10 @@ const styles = StyleSheet.create({
   groupLabel: {
     ...typography.caption,
     color: colors.textMuted,
-    marginBottom: spacing.sm,
-    marginHorizontal: spacing.xs,
+    marginBottom: spacing.xs,
+    marginHorizontal: spacing.sm,
   },
-  groupSpaced: { marginTop: spacing.lg },
+  groupSpaced: { marginTop: spacing.sm },
   section: { marginTop: spacing.xl, paddingHorizontal: spacing.lg },
   newsPlaceholder: {
     backgroundColor: colors.surface,

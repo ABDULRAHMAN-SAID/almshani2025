@@ -108,6 +108,9 @@ const PROTECTED_TABLES = [
   "admins",
   "user_messages",
   "group_post_reports",
+  "news_reads",
+  "clubs",
+  "club_menus",
 ];
 
 const VIEWS = ["quiz_questions_public", "leaderboard_view"];
@@ -123,6 +126,27 @@ const FUNCTIONS = [
   ["broadcast_notification", { p_title: "—", p_body: "—" }],
   ["reply_to_message", { p_message_id: ZERO(), p_body: "—" }],
   ["report_group_post", { p_post_id: ZERO(), p_reason: "—" }],
+  ["mark_news_read", { p_news_id: ZERO() }],
+];
+
+/**
+ * أعمدة وقيم بعينها — لا جداول.
+ *
+ * وجودُ الجدول ليس وجودَ كل ما فيه: نُفِّذت نسخةٌ قديمة من ملفّ التحديث، فوُجد
+ * جدول الإعلانات وغاب عمود النادي منه، ووُجد نوع التصنيفات وغابت منه قيمتا
+ * النادييْن. وكلّ نقصٍ من هذين يُسقط عملية النشر برسالة لا تُفهم، والفحص
+ * يقول «كل شيء موجود» — فيُبحث عن العطل في الهاتف وهو في الخادم.
+ */
+const FIELDS = [
+  ["announcements", "club", "إعلانات الأندية"],
+  ["club_menus", "week_start", "أسبوع قائمة الطعام"],
+  ["clubs", "title", "اسم النادي"],
+];
+
+/** قيم نوعٍ مُعدَّد: القيمة الغائبة يردّها الخادم بالرمز 22P02. */
+const ENUM_VALUES = [
+  ["activities", "category", "OfficersClub", "تصنيف نادي الضباط"],
+  ["activities", "category", "SeniorNcoClub", "تصنيف نادي كبار ضباط الصف"],
 ];
 
 function ZERO() {
@@ -193,6 +217,23 @@ async function checkFunction(name, args) {
   if (!error) return record("دوال", name, "ok");
   if (missing(error)) return record("دوال", name, "missing", error.message?.slice(0, 60));
   record("دوال", name, "guarded");
+}
+
+async function checkField(table, column, label) {
+  const { error } = await supabase.from(table).select(column, { head: true, count: "exact" }).limit(1);
+  // 42703 عمود غير موجود، وPGRST204 لا تعرفه PostgREST في ذاكرة المخطّط.
+  if (error && (error.code === "42703" || error.code === "PGRST204" || missing(error))) {
+    return record("أعمدة", `${table}.${column}`, "missing", label);
+  }
+  record("أعمدة", `${table}.${column}`, "ok", label);
+}
+
+async function checkEnumValue(table, column, value, label) {
+  const { error } = await supabase.from(table).select("id", { head: true, count: "exact" }).eq(column, value);
+  if (error && (error.code === "22P02" || /invalid input value for enum/i.test(error.message ?? ""))) {
+    return record("قيم", value, "missing", label);
+  }
+  record("قيم", value, "ok", label);
 }
 
 async function checkBucket(name) {
@@ -268,6 +309,11 @@ line(bold("الدوال الموثوقة"));
 for (const [name, args] of FUNCTIONS) await checkFunction(name, args);
 
 line();
+line(bold("أعمدة وقيم") + dim(" — ما يُضيفه آخر تحديث لقاعدة البيانات"));
+for (const [table, column, label] of FIELDS) await checkField(table, column, label);
+for (const [table, column, value, label] of ENUM_VALUES) await checkEnumValue(table, column, value, label);
+
+line();
 line(bold("حاويات الملفات") + dim(" — إليها تُرفع الصور والفيديو والصوت والملفّات"));
 for (const b of BUCKETS) await checkBucket(b);
 
@@ -323,7 +369,19 @@ if (missingItems.length === 0) {
   line(`❌ ${bold(`ينقص ${missingItems.length} عنصرًا`)}:`);
   for (const item of missingItems) line(`   • ${item.group}: ${item.name}`);
   line();
-  line("الغالب أن schema.sql لم يُنفَّذ كاملًا. أعِد تنفيذه من Supabase → SQL Editor.");
+  // ونقول أيّ ملفٍّ يُنفَّذ: النقص في الجديد وحده يعني أن آخر تحديث لم
+  // يُنفَّذ، لا أن المخطّط كلّه ناقص — وإعادةُ المخطّط كلّه لمن ينقصه جدولٌ
+  // واحد عملٌ مخيف بلا داعٍ.
+  const NEW_ONES = new Set(["clubs", "club_menus", "news_reads", "mark_news_read"]);
+  const onlyNew = missingItems.every(
+    (item) => NEW_ONES.has(item.name) || item.group === "أعمدة" || item.group === "قيم"
+  );
+  if (onlyNew) {
+    line("هذا كلّه يضيفه آخر تحديث لقاعدة البيانات، ولم يُنفَّذ بعد:");
+    line("   افتح Supabase ← SQL Editor ← New query، والصق supabase/update-now.sql كاملًا ثم Run.");
+  } else {
+    line("الغالب أن schema.sql لم يُنفَّذ كاملًا. أعِد تنفيذه من Supabase → SQL Editor.");
+  }
 }
 line();
 

@@ -49,11 +49,12 @@ export function CategoryCard({
 
 const styles = StyleSheet.create({
   base: {
-    borderRadius: radius.lg,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xs,
+    borderRadius: radius.md,
+    // حشوٌ ضيّق: الفراغ داخل الخليّة هو ما كان يباعد الأيقونات فوق وتحت.
+    paddingVertical: spacing.sm,
+    paddingHorizontal: 2,
     alignItems: "center",
-    gap: spacing.sm,
+    gap: 6,
   },
   card: {
     backgroundColor: colors.surface,
@@ -70,5 +71,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  label: { ...typography.h3, fontSize: 12, lineHeight: 16, textAlign: "center" },
+  label: { ...typography.h3, fontSize: 11, lineHeight: 15, textAlign: "center" },
 });
