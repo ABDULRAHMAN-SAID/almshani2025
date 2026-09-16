@@ -3,6 +3,7 @@ import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-nati
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import { FilterChips } from "@/components/FilterChips";
+import { FlyPast } from "@/components/FlyPast";
 import { ImageZoom } from "@/components/ImageZoom";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { colors, radius, spacing, typography } from "@/constants";
@@ -16,6 +17,8 @@ import { omanWeekdayName } from "@/utils/date";
  *
  * ويُفتح على يوم اليوم: من يفتح الشاشة يسأل «متى تقلع اليوم» لا «ماذا في
  * الأسبوع»، فيجد جوابه بلا لمسة. والجمعة لا رحلة فيها، فيُفتح على السبت.
+ *
+ * وتعبر طائرةٌ مرّةً واحدة عند الفتح ثم تختفي — تحيّةُ الشاشة لا زينتها.
  */
 export default function FlightsScreen() {
   const today = omanWeekdayName();
@@ -91,6 +94,10 @@ export default function FlightsScreen() {
       </ScrollView>
 
       <ImageZoom uri={zoom} onClose={() => setZoom(null)} />
+
+      {/* طائرةٌ تعبر مرّةً واحدة عند فتح الشاشة ثم تختفي — وهي آخر عنصر
+          ليمرّ فوق البطاقات لا تحتها. */}
+      <FlyPast />
     </View>
   );
 }
