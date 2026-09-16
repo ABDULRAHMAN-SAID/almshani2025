@@ -101,6 +101,13 @@ alter table storage.buckets enable row level security;
 
 create policy "buckets readable" on storage.buckets for select using (true);
 
+-- ‏storage.foldername: تُقسّم المسار إلى مجلّداته، وعليها تُبنى سياسة
+-- الحاوية المغلقة. وهي في Supabase لا في Postgres، فتُحاكى هنا.
+create or replace function storage.foldername(name text)
+returns text[] language sql immutable as $$
+  select string_to_array(name, '/');
+$$;
+
 grant usage on schema storage to anon, authenticated, service_role;
 grant all on storage.objects to anon, authenticated, service_role;
 grant all on storage.buckets to anon, authenticated, service_role;

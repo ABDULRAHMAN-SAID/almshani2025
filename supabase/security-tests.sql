@@ -513,6 +513,38 @@ begin
   -- المفتاح العام داخل كل نسخة من التطبيق، ويُستخرج منه في دقائق. فكل ما
   -- يقرؤه الدور anon يُقرأ من الإنترنت بلا حساب — ولا يكفي أن تُقفل الشاشة.
 
+  /* -------------------- حاويات التخزين -------------------- */
+  -- الحاوية المعلنة تُقرأ برابطها بلا حساب مهما كانت السياسات — فما كان
+  -- خاصًّا مكانه الحاوية المغلقة. وهذه تتحقّق من سياساتها.
+  insert into storage.objects (bucket_id, name, owner)
+  values ('app-private', 'messages/a-secret.pdf', a),
+         ('app-private', 'posts/open.jpg', a)
+  on conflict do nothing;
+
+  n := pg_temp.visitor_read(
+    'select count(*) from storage.objects where bucket_id = ''app-private''');
+  perform pg_temp.log_result('التخزين', 'زائر يسرد المرفقات الخاصّة', 'ممنوع', n, n <= 0);
+
+  n := pg_temp.visitor_read(
+    'select count(*) from storage.objects where bucket_id = ''activity-images''');
+  perform pg_temp.log_result('التخزين', 'زائر يسرد أغلفة الأنشطة', 'ممنوع', n, n <= 0);
+
+  n := pg_temp.visitor_read(
+    'select count(*) from storage.objects where bucket_id = ''app-media''');
+  perform pg_temp.log_result('التخزين', 'زائر يسرد مرفقات التطبيق', 'ممنوع', n, n <= 0);
+
+  n := pg_temp.attempt_read(b,
+    'select count(*) from storage.objects where bucket_id = ''app-private'' and name = ''messages/a-secret.pdf''');
+  perform pg_temp.log_result('التخزين', 'B يقرأ مرفق رسالةٍ ليست له', 'ممنوع', n, n <= 0);
+
+  n := pg_temp.attempt_read(a,
+    'select count(*) from storage.objects where bucket_id = ''app-private'' and name = ''messages/a-secret.pdf''');
+  perform pg_temp.log_result('التخزين', 'صاحب الرسالة يقرأ مرفقه', 'مسموح', n, n > 0);
+
+  n := pg_temp.attempt_read(b,
+    'select count(*) from storage.objects where bucket_id = ''app-private'' and name = ''posts/open.jpg''');
+  perform pg_temp.log_result('التخزين', 'عضوٌ يقرأ مرفق مشاركةٍ في مجموعة', 'مسموح', n, n > 0);
+
   n := pg_temp.visitor_read('select count(*) from public.activities');
   perform pg_temp.log_result('زائر', 'يقرأ الأنشطة بلا حساب', 'ممنوع', n, n <= 0);
 

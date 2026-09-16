@@ -942,7 +942,7 @@ on conflict (id) do nothing;
 
 drop policy if exists "activity images public read" on storage.objects;
 create policy "activity images public read" on storage.objects
-  for select using (bucket_id = 'activity-images');
+  for select to authenticated using (bucket_id = 'activity-images');
 
 drop policy if exists "activity images admin insert" on storage.objects;
 create policy "activity images admin insert" on storage.objects
@@ -981,7 +981,37 @@ on conflict (id) do nothing;
 
 drop policy if exists "app media public read" on storage.objects;
 create policy "app media public read" on storage.objects
-  for select using (bucket_id = 'app-media');
+  for select to authenticated using (bucket_id = 'app-media');
+
+-- الحاوية المغلقة: مرفقات المراسلات والمشاركات. لا رابط دائم لها — التطبيق
+-- يطلب توقيعًا مؤقّتًا عند العرض. والمعلنة تُقرأ برابطها بلا حساب، فما كان
+-- خاصًّا لا يوضع فيها. انظر supabase/lock-media.sql.
+insert into storage.buckets (id, name, public, file_size_limit)
+values ('app-private', 'app-private', false, 26214400)
+on conflict (id) do nothing;
+
+drop policy if exists "app private insert" on storage.objects;
+create policy "app private insert" on storage.objects
+  for insert to authenticated
+  with check (bucket_id = 'app-private' and auth.uid() is not null);
+
+-- مرفقات المراسلات لصاحبها وللإدارة، وما سواها لكل مسجَّل.
+drop policy if exists "app private read" on storage.objects;
+create policy "app private read" on storage.objects
+  for select to authenticated
+  using (
+    bucket_id = 'app-private'
+    and (
+      (storage.foldername(name))[1] <> 'messages'
+      or owner = auth.uid()
+      or public.is_admin()
+    )
+  );
+
+drop policy if exists "app private owner delete" on storage.objects;
+create policy "app private owner delete" on storage.objects
+  for delete to authenticated
+  using (bucket_id = 'app-private' and (owner = auth.uid() or public.is_admin()));
 
 drop policy if exists "app media user insert" on storage.objects;
 create policy "app media user insert" on storage.objects

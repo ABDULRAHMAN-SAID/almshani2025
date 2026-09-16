@@ -1,8 +1,14 @@
+import { useEffect, useState } from "react";
 import { Image, Linking, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { ResizeMode, Video } from "expo-av";
 import { colors, radius, spacing, typography, themed } from "@/constants";
-import { type MediaAttachment, formatBytes, formatDuration } from "@/services/uploadService";
+import {
+  type MediaAttachment,
+  formatBytes,
+  formatDuration,
+  resolveMediaUrl,
+} from "@/services/uploadService";
 import { showToast } from "@/store/toastStore";
 import { AudioPlayer } from "./AudioPlayer";
 
@@ -18,8 +24,38 @@ const FILE_ICON: Record<string, keyof typeof Ionicons.glyphMap> = {
   "text/plain": "document-outline",
 };
 
+/**
+ * روابط المرفقات بعد التوقيع.
+ *
+ * ومرفقاتُ المراسلات والمشاركات في حاويةٍ مغلقة لا رابط دائم لها، فيُطلب
+ * لكلٍّ توقيعٌ مؤقّت عند العرض. وما كان في الحاوية المعلنة يعود كما هو بلا
+ * طلبٍ أصلًا — انظر resolveMediaUrl.
+ */
+function useSignedUrls(attachments: MediaAttachment[]): Record<string, string> {
+  const [urls, setUrls] = useState<Record<string, string>>({});
+  // مفتاحٌ نصّي لا المصفوفة نفسها: المصفوفة تُبنى جديدةً في كل رسمة فتدور
+  // الحلقة بلا نهاية.
+  const key = attachments.map((attachment) => attachment.url).join("|");
+
+  useEffect(() => {
+    let cancelled = false;
+    void Promise.all(
+      attachments.map(async (attachment) => [attachment.url, await resolveMediaUrl(attachment.url)])
+    ).then((pairs) => {
+      if (!cancelled) setUrls(Object.fromEntries(pairs));
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+
+  return urls;
+}
+
 /** يعرض مرفقات المشاركة أو الرسالة: صور، فيديو، صوت، وملفات. */
 export function AttachmentList({ attachments, onRemove, onDark }: AttachmentListProps) {
+  const signed = useSignedUrls(attachments);
   if (attachments.length === 0) return null;
 
   return (
@@ -28,7 +64,7 @@ export function AttachmentList({ attachments, onRemove, onDark }: AttachmentList
         <View key={attachment.id} style={styles.item}>
           {attachment.kind === "image" ? (
             <Image
-              source={{ uri: attachment.url }}
+              source={{ uri: signed[attachment.url] ?? attachment.url }}
               style={styles.image}
               resizeMode="cover"
               accessibilityIgnoresInvertColors
@@ -38,7 +74,7 @@ export function AttachmentList({ attachments, onRemove, onDark }: AttachmentList
           {attachment.kind === "video" ? (
             <View style={styles.video}>
               <Video
-                source={{ uri: attachment.url }}
+                source={{ uri: signed[attachment.url] ?? attachment.url }}
                 style={StyleSheet.absoluteFill}
                 resizeMode={ResizeMode.CONTAIN}
                 useNativeControls
@@ -54,7 +90,7 @@ export function AttachmentList({ attachments, onRemove, onDark }: AttachmentList
 
           {attachment.kind === "audio" ? (
             <AudioPlayer
-              url={attachment.url}
+              url={signed[attachment.url] ?? attachment.url}
               durationMs={attachment.durationMs}
               label={attachment.name}
               onDark={onDark}
@@ -65,7 +101,7 @@ export function AttachmentList({ attachments, onRemove, onDark }: AttachmentList
             <Pressable
               accessibilityRole="button"
               onPress={() => {
-                Linking.openURL(attachment.url).catch(() =>
+                Linking.openURL(signed[attachment.url] ?? attachment.url).catch(() =>
                   showToast("تعذّر فتح الملف على هذا الجهاز", "error")
                 );
               }}

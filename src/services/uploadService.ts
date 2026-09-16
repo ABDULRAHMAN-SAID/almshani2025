@@ -21,8 +21,29 @@ import {
 /** حاوية أغلفة الأنشطة والإعلانات — القراءة للجميع والكتابة للإدارة فقط. */
 export const IMAGE_BUCKET = "activity-images";
 
-/** حاوية المرفقات (صور، فيديو، صوت، ملفات) — يكتب فيها المستخدم المسجَّل. */
+/** حاوية المرفقات المعلنة (أغلفة، أخبار، قوائم النادي) — يكتب فيها المسجَّل. */
 export const MEDIA_BUCKET = "app-media";
+
+/**
+ * حاوية المرفقات الخاصّة — مغلقة، لا تُقرأ إلا بتوقيعٍ مؤقّت.
+ *
+ * ولماذا حاويتان؟ لأن حاوية Supabase إمّا معلنة أو مغلقة، ولا تفرّق بين
+ * مجلّدٍ ومجلّد. وكانت المرفقات كلّها في المعلنة — بما فيها مرفقات مراسلة
+ * الإدارة ومشاركات المجموعات. والمعلنة تُقرأ برابطها بلا حساب: تجاوزُ
+ * الصلاحيات ليس خرقًا هنا بل تصميمُ الحاوية.
+ *
+ * فما كان خاصًّا انتقل إلى هذه: لا رابط دائم لها، وإنما توقيعٌ يُطلب عند
+ * العرض وينتهي بعد ساعة، ولا يُعطاه إلا من تسمح له الصلاحيات.
+ */
+export const PRIVATE_BUCKET = "app-private";
+
+/** المجلّدات التي لا يراها إلا صاحبها ومن أُذن له. */
+const PRIVATE_FOLDERS = new Set(["messages", "posts"]);
+
+/** الحاوية التي يذهب إليها مجلّدٌ ما. */
+export function bucketForFolder(folder: string): string {
+  return PRIVATE_FOLDERS.has(folder) ? PRIVATE_BUCKET : MEDIA_BUCKET;
+}
 
 export type { MediaAttachment, MediaKind };
 
@@ -297,11 +318,14 @@ export async function uploadMedia(media: PickedMedia, folder: string): Promise<M
     return attachment;
   }
 
+  const bucket = bucketForFolder(folder);
   const path = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${extensionOf(media)}`;
-  await putObject(MEDIA_BUCKET, path, media);
+  await putObject(bucket, path, media);
   await discardTemporary(media.uri);
 
-  const { data } = supabase.storage.from(MEDIA_BUCKET).getPublicUrl(path);
+  // الحاوية المغلقة لا رابط دائم لها، فيُحفظ مسارها على صورة رابطٍ عامّ —
+  // شكلٌ واحد يُخزَّن في قاعدة البيانات، ويُترجم عند العرض.
+  const { data } = supabase.storage.from(bucket).getPublicUrl(path);
   return { ...attachment, url: data.publicUrl };
 }
 
@@ -399,10 +423,49 @@ export async function deleteImage(url: string): Promise<void> {
   await supabase.storage.from(IMAGE_BUCKET).remove([path]);
 }
 
-/** يحذف مرفقًا مرفوعًا. */
+/** يحذف مرفقًا مرفوعًا — من حاويته هو، معلنةً كانت أو مغلقة. */
 export async function deleteMedia(attachment: MediaAttachment): Promise<void> {
-  if (USE_MOCK_DATA || !attachment.url.includes(`/${MEDIA_BUCKET}/`)) return;
-  const path = attachment.url.split(`/${MEDIA_BUCKET}/`)[1];
+  if (USE_MOCK_DATA) return;
+  const bucket = attachment.url.includes(`/${PRIVATE_BUCKET}/`) ? PRIVATE_BUCKET : MEDIA_BUCKET;
+  if (!attachment.url.includes(`/${bucket}/`)) return;
+  const path = attachment.url.split(`/${bucket}/`)[1];
   if (!path) return;
-  await supabase.storage.from(MEDIA_BUCKET).remove([path]);
+  await supabase.storage.from(bucket).remove([path]);
+}
+
+
+/* --------------------------- روابط موقَّعة مؤقّتة --------------------------- */
+
+/**
+ * يترجم رابط مرفقٍ خاصّ إلى رابطٍ موقَّع ينتهي بعد ساعة.
+ *
+ * وما ليس في الحاوية المغلقة يعود كما هو: أغلفة الأنشطة وصور الأخبار معلنةٌ
+ * قصدًا، وتوقيعُها يضيف طلبًا لكل صورة بلا فائدة.
+ *
+ * والفشل لا يُسقط الشاشة: إن تعذّر التوقيع — شبكةٌ مقطوعة أو صلاحية — يعود
+ * الرابط كما هو. وأسوأ ما يقع حينها أن الصورة لا تظهر، لا أن تنكسر الصفحة.
+ */
+const SIGNED_TTL_SECONDS = 3600;
+const signedCache = new Map<string, { url: string; until: number }>();
+
+export async function resolveMediaUrl(url: string): Promise<string> {
+  if (USE_MOCK_DATA || !url.includes(`/${PRIVATE_BUCKET}/`)) return url;
+
+  const cached = signedCache.get(url);
+  // يُجدَّد قبل انتهائه بدقيقة: رابطٌ ينتهي بين طلبه وعرضه يُري صورةً مكسورة.
+  if (cached && cached.until > Date.now() + 60_000) return cached.url;
+
+  const path = url.split(`/${PRIVATE_BUCKET}/`)[1];
+  if (!path) return url;
+
+  try {
+    const { data, error } = await supabase.storage
+      .from(PRIVATE_BUCKET)
+      .createSignedUrl(decodeURI(path), SIGNED_TTL_SECONDS);
+    if (error || !data?.signedUrl) return url;
+    signedCache.set(url, { url: data.signedUrl, until: Date.now() + SIGNED_TTL_SECONDS * 1000 });
+    return data.signedUrl;
+  } catch {
+    return url;
+  }
 }
