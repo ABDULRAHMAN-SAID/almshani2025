@@ -70,6 +70,41 @@ create index if not exists club_menus_club_week_idx
 -- تُقرأ صورته منه على أنّها الغداء، فلا تضيع.
 alter table public.club_menus add column if not exists images jsonb not null default '[]'::jsonb;
 
+-- ترميم جدولٍ أُنشئ على شكلٍ أقدم.
+-- ‏create table if not exists لا يُصلح جدولًا موجودًا: إن كان أُنشئ مرّة بلا
+-- المفتاح الفريد أو بلا عمود، تخطّته الجملة وبقي النقص. ونشرُ القائمة يقع
+-- على المفتاح (النادي، بداية الأسبوع): بلا مفتاحٍ فريد عليهما يردّ الخادم
+-- «لا مفتاح فريد يطابق ON CONFLICT» ولا تُنشر قائمة أبدًا.
+alter table public.club_menus add column if not exists image text;
+alter table public.club_menus add column if not exists days jsonb not null default '[]'::jsonb;
+alter table public.club_menus add column if not exists note text not null default '';
+
+do $$
+declare v_club smallint; v_week smallint;
+begin
+  select attnum into v_club from pg_attribute
+    where attrelid = 'public.club_menus'::regclass and attname = 'club';
+  select attnum into v_week from pg_attribute
+    where attrelid = 'public.club_menus'::regclass and attname = 'week_start';
+  if not exists (
+    select 1 from pg_constraint
+    where conrelid = 'public.club_menus'::regclass
+      and contype = 'u'
+      and conkey @> array[v_club, v_week]
+      and array_length(conkey, 1) = 2
+  ) then
+    -- وصفوفٌ مكرّرة من قبل تمنع إنشاءه، فيبقى الأحدث لكل أسبوع وتُحذف سواه.
+    -- والمعرّف يفصل عند تساوي وقت النشر: صفّان أُدرجا في اللحظة نفسها
+    -- تاريخهما واحد، فالمقارنة به وحده لا تحذف أيًّا منهما ويبقى التكرار.
+    delete from public.club_menus a using public.club_menus b
+      where a.club = b.club and a.week_start = b.week_start
+        and (a.published_at, a.id) < (b.published_at, b.id);
+    alter table public.club_menus
+      add constraint club_menus_club_week_key unique (club, week_start);
+  end if;
+end $$;
+
+
 alter table public.club_menus enable row level security;
 
 drop policy if exists "club_menus read" on public.club_menus;

@@ -245,6 +245,19 @@ function runAll(tz) {
     check("الأخطاء", name + " ← تحديث قاعدة البيانات", true,
       errors.toArabicMessage(err, "تعذّر نشر القائمة").includes("update-now.sql"));
   }
+  // ونقصُ الخادم يحمل كلامه: «لا يعرف هذه الميزة» تُصنِّف ولا تُحدِّد، وقد
+  // ظهرت لمن نفّذ التحديث فعلًا — فلم يُعرف أيّ جدولٍ أو مفتاحٍ هو المقصود.
+  check("الأخطاء", "نقص الخادم يحمل كلام الخادم", true,
+    errors.toArabicMessage(
+      { code: "42P10", message: "there is no unique or exclusion constraint matching the ON CONFLICT specification" },
+      "تعذّر نشر القائمة"
+    ).includes("ON CONFLICT"));
+  check("الأخطاء", "ويُسمّي العمود الناقص", true,
+    errors.toArabicMessage(
+      { code: "PGRST204", message: "Could not find the 'images' column of 'club_menus' in the schema cache" },
+      "تعذّر نشر القائمة"
+    ).includes("images"));
+
   // ولا يبتلع هذا ما ليس منه: صلاحيةٌ مرفوضة تبقى صلاحية.
   check("الأخطاء", "منع RLS يبقى منعًا", "ليست لديك صلاحية لهذه العملية.",
     errors.toArabicMessage({ code: "42501", message: "new row violates row-level security policy" }));

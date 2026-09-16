@@ -63,6 +63,12 @@ export function isNetworkError(error: unknown): boolean {
   return NETWORK_HINTS.some((hint) => text.includes(hint));
 }
 
+/** سطرٌ ثانٍ بكلام الخادم كما قاله — يُصوَّر ويُرسل، فيُعرف العطل بعينه. */
+function withDetail(message: string, error: unknown): string {
+  const detail = readText(error).trim().replace(/\s+/g, " ").slice(0, 140);
+  return detail ? `${message}\n(${detail})` : message;
+}
+
 /**
  * الرسالة التي تُعرض للمستخدم. `fallback` هو ما يُقال حين لا نعرف السبب،
  * ويجب أن يصف العملية التي فشلت لا الخطأ نفسه.
@@ -76,8 +82,14 @@ export function toArabicMessage(error: unknown, fallback = "تعذّر إتما�
   const code = candidate && typeof candidate.code === "string" ? candidate.code : "";
   // قيمةٌ لا يعرفها الخادم في نوعٍ مُعدَّد — كقسمٍ جديد أُضيف في التطبيق ولم
   // يُضف على الخادم. رمزها 22P02 نفسه الذي لسوء الصياغة، فيُفصل عنه بنصّه.
-  if (/invalid input value for enum/i.test(readText(error))) return SCHEMA_BEHIND;
-  if (code && CODE_MESSAGES[code]) return CODE_MESSAGES[code];
+  if (/invalid input value for enum/i.test(readText(error))) return withDetail(SCHEMA_BEHIND, error);
+  if (code && CODE_MESSAGES[code]) {
+    const message = CODE_MESSAGES[code];
+    // نقصُ الخادم وحده يُذكر معه كلام الخادم: «لا يعرف هذه الميزة» تُصنِّف ولا
+    // تُحدِّد، وقد وقع هذا بعينه — نُفِّذ التحديث، وبقيت الرسالة تظهر، ولا
+    // سبيل إلى معرفة أيّ جدولٍ أو عمودٍ أو مفتاحٍ هو المقصود.
+    return message === SCHEMA_BEHIND ? withDetail(message, error) : message;
+  }
 
   const status = candidate && typeof candidate.status === "number" ? candidate.status : 0;
   // حدّان يخصّان الرفع: ملفّ أكبر من المسموح، ومساحة الخادم ممتلئة. وبلا
@@ -105,7 +117,7 @@ export function toArabicMessage(error: unknown, fallback = "تعذّر إتما�
       lower
     )
   ) {
-    return SCHEMA_BEHIND;
+    return withDetail(SCHEMA_BEHIND, error);
   }
   if (lower.includes("forbidden")) return "ليست لديك صلاحية لهذه العملية.";
   if (lower.includes("jwt")) return "انتهت صلاحية جلستك، سجّل الدخول من جديد.";
