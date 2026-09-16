@@ -1,0 +1,78 @@
+# انشر رابط التحميل — يأخذ آخر بناء جاهز ويضعه في إصدار له رابط ثابت.
+#
+# الرابط الناتج لا يتغيّر أبدًا مهما تكرّر البناء:
+#   https://github.com/ABDULRAHMAN-SAID/almshani2025/releases/latest/download/anshatati.apk
+#
+# ولهذا يُنشر هكذا لا برابط Expo: رابط Expo يتغيّر مع كل بناء، فمن نشر الرابط
+# القديم في مجموعة أو على لوحة بقي الناس يحمّلون نسخة قديمة — أو لا شيء.
+name: انشر رابط التحميل
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    name: رفع الملفّ إلى الإصدار
+    runs-on: ubuntu-latest
+    steps:
+      - name: أنزل المشروع
+        uses: actions/checkout@v4
+
+      - name: هيّئ Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: ثبّت المكتبات
+        run: npm ci
+
+      - name: اسأل Expo عن آخر بناء
+        id: build
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          set -o pipefail
+          npx --yes eas-cli@latest build:list \
+            --platform android --status finished --limit 1 --json --non-interactive \
+            > builds.json
+          url=$(node -e "
+            const list = JSON.parse(require('fs').readFileSync('builds.json','utf8'));
+            const build = Array.isArray(list) ? list[0] : null;
+            process.stdout.write(build?.artifacts?.applicationArchiveUrl ?? '');
+          ")
+          if [ -z "$url" ]; then
+            echo "::error::لا يوجد بناء جاهز على Expo. شغّل «بناء التطبيق» أولًا."
+            exit 1
+          fi
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "رابط البناء: $url"
+
+      - name: نزّل الملفّ
+        run: |
+          curl -fL "${{ steps.build.outputs.url }}" -o anshatati.apk
+          ls -lh anshatati.apk
+
+      - name: انشره في إصدار برابط ثابت
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # الإصدار يُحذف ويُعاد إنشاؤه: ‏releases/latest/download لا يشير إلا
+          # إلى الأحدث، فبقاء القديم يجعل الرابط يسلّم نسخة سابقة.
+          gh release delete apk --yes --cleanup-tag 2>/dev/null || true
+          gh release create apk anshatati.apk \
+            --title "أنشطتي — قاعدة صلالة الجوية" \
+            --notes "حمّل الملفّ أدناه، أو من صفحة التحميل: https://abdulrahman-said.github.io/almshani2025/"
+
+      - name: الرابط
+        run: |
+          {
+            echo "### رابط التحميل جاهز"
+            echo ""
+            echo "صفحة للنشر: https://abdulrahman-said.github.io/almshani2025/"
+            echo ""
+            echo "الملفّ مباشرة: https://github.com/ABDULRAHMAN-SAID/almshani2025/releases/latest/download/anshatati.apk"
+          } >> $GITHUB_STEP_SUMMARY

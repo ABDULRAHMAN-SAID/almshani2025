@@ -13,6 +13,9 @@
 #
 name: بناء التطبيق
 
+permissions:
+  contents: write
+
 on:
   workflow_dispatch:
     inputs:
@@ -115,11 +118,39 @@ jobs:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: npx --yes eas-cli@latest build --platform android --profile production-apk --non-interactive
 
+      # ورابط التحميل يُحدَّث هنا لا بخطوة يدوية تُنسى: من نشر الرابط على
+      # لوحة أو في مجموعة لا يعود إليه، فيجب أن يُسلّم الرابطُ نفسه أحدثَ ملفّ.
+      - name: حدّث رابط التحميل الثابت
+        if: success()
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -o pipefail
+          npx --yes eas-cli@latest build:list \
+            --platform android --status finished --limit 1 --json --non-interactive > builds.json
+          url=$(node -e "
+            const list = JSON.parse(require('fs').readFileSync('builds.json','utf8'));
+            const build = Array.isArray(list) ? list[0] : null;
+            process.stdout.write(build?.artifacts?.applicationArchiveUrl ?? '');
+          ")
+          if [ -z "$url" ]; then
+            echo "::warning::تعذّر تحديث رابط التحميل — شغّل «انشر رابط التحميل» يدويًا."
+            exit 0
+          fi
+          curl -fL "$url" -o anshatati.apk
+          gh release delete apk --yes --cleanup-tag 2>/dev/null || true
+          gh release create apk anshatati.apk \
+            --title "أنشطتي — قاعدة صلالة الجوية" \
+            --notes "بناء $(TZ=Asia/Muscat date +'%Y-%m-%d %H:%M') — صفحة التحميل: https://abdulrahman-said.github.io/almshani2025/"
+
       - name: أين الملفّ
         if: success()
         run: |
-          echo "### التطبيق جاهز" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "افتح **expo.dev** ← مشروعك ← **Builds**، وحمّل آخر بناء." >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "أو انسخ رابط \`.apk\` من سجلّ الخطوة السابقة." >> $GITHUB_STEP_SUMMARY
+          {
+            echo "### التطبيق جاهز"
+            echo ""
+            echo "صفحة التحميل للنشر: https://abdulrahman-said.github.io/almshani2025/"
+            echo ""
+            echo "الملفّ مباشرة: https://github.com/ABDULRAHMAN-SAID/almshani2025/releases/latest/download/anshatati.apk"
+          } >> $GITHUB_STEP_SUMMARY
