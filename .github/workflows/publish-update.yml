@@ -31,6 +31,8 @@ jobs:
     steps:
       - name: أنزل المشروع
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: هيّئ Node
         uses: actions/setup-node@v4
@@ -55,6 +57,31 @@ jobs:
 
       - name: ثبّت المكتبات
         run: npm ci
+
+      # الحارس الذي لم يكن موجودًا يوم ١٦ سبتمبر.
+      #
+      # التحديث الهوائي يستبدل الشفرة لا الملفّ المثبّت. فإن حملت الشفرة
+      # الجديدة مكتبةً لها جزء أصلي — أو غيّرت app.json — نادت شيئًا ليس في
+      # الملفّ، فسقط التطبيق عند كل من لم يُثبّت بناءً جديدًا. ووقع ذلك
+      # فعلًا: تحديثٌ فيه تحديد الموقع منع التطبيق من الفتح.
+      #
+      # والمقارنة مع العلامة التي يتركها البناء: إن تغيّر app.json أو
+      # ‏package.json بعده، فالمطلوب بناءٌ لا تحديث. والوقوف هنا أرخص من
+      # تراجعٍ بعد أن يقف التطبيق عند الجميع.
+      - name: تأكّد أن هذا تحديثٌ لا بناء
+        run: |
+          git fetch --tags --quiet origin || true
+          if ! git rev-parse --verify --quiet built-apk >/dev/null; then
+            echo "::warning::لا توجد علامة built-apk بعد — يُوضَع عند أول بناء قادم. لا فحص هذه المرّة."
+            exit 0
+          fi
+          changed=$(git diff --name-only built-apk..HEAD -- app.json package.json)
+          if [ -n "$changed" ]; then
+            echo "::error::هذا التغيير يحتاج بناءً جديدًا لا تحديثًا هوائيًّا — تغيّر: $changed. شغّل «بناء التطبيق»."
+            exit 1
+          fi
+          echo "لا شيء يمسّ الطبقة الأصلية — التحديث آمن."
+
 
       - name: افحص الأنواع
         run: npm run typecheck
