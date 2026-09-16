@@ -1,0 +1,92 @@
+# تراجُع عن آخر تحديث هوائي — زرّ الطوارئ.
+#
+# متى؟ حين يخرج تحديث يُعطب التطبيق على الهواتف. والتحديث الهوائي يصل إلى
+# كل جهاز، فعطبٌ فيه عطبٌ عند الجميع دفعةً واحدة — ولا سبيل إلى انتظار بناء
+# جديد يستغرق نصف ساعة أو تمنعه حصّة.
+#
+# ما يفعله: يأمر الهواتف بالعودة إلى الشفرة المدمجة في الملفّ المثبّت — أي
+# آخر حالٍ عُرف أنه يعمل. وإن تعذّر ذلك، يُعيد نشر التحديث الذي قبل الأخير.
+#
+# وبعد تشغيله: يُغلق التطبيق ويُفتح مرّتين. الأولى يأخذ فيها الأمر، والثانية
+# يعمل.
+name: تراجَع عن التحديث
+
+on:
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: "لماذا؟ (يُسجَّل في Expo)"
+        type: string
+        required: false
+        default: "تحديث يُعطب التطبيق"
+
+jobs:
+  rollback:
+    name: أعد الهواتف إلى النسخة العاملة
+    runs-on: ubuntu-latest
+    steps:
+      - name: أنزل المشروع
+        uses: actions/checkout@v4
+
+      - name: هيّئ Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: تحقّق من الرمز
+        run: |
+          if [ -z "${{ secrets.EXPO_TOKEN }}" ]; then
+            echo "::error::ينقص EXPO_TOKEN"
+            exit 1
+          fi
+
+      # القناة أوّلًا: هي ما يسأله الهاتف. والعودة إلى المدمج أضمن من إعادة
+      # نشر تحديثٍ قديم، لأن المدمج هو ما بُني مع الملفّ وجُرّب عند التثبيت.
+      - name: أعد إلى الشفرة المدمجة
+        id: rollback
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          set +e
+          npx --yes eas-cli@latest update:rollback \
+            --channel production --platform all --non-interactive
+          echo "code=$?" >> $GITHUB_OUTPUT
+          exit 0
+
+      # خطّة ثانية: إن رفض الأمر الأوّل، نُعيد نشر التحديث الذي قبل الأخير.
+      - name: أو أعد نشر ما قبل الأخير
+        if: steps.rollback.outputs.code != '0'
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          set -e
+          npx --yes eas-cli@latest update:list \
+            --branch production --json --non-interactive > updates.json
+          group=$(node -e "
+            const raw = JSON.parse(require('fs').readFileSync('updates.json','utf8'));
+            const rows = raw.currentPage ?? raw.updates ?? raw ?? [];
+            const groups = [];
+            for (const row of rows) {
+              const g = row.group ?? row.updateGroup;
+              if (g && !groups.includes(g)) groups.push(g);
+            }
+            // الأحدث أوّلًا: نريد الذي قبله.
+            process.stdout.write(groups[1] ?? '');
+          ")
+          if [ -z "$group" ]; then
+            echo '::error::لم أجد تحديثًا سابقًا لإعادة نشره. ثبّت الملفّ من صفحة التحميل يدويًا.'
+            exit 1
+          fi
+          echo "إعادة نشر المجموعة: $group"
+          npx --yes eas-cli@latest update:republish --group "$group" --non-interactive
+
+      - name: ماذا بعد
+        if: always()
+        run: |
+          {
+            echo "### تراجُع"
+            echo ""
+            echo "أغلق التطبيق تمامًا وافتحه **مرّتين**: الأولى يأخذ الأمر، والثانية يعمل."
+            echo ""
+            echo "وإن بقي لا يفتح: احذفه وثبّته من https://abdulrahman-said.github.io/almshani2025/"
+          } >> $GITHUB_STEP_SUMMARY
