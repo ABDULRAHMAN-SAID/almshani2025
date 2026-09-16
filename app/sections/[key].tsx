@@ -94,7 +94,7 @@ export default function SectionScreen() {
           style={StyleSheet.absoluteFill}
         />
         <ScreenHeader title={club.data?.title || section.title} onDark />
-        <Text style={styles.bannerSubtitle}>{club.data?.subtitle || section.subtitle}</Text>
+        <Text style={styles.bannerSubtitle}>{section.subtitle}</Text>
       </View>
 
       {section.filters.length > 1 ? (

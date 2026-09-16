@@ -347,50 +347,13 @@ export const MOCK_ACTIVITIES: Activity[] = [
 
 /** ملفّا النادييْن — نسخة العرض وحدها. */
 export const MOCK_CLUBS: ClubProfile[] = [
-  {
-    key: "OfficersClub",
-    title: "نادي الضباط",
-    subtitle: "مطعم النادي ومرافقه — قائمة طعام الأسبوع وإعلاناته",
-  },
-  {
-    key: "SeniorNcoClub",
-    title: "نادي كبار ضباط الصف",
-    subtitle: "مطعم النادي ومرافقه — قائمة طعام الأسبوع وإعلاناته",
-  },
+  { key: "OfficersClub", title: "نادي الضباط" },
+  { key: "SeniorNcoClub", title: "نادي كبار ضباط الصف" },
 ];
 
-/** قوائم طعام تجريبية — نسخة العرض وحدها. */
 export const MOCK_CLUB_MENUS: ClubMenu[] = [
-  {
-    id: "menu-1",
-    club: "OfficersClub",
-    weekStart: weekStartIso(),
-    images: [],
-    days: [
-      { day: "الأحد", meal: "مندي لحم · سلطة · تمر" },
-      { day: "الاثنين", meal: "دجاج مشوي · أرز بخاري · شوربة" },
-      { day: "الثلاثاء", meal: "سمك مقلي · أرز صيادية · سلطة" },
-      { day: "الأربعاء", meal: "كبسة لحم · لبن · حلوى" },
-      { day: "الخميس", meal: "مشاوي مشكّلة · خبز تنّور" },
-    ],
-    note: "الغداء من ١٢:٣٠ إلى ٢:٣٠",
-    publishedAt: iso(-1),
-  },
-  {
-    id: "menu-2",
-    club: "SeniorNcoClub",
-    weekStart: weekStartIso(),
-    images: [],
-    days: [
-      { day: "الأحد", meal: "برياني دجاج · سلطة" },
-      { day: "الاثنين", meal: "لحم بالصلصة · أرز أبيض · شوربة" },
-      { day: "الثلاثاء", meal: "مقلوبة · لبن" },
-      { day: "الأربعاء", meal: "سمك مشوي · أرز · سلطة" },
-      { day: "الخميس", meal: "مندي دجاج · تمر" },
-    ],
-    note: "",
-    publishedAt: iso(-1),
-  },
+  { id: "menu-1", club: "OfficersClub", weekStart: weekStartIso(), images: [], publishedAt: iso(-1) },
+  { id: "menu-2", club: "SeniorNcoClub", weekStart: weekStartIso(), images: [], publishedAt: iso(-1) },
 ];
 
 export const MOCK_ANNOUNCEMENTS: Announcement[] = [

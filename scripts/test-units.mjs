@@ -296,28 +296,33 @@ function runAll(tz) {
   check("المحوّلات", "عنوان النشاط من العلاقة", "مسابقة", points.activityTitle);
   check("المحوّلات", "النقاط رقم", 10, points.points);
 
-  // قوائم النادي: صورةٌ واحدة كانت، فصارت ثلاثًا بأنواعها. ومن نشر قائمته
-  // قبل التغيير لا ينبغي أن تختفي صورته لأنّ شكل الحقل تبدّل.
+  // قوائم النادي: الصور وحدها. وتُقرأ بأشكالها الثلاثة — المصفوفة الحالية،
+  // والشكل الذي سبقها وكان لكل صورة اسم وجبة، والعمود القديم ذو الصورة
+  // الواحدة — فمن نشر قائمته قبل أيٍّ من التغييرين لا تختفي صوره.
   const legacyMenu = mappers.toClubMenu({
     id: "m1", club: "OfficersClub", week_start: "2026-09-06",
-    image: "https://old/one.jpg", images: [], days: [], note: "", published_at: "2026-09-06T00:00:00Z",
+    image: "https://old/one.jpg", images: [], published_at: "2026-09-06T00:00:00Z",
   });
-  check("المحوّلات", "صورة القائمة القديمة لا تضيع", "https://old/one.jpg", legacyMenu.images[0]?.image);
-  check("المحوّلات", "وتُقرأ على أنّها الغداء", "غداء", legacyMenu.images[0]?.meal);
+  check("المحوّلات", "صورة القائمة القديمة لا تضيع", ["https://old/one.jpg"], legacyMenu.images);
+
+  const mealShaped = mappers.toClubMenu({
+    id: "m2", club: "OfficersClub", week_start: "2026-09-13", image: null,
+    images: [{ meal: "فطور", image: "a.jpg" }, { meal: "عشاء", image: "c.jpg" }],
+    published_at: "2026-09-13T00:00:00Z",
+  });
+  check("المحوّلات", "صور الشكل الأوسط تُقرأ روابط", ["a.jpg", "c.jpg"], mealShaped.images);
 
   const menu = mappers.toClubMenu({
-    id: "m2", club: "OfficersClub", week_start: "2026-09-13", image: "https://old/one.jpg",
-    images: [{ meal: "فطور", image: "a.jpg" }, { meal: "عشاء", image: "c.jpg" }],
-    days: [], note: "", published_at: "2026-09-13T00:00:00Z",
+    id: "m3", club: "OfficersClub", week_start: "2026-09-13", image: "https://old/one.jpg",
+    images: ["a.jpg", "b.jpg", "c.jpg"], published_at: "2026-09-13T00:00:00Z",
   });
-  check("المحوّلات", "الصور الجديدة تسبق القديمة", 2, menu.images.length);
-  check("المحوّلات", "ترتيب الصور محفوظ", "فطور", menu.images[0]?.meal);
+  check("المحوّلات", "الصور الجديدة تسبق القديمة", ["a.jpg", "b.jpg", "c.jpg"], menu.images);
 
   const emptyMenu = mappers.toClubMenu({
-    id: "m3", club: "SeniorNcoClub", week_start: "2026-09-13", image: null,
-    images: [{ meal: "فطور", image: "" }], days: [], note: "", published_at: "2026-09-13T00:00:00Z",
+    id: "m4", club: "SeniorNcoClub", week_start: "2026-09-13", image: null,
+    images: ["", null], published_at: "2026-09-13T00:00:00Z",
   });
-  check("المحوّلات", "صورة فارغة لا تُعدّ صورة", 0, emptyMenu.images.length);
+  check("المحوّلات", "الفارغ لا يُعدّ صورة", [], emptyMenu.images);
 }
 
 /* -------------------------------- التشغيل -------------------------------- */

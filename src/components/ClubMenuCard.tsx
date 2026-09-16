@@ -20,12 +20,10 @@ function weekLabel(weekStart: string): string {
 }
 
 /**
- * قائمة طعام النادي لأسبوع.
+ * قائمة طعام النادي لأسبوع: صورها كما رُفعت.
  *
- * الصور أوّلًا حين تُرفع: الغالب أن تُصوَّر الورقة المعلّقة على الباب، وقراءة
- * الصورة أسرع من قراءة جدول أُعيد كتابته. وهي ثلاث — فطورٌ وغداءٌ وعشاء —
- * كلٌّ باسم وجبتها فوقها، إذ لا يُعرف من الصورة وحدها أيّ وجبة هي. والأيام
- * تحتها لمن كتبها، ولمن يقرأ بخط كبير أو يبحث بالكلمة.
+ * والصورة هي القائمة نفسها — الورقة المعلّقة على الباب — لا شرحٌ لها. فلا
+ * عنوان فوق كل صورة ولا جدولٌ تحتها: ما يُقرأ في الورقة يُقرأ في صورتها.
  */
 export function ClubMenuCard({ menu }: ClubMenuCardProps) {
   return (
@@ -34,32 +32,15 @@ export function ClubMenuCard({ menu }: ClubMenuCardProps) {
         <View style={styles.icon}>
           <Ionicons name="restaurant-outline" size={18} color={colors.accent} />
         </View>
-        <View style={styles.headText}>
-          <Text style={styles.title}>{weekLabel(menu.weekStart)}</Text>
-          {menu.note ? <Text style={styles.note}>{menu.note}</Text> : null}
-        </View>
+        <Text style={styles.title}>{weekLabel(menu.weekStart)}</Text>
       </View>
 
-      {menu.images.map((photo) => (
-        <View key={photo.meal} style={styles.photo}>
-          <Text style={styles.mealName}>{photo.meal}</Text>
-          <Image source={{ uri: photo.image }} style={styles.image} resizeMode="cover" />
-        </View>
+      {menu.images.map((image) => (
+        <Image key={image} source={{ uri: image }} style={styles.image} resizeMode="contain" />
       ))}
 
-      {menu.days.length > 0 ? (
-        <View style={styles.days}>
-          {menu.days.map((entry) => (
-            <View key={entry.day} style={styles.dayRow}>
-              <Text style={styles.dayName}>{entry.day}</Text>
-              <Text style={styles.dayMeal}>{entry.meal}</Text>
-            </View>
-          ))}
-        </View>
-      ) : null}
-
-      {menu.images.length === 0 && menu.days.length === 0 ? (
-        <Text style={styles.empty}>لم تُضف تفاصيل هذه القائمة بعد.</Text>
+      {menu.images.length === 0 ? (
+        <Text style={styles.empty}>لم تُرفع صور هذه القائمة بعد.</Text>
       ) : null}
     </View>
   );
@@ -83,15 +64,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  headText: { flex: 1, gap: 2 },
-  title: { ...typography.body, fontFamily: "Tajawal_700Bold" },
-  note: { ...typography.caption, fontSize: 11 },
-  photo: { gap: spacing.xs },
-  mealName: { ...typography.caption, color: colors.textPrimary },
-  image: { width: "100%", height: 200, borderRadius: radius.md, backgroundColor: colors.background },
-  days: { gap: spacing.xs },
-  dayRow: { flexDirection: "row", alignItems: "flex-start", gap: spacing.md },
-  dayName: { ...typography.caption, width: 62, color: colors.textPrimary },
-  dayMeal: { ...typography.body, flex: 1, fontSize: 14, lineHeight: 24 },
+  title: { ...typography.body, flex: 1, fontFamily: "Tajawal_700Bold" },
+  // الورقة المصوّرة طويلة: contain لا cover، فقصُّ أعلاها وأسفلها يُخفي أيامًا.
+  image: { width: "100%", height: 420, borderRadius: radius.md, backgroundColor: colors.background },
   empty: { ...typography.caption },
 });

@@ -1,6 +1,5 @@
 import type {
   ClubMenu,
-  ClubMenuPhoto,
   ClubProfile,
   Activity,
   ActivityResult,
@@ -75,31 +74,34 @@ export const toActivity = (row: Row): Activity => ({
 export const toClubProfile = (row: Row): ClubProfile => ({
   key: row.key as ClubProfile["key"],
   title: text(row.title),
-  subtitle: text(row.subtitle),
 });
 
 /**
  * صور القائمة.
  *
- * وقُرئ العمود القديم أيضًا: كانت الصورة واحدة بلا نوع، ومن نشر قائمته قبل
- * هذا التغيير لا ينبغي أن تختفي صورته لأنّ شكل الحقل تبدّل — فتُقرأ على أنّها
- * صورة الغداء، وهي الوجبة التي تُعلَّق قائمتها في الغالب.
+ * وتُقرأ بثلاثة أشكال: المصفوفة الحالية من الروابط، والشكل الذي سبقها وكان
+ * لكل صورة فيه اسم وجبة، والعمود القديم ذو الصورة الواحدة. ومن نشر قائمته
+ * قبل أيّ من هذه التغييرات لا ينبغي أن تختفي صوره لأنّ شكل الحقل تبدّل.
  */
-function toMenuPhotos(row: Row): ClubMenuPhoto[] {
-  const list = Array.isArray(row.images) ? (row.images as ClubMenuPhoto[]) : [];
-  const clean = list.filter((entry) => entry && typeof entry.image === "string" && entry.image.length > 0);
-  if (clean.length > 0) return clean;
+function toMenuImages(row: Row): string[] {
+  const raw = Array.isArray(row.images) ? row.images : [];
+  const urls = raw
+    .map((entry) => {
+      if (typeof entry === "string") return entry;
+      const withMeal = entry as { image?: unknown };
+      return typeof withMeal?.image === "string" ? withMeal.image : "";
+    })
+    .filter((url) => url.length > 0);
+  if (urls.length > 0) return urls;
   const legacy = optional(row.image);
-  return legacy ? [{ meal: "غداء", image: legacy }] : [];
+  return legacy ? [legacy] : [];
 }
 
 export const toClubMenu = (row: Row): ClubMenu => ({
   id: text(row.id),
   club: row.club as ClubMenu["club"],
   weekStart: day(row.week_start),
-  images: toMenuPhotos(row),
-  days: (row.days as ClubMenu["days"]) ?? [],
-  note: text(row.note),
+  images: toMenuImages(row),
   publishedAt: day(row.published_at),
 });
 

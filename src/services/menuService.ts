@@ -1,4 +1,4 @@
-import type { ClubKey, ClubMenu, ClubMenuPhoto, ClubProfile } from "@/types/models";
+import type { ClubKey, ClubMenu, ClubProfile } from "@/types/models";
 import { USE_MOCK_DATA } from "./config";
 import { MOCK_CLUBS, MOCK_CLUB_MENUS } from "./mockData";
 import { toClubMenu, toClubProfile } from "./rowMappers";
@@ -43,9 +43,7 @@ export async function fetchClubMenu(club: ClubKey): Promise<ClubMenu | null> {
 export interface ClubMenuDraft {
   club: ClubKey;
   weekStart: string;
-  images: ClubMenuPhoto[];
-  note?: string;
-  days: { day: string; meal: string }[];
+  images: string[];
 }
 
 /**
@@ -60,12 +58,8 @@ export async function publishClubMenu(draft: ClubMenuDraft): Promise<void> {
     {
       club: draft.club,
       week_start: draft.weekStart,
-      // الصور الفارغة لا تُحفظ: من رفع صورة الغداء وحدها لا يُعرض عليه إطاران
-      // فارغان باسمَي الفطور والعشاء.
-      images: draft.images.filter((photo) => photo.image.trim().length > 0),
-      note: draft.note?.trim() ?? "",
-      // الأيام الفارغة لا تُحفظ: قائمةٌ نصفها فراغ تُقرأ على أن المطعم مغلق.
-      days: draft.days.filter((entry) => entry.meal.trim().length > 0),
+      // الفارغ لا يُحفظ: من رفع صورة واحدة لا يُعرض على الناس إطاران فارغان.
+      images: draft.images.map((url) => url.trim()).filter((url) => url.length > 0),
     },
     { onConflict: "club,week_start" }
   );
@@ -75,10 +69,9 @@ export async function publishClubMenu(draft: ClubMenuDraft): Promise<void> {
 /* ------------------------------ النادي نفسه ------------------------------ */
 
 /**
- * ملفّ النادي: اسمه ووصفه.
+ * ملفّ النادي: اسمه.
  *
- * وكانا مكتوبين في الشفرة، فلم يكن لمن يعرف النادي سبيلٌ إلى تصحيح وصفٍ
- * كتبتُه أنا وأخطأتُ فيه، إذ حسبتُ النادي قاعة فعاليات وهو مطعم.
+ * وكان مكتوبًا في الشفرة، فلم يكن لمن يعرف النادي سبيلٌ إلى تصحيحه.
  */
 export async function fetchClub(key: ClubKey): Promise<ClubProfile | null> {
   if (USE_MOCK_DATA) return MOCK_CLUBS.find((club) => club.key === key) ?? null;
@@ -97,7 +90,6 @@ export async function updateClub(key: ClubKey, patch: Partial<ClubProfile>): Pro
     {
       key,
       title: patch.title?.trim() ?? "",
-      subtitle: patch.subtitle?.trim() ?? "",
       updated_at: new Date().toISOString(),
     },
     { onConflict: "key" }
