@@ -33,6 +33,12 @@ KUMMA_LIGHT = (46, 96, 142)
 GOLD = (199, 162, 82)
 SANDAL = (108, 74, 48)
 SHADOW = (12, 30, 52)
+MASAR = (238, 235, 226)      # المصر: قماشٌ فاتح بنقشٍ كشميري
+MASAR_SHADE = (214, 208, 194)
+MASAR_PATTERN = (150, 44, 44)
+BELT = (176, 138, 74)        # الحزام المنسوج
+SILVER = (214, 218, 224)     # فضّة الخنجر
+SILVER_DARK = (156, 164, 176)
 
 
 class Canvas:
@@ -242,17 +248,76 @@ def draw():
                     (cx - 5 * s, 142 * s), (cx - 13 * s, 132 * s))
     c.fill_polygon(smile, (120, 70, 58), alpha=0.75)
 
-    # ——— الكمّة: قبّة بحافّة مطرّزة ———
-    cap = []
-    cap += bezier((cx - 50 * s, 74 * s), (cx - 50 * s, 26 * s),
-                  (cx + 50 * s, 26 * s), (cx + 50 * s, 74 * s))
-    cap += [(cx + 50 * s, 74 * s), (cx - 50 * s, 74 * s)]
-    c.fill_polygon(cap, KUMMA, shade=side_gradient(KUMMA_LIGHT, KUMMA, cx - 50 * s, cx + 50 * s))
-    c.fill_polygon([(cx - 51 * s, 62 * s), (cx + 51 * s, 62 * s),
-                    (cx + 50 * s, 76 * s), (cx - 50 * s, 76 * s)], GOLD, alpha=0.95)
-    # نقشُ الحافّة
+    # ——— المصر: العمامة العُمانية ———
+    # ولمَ المصر لا الكمّة؟ لأنه الزيّ الرسمي الذي يُعرف به العُماني في
+    # المناسبات، وهو أظهر ما يميّز اللباس العُماني عن غيره في الخليج.
+    # ويُرسم لفّاتٍ متراكبة لا قبّةً واحدة: اللفّات هي ما يجعله عمامةً.
+    turban = []
+    turban += bezier((cx - 54 * s, 78 * s), (cx - 56 * s, 22 * s),
+                     (cx + 56 * s, 22 * s), (cx + 54 * s, 78 * s))
+    turban += [(cx + 54 * s, 78 * s), (cx - 54 * s, 78 * s)]
+    c.fill_polygon(turban, MASAR, shade=side_gradient(MASAR, MASAR_SHADE,
+                                                      cx - 54 * s, cx + 54 * s))
+
+    # لفّاتٌ ثلاث: خطوطٌ مائلة تلتفّ حول الرأس
+    for i, (y0, y1, tilt) in enumerate([(34, 48, 6), (48, 62, 3), (62, 76, -2)]):
+        wrap = []
+        wrap += bezier((cx - 54 * s, (y1 + tilt) * s), (cx - 20 * s, (y0 + tilt) * s),
+                       (cx + 20 * s, y0 * s), (cx + 54 * s, y1 * s))
+        wrap += bezier((cx + 54 * s, (y1 + 5) * s), (cx + 20 * s, (y0 + 5) * s),
+                       (cx - 20 * s, (y0 + tilt + 5) * s), (cx - 54 * s, (y1 + tilt + 5) * s))
+        c.fill_polygon(wrap, MASAR_SHADE, alpha=0.95)
+
+    # النقش الكشميري: نقاطٌ صغيرة بلون الخمري كما في مصر عُمان
+    for row, y in enumerate([40, 54, 68]):
+        for i in range(-4, 5):
+            c.ellipse(cx + (i * 12 + (6 if row % 2 else 0)) * s, y * s,
+                      2.4 * s, 2.4 * s, MASAR_PATTERN, alpha=0.7)
+
+    # طرف المصر المطويّ على الجانب — لا تخلو منه عمامة
+    tail = []
+    tail += bezier((cx + 48 * s, 60 * s), (cx + 66 * s, 66 * s),
+                   (cx + 72 * s, 86 * s), (cx + 64 * s, 104 * s))
+    tail += bezier((cx + 64 * s, 104 * s), (cx + 58 * s, 88 * s),
+                   (cx + 52 * s, 76 * s), (cx + 44 * s, 70 * s))
+    c.fill_polygon(tail, MASAR, shade=vertical_gradient(MASAR, MASAR_SHADE, 60 * s, 104 * s))
+
+    # ——— الحزام والخنجر ———
+    # والخنجر ليس زينةً في هذا الرسم: هو شعار عُمان نفسه، ومن رآه عرف اللباس
+    # قبل أن يقرأ اسم البلد.
+    belt = []
+    belt += bezier((cx - 50 * s, 252 * s), (cx - 20 * s, 246 * s),
+                   (cx + 20 * s, 246 * s), (cx + 50 * s, 252 * s))
+    belt += bezier((cx + 50 * s, 274 * s), (cx + 20 * s, 268 * s),
+                   (cx - 20 * s, 268 * s), (cx - 50 * s, 274 * s))
+    c.fill_polygon(belt, BELT, shade=vertical_gradient((200, 164, 96), BELT, 246 * s, 274 * s))
     for i in range(-4, 5):
-        c.ellipse(cx + i * 11 * s, 69 * s, 2.6 * s, 2.6 * s, KUMMA, alpha=0.85)
+        c.fill_polygon([(cx + i * 11 * s - 2 * s, 252 * s), (cx + i * 11 * s + 2 * s, 250 * s),
+                        (cx + i * 11 * s + 2 * s, 270 * s), (cx + i * 11 * s - 2 * s, 272 * s)],
+                       (150, 112, 58), alpha=0.5)
+
+    # الخنجر: القبضة فوق الحزام والغمد ينزل تحته — لا أن يتداخلا فيصيرا لطخة
+    c.fill_polygon([(cx - 11 * s, 216 * s), (cx + 11 * s, 216 * s),
+                    (cx + 12 * s, 244 * s), (cx - 12 * s, 244 * s)], SILVER,
+                   shade=vertical_gradient((238, 241, 246), SILVER_DARK, 216 * s, 244 * s))
+    c.fill_polygon([(cx - 14 * s, 210 * s), (cx + 14 * s, 210 * s),
+                    (cx + 12 * s, 218 * s), (cx - 12 * s, 218 * s)], GOLD)
+    c.ellipse(cx, 230 * s, 4.5 * s, 4.5 * s, (170, 134, 64), alpha=0.8)
+
+    # الغمد: ينحني يمينًا ثم يرتفع طرفه — الشكل الذي يُعرف به خنجر عُمان
+    sheath = []
+    sheath += bezier((cx - 12 * s, 276 * s), (cx - 16 * s, 308 * s),
+                     (cx + 2 * s, 330 * s), (cx + 26 * s, 324 * s))
+    sheath += bezier((cx + 26 * s, 324 * s), (cx + 40 * s, 320 * s),
+                     (cx + 46 * s, 306 * s), (cx + 44 * s, 294 * s))
+    sheath += bezier((cx + 44 * s, 294 * s), (cx + 36 * s, 312 * s),
+                     (cx + 16 * s, 314 * s), (cx + 8 * s, 300 * s))
+    sheath += bezier((cx + 8 * s, 300 * s), (cx + 4 * s, 288 * s),
+                     (cx + 8 * s, 282 * s), (cx + 12 * s, 276 * s))
+    c.fill_polygon(sheath, SILVER, shade=side_gradient((238, 241, 246), SILVER_DARK,
+                                                       cx - 16 * s, cx + 46 * s))
+    c.fill_polygon([(cx - 11 * s, 280 * s), (cx + 11 * s, 280 * s),
+                    (cx + 10 * s, 288 * s), (cx - 10 * s, 288 * s)], GOLD, alpha=0.7)
 
     # ——— النعلان ———
     for sign in (-1, 1):
