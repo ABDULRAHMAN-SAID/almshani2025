@@ -1,0 +1,129 @@
+# بناء ملفّ التطبيق على خوادم GitHub — بلا حصّة Expo.
+#
+# لماذا هذا الملفّ وعندنا «بناء التطبيق»؟ لأن ذاك يبني على خوادم Expo،
+# وحصّتها المجانية تنفد فيقف كل شيء إلى أوّل الشهر. و‏`--local` يبني على
+# خادم GitHub نفسه: لا يُحسب من الحصّة، ولا يحتاج اشتراكًا.
+#
+# والأهمّ: يظلّ يأخذ مفتاح التوقيع من Expo — المفتاح نفسه الذي وُقّعت به
+# النسخ السابقة. ولولا ذلك لخرج ملفّ بتوقيع مختلف لا يُثبَّت فوق المثبّت،
+# فيضطرّ كل واحد إلى حذف التطبيق وفقدان جلسته.
+#
+# البناء هنا أبطأ: نصف ساعة إلى ساعة. وهو ثمن مقبول مقابل ألّا ينتظر أحد
+# أسبوعين.
+name: ابنِ الملفّ هنا (بلا حصّة)
+
+permissions:
+  contents: write
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "النسخة التي تُبنى (فرع أو رقم commit)"
+        type: string
+        required: false
+        default: "main"
+      channel:
+        description: "قناة رمز التأكيد"
+        type: choice
+        default: email
+        options: [email, sms, "off"]
+
+jobs:
+  build:
+    name: ملف APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: أنزل المشروع
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
+
+      - name: هيّئ Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # ‏Gradle يحتاج جافا، والبناء المحلّي يشغّل Gradle بنفسه.
+      - name: هيّئ جافا
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: تحقّق من الأسرار
+        run: |
+          missing=""
+          [ -z "${{ secrets.EXPO_TOKEN }}" ] && missing="$missing EXPO_TOKEN"
+          [ -z "${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}" ] && missing="$missing EXPO_PUBLIC_SUPABASE_URL"
+          [ -z "${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}" ] && missing="$missing EXPO_PUBLIC_SUPABASE_ANON_KEY"
+          if [ -n "$missing" ]; then
+            echo "::error::أسرار ناقصة:$missing"
+            exit 1
+          fi
+
+      - name: ثبّت المكتبات
+        run: npm ci
+
+      - name: اكتب ملفّ الربط
+        run: |
+          {
+            echo "EXPO_PUBLIC_SUPABASE_URL=${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}"
+            echo "EXPO_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}"
+            echo "EXPO_PUBLIC_USE_MOCK_DATA=false"
+            echo "EXPO_PUBLIC_VERIFY_CHANNEL=${{ inputs.channel }}"
+            echo "EXPO_PUBLIC_BUILD_STAMP=build $(TZ=Asia/Muscat date +'%Y-%m-%d %H:%M')"
+          } > .env
+
+      - name: افحص الأنواع
+        run: npx tsc --noEmit
+
+      - name: افحص أن كل استعلام يطابق المخطط
+        run: npm run check:queries
+
+      - name: افحص المنطق الخالص
+        run: npm run test:units
+
+      - name: ابنِ الملفّ هنا
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          # بلا هذا يسأل البناء المحلّي عن مسار الـ SDK ثم يقف.
+          ANDROID_SDK_ROOT: ${{ env.ANDROID_HOME }}
+        run: |
+          npx --yes eas-cli@latest build \
+            --platform android \
+            --profile production-apk \
+            --local \
+            --non-interactive \
+            --output "$GITHUB_WORKSPACE/anshatati.apk"
+          ls -lh "$GITHUB_WORKSPACE/anshatati.apk"
+
+      - name: حدّث رابط التحميل الثابت
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete apk --yes --cleanup-tag 2>/dev/null || true
+          gh release create apk anshatati.apk \
+            --title "أنشطتي — قاعدة صلالة الجوية" \
+            --notes "بناء $(TZ=Asia/Muscat date +'%Y-%m-%d %H:%M') — صفحة التحميل: https://abdulrahman-said.github.io/almshani2025/"
+
+      - name: علّم النسخة المبنيّة
+        if: success()
+        run: |
+          git tag -f built-apk "$(git rev-parse HEAD)"
+          git push -f origin built-apk
+
+      - name: أين الملفّ
+        if: success()
+        run: |
+          {
+            echo "### التطبيق جاهز"
+            echo ""
+            echo "https://github.com/ABDULRAHMAN-SAID/almshani2025/releases/latest/download/anshatati.apk"
+            echo ""
+            echo "بُني من: ${{ inputs.ref }}"
+          } >> $GITHUB_STEP_SUMMARY
