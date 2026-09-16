@@ -580,33 +580,17 @@ drop policy if exists "flight_routes read" on public.flight_routes;
 create policy "flight_routes read" on public.flight_routes
   for select to authenticated using (true);
 
-drop policy if exists "flight_routes admin write" on public.flight_routes;
-create policy "flight_routes admin write" on public.flight_routes
-  for all using (public.is_admin()) with check (public.is_admin());
-
 drop policy if exists "flight_schedule read" on public.flight_schedule;
 create policy "flight_schedule read" on public.flight_schedule
   for select to authenticated using (true);
-
-drop policy if exists "flight_schedule admin write" on public.flight_schedule;
-create policy "flight_schedule admin write" on public.flight_schedule
-  for all using (public.is_admin()) with check (public.is_admin());
 
 drop policy if exists "clubs read" on public.clubs;
 create policy "clubs read" on public.clubs
   for select to authenticated using (true);
 
-drop policy if exists "clubs admin write" on public.clubs;
-create policy "clubs admin write" on public.clubs
-  for all using (public.is_admin()) with check (public.is_admin());
-
 drop policy if exists "club_menus read" on public.club_menus;
 create policy "club_menus read" on public.club_menus
   for select to authenticated using (true);
-
-drop policy if exists "club_menus admin write" on public.club_menus;
-create policy "club_menus admin write" on public.club_menus
-  for all using (public.is_admin()) with check (public.is_admin());
 
 drop policy if exists "news_reads read own" on public.news_reads;
 create policy "news_reads read own" on public.news_reads
@@ -652,6 +636,29 @@ returns boolean language sql stable security definer set search_path = public as
   select exists (select 1 from admins where user_id = auth.uid());
 $$;
 grant execute on function public.is_admin() to authenticated;
+
+-- ============ كتابة الرحلات والأندية: للإدارة وحدها ============
+-- وموضعها هنا لا فوق مع سياسات القراءة: السياسة تستدعي is_admin()، و‏Postgres
+-- يتحقّق من وجود الدالة وقت إنشاء السياسة لا وقت تنفيذها. فكانت هذه الأربع
+-- مكتوبةً قبل تعريف الدالة، فيقف المخطّط عندها على قاعدة جديدة — ولا يُنشَأ
+-- شيء ممّا بعدها: لا سياسات المحادثات ولا التوعية ولا حراسة المشرفين. وما
+-- سُنّ بعد السطر الذي يفشل لا يحرس شيئًا.
+
+drop policy if exists "flight_routes admin write" on public.flight_routes;
+create policy "flight_routes admin write" on public.flight_routes
+  for all using (public.is_admin()) with check (public.is_admin());
+
+drop policy if exists "flight_schedule admin write" on public.flight_schedule;
+create policy "flight_schedule admin write" on public.flight_schedule
+  for all using (public.is_admin()) with check (public.is_admin());
+
+drop policy if exists "clubs admin write" on public.clubs;
+create policy "clubs admin write" on public.clubs
+  for all using (public.is_admin()) with check (public.is_admin());
+
+drop policy if exists "club_menus admin write" on public.club_menus;
+create policy "club_menus admin write" on public.club_menus
+  for all using (public.is_admin()) with check (public.is_admin());
 
 /** درجة الحساب الحالي، أو null إن لم يكن إداريًّا. */
 create or replace function public.admin_role()

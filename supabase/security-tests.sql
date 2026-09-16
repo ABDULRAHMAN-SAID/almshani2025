@@ -165,6 +165,8 @@ declare
   v_act uuid;
   v_post uuid;
   v_msg uuid;
+  v_conv uuid := gen_random_uuid();
+  v_chat_msg uuid := gen_random_uuid();
 begin
   select id into v_act  from public.activities   limit 1;
   select id into v_post from public.group_posts  limit 1;
@@ -411,6 +413,75 @@ begin
 
   n := pg_temp.attempt_read(b, 'select count(*) from public.club_menus');
   perform pg_temp.log_result('ضوابط موجبة', 'B يقرأ قوائم الطعام', 'مسموح', n, n >= 0);
+
+  -- ===================== المحادثات الخاصة =====================
+  -- أخطر ما في التطبيق: رسالةٌ بين اثنين. وما لم يُختبر هذا اختبارًا عدائيًّا
+  -- فكلّ ما نعرفه أن الشاشة تعرض الصحيح لصاحبها — لا أن الخادم يمنع غيره.
+  --
+  -- المحادثة تُنشأ هنا وتُحذف في آخر القسم، فلا يبقى منها شيء: الملفّ يُشغَّل
+  -- على خادمٍ حيّ فيه محادثات الناس، ولا يجوز أن يُخلّف أثرًا.
+
+  insert into public.conversations (id, kind, title, created_by)
+  values (v_conv, 'group', 'اختبار أمني — يُحذف', a);
+  insert into public.conversation_members (conversation_id, user_id, role)
+  values (v_conv, a, 'owner');
+  insert into public.chat_messages (id, conversation_id, sender_id, body)
+  values (v_chat_msg, v_conv, a, 'نصّ لا يخصّ أحدًا غير أصحابه');
+
+  -- ضابط موجب: صاحبها يراها. وإن فشل هذا فبقية صفوف القسم بلا معنى.
+  n := pg_temp.attempt_read(a, 'select count(*) from public.chat_messages where conversation_id = ' || quote_literal(v_conv) || '::uuid');
+  perform pg_temp.log_result('ضوابط موجبة', 'A يقرأ رسائل محادثته', 'صفّ واحد', n, n = 1);
+
+  n := pg_temp.attempt_read(b, 'select count(*) from public.conversations where id = ' || quote_literal(v_conv) || '::uuid');
+  perform pg_temp.log_result('المحادثات', 'B يرى محادثةً ليس فيها', 'ممنوع', n, n <= 0);
+
+  n := pg_temp.attempt_read(b, 'select count(*) from public.chat_messages where conversation_id = ' || quote_literal(v_conv) || '::uuid');
+  perform pg_temp.log_result('المحادثات', 'B يقرأ رسائل محادثةٍ ليس فيها', 'ممنوع', n, n <= 0);
+
+  n := pg_temp.attempt_read(b, 'select count(*) from public.conversation_members where conversation_id = ' || quote_literal(v_conv) || '::uuid');
+  perform pg_temp.log_result('المحادثات', 'B يرى من فيها', 'ممنوع', n, n <= 0);
+
+  -- الأخطر: أن يُدخل نفسه. لو جازت لَقرأ كلّ ما مضى وما يأتي بلا أن يعلم أحد.
+  n := pg_temp.attempt_write(b,
+    'insert into public.conversation_members (conversation_id, user_id) values ('
+      || quote_literal(v_conv) || '::uuid, ' || quote_literal(b) || '::uuid)');
+  perform pg_temp.log_result('المحادثات', 'B يُدخل نفسه في محادثة', 'ممنوع', n, n <= 0);
+
+  n := pg_temp.attempt_write(b,
+    'insert into public.chat_messages (conversation_id, sender_id, body) values ('
+      || quote_literal(v_conv) || '::uuid, ' || quote_literal(b) || '::uuid, ''دخيل'')');
+  perform pg_temp.log_result('المحادثات', 'B يكتب في محادثةٍ ليس فيها', 'ممنوع', n, n <= 0);
+
+  -- الانتحال: رسالةٌ باسم A. ولو جازت لكانت أسوأ من القراءة — كلامٌ يُنسب إليه.
+  n := pg_temp.attempt_write(b,
+    'insert into public.chat_messages (conversation_id, sender_id, body) values ('
+      || quote_literal(v_conv) || '::uuid, ' || quote_literal(a) || '::uuid, ''باسم غيري'')');
+  perform pg_temp.log_result('المحادثات', 'B يكتب رسالةً باسم A', 'ممنوع', n, n <= 0);
+
+  n := pg_temp.attempt_write(b, 'delete from public.chat_messages where id = ' || quote_literal(v_chat_msg) || '::uuid');
+  perform pg_temp.log_result('المحادثات', 'B يحذف رسالة A', 'ممنوع', n, n <= 0);
+
+  n := pg_temp.attempt_write(b,
+    'update public.conversations set title = ''استوليت عليها'' where id = ' || quote_literal(v_conv) || '::uuid');
+  perform pg_temp.log_result('المحادثات', 'B يغيّر عنوان محادثةٍ ليست له', 'ممنوع', n, n <= 0);
+
+  n := pg_temp.attempt_write(b, 'delete from public.conversations where id = ' || quote_literal(v_conv) || '::uuid');
+  perform pg_temp.log_result('المحادثات', 'B يحذف محادثةً ليست له', 'ممنوع', n, n <= 0);
+
+  -- البلاغات: يرفعها من شاء، ولا يقرؤها إلا الإدارة — وإلا عرف المُبلَّغ عنه
+  -- أنّ أحدًا بلّغ عليه، ومَن هو.
+  n := pg_temp.attempt_read(b, 'select count(*) from public.chat_reports');
+  perform pg_temp.log_result('المحادثات', 'B يقرأ بلاغات المحادثات', 'ممنوع', n, n <= 0);
+
+  -- الصداقة: طلبٌ باسم غيره. ولو جاز لَصار «صديقًا» بلا موافقة أحد.
+  n := pg_temp.attempt_write(b,
+    'insert into public.friendships (requester_id, addressee_id, status) values ('
+      || quote_literal(a) || '::uuid, ' || quote_literal(b) || '::uuid, ''accepted'')');
+  perform pg_temp.log_result('الصداقة', 'B ينشئ صداقةً مقبولة باسم A', 'ممنوع', n, n <= 0);
+
+  delete from public.chat_messages where conversation_id = v_conv;
+  delete from public.conversation_members where conversation_id = v_conv;
+  delete from public.conversations where id = v_conv;
 
 end
 $tests$;
