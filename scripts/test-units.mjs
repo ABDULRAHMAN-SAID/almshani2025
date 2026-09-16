@@ -39,8 +39,6 @@ const MODULES = [
   "src/services/rowMappers.ts",
   "src/utils/media.ts",
   "src/constants/flights.ts",
-  "src/constants/places.ts",
-  "src/utils/weather.ts",
 ];
 
 const work = mkdtempSync(join(tmpdir(), "anshatati-units-"));
@@ -97,8 +95,6 @@ const errors = await load("src/utils/errors.ts");
 const flights = await load("src/constants/flights.ts");
 const mappers = await load("src/services/rowMappers.ts");
 const media = await load("src/utils/media.ts");
-const places = await load("src/constants/places.ts");
-const weather = await load("src/utils/weather.ts");
 
 /* -------------------------------- الاختبارات -------------------------------- */
 
@@ -426,79 +422,6 @@ function runAll(tz) {
     images: ["", null], published_at: "2026-09-13T00:00:00Z",
   });
   check("المحوّلات", "الفارغ لا يُعدّ صورة", [], emptyMenu.images);
-
-  // ---- الطقس ----
-  // ردّ مختصر بصيغة المزوّد نفسها. والأوقات بلا منطقة زمنية — هكذا يردّها
-  // بالضبط — وهذا ما يجعل هذه الاختبارات ذات معنى في المناطق الأربع: أي قراءة
-  // تمرّ على Date ستُزيح الساعات خارج عُمان، فتسقط هنا.
-  const SAMPLE = {
-    latitude: 17.04, longitude: 54.09,
-    current: {
-      time: "2026-09-16T14:00", temperature_2m: 29.6, relative_humidity_2m: 71,
-      apparent_temperature: 35.4, weather_code: 2, wind_speed_10m: 18.3,
-    },
-    hourly: {
-      time: ["2026-09-16T12:00", "2026-09-16T13:00", "2026-09-16T14:00", "2026-09-16T15:00", "2026-09-16T21:00"],
-      temperature_2m: [30, 30, 29.6, 29, 26],
-      weather_code: [2, 2, 2, 3, 0],
-      precipitation_probability: [5, 5, 3, 3, 0],
-    },
-    daily: {
-      time: ["2026-09-16", "2026-09-17", "2026-09-18"],
-      weather_code: [2, 3, 61], temperature_2m_max: [31, 32, 30], temperature_2m_min: [26, 25, 24],
-      precipitation_probability_max: [6, 10, 60],
-      sunrise: ["2026-09-16T05:49", "2026-09-17T05:49", "2026-09-18T05:50"],
-      sunset: ["2026-09-16T18:12", "2026-09-17T18:11", "2026-09-18T18:10"],
-    },
-  };
-  const sky = weather.parseForecast(SAMPLE);
-
-  check("الطقس", "الحرارة الحالية", 29.6, sky.temperature);
-  check("الطقس", "الرطوبة", 71, sky.humidity);
-  check("الطقس", "العظمى والصغرى من اليوم الأول", [31, 26], [sky.todayMax, sky.todayMin]);
-  check("الطقس", "عدد الساعات", 5, sky.hours.length);
-  check(`الطقس (${tz})`, "الثانية ظهرًا نهار", false, sky.isNight);
-  check(`الطقس (${tz})`, "التاسعة مساءً ليل", true, sky.hours[4].isNight);
-  check(`الطقس (${tz})`, "ساعة نصّية لا تمرّ على Date", 21, sky.hours[4].hour);
-
-  // الساعات تبدأ من ساعة القياس لا من أوّل المصفوفة — وإلا رأى من يفتح
-  // التطبيق ظهرًا ساعاتٍ مضت.
-  const coming = weather.nextHours(sky, 3);
-  check(`الطقس (${tz})`, "تبدأ من الساعة الحالية", ["2026-09-16T14:00", "2026-09-16T15:00", "2026-09-16T21:00"],
-    coming.map((h) => h.time));
-  check("الطقس", "الأيام القادمة بلا اليوم", ["2026-09-17", "2026-09-18"],
-    weather.comingDays(sky, 5).map((d) => d.date));
-
-  // ردّ ناقص: مزوّد مجاني قد يُسقط حقلًا أو يُغيّر صيغته، والشاشة يجب أن
-  // تقول «—» لا أن تنهار.
-  const broken = weather.parseForecast({});
-  check("الطقس", "ردّ فارغ لا يُسقط شيئًا", [0, 0, 0], [broken.temperature, broken.hours.length, broken.days.length]);
-  const partial = weather.parseForecast({ current: { time: "2026-09-16T14:00", temperature_2m: 30 } });
-  check("الطقس", "ردّ ناقص: الحرارة تُقرأ والباقي صفر", [30, 0], [partial.temperature, partial.humidity]);
-
-  check("الطقس", "وصف الرمز", "غائم جزئيًّا", weather.describeWeather(2).label);
-  check("الطقس", "رمز مجهول لا يخترع وصفًا", "—", weather.describeWeather(7777).label);
-  check("الطقس", "صحوٌ نهارًا شمس", "sunny-outline", weather.describeWeather(0).icon);
-  check("الطقس", "صحوٌ ليلًا قمر لا شمس", "moon-outline", weather.describeWeather(0, true).icon);
-  check("الطقس", "المطر يبقى مطرًا ليلًا", "rainy-outline", weather.describeWeather(63, true).icon);
-
-  check("الطقس", "أرقام عربية", "٣٠", weather.arabicNumber(30));
-  check("الطقس", "الدرجة تُقرّب", "٣٠°", weather.tempLabel(29.6));
-  check("الطقس", "لا درجة", "—", weather.tempLabel(null));
-  check("الطقس", "منتصف الليل", "١٢ ص", weather.hourLabel(0));
-  check("الطقس", "الظهر", "١٢ م", weather.hourLabel(12));
-  check("الطقس", "الرابعة مساءً", "٤ م", weather.hourLabel(16));
-  check("الطقس", "التاسعة صباحًا", "٩ ص", weather.hourLabel(9));
-
-  // ---- المكان ----
-  check("المكان", "إحداثية صلالة", "صلالة", places.nearestPlace(17.02, 54.09).place.name);
-  check("المكان", "إحداثية ثمريت", "ثمريت", places.nearestPlace(17.66, 54.02).place.name);
-  check("المكان", "إحداثية مصيرة", "مصيرة", places.nearestPlace(20.67, 58.89).place.name);
-  check("المكان", "المسافة صلالة–ثمريت بالكيلومترات", 70,
-    Math.round(places.distanceKm(17.0387, 54.0913, 17.666, 54.0246) / 10) * 10);
-  check("المكان", "داخل المدينة يُكتب اسمها", "صلالة", places.placeLabel(17.05, 54.10));
-  check("المكان", "على مبعدة يُقال «قرب»", true, places.placeLabel(17.3, 54.5).startsWith("قرب "));
-  check("المكان", "في البعيد تُذكر المسافة", true, /كم من/.test(places.placeLabel(21.5, 51.0)));
 }
 
 /* -------------------------------- التشغيل -------------------------------- */

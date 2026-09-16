@@ -207,14 +207,6 @@ export default function AdminSettingsScreen() {
           />
           <View style={styles.divider} />
           <ToggleRow
-            icon="partly-sunny-outline"
-            label="الطقس والموقع"
-            hint="عند الإيقاف تختفي بطاقة الطقس ولا يُطلب موقع أحد"
-            value={features.weatherEnabled}
-            onChange={() => applyToggle("weatherEnabled", "الطقس")}
-          />
-          <View style={styles.divider} />
-          <ToggleRow
             icon="chatbubble-ellipses-outline"
             label="المحادثات الخاصة والمجموعات"
             hint="عند الإيقاف تختفي المحادثات والأصدقاء من التطبيق"
