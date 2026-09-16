@@ -169,6 +169,7 @@ export default function ProfileScreen() {
         style={styles.adminHint}
       >
         <Text style={styles.adminHintText}>أنشطتي — قاعدة صلالة الجوية</Text>
+        <Text style={styles.credit}>إعداد وتنفيذ: عبدالرحمن بن سعيد المعشني</Text>
       </Pressable>
 
       <Pressable accessibilityRole="button" onPress={handleSignOut} style={styles.signOut}>
@@ -298,6 +299,7 @@ const styles = StyleSheet.create({
   // ضغطة مطوّلة على اسم التطبيق تفتح بوابة الإدارة — غير ظاهرة للمستخدم العادي
   adminHint: { alignItems: "center", paddingVertical: spacing.sm },
   adminHintText: { ...typography.caption, fontSize: 11 },
+  credit: { ...typography.caption, fontSize: 10.5, marginTop: 2, color: colors.textMuted },
   sheetTitle: { ...typography.h2, marginBottom: spacing.lg, textAlign: "center" },
   sheetInput: {
     ...typography.body,

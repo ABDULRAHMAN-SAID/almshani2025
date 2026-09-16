@@ -7,6 +7,7 @@ import { BottomSheet } from "@/components/BottomSheet";
 import { PatternOverlay } from "@/components/PatternOverlay";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { WeatherScene } from "@/components/WeatherScene";
 import { colors, radius, shadow, spacing, typography } from "@/constants";
 import { tintBackground } from "@/constants/categories";
 import { PLACES } from "@/constants/places";
@@ -88,7 +89,8 @@ export default function WeatherScreen() {
 
           {data && look ? (
             <View style={styles.heroBody}>
-              <Ionicons name={look.icon} size={92} color="#fff" style={styles.heroIcon} />
+              {/* مشهدٌ لا أيقونة: الأيقونة تقول الحالة، والمشهد يقول الإحساس بها. */}
+              <WeatherScene code={data.code} isNight={data.isNight} windSpeed={data.windSpeed} />
               <View style={styles.tempRow}>
                 <Text style={styles.heroTemp}>{tempLabel(data.temperature)}</Text>
               </View>
@@ -382,7 +384,6 @@ const styles = StyleSheet.create({
 
   heroBody: { alignItems: "center", marginTop: spacing.lg },
   heroEmpty: { alignItems: "center", paddingVertical: spacing.xxl },
-  heroIcon: { marginBottom: spacing.xs },
   tempRow: { flexDirection: "row", alignItems: "flex-start" },
   heroTemp: {
     fontFamily: "Tajawal_700Bold",

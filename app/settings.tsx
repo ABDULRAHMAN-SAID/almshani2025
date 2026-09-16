@@ -97,6 +97,12 @@ export default function SettingsScreen() {
           </View>
           <View style={styles.divider} />
           <View style={styles.staticRow}>
+            <Ionicons name="person-circle-outline" size={19} color={colors.primary} />
+            <Text style={styles.rowLabel}>إعداد وتنفيذ</Text>
+            <Text style={styles.rowValue}>عبدالرحمن بن سعيد المعشني</Text>
+          </View>
+          <View style={styles.divider} />
+          <View style={styles.staticRow}>
             <Ionicons name="pricetag-outline" size={19} color={colors.primary} />
             <Text style={styles.rowLabel}>الإصدار</Text>
             <Text style={styles.rowValue}>{installedVersion()}</Text>
