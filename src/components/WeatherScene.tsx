@@ -133,7 +133,10 @@ export function WeatherScene({ code, isNight, windSpeed }: WeatherSceneProps) {
       {/* ——— الرجل ——— */}
       <View style={styles.person}>
         <View style={styles.head} />
-        <View style={styles.body} />
+        <View>
+          <View style={styles.body} />
+          <View style={styles.arm} />
+        </View>
         <View style={styles.legs}>
           <View style={styles.leg} />
           <View style={[styles.leg, { marginStart: 6 }]} />
@@ -148,9 +151,9 @@ const WHITE = "rgba(255,255,255,0.95)";
 const SOFT = "rgba(255,255,255,0.55)";
 
 const styles = StyleSheet.create({
-  scene: { width: 190, height: 158, alignSelf: "center" },
+  scene: { width: 210, height: 172, alignSelf: "center" },
 
-  sun: { position: "absolute", top: 6, start: 16, alignItems: "center", justifyContent: "center" },
+  sun: { position: "absolute", top: 2, start: 0, end: 0, alignItems: "center", justifyContent: "center" },
   sunCore: { width: 46, height: 46, borderRadius: 23, backgroundColor: "#FFD166" },
   sunHalo: {
     position: "absolute",
@@ -178,18 +181,18 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(11,31,58,0.95)",
   },
 
-  cloudBack: { position: "absolute", top: 20, start: 8, flexDirection: "row", alignItems: "flex-end" },
-  cloudFront: { position: "absolute", top: 6, start: 34, flexDirection: "row", alignItems: "flex-end" },
+  cloudBack: { position: "absolute", top: 26, start: 32, flexDirection: "row", alignItems: "flex-end" },
+  cloudFront: { position: "absolute", top: 8, start: 74, flexDirection: "row", alignItems: "flex-end" },
   puff: { borderRadius: 999, backgroundColor: SOFT },
   puffLight: { borderRadius: 999, backgroundColor: WHITE },
 
-  rainRow: { position: "absolute", top: 58, start: 22, flexDirection: "row", width: 120, height: 16 },
+  rainRow: { position: "absolute", top: 64, start: 52, flexDirection: "row", width: 116, height: 16 },
   drop: { position: "absolute", width: 3, borderRadius: 2, backgroundColor: "rgba(255,255,255,0.75)" },
 
   bolt: {
     position: "absolute",
-    top: 54,
-    start: 84,
+    top: 58,
+    start: 104,
     width: 10,
     height: 22,
     backgroundColor: "#FFD166",
@@ -197,23 +200,27 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
 
-  windRow: { position: "absolute", top: 84, end: 8, alignItems: "flex-end" },
+  windRow: { position: "absolute", top: 96, end: 4, alignItems: "flex-end" },
   windLine: { height: 3, borderRadius: 2, backgroundColor: "rgba(255,255,255,0.5)" },
 
   // الرجل: أشكالٌ بسيطة لا وجه لها. ملامحُ في هذا الحجم تصير بقعًا.
-  person: { position: "absolute", bottom: 16, end: 34, alignItems: "center" },
-  head: { width: 17, height: 17, borderRadius: 9, backgroundColor: WHITE, marginBottom: 3 },
-  body: { width: 26, height: 34, borderTopStartRadius: 12, borderTopEndRadius: 12, borderRadius: 6, backgroundColor: WHITE },
+  person: { position: "absolute", bottom: 16, start: 0, end: 0, alignItems: "center" },
+  head: { width: 19, height: 19, borderRadius: 10, backgroundColor: WHITE, marginBottom: 3 },
+  body: { width: 28, height: 38, borderTopStartRadius: 13, borderTopEndRadius: 13, borderRadius: 7, backgroundColor: WHITE },
+  arm: { position: "absolute", top: 26, end: -7, width: 7, height: 24, borderRadius: 4, backgroundColor: "rgba(255,255,255,0.72)" },
   legs: { flexDirection: "row", marginTop: 2 },
   leg: { width: 7, height: 20, borderRadius: 4, backgroundColor: "rgba(255,255,255,0.8)" },
 
   ground: {
     position: "absolute",
-    bottom: 8,
-    end: 18,
-    width: 76,
-    height: 10,
+    bottom: 10,
+    start: 0,
+    end: 0,
+    alignSelf: "center",
+    width: 74,
+    height: 9,
+    marginHorizontal: "auto",
     borderRadius: 999,
-    backgroundColor: "rgba(0,0,0,0.14)",
+    backgroundColor: "rgba(0,0,0,0.10)",
   },
 });
