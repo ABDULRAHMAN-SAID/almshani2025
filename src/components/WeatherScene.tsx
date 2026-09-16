@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef } from "react";
-import { Animated, Easing, StyleSheet, View } from "react-native";
+import { Animated, Easing, Image, StyleSheet, View } from "react-native";
 
 /**
- * مشهد الطقس: سماءٌ حيّة تتبدّل بحال الجوّ.
+ * مشهد الطقس: رجلٌ بالزيّ العُماني، وفوقه سماءٌ تتبدّل بحال الجوّ.
  *
  * ولماذا مشهدٌ لا أيقونة؟ لأن الأيقونة تقول الحالة، والمشهد يقول الإحساس بها:
- * شمسٌ تنبض، أو غيمٌ يمرّ، أو رذاذٌ ينزل، أو خطوط ريحٍ تسحب الهواء. ومن يفتح
- * الشاشة يعرف جوّ يومه قبل أن يقرأ رقمًا.
+ * شمسٌ على رأسه، أو غيمٌ يمرّ، أو رذاذٌ ينزل، أو خطوط ريحٍ تسحب الهواء. ومن
+ * يفتح الشاشة يعرف جوّ يومه قبل أن يقرأ رقمًا.
  *
  * ومرسومٌ بمستطيلاتٍ ودوائر لا بملفّ رسوميّات: إضافة مكتبة رسمٍ تعني وحدةً
  * أصليّة جديدة، وبناءً جديدًا، وتثبيتًا على كل هاتف — ثمنٌ باهظ لصورة. وهذه
@@ -70,6 +70,7 @@ export function WeatherScene({ code, isNight, windSpeed }: WeatherSceneProps) {
   const gustShift = gust.interpolate({ inputRange: [0, 1], outputRange: [-26, 26] });
   const gustFade = gust.interpolate({ inputRange: [0, 0.2, 0.8, 1], outputRange: [0, 0.75, 0.75, 0] });
   const sunPulse = breathe.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1, 1.06, 1] });
+  const sway = breathe.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, -3, 0] });
 
   // مواضع قطرات الرذاذ: ثابتة بين إعادات الرسم، وإلا تراقصت عشوائيًّا.
   const dropLeft = useMemo(() => [14, 34, 54, 74, 94], []);
@@ -130,11 +131,19 @@ export function WeatherScene({ code, isNight, windSpeed }: WeatherSceneProps) {
         </Animated.View>
       ) : null}
 
-      {/* ——— موضع الشخصية ———
-          كانت هنا شخصيةٌ مرسومة بالشفرة، ورُفعت: رسمُ إنسانٍ بمنحنياتٍ مكتوبة
-          بيدٍ لا يبلغ الواقعية مهما صُقل، وصورةٌ رديئة أسوأ من لا صورة.
-          والمكان محفوظ: متى وُضع ملفٌّ حقيقي في
-          assets/images/weather/person.png أُعيد هذا السطر وحده. */}
+      {/* ——— الشخصية ———
+          صورةٌ حقيقية اختارها صاحب التطبيق، لا شكلًا مرسومًا بالشفرة: رسمُ
+          إنسانٍ بمنحنياتٍ مكتوبة بيدٍ لا يبلغ الواقعية مهما صُقل.
+          وتتنفّس تنفّسًا خفيفًا — ثلاث نقاطٍ صعودًا ونزولًا في خمس ثوانٍ —
+          فتبدو حيّةً بلا أن تشدّ العين عن الأرقام. */}
+      <Animated.View style={[styles.person, { transform: [{ translateY: sway }] }]}>
+        <Image
+          source={require("@assets/images/weather/person.png")}
+          style={[styles.personImage, { opacity: isNight ? 0.92 : 1 }]}
+          resizeMode="contain"
+          accessibilityIgnoresInvertColors
+        />
+      </Animated.View>
     </View>
   );
 }
@@ -143,9 +152,9 @@ const WHITE = "rgba(255,255,255,0.95)";
 const SOFT = "rgba(255,255,255,0.55)";
 
 const styles = StyleSheet.create({
-  // ارتفاعٌ يكفي السماء والشخص بلا تصادم: السماء في أعلى ثمانين،
+  // ارتفاعٌ يكفي السماء والشخص بلا تصادم: السماء في أعلى مئة،
   // والشخص يقف تحتها بقامته كاملة.
-  scene: { width: 214, height: 124, alignSelf: "center" },
+  scene: { width: 214, height: 252, alignSelf: "center" },
 
   sun: { position: "absolute", top: 0, left: 0, right: 0, alignItems: "center", justifyContent: "center" },
   sunCore: { width: 46, height: 46, borderRadius: 23, backgroundColor: "#FFD166" },
@@ -196,5 +205,10 @@ const styles = StyleSheet.create({
 
   windRow: { position: "absolute", top: 92, right: 2, alignItems: "flex-end" },
   windLine: { height: 3, borderRadius: 2, backgroundColor: "rgba(255,255,255,0.5)" },
+
+  // alignSelf لا left/right: هذه تنقلب مع اتّجاه الواجهة فيقف الرجل في الطرف.
+  person: { position: "absolute", bottom: 0, alignSelf: "center" },
+  // نسبة الصورة ١٧٣ × ٦٤٠.
+  personImage: { width: 46, height: 170 },
 
 });

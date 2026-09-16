@@ -3,12 +3,11 @@ import {
   AccessibilityInfo,
   Animated,
   Easing,
+  Image,
   StyleSheet,
   useWindowDimensions,
   View,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { colors } from "@/constants";
 
 /**
  * طائرةٌ تعبر الشاشة مرّةً واحدة عند فتحها، ثم تختفي.
@@ -17,19 +16,26 @@ import { colors } from "@/constants";
  * تسحب العين عن الأرقام. وهذه تمرّ في ثانيتين، تقول «هذه شاشة الرحلات»، ثم
  * تخرج من الشجرة كلّها — فلا مؤقّتٌ يدور ولا رسمٌ يُعاد.
  *
- * والعبور من اليمين إلى اليسار كاتّجاه القراءة، ورمزُ الطائرة في الخطّ يتّجه
- * يمينًا فيُعكس بـ scaleX. والإزاحة كلّها بـ transform لا بـ left/right: هذه
- * تنقلب مع اتّجاه الواجهة فتمرّ الطائرة مقلوبةً، وتلك لا تنقلب.
+ * والصورة طائرة السلاح نفسها بعلامتها وعلمها، لا رمزًا عامًّا من خطّ أيقونات:
+ * من يفتح الجدول يعرف الطائرة التي يركبها.
+ *
+ * ومقدّمتها إلى اليسار في الملفّ، والعبور من اليمين إلى اليسار كاتّجاه
+ * القراءة — فلا عكس ولا دوران. والإزاحة كلّها transform لا left/right: هذه
+ * تنقلب مع اتّجاه الواجهة العربية فتعبر الطائرة من الجهة الخطأ، وتلك لا
+ * تنقلب.
  */
 
+/** نسبة الصورة: ٦٢٠ × ٢٢٢. */
+const RATIO = 620 / 222;
+
 interface FlyPastProps {
-  /** حجم الرمز. */
-  size?: number;
+  /** عرض الطائرة على الشاشة. */
+  width?: number;
   /** زمن العبور بالملّي ثانية. */
   duration?: number;
 }
 
-export function FlyPast({ size = 30, duration = 2300 }: FlyPastProps) {
+export function FlyPast({ width: planeWidth = 150, duration = 2600 }: FlyPastProps) {
   const { width } = useWindowDimensions();
   const [gone, setGone] = useState(false);
   const progress = useRef(new Animated.Value(0)).current;
@@ -65,19 +71,24 @@ export function FlyPast({ size = 30, duration = 2300 }: FlyPastProps) {
 
   if (gone) return null;
 
-  // الصندوق موسَّطٌ في الشاشة، فالمدى نصفُ العرض وزيادةٌ تُخفي الطائرة خارجها.
-  const edge = width / 2 + size * 2;
+  // الصندوق موسَّطٌ في الشاشة، فالمدى نصفُ العرض ونصفُ الطائرة وزيادةٌ تُخفيها.
+  const edge = width / 2 + planeWidth / 2 + 24;
   const translateX = progress.interpolate({ inputRange: [0, 1], outputRange: [edge, -edge] });
-  const translateY = progress.interpolate({ inputRange: [0, 1], outputRange: [26, -26] });
+  const translateY = progress.interpolate({ inputRange: [0, 1], outputRange: [30, -30] });
   const opacity = progress.interpolate({
-    inputRange: [0, 0.1, 0.84, 1],
+    inputRange: [0, 0.1, 0.86, 1],
     outputRange: [0, 1, 1, 0],
   });
 
   return (
     <View style={styles.sky} pointerEvents="none">
       <Animated.View style={{ opacity, transform: [{ translateX }, { translateY }] }}>
-        <Ionicons name="airplane" size={size} color={colors.primary} style={styles.nose} />
+        <Image
+          source={require("@assets/images/flights/plane.png")}
+          style={{ width: planeWidth, height: planeWidth / RATIO }}
+          resizeMode="contain"
+          accessibilityIgnoresInvertColors
+        />
       </Animated.View>
     </View>
   );
@@ -89,6 +100,4 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  // الرمز يتّجه يمينًا في الخطّ، والطائرة تمضي يسارًا.
-  nose: { transform: [{ scaleX: -1 }] },
 });
