@@ -70,12 +70,15 @@ export type AnnouncementType = "تسجيل" | "تنبيه" | "نتائج" | "ع�
 /** النادي الذي يخصّه إعلان، إن خصّ ناديًا. */
 export type ClubKey = "OfficersClub" | "SeniorNcoClub";
 
-/** ملفّ النادي: اسمه ووصفه وصورته — تُحرَّر من لوحة الإدارة. */
+/** ملفّ النادي: اسمه ووصفه — يُحرَّران من لوحة الإدارة.
+ *
+ * ولا صورة له: النادي مطعم يُسأل عن طعام أسبوعه، وصورةُ مبناه لا تُسأل مرّتين
+ * وتزيح ما يُسأل عنه إلى أسفل الشاشة. والصور هنا للقائمة وحدها.
+ */
 export interface ClubProfile {
   key: ClubKey;
   title: string;
   subtitle: string;
-  image?: string;
 }
 
 /** يوم واحد من قائمة الطعام. */
@@ -84,14 +87,29 @@ export interface ClubMenuDay {
   meal: string;
 }
 
+/** أنواع الوجبات التي تُصوَّر قوائمها. */
+export const CLUB_MEALS = ["فطور", "غداء", "عشاء"] as const;
+export type ClubMeal = (typeof CLUB_MEALS)[number];
+
+/**
+ * صورة قائمة لوجبة.
+ *
+ * وثلاث صور لا واحدة: الورقة المعلّقة على باب النادي ثلاث أوراق — فطورٌ
+ * وغداءٌ وعشاء — وجمعها في صورة واحدة يجعلها لا تُقرأ في الهاتف.
+ */
+export interface ClubMenuPhoto {
+  meal: ClubMeal;
+  image: string;
+}
+
 /** قائمة طعام نادٍ لأسبوع. */
 export interface ClubMenu {
   id: string;
   club: ClubKey;
   /** تاريخ أحد ذلك الأسبوع، "YYYY-MM-DD". */
   weekStart: string;
-  /** صورة القائمة المطبوعة، إن رُفعت. */
-  image?: string;
+  /** صور القوائم المعلّقة — حتى ثلاث، لكل وجبة صورتها. */
+  images: ClubMenuPhoto[];
   days: ClubMenuDay[];
   note: string;
   publishedAt: string;

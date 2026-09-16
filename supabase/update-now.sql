@@ -1,5 +1,5 @@
 -- ============================================================================
--- آخر تحديث للخادم — النادِيان وقائمة طعامهما، ونقطة قراءة الخبر
+-- آخر تحديث للخادم — النادِيان وقوائم طعامهما (ثلاث صور)، ونقطة قراءة الخبر
 -- ============================================================================
 -- الصقه كاملًا في Supabase ← SQL Editor ← Run.
 -- تنفيذه مرّتين لا يضرّ: كل جملة فيه تتخطّى ما هو موجود.
@@ -63,6 +63,12 @@ create table if not exists public.club_menus (
 
 create index if not exists club_menus_club_week_idx
   on public.club_menus (club, week_start desc);
+
+-- ثلاث صور للقائمة بدل واحدة، ولكلٍّ نوع وجبتها:
+--   [{"meal": "فطور", "image": "https://..."}, ...]
+-- والعمود القديم image يبقى مكانه: من نشر قائمةً بصورة قبل هذا التحديث
+-- تُقرأ صورته منه على أنّها الغداء، فلا تضيع.
+alter table public.club_menus add column if not exists images jsonb not null default '[]'::jsonb;
 
 alter table public.club_menus enable row level security;
 

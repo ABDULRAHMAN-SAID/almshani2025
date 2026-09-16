@@ -140,6 +140,7 @@ const FUNCTIONS = [
 const FIELDS = [
   ["announcements", "club", "إعلانات الأندية"],
   ["club_menus", "week_start", "أسبوع قائمة الطعام"],
+  ["club_menus", "images", "صور القوائم الثلاث"],
   ["clubs", "title", "اسم النادي"],
 ];
 

@@ -365,6 +365,7 @@ export const MOCK_CLUB_MENUS: ClubMenu[] = [
     id: "menu-1",
     club: "OfficersClub",
     weekStart: weekStartIso(),
+    images: [],
     days: [
       { day: "الأحد", meal: "مندي لحم · سلطة · تمر" },
       { day: "الاثنين", meal: "دجاج مشوي · أرز بخاري · شوربة" },
@@ -379,6 +380,7 @@ export const MOCK_CLUB_MENUS: ClubMenu[] = [
     id: "menu-2",
     club: "SeniorNcoClub",
     weekStart: weekStartIso(),
+    images: [],
     days: [
       { day: "الأحد", meal: "برياني دجاج · سلطة" },
       { day: "الاثنين", meal: "لحم بالصلصة · أرز أبيض · شوربة" },

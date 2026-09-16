@@ -8,6 +8,7 @@ import { colors, radius, spacing, typography } from "@/constants";
 import { CATEGORY_META } from "@/constants/categories";
 import { fetchClub, fetchClubMenu, publishClubMenu, updateClub, weekStartOf } from "@/services/menuService";
 import { showToast } from "@/store/toastStore";
+import { CLUB_MEALS } from "@/types/models";
 import type { ClubKey } from "@/types/models";
 import { formatArabicDate } from "@/utils/date";
 import { toArabicMessage } from "@/utils/errors";
@@ -26,12 +27,11 @@ const DAYS = ["الأحد", "الاثنين", "الثلاثاء", "الأربع�
 export default function AdminClubMenuScreen() {
   const client = useQueryClient();
   const [club, setClub] = useState<ClubKey>("OfficersClub");
-  const [image, setImage] = useState("");
+  const [photos, setPhotos] = useState<Record<string, string>>({});
   const [note, setNote] = useState("");
   const [meals, setMeals] = useState<Record<string, string>>({});
   const [clubTitle, setClubTitle] = useState("");
   const [clubSubtitle, setClubSubtitle] = useState("");
-  const [clubImage, setClubImage] = useState("");
 
   const weekStart = weekStartOf();
 
@@ -41,12 +41,11 @@ export default function AdminClubMenuScreen() {
   useEffect(() => {
     setClubTitle(profile.data?.title ?? "");
     setClubSubtitle(profile.data?.subtitle ?? "");
-    setClubImage(profile.data?.image ?? "");
   }, [profile.data]);
 
   const saveProfile = useMutation({
     mutationFn: () =>
-      updateClub(club, { title: clubTitle, subtitle: clubSubtitle, image: clubImage }),
+      updateClub(club, { title: clubTitle, subtitle: clubSubtitle }),
     onSuccess: () => {
       void client.invalidateQueries();
       showToast("حُفظت بيانات النادي", "success");
@@ -58,25 +57,26 @@ export default function AdminClubMenuScreen() {
   useEffect(() => {
     const menu = current.data;
     if (menu && menu.weekStart === weekStart) {
-      setImage(menu.image ?? "");
+      setPhotos(Object.fromEntries(menu.images.map((photo) => [photo.meal, photo.image])));
       setNote(menu.note);
       setMeals(Object.fromEntries(menu.days.map((entry) => [entry.day, entry.meal])));
     } else {
-      setImage("");
+      setPhotos({});
       setNote("");
       setMeals({});
     }
   }, [current.data, weekStart]);
 
   const filled = Object.values(meals).filter((meal) => meal.trim().length > 0).length;
-  const canPublish = filled > 0 || image.trim().length > 0;
+  const uploaded = Object.values(photos).filter((url) => url.trim().length > 0).length;
+  const canPublish = filled > 0 || uploaded > 0;
 
   const publish = useMutation({
     mutationFn: () =>
       publishClubMenu({
         club,
         weekStart,
-        image,
+        images: CLUB_MEALS.map((meal) => ({ meal, image: photos[meal] ?? "" })),
         note,
         days: DAYS.map((day) => ({ day, meal: meals[day] ?? "" })),
       }),
@@ -134,14 +134,6 @@ export default function AdminClubMenuScreen() {
           textAlign="right"
         />
 
-        <ImageField
-          label="صورة النادي"
-          hint="تظهر خلف اسم النادي أعلى صفحته"
-          value={clubImage}
-          onChange={setClubImage}
-          folder="clubs"
-        />
-
         <PrimaryButton
           label="احفظ بيانات النادي"
           onPress={() => saveProfile.mutate()}
@@ -158,13 +150,21 @@ export default function AdminClubMenuScreen() {
           </Text>
         </View>
 
-        <ImageField
-          label="صورة القائمة (اختياري)"
-          hint="صوّر الورقة المعلّقة — أسرع من كتابتها، وتظهر كما هي"
-          value={image}
-          onChange={setImage}
-          folder="menus"
-        />
+        {/*
+          ثلاث صور بأنواعها: الورقة المعلّقة على باب النادي ثلاث أوراق.
+          وكلّها اختيارية — من له قائمة غداء وحدها يرفعها وحدها.
+        */}
+        <Text style={styles.label}>صور القوائم (اختياري — حتى ثلاث)</Text>
+        {CLUB_MEALS.map((meal) => (
+          <ImageField
+            key={meal}
+            label={`قائمة ال${meal}`}
+            hint="صوّر الورقة المعلّقة — أسرع من كتابتها، وتظهر كما هي"
+            value={photos[meal] ?? ""}
+            onChange={(url) => setPhotos((prev) => ({ ...prev, [meal]: url }))}
+            folder="menus"
+          />
+        ))}
 
         <Text style={styles.label}>الأيام (اترك اليوم فارغًا إن لم يكن فيه شيء)</Text>
         {DAYS.map((day) => (

@@ -178,7 +178,10 @@ create table if not exists public.club_menus (
   id uuid primary key default gen_random_uuid(),
   club text not null check (club in ('OfficersClub', 'SeniorNcoClub')),
   week_start date not null,
+  -- صورة واحدة كانت هنا، وصارت ثلاثًا بأنواعها: [{"meal":"غداء","image":"..."}].
+  -- والعمود القديم باقٍ لتُقرأ منه قائمةٌ نُشرت قبل التغيير.
   image text,
+  images jsonb not null default '[]'::jsonb,
   days jsonb not null default '[]'::jsonb,
   note text not null default '',
   published_at timestamptz not null default now(),

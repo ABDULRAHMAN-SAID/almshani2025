@@ -22,9 +22,10 @@ function weekLabel(weekStart: string): string {
 /**
  * قائمة طعام النادي لأسبوع.
  *
- * الصورة أوّلًا حين تُرفع: الغالب أن تُصوَّر الورقة المعلّقة على الباب، وقراءة
- * الصورة أسرع من قراءة جدول أُعيد كتابته. والأيام تحتها لمن كتبها، ولمن
- * يقرأ بخط كبير أو يبحث بالكلمة.
+ * الصور أوّلًا حين تُرفع: الغالب أن تُصوَّر الورقة المعلّقة على الباب، وقراءة
+ * الصورة أسرع من قراءة جدول أُعيد كتابته. وهي ثلاث — فطورٌ وغداءٌ وعشاء —
+ * كلٌّ باسم وجبتها فوقها، إذ لا يُعرف من الصورة وحدها أيّ وجبة هي. والأيام
+ * تحتها لمن كتبها، ولمن يقرأ بخط كبير أو يبحث بالكلمة.
  */
 export function ClubMenuCard({ menu }: ClubMenuCardProps) {
   return (
@@ -39,9 +40,12 @@ export function ClubMenuCard({ menu }: ClubMenuCardProps) {
         </View>
       </View>
 
-      {menu.image ? (
-        <Image source={{ uri: menu.image }} style={styles.image} resizeMode="cover" />
-      ) : null}
+      {menu.images.map((photo) => (
+        <View key={photo.meal} style={styles.photo}>
+          <Text style={styles.mealName}>{photo.meal}</Text>
+          <Image source={{ uri: photo.image }} style={styles.image} resizeMode="cover" />
+        </View>
+      ))}
 
       {menu.days.length > 0 ? (
         <View style={styles.days}>
@@ -54,7 +58,7 @@ export function ClubMenuCard({ menu }: ClubMenuCardProps) {
         </View>
       ) : null}
 
-      {!menu.image && menu.days.length === 0 ? (
+      {menu.images.length === 0 && menu.days.length === 0 ? (
         <Text style={styles.empty}>لم تُضف تفاصيل هذه القائمة بعد.</Text>
       ) : null}
     </View>
@@ -82,6 +86,8 @@ const styles = StyleSheet.create({
   headText: { flex: 1, gap: 2 },
   title: { ...typography.body, fontFamily: "Tajawal_700Bold" },
   note: { ...typography.caption, fontSize: 11 },
+  photo: { gap: spacing.xs },
+  mealName: { ...typography.caption, color: colors.textPrimary },
   image: { width: "100%", height: 200, borderRadius: radius.md, backgroundColor: colors.background },
   days: { gap: spacing.xs },
   dayRow: { flexDirection: "row", alignItems: "flex-start", gap: spacing.md },

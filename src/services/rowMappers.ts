@@ -1,5 +1,6 @@
 import type {
   ClubMenu,
+  ClubMenuPhoto,
   ClubProfile,
   Activity,
   ActivityResult,
@@ -75,14 +76,28 @@ export const toClubProfile = (row: Row): ClubProfile => ({
   key: row.key as ClubProfile["key"],
   title: text(row.title),
   subtitle: text(row.subtitle),
-  image: optional(row.image),
 });
+
+/**
+ * صور القائمة.
+ *
+ * وقُرئ العمود القديم أيضًا: كانت الصورة واحدة بلا نوع، ومن نشر قائمته قبل
+ * هذا التغيير لا ينبغي أن تختفي صورته لأنّ شكل الحقل تبدّل — فتُقرأ على أنّها
+ * صورة الغداء، وهي الوجبة التي تُعلَّق قائمتها في الغالب.
+ */
+function toMenuPhotos(row: Row): ClubMenuPhoto[] {
+  const list = Array.isArray(row.images) ? (row.images as ClubMenuPhoto[]) : [];
+  const clean = list.filter((entry) => entry && typeof entry.image === "string" && entry.image.length > 0);
+  if (clean.length > 0) return clean;
+  const legacy = optional(row.image);
+  return legacy ? [{ meal: "غداء", image: legacy }] : [];
+}
 
 export const toClubMenu = (row: Row): ClubMenu => ({
   id: text(row.id),
   club: row.club as ClubMenu["club"],
   weekStart: day(row.week_start),
-  image: optional(row.image),
+  images: toMenuPhotos(row),
   days: (row.days as ClubMenu["days"]) ?? [],
   note: text(row.note),
   publishedAt: day(row.published_at),

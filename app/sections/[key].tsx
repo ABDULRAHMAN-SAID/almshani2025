@@ -82,11 +82,7 @@ export default function SectionScreen() {
     <View style={styles.screen}>
       <View style={styles.banner}>
         <Image
-          source={
-            club.data?.image
-              ? { uri: club.data.image }
-              : CATEGORY_COVER[section.categories[0]]
-          }
+          source={CATEGORY_COVER[section.categories[0]]}
           style={StyleSheet.absoluteFill}
           resizeMode="cover"
           accessibilityIgnoresInvertColors
