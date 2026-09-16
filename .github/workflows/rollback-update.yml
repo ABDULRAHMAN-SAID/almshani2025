@@ -1,92 +1,97 @@
 # تراجُع عن آخر تحديث هوائي — زرّ الطوارئ.
 #
-# متى؟ حين يخرج تحديث يُعطب التطبيق على الهواتف. والتحديث الهوائي يصل إلى
-# كل جهاز، فعطبٌ فيه عطبٌ عند الجميع دفعةً واحدة — ولا سبيل إلى انتظار بناء
-# جديد يستغرق نصف ساعة أو تمنعه حصّة.
+# متى؟ حين يخرج تحديث يُعطب التطبيق على الهواتف. والتحديث يصل إلى كل جهاز،
+# فعطبٌ فيه عطبٌ عند الجميع دفعةً واحدة، ولا يُنتظر له بناء.
 #
-# ما يفعله: يأمر الهواتف بالعودة إلى الشفرة المدمجة في الملفّ المثبّت — أي
-# آخر حالٍ عُرف أنه يعمل. وإن تعذّر ذلك، يُعيد نشر التحديث الذي قبل الأخير.
+# وكيف؟ بنشر تحديثٍ جديد من نسخةٍ سابقة من الشفرة — لا بأمر «rollback» في
+# ‏eas: جرّبناه فاختلفت أسماء خياراته بين إصدارات الأداة ووقف عند «خيار غير
+# موجود» في اللحظة التي لا تحتمل. و«انشر من نسخة سابقة» يستعمل الأمر نفسه
+# الذي يعمل كل يوم، بخياراته نفسها.
 #
-# وبعد تشغيله: يُغلق التطبيق ويُفتح مرّتين. الأولى يأخذ فيها الأمر، والثانية
+# والنتيجة على الهاتف: يُغلق التطبيق ويُفتح مرّتين — الأولى ينزّل، والثانية
 # يعمل.
 name: تراجَع عن التحديث
 
 on:
   workflow_dispatch:
     inputs:
-      reason:
-        description: "لماذا؟ (يُسجَّل في Expo)"
+      ref:
+        description: "النسخة التي نعود إليها (رقم commit أو فرع)"
+        type: string
+        required: true
+      message:
+        description: "ماذا جرى؟ (يظهر في سجلّ التحديثات)"
         type: string
         required: false
-        default: "تحديث يُعطب التطبيق"
+        default: "تراجُع عن تحديث معطوب"
 
 jobs:
   rollback:
     name: أعد الهواتف إلى النسخة العاملة
     runs-on: ubuntu-latest
     steps:
-      - name: أنزل المشروع
+      - name: أنزل النسخة السابقة
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
 
       - name: هيّئ Node
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 20
+          cache: npm
 
-      - name: تحقّق من الرمز
+      - name: تحقّق من الأسرار
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          ANON: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
         run: |
-          if [ -z "${{ secrets.EXPO_TOKEN }}" ]; then
-            echo "::error::ينقص EXPO_TOKEN"
+          missing=""
+          [ -z "$EXPO_TOKEN" ] && missing="$missing EXPO_TOKEN"
+          [ -z "$URL" ] && missing="$missing EXPO_PUBLIC_SUPABASE_URL"
+          [ -z "$ANON" ] && missing="$missing EXPO_PUBLIC_SUPABASE_ANON_KEY"
+          if [ -n "$missing" ]; then
+            echo "::error::ينقص سرّ:$missing"
             exit 1
           fi
 
-      # القناة أوّلًا: هي ما يسأله الهاتف. والعودة إلى المدمج أضمن من إعادة
-      # نشر تحديثٍ قديم، لأن المدمج هو ما بُني مع الملفّ وجُرّب عند التثبيت.
-      - name: أعد إلى الشفرة المدمجة
-        id: rollback
+      - name: ثبّت المكتبات
+        run: npm ci
+
+      # ولا فحوص هنا: النسخة التي نعود إليها كانت تعمل، والفحص تأخيرٌ بلا
+      # فائدة في لحظةٍ التطبيق فيها لا يفتح عند أحد.
+      - name: اربط القناة بالفرع
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
-          set +e
-          npx --yes eas-cli@latest update:rollback \
-            --channel production --platform all --non-interactive
-          echo "code=$?" >> $GITHUB_OUTPUT
-          exit 0
+          npx --yes eas-cli@latest channel:create production --non-interactive || echo "القناة موجودة."
+          npx --yes eas-cli@latest channel:edit production --branch production --non-interactive
 
-      # خطّة ثانية: إن رفض الأمر الأوّل، نُعيد نشر التحديث الذي قبل الأخير.
-      - name: أو أعد نشر ما قبل الأخير
-        if: steps.rollback.outputs.code != '0'
+      - name: انشر النسخة السابقة
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: |
-          set -e
-          npx --yes eas-cli@latest update:list \
-            --branch production --json --non-interactive > updates.json
-          group=$(node -e "
-            const raw = JSON.parse(require('fs').readFileSync('updates.json','utf8'));
-            const rows = raw.currentPage ?? raw.updates ?? raw ?? [];
-            const groups = [];
-            for (const row of rows) {
-              const g = row.group ?? row.updateGroup;
-              if (g && !groups.includes(g)) groups.push(g);
-            }
-            // الأحدث أوّلًا: نريد الذي قبله.
-            process.stdout.write(groups[1] ?? '');
-          ")
-          if [ -z "$group" ]; then
-            echo '::error::لم أجد تحديثًا سابقًا لإعادة نشره. ثبّت الملفّ من صفحة التحميل يدويًا.'
-            exit 1
-          fi
-          echo "إعادة نشر المجموعة: $group"
-          npx --yes eas-cli@latest update:republish --group "$group" --non-interactive
-
-      - name: ماذا بعد
-        if: always()
+          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+          EXPO_PUBLIC_USE_MOCK_DATA: "false"
         run: |
           {
-            echo "### تراجُع"
+            echo "EXPO_PUBLIC_SUPABASE_URL=${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}"
+            echo "EXPO_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}"
+            echo "EXPO_PUBLIC_USE_MOCK_DATA=false"
+            echo "EXPO_PUBLIC_VERIFY_CHANNEL=email"
+            echo "EXPO_PUBLIC_BUILD_STAMP=تراجُع $(TZ=Asia/Muscat date +'%Y-%m-%d %H:%M')"
+          } > .env
+          npx --yes eas-cli@latest update \
+            --branch production \
+            --message "${{ inputs.message }} — ${{ inputs.ref }}" \
+            --non-interactive
+
+      - name: ماذا بعد
+        if: success()
+        run: |
+          {
+            echo "### تمّ التراجع"
             echo ""
-            echo "أغلق التطبيق تمامًا وافتحه **مرّتين**: الأولى يأخذ الأمر، والثانية يعمل."
-            echo ""
-            echo "وإن بقي لا يفتح: احذفه وثبّته من https://abdulrahman-said.github.io/almshani2025/"
+            echo "أغلق التطبيق تمامًا وافتحه **مرّتين**: الأولى ينزّل، والثانية يعمل."
           } >> $GITHUB_STEP_SUMMARY
