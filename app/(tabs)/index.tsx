@@ -3,6 +3,7 @@ import {
   I18nManager,
   NativeScrollEvent,
   NativeSyntheticEvent,
+  Platform,
   Pressable,
   ScrollView,
   Switch,
@@ -31,6 +32,9 @@ import { useProjectStore } from "@/store/projectStore";
  * والمفتاح فوقها «بمحتوى مشروعي»: أن يرى اسمه هو وقائمته هو في كل قالبٍ
  * يمرّ عليه. وهذه اللحظة هي التي تبيع — لا الكلام عن «قوالب احترافية».
  */
+/** الويب عندنا عربيٌّ من اليمين دائمًا (‎dir="rtl"‎ في `app/+html.tsx`). */
+const WEB_RTL = Platform.OS === "web";
+
 export default function Gallery() {
   const insets = useSafeAreaInsets();
   const project = useProjectStore((state) => state.project);
@@ -62,10 +66,15 @@ export default function Gallery() {
    * الأولى تقع في أقصى اليمين لا اليسار. فحسابُ الصفحة من الموضع مباشرةً
    * يُعطي القالب السادس حين يُعرض الأوّل. وهاتان تحوّلان بين الاثنين في
    * الاتّجاهين، فالقراءة والكتابة تمرّان بالتحويل نفسه ولا يختلفان.
+   *
+   * والمتصفّح ثالثٌ لا كهذا ولا كذاك: في صفحةٍ من اليمين يبدأ عدّادُ التمرير
+   * من الصفر عند أوّل صفحة ثم ينزل سالبًا. فلو حُسب كما يُحسب في أندرويد
+   * لخرجت صفحةٌ سالبة، ولوقفت النقاط والسهمان عن العمل في الويب وحده.
    */
   const pageOffset = (page: number) =>
-    (I18nManager.isRTL ? TEMPLATES.length - 1 - page : page) * width;
+    WEB_RTL ? -page * width : (I18nManager.isRTL ? TEMPLATES.length - 1 - page : page) * width;
   const pageOf = (x: number) => {
+    if (WEB_RTL) return Math.round(-x / width);
     const raw = Math.round(x / width);
     return I18nManager.isRTL ? TEMPLATES.length - 1 - raw : raw;
   };

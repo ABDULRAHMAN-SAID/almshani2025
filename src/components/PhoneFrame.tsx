@@ -43,6 +43,12 @@ export function PhoneFrame({ width, clock = "٩:٤١", statusTint = "#FFFFFF", c
           {/* المحتوى بمقاسه الحقيقي ثم يُصغَّر — فلا يُكتب القالب بمقاسين. */}
           <View
             style={{
+              // مثبَّتٌ في الركن الأيسر الفعليّ لا في «بداية السطر»: الصفحة
+              // عربيةٌ من اليمين، فلو تُرك سائبًا لبدأ عرضُه الـ٣٩٠ من الحافّة
+              // اليمنى وخرج عن الشاشة يسارًا، ثم صُغِّر من ركنٍ ليس فيها.
+              position: "absolute",
+              top: 0,
+              left: 0,
               width: BASE_WIDTH,
               height: screenHeight / scale,
               transform: [{ scale }],

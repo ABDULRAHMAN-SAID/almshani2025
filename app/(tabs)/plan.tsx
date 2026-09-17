@@ -2,10 +2,12 @@ import { Linking, Pressable, ScrollView, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { CompareTable } from "@/components/CompareTable";
 import { QrCode } from "@/components/QrCode";
+import { TierCards } from "@/components/TierCards";
 import { colors, radius, spacing, themed, typography } from "@/constants";
+import { ADDONS, DELIVERY, PAYMENT_NOTE, PROMISES, SALES_WHATSAPP, subscribeText, type Tier } from "@/product/plan";
 import { arabicDigits } from "@/product/format";
-import { INCLUDED, NOT_INCLUDED, PERIOD_LABEL, PRICE_LABEL, PRICE_OMR, SALES_WHATSAPP } from "@/product/plan";
 import { useProjectStore } from "@/store/projectStore";
 
 /**
@@ -20,10 +22,8 @@ export default function PlanScreen() {
   const { project, publish } = useProjectStore();
   const link = `wajha.om/${project.slug || "اسم-مشروعك"}`;
 
-  const subscribe = () => {
-    const text = encodeURIComponent(
-      `السلام عليكم، أريد الاشتراك في واجهة (${PRICE_OMR} ر.ع. للسنة) لمشروع: ${project.name || "—"}`
-    );
+  const choose = (tier: Tier) => {
+    const text = encodeURIComponent(subscribeText(tier, project.name || undefined));
     void Linking.openURL(`https://wa.me/${SALES_WHATSAPP}?text=${text}`).catch(() => undefined);
   };
 
@@ -50,44 +50,64 @@ export default function PlanScreen() {
         </Text>
       </LinearGradient>
 
-      {/* ——— السعر ——— */}
-      <View style={styles.price}>
-        <View style={styles.priceHead}>
-          <Text style={styles.priceValue}>{PRICE_LABEL}</Text>
-          <Text style={styles.pricePeriod}>{PERIOD_LABEL}</Text>
-        </View>
-        <Text style={styles.priceNote}>
-          {`أقلّ من ${arabicDigits((PRICE_OMR / 12).toFixed(1))} ر.ع. في الشهر — ثمنُ فنجانَي قهوة.`}
-        </Text>
+      {/* ——— الباقات ——— */}
+      <Text style={styles.heading}>اختر باقتك</Text>
+      <TierCards onChoose={choose} />
 
-        <View style={styles.listBlock}>
-          {INCLUDED.map((line) => (
-            <View key={line} style={styles.line}>
-              <Ionicons name="checkmark-circle" size={17} color={colors.success} />
-              <Text style={styles.lineText}>{line}</Text>
-            </View>
-          ))}
-          {NOT_INCLUDED.map((line) => (
-            <View key={line} style={styles.line}>
-              <Ionicons name="remove-circle-outline" size={17} color={colors.textMuted} />
-              <Text style={[styles.lineText, styles.lineOff]}>{line}</Text>
-            </View>
-          ))}
-        </View>
+      {/* ——— المقارنة ——— */}
+      <Text style={styles.heading}>الفرق بينها</Text>
+      <CompareTable />
+      <Text style={styles.fine}>
+        الترقية متاحةٌ في أيّ وقت، ولا تدفع إلا فرق السعر عن الأشهر المتبقّية.
+      </Text>
 
-        <Pressable
-          accessibilityRole="button"
-          onPress={subscribe}
-          style={({ pressed }) => [styles.subscribe, pressed && styles.pressed]}
-        >
-          <Ionicons name="logo-whatsapp" size={18} color={colors.primary} />
-          <Text style={styles.subscribeText}>اشترك الآن</Text>
-        </Pressable>
-        <Text style={styles.payNote}>
-          الدفع بالتحويل أو عند المندوب، وبوابة الدفع الإلكتروني قيد الربط.
-          ولا يُطلب منك شيء قبل أن ترى تطبيقك جاهزًا باسمك.
-        </Text>
+      {/* ——— بعد الطلب ——— */}
+      <Text style={styles.heading}>ماذا يحدث بعد أن تطلب</Text>
+      <View style={styles.card}>
+        {DELIVERY.map((step, index) => (
+          <View key={step.title} style={[styles.tlRow, index > 0 && styles.tlDivider]}>
+            <View style={styles.tlDot}>
+              <Text style={styles.tlDotText}>{arabicDigits(index + 1)}</Text>
+            </View>
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={styles.tlTitle}>{step.title}</Text>
+              <Text style={styles.tlNote}>{step.body}</Text>
+            </View>
+          </View>
+        ))}
       </View>
+
+      {/* ——— إضافات ——— */}
+      <Text style={styles.heading}>إضافاتٌ تُطلب وحدها</Text>
+      <View style={styles.card}>
+        {ADDONS.map((addon, index) => (
+          <View key={addon.name} style={[styles.addon, index > 0 && styles.tlDivider]}>
+            <Ionicons name={addon.icon as keyof typeof Ionicons.glyphMap} size={19} color={colors.marine} />
+            <View style={{ flex: 1, gap: 2 }}>
+              <View style={styles.addonHead}>
+                <Text style={styles.addonName}>{addon.name}</Text>
+                <Text style={styles.addonPrice}>{addon.price}</Text>
+              </View>
+              <Text style={styles.addonNote}>{addon.note}</Text>
+            </View>
+          </View>
+        ))}
+      </View>
+
+      {/* ——— ما نلتزم به ——— */}
+      <Text style={styles.heading}>بم نلتزم لك</Text>
+      <View style={{ gap: spacing.sm }}>
+        {PROMISES.map((promise) => (
+          <View key={promise.title} style={styles.promise}>
+            <Ionicons name={promise.icon as keyof typeof Ionicons.glyphMap} size={19} color={colors.success} />
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={styles.promiseTitle}>{promise.title}</Text>
+              <Text style={styles.promiseBody}>{promise.body}</Text>
+            </View>
+          </View>
+        ))}
+      </View>
+      <Text style={styles.payNote}>{PAYMENT_NOTE}</Text>
 
       {/* ——— رمز المحل ——— */}
       <View style={styles.qrCard}>
@@ -119,32 +139,38 @@ const styles = themed(() => ({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.lg },
   title: { ...typography.h1, fontSize: 22 },
+  heading: { ...typography.h2, fontSize: 18, marginTop: spacing.sm },
+  fine: { ...typography.caption, fontSize: 11.5, textAlign: "center", marginTop: -spacing.sm },
 
   state: { borderRadius: 22, padding: spacing.xl, alignItems: "center", gap: 6 },
   stateTitle: { fontFamily: "Tajawal_700Bold", fontSize: 20, color: colors.textOnPrimary },
   stateNote: { ...typography.caption, color: colors.textOnPrimaryMuted, textAlign: "center", lineHeight: 20 },
-  stateButton: {
-    backgroundColor: colors.gold, borderRadius: radius.pill,
-    paddingHorizontal: spacing.xxl, paddingVertical: spacing.md, marginTop: spacing.sm,
-  },
-  stateButtonText: { fontFamily: "Tajawal_700Bold", fontSize: 15, color: colors.primary },
 
-  price: { backgroundColor: colors.surface, borderRadius: 22, padding: spacing.xl, gap: spacing.sm },
-  priceHead: { flexDirection: "row", alignItems: "baseline", gap: spacing.sm },
-  priceValue: { fontFamily: "Tajawal_700Bold", fontSize: 34, color: colors.textPrimary },
-  pricePeriod: { ...typography.body, color: colors.textMuted },
-  priceNote: { ...typography.caption },
-  listBlock: { gap: spacing.sm, marginTop: spacing.md },
-  line: { flexDirection: "row", alignItems: "flex-start", gap: spacing.sm },
-  lineText: { ...typography.body, fontSize: 13.5, flex: 1, lineHeight: 21 },
-  lineOff: { color: colors.textMuted },
-  subscribe: {
-    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.sm,
-    backgroundColor: colors.gold, borderRadius: radius.pill, paddingVertical: spacing.lg,
-    marginTop: spacing.md,
+  card: { backgroundColor: colors.surface, borderRadius: 18, paddingHorizontal: spacing.lg },
+
+  tlRow: { flexDirection: "row", alignItems: "flex-start", gap: spacing.md, paddingVertical: spacing.lg },
+  tlDivider: { borderTopWidth: 1, borderTopColor: colors.border },
+  tlDot: {
+    width: 28, height: 28, borderRadius: 14, backgroundColor: colors.marine,
+    alignItems: "center", justifyContent: "center",
   },
-  subscribeText: { fontFamily: "Tajawal_700Bold", fontSize: 15.5, color: colors.primary },
-  payNote: { ...typography.caption, fontSize: 11.5, textAlign: "center", lineHeight: 18 },
+  tlDotText: { fontFamily: "Tajawal_700Bold", fontSize: 13, color: colors.textOnPrimary },
+  tlTitle: { ...typography.h3, fontSize: 14.5 },
+  tlNote: { ...typography.bodyMuted, fontSize: 12.5, lineHeight: 20 },
+
+  addon: { flexDirection: "row", alignItems: "flex-start", gap: spacing.md, paddingVertical: spacing.lg },
+  addonHead: { flexDirection: "row", alignItems: "baseline", gap: spacing.sm },
+  addonName: { fontFamily: "Tajawal_700Bold", fontSize: 13.5, color: colors.textPrimary, flex: 1 },
+  addonPrice: { fontFamily: "Tajawal_700Bold", fontSize: 12, color: colors.marine },
+  addonNote: { ...typography.caption, fontSize: 11.5, lineHeight: 18 },
+
+  promise: {
+    flexDirection: "row", alignItems: "flex-start", gap: spacing.md,
+    backgroundColor: colors.successSoft, borderRadius: 16, padding: spacing.lg,
+  },
+  promiseTitle: { fontFamily: "Tajawal_700Bold", fontSize: 13.5, color: colors.textPrimary },
+  promiseBody: { ...typography.caption, fontSize: 11.5, lineHeight: 18 },
+  payNote: { ...typography.caption, fontSize: 11.5, lineHeight: 19, textAlign: "center" },
 
   qrCard: {
     flexDirection: "row", alignItems: "center", gap: spacing.lg,
