@@ -1,6 +1,5 @@
 import { useRef, useState } from "react";
 import {
-  Dimensions,
   I18nManager,
   NativeScrollEvent,
   NativeSyntheticEvent,
@@ -8,16 +7,17 @@ import {
   ScrollView,
   Switch,
   Text,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { PhoneFrame } from "@/components/PhoneFrame";
-import { SitePreview } from "@/components/SitePreview";
+import { DemoApp } from "@/components/DemoApp";
 import { colors, radius, spacing, themed, typography } from "@/constants";
 import { demoOf, TEMPLATES } from "@/product/templates";
-import { TRADE } from "@/product/trades";
+import { KIND } from "@/product/kinds";
 import type { Project } from "@/product/types";
 import { useProjectStore } from "@/store/projectStore";
 
@@ -43,8 +43,17 @@ export default function Gallery() {
   const [mine, setMine] = useState(named);
   const scroller = useRef<ScrollView>(null);
 
-  const width = Dimensions.get("window").width;
-  const phoneWidth = Math.min(268, width * 0.68);
+  const { width, height } = useWindowDimensions();
+
+  /**
+   * حجم الهاتف يُحسب من ارتفاع الشاشة لا من عرضها وحده.
+   *
+   * وقد جُرّب بالعرض وحده فخرج الإطار أطولَ من الموضع المتاح، فانقطع شريط
+   * التبويب أسفله — وهو أهمّ ما فيه: به يُعرف أن هذا تطبيقٌ لا صورة. فيُحسب
+   * الآن من الباقي بعد الرأس والنقاط والبطاقة، ونسبةُ الإطار ٢٫١١ من عرضه.
+   */
+  const RESERVED = 348;
+  const phoneWidth = Math.max(186, Math.min(300, width * 0.78, (height - RESERVED) / 2.106));
 
   /**
    * التمرير الأفقيّ وواجهةٌ عربية.
@@ -97,7 +106,7 @@ export default function Gallery() {
       <View style={styles.head}>
         <Text style={styles.title}>القوالب</Text>
         <View style={styles.headRow}>
-          <Text style={styles.subtitle}>اسحب لتُقلّب — واختر ما يشبه مشروعك</Text>
+          <Text style={styles.subtitle}>التطبيق يعمل داخل الهاتف — المسه وجرّبه</Text>
           <View style={styles.mineToggle}>
             <Text style={styles.mineLabel}>بمحتواي</Text>
             <Switch
@@ -129,18 +138,16 @@ export default function Gallery() {
       >
         {TEMPLATES.map((template) => (
           <View key={template.id} style={[styles.page, { width }]}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`معاينة قالب ${template.name}`}
-              onPress={() => router.push(`/preview/${template.id}`)}
+            {/* التطبيق حيٌّ داخل الإطار: يُضغط ويُمرَّر ويُحجز هنا، لا في
+                شاشةٍ أخرى. ولا Pressable حوله — لو وُضع لابتلع كل لمسةٍ
+                قبل أن تصل إلى ما فيه. والانتقال بين النماذج بالنقاط
+                والسهمين تحته، فلا يضيع بتضارب السحب الأفقيّ والرأسي. */}
+            <PhoneFrame
+              width={phoneWidth}
+              statusTint={template.skin.hero === "plain" ? template.skin.text : "#FFFFFF"}
             >
-              <PhoneFrame
-                width={phoneWidth}
-                statusTint={template.skin.hero === "plain" ? template.skin.text : "#FFFFFF"}
-              >
-                <SitePreview project={contentFor(template.id)} template={template} />
-              </PhoneFrame>
-            </Pressable>
+              <DemoApp project={contentFor(template.id)} template={template} interactive />
+            </PhoneFrame>
           </View>
         ))}
       </ScrollView>
@@ -186,15 +193,15 @@ export default function Gallery() {
         <View style={styles.cardHead}>
           <View style={[styles.tradeTag, { backgroundColor: `${current.skin.brand}18` }]}>
             <Ionicons
-              name={TRADE[current.trade].icon as keyof typeof Ionicons.glyphMap}
+              name={KIND[current.kind].icon as keyof typeof Ionicons.glyphMap}
               size={13}
               color={current.skin.brand}
             />
-            <Text style={[styles.tradeText, { color: current.skin.brand }]}>{TRADE[current.trade].label}</Text>
+            <Text style={[styles.tradeText, { color: current.skin.brand }]}>{KIND[current.kind].label}</Text>
           </View>
           <Text style={styles.name}>{current.name}</Text>
         </View>
-        <Text style={styles.pitch}>{current.pitch}</Text>
+        <Text style={styles.pitch} numberOfLines={2}>{current.pitch}</Text>
 
         <View style={styles.buttons}>
           <Pressable
@@ -203,7 +210,7 @@ export default function Gallery() {
             style={({ pressed }) => [styles.ghost, pressed && styles.pressed]}
           >
             <Ionicons name="expand-outline" size={17} color={colors.textPrimary} />
-            <Text style={styles.ghostText}>افتحه بالكامل</Text>
+            <Text style={styles.ghostText}>جرّبه</Text>
           </Pressable>
           <Pressable
             accessibilityRole="button"
@@ -228,16 +235,16 @@ export default function Gallery() {
 
 const styles = themed(() => ({
   screen: { flex: 1, backgroundColor: colors.background },
-  head: { paddingHorizontal: spacing.lg, marginBottom: spacing.sm, gap: 2 },
+  head: { paddingHorizontal: spacing.lg, marginBottom: 4, gap: 1 },
   headRow: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   title: { ...typography.h1, fontSize: 22 },
   subtitle: { ...typography.caption },
   mineToggle: { flexDirection: "row", alignItems: "center", gap: 6, marginStart: "auto" },
   mineLabel: { ...typography.caption, fontSize: 11 },
 
-  page: { alignItems: "center", justifyContent: "center", paddingVertical: spacing.sm },
+  page: { alignItems: "center", justifyContent: "center" },
 
-  pager: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.lg, paddingVertical: spacing.md },
+  pager: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.lg, paddingVertical: spacing.sm },
   arrow: {
     width: 32, height: 32, borderRadius: 16,
     alignItems: "center", justifyContent: "center",
@@ -253,9 +260,9 @@ const styles = themed(() => ({
     borderTopLeftRadius: 26,
     borderTopRightRadius: 26,
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.xl,
-    gap: spacing.sm,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.lg,
+    gap: 6,
   },
   cardHead: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   name: { ...typography.h2, fontSize: 19 },
@@ -270,7 +277,7 @@ const styles = themed(() => ({
   tradeText: { fontFamily: "Tajawal_500Medium", fontSize: 11.5 },
   pitch: { ...typography.bodyMuted, lineHeight: 21 },
 
-  buttons: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.sm },
+  buttons: { flexDirection: "row", gap: spacing.sm, marginTop: 6 },
   ghost: {
     flexDirection: "row",
     alignItems: "center",

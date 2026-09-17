@@ -1,106 +1,108 @@
 /**
- * أنواع «واجهة»: ما يملكه صاحب المشروع، وما يُعرض له.
+ * أنواع «واجهة».
  *
- * والفصل بين القالب والمشروع مقصود: القالب شكلٌ بلا محتوى، والمشروع محتوًى
- * بلا شكل. فيغيّر صاحبُ المشروع قالبه في لمسةٍ واحدة ولا يفقد كلمةً كتبها —
- * وهذا أوّل ما يجرّبه الزبون، وعليه يُقرّر.
+ * والمعروض ليس «قالبَ صفحة» بل **تطبيقًا يعمل**: حجزٌ يُختار موعده، وسلّةٌ
+ * تُملأ، ودرسٌ يُفتح. فصاحب المشروع يرى ما سيفعله زبونه لا كيف ستبدو صفحته.
+ *
+ * والفصل بين النوع والمحتوى مقصود: النوع سلوكٌ وشاشات، والمحتوى اسمٌ وأسعار.
+ * فيكتب صاحبُ المحل قائمته مرّةً ويراها في أيّ نوعٍ جرّبه.
  */
 
-/** نوع النشاط — يُختار أوّلًا، وعليه تُرشَّح القوالب. */
-export type TradeKey =
-  | "food"      // مطاعم ومقاهٍ
-  | "beauty"    // صالونات وحلاقة
-  | "clinic"    // عيادات وخدمات صحية
-  | "shop"      // متاجر وبوتيكات
-  | "service"   // ورش وخدمات
-  | "office";   // مكاتب واستشارات
+/** نوع التطبيق — وعليه تُبنى شاشاته وسلوكه، لا ألوانه فقط. */
+export type AppKind =
+  | "booking"    // حجز مواعيد
+  | "restaurant" // مطعم: قائمة وسلّة وطلب
+  | "store"      // متجر إلكتروني
+  | "clinic"     // عيادة: أطباء ومواعيد
+  | "academy"    // منصّة تعليمية
+  | "salon";     // صالون: خدمات وفنّيّات وحجز
 
-export interface Trade {
-  key: TradeKey;
+export interface KindMeta {
+  key: AppKind;
   label: string;
   icon: string;
-  /** ما يُسمّى به قسمُ «الخدمات» عند هذا النشاط: «القائمة» للمطعم، «الخدمات» للورشة. */
+  /** ما يُسمّى به ما يُباع: «القائمة» للمطعم، «الدورات» للمنصّة. */
   offerLabel: string;
-  /** ما يُسمّى به الزرّ الأوّل: «احجز طاولة»، «احجز موعدًا»، «اطلب الآن». */
-  actionLabel: string;
+  /** ثلاثة تبويبات لكل نوع — أكثرها يربك في شاشةٍ صغيرة. */
+  tabs: { key: string; label: string; icon: string }[];
 }
 
-/** هيئة الواجهة — ما يفرّق قالبًا عن قالب. */
+/** هيئة الواجهة — ما يفرّق نوعًا عن نوع في اللون والشكل. */
 export interface TemplateSkin {
-  /** لون الهوية الأساسي. */
   brand: string;
-  /** لونٌ ثانٍ للتدرّج والخلفيات. */
   brandDeep: string;
-  /** لون الصفحة. */
   paper: string;
-  /** لون البطاقة. */
   card: string;
-  /** لون النصّ الأساسي. */
   text: string;
-  /** لون النصّ الثانوي. */
   muted: string;
   /** انحناء الزوايا — الحادّ رسميّ، والدائري وديّ. */
   radius: number;
-  /** شكل الصدر: صورةٌ ملء الشاشة، أو تدرّج لوني، أو بياضٌ مرتّب. */
-  hero: "photo" | "gradient" | "plain";
-  /** هل تُعرض العروض شبكةً أم قائمة؟ */
-  offerLayout: "grid" | "list";
+  /** شكل الصدر: تدرّجٌ لوني، أو بياضٌ مرتّب. */
+  hero: "gradient" | "plain";
 }
 
 export interface Template {
   id: string;
   name: string;
-  /** سطرٌ يقول لمن هذا القالب. */
+  /** سطرٌ يقول لمن هذا التطبيق وما يفعله. */
   pitch: string;
-  trade: TradeKey;
+  kind: AppKind;
   skin: TemplateSkin;
 }
 
-/** عرضٌ واحد: صنفٌ في قائمة، أو خدمةٌ بسعرها. */
+/** ما يُباع أو يُحجز: صنفٌ في قائمة، خدمةٌ بمدّتها، منتجٌ بسعره. */
 export interface Offer {
   id: string;
   name: string;
   note?: string;
   /** بالريال العُماني. الصفر يعني «حسب الطلب». */
   price: number;
+  /** قسمٌ داخل القائمة: «مشاوي»، «حلويات». */
+  category?: string;
+  /** دقائق — للخدمات المحجوزة. */
+  minutes?: number;
+}
+
+/** شخصٌ يُحجز عنده: طبيبٌ أو فنّيّة أو مدرّب. */
+export interface Person {
+  id: string;
+  name: string;
+  role: string;
+  /** «اليوم ٤:٣٠ م» — أقرب موعدٍ متاح. */
+  next?: string;
+}
+
+/** دورةٌ في المنصّة التعليمية. */
+export interface Course {
+  id: string;
+  name: string;
+  teacher: string;
+  lessons: number;
+  done: number;
+  price: number;
 }
 
 export interface OpeningHours {
-  /** «السبت – الخميس» */
   days: string;
-  /** «٩ ص – ١٠ م» */
   hours: string;
 }
 
-/** مشروع الزبون — كل ما يكتبه ويُعرض في واجهته. */
+/** مشروع الزبون — كل ما يكتبه ويُعرض في تطبيقه. */
 export interface Project {
-  /** يُشتقّ منه الرابط: wajha.om/<slug> */
   slug: string;
   name: string;
   tagline: string;
   about: string;
-  trade: TradeKey;
+  kind: AppKind;
   templateId: string;
-  /** لون الهوية إن غيّره عن لون القالب. */
   brand?: string;
   phone: string;
   whatsapp: string;
-  /** «صلالة · الحافة» */
   address: string;
   instagram?: string;
   offers: Offer[];
+  people: Person[];
+  courses: Course[];
   hours: OpeningHours[];
-  /** روابط صور — أو أسماء أصول مبدئية. */
-  gallery: string[];
   publishedAt?: string;
-}
-
-/** حالة الاشتراك على الجهاز. */
-export interface Plan {
-  /** متى بدأت التجربة (ISO). */
-  trialStartedAt?: string;
-  /** هل دُفع الاشتراك؟ */
-  subscribed: boolean;
-  /** متى ينتهي الاشتراك المدفوع (ISO). */
-  paidUntil?: string;
 }

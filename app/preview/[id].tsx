@@ -2,7 +2,7 @@ import { Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { SitePreview } from "@/components/SitePreview";
+import { DemoApp } from "@/components/DemoApp";
 import { colors, radius, spacing, themed } from "@/constants";
 import { TEMPLATE_BY_ID, TEMPLATES, demoOf } from "@/product/templates";
 import { useProjectStore } from "@/store/projectStore";
@@ -34,6 +34,9 @@ export default function Preview() {
         address: project.address || demo.address,
         phone: project.phone || demo.phone,
         whatsapp: project.whatsapp || demo.whatsapp,
+        people: project.people.length > 0 ? project.people : demo.people,
+        courses: project.courses.length > 0 ? project.courses : demo.courses,
+        kind: template.kind,
       }
     : demo;
 
@@ -41,7 +44,7 @@ export default function Preview() {
 
   return (
     <View style={styles.screen}>
-      <SitePreview project={shown} template={template} interactive />
+      <DemoApp project={shown} template={template} interactive />
 
       {/* شريطٌ عائم: الخروج والاختيار بلا أن يحجبا الواجهة. */}
       <View style={[styles.top, { top: insets.top + spacing.sm }]} pointerEvents="box-none">
@@ -54,7 +57,7 @@ export default function Preview() {
           <Ionicons name="chevron-forward" size={20} color={colors.textPrimary} />
         </Pressable>
         <View style={styles.badge}>
-          <Text style={styles.badgeText}>{`قالب ${template.name}`}</Text>
+          <Text style={styles.badgeText}>{`نموذج ${template.name}`}</Text>
         </View>
       </View>
 
@@ -72,7 +75,7 @@ export default function Preview() {
             size={18}
             color={colors.textOnPrimary}
           />
-          <Text style={styles.pickText}>{chosen ? "قالبي — عدّل محتواه" : "اختر هذا القالب"}</Text>
+          <Text style={styles.pickText}>{chosen ? "هذا تطبيقي — عدّل محتواه" : "أريد هذا التطبيق"}</Text>
         </Pressable>
       </View>
     </View>

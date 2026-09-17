@@ -4,12 +4,11 @@ import { router } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { PhoneFrame } from "@/components/PhoneFrame";
-import { SitePreview } from "@/components/SitePreview";
+import { DemoApp } from "@/components/DemoApp";
 import { colors, radius, spacing, themed, typography } from "@/constants";
 import { PRICE_LABEL, PERIOD_LABEL } from "@/product/plan";
-import { arabicDigits } from "@/product/format";
 import { demoOf, TEMPLATES } from "@/product/templates";
-import { TRIAL_LENGTH, useProjectStore } from "@/store/projectStore";
+import { useProjectStore } from "@/store/projectStore";
 
 /**
  * أوّل شاشة: ما هذا، ولمن، وبكم.
@@ -70,7 +69,7 @@ export default function Welcome() {
             pointerEvents="none"
           >
             <PhoneFrame width={176} statusTint={template.skin.hero === "plain" ? "#14201A" : "#FFFFFF"}>
-              <SitePreview project={demoOf(template.id)} template={template} />
+              <DemoApp project={demoOf(template.id)} template={template} />
             </PhoneFrame>
           </Animated.View>
         ))}
@@ -80,7 +79,7 @@ export default function Welcome() {
         <Text style={styles.brand}>واجهة</Text>
         <Text style={styles.headline}>موقعك وتطبيقك{"\n"}في مساءٍ واحد</Text>
         <Text style={styles.sub}>
-          اختر قالبًا، اكتب اسمك وقائمتك، وانشر. بلا مصمّم، وبلا مبرمج، وبلا انتظار.
+          ستّة تطبيقاتٍ تعمل — افتحها وجرّبها قبل أن تدفع. ثم اكتب اسمك ومحتواك وانشر.
         </Text>
 
         <Pressable
@@ -88,12 +87,12 @@ export default function Welcome() {
           onPress={() => router.push("/(tabs)")}
           style={({ pressed }) => [styles.cta, pressed && styles.pressed]}
         >
-          <Text style={styles.ctaText}>جرّبه مجانًا</Text>
+          <Text style={styles.ctaText}>شاهد النماذج</Text>
           <Ionicons name="arrow-back" size={18} color={colors.primary} />
         </Pressable>
 
         <Text style={styles.terms}>
-          {`${arabicDigits(TRIAL_LENGTH)} يومًا مجانًا بلا بطاقة · بعدها ${PRICE_LABEL} ${PERIOD_LABEL}`}
+          {`شاهدها وجرّبها مجانًا · وتطبيقك ${PRICE_LABEL} ${PERIOD_LABEL}`}
         </Text>
       </Animated.View>
     </LinearGradient>

@@ -4,10 +4,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { PhoneFrame } from "@/components/PhoneFrame";
-import { SitePreview } from "@/components/SitePreview";
+import { DemoApp } from "@/components/DemoApp";
 import { colors, radius, spacing, themed, typography } from "@/constants";
 import { TEMPLATE_BY_ID, TEMPLATES, demoOf } from "@/product/templates";
-import { TRADES, TRADE } from "@/product/trades";
+import { KINDS, KIND } from "@/product/kinds";
 import type { Offer } from "@/product/types";
 import { useProjectStore } from "@/store/projectStore";
 
@@ -23,7 +23,7 @@ const SWATCHES = ["#8C3B1E", "#6C4E8F", "#186B77", "#1F5C42", "#B26A12", "#243B6
  */
 export default function Editor() {
   const insets = useSafeAreaInsets();
-  const { project, patch, chooseTrade, setOffers } = useProjectStore();
+  const { project, patch, chooseTemplate, setOffers } = useProjectStore();
   const template = TEMPLATE_BY_ID[project.templateId] ?? TEMPLATES[0];
   const demo = demoOf(project.templateId);
   const [showAll, setShowAll] = useState(false);
@@ -59,7 +59,7 @@ export default function Editor() {
           width={150}
           statusTint={template.skin.hero === "plain" ? template.skin.text : "#FFFFFF"}
         >
-          <SitePreview project={shown} template={template} />
+          <DemoApp project={shown} template={template} />
         </PhoneFrame>
         <View style={styles.previewSide}>
           <Text style={styles.title}>مشروعي</Text>
@@ -83,24 +83,26 @@ export default function Editor() {
         </View>
       </View>
 
-      <Label text="نوع النشاط" />
+      <Label text="نوع التطبيق" />
       <View style={styles.chips}>
-        {TRADES.map((trade) => {
-          const on = trade.key === project.trade;
+        {KINDS.map((kind) => {
+          // لكل نوعٍ قالبُه: اختيارُ النوع اختيارُ شاشاتٍ لا لون.
+          const template = TEMPLATES.find((item) => item.kind === kind.key);
+          const on = kind.key === project.kind;
           return (
             <Pressable
-              key={trade.key}
+              key={kind.key}
               accessibilityRole="button"
               accessibilityState={{ selected: on }}
-              onPress={() => chooseTrade(trade.key)}
+              onPress={() => template && chooseTemplate(template.id)}
               style={[styles.chip, on && styles.chipOn]}
             >
               <Ionicons
-                name={trade.icon as keyof typeof Ionicons.glyphMap}
+                name={kind.icon as keyof typeof Ionicons.glyphMap}
                 size={14}
                 color={on ? colors.textOnPrimary : colors.textSecondary}
               />
-              <Text style={[styles.chipText, on && styles.chipTextOn]}>{trade.label}</Text>
+              <Text style={[styles.chipText, on && styles.chipTextOn]}>{kind.label}</Text>
             </Pressable>
           );
         })}
@@ -140,7 +142,7 @@ export default function Editor() {
         ))}
       </View>
 
-      <Label text={TRADE[project.trade].offerLabel} />
+      <Label text={KIND[project.kind].offerLabel} />
       <View style={styles.offers}>
         {(project.offers.length > 0 ? project.offers : demo.offers).map((offer, index) => {
           const own = project.offers.length > 0;

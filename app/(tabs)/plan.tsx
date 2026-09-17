@@ -6,19 +6,18 @@ import { QrCode } from "@/components/QrCode";
 import { colors, radius, spacing, themed, typography } from "@/constants";
 import { arabicDigits } from "@/product/format";
 import { INCLUDED, NOT_INCLUDED, PERIOD_LABEL, PRICE_LABEL, PRICE_OMR, SALES_WHATSAPP } from "@/product/plan";
-import { TRIAL_LENGTH, trialOf, useProjectStore } from "@/store/projectStore";
+import { useProjectStore } from "@/store/projectStore";
 
 /**
- * الاشتراك — والتجربة تبدأ من هنا، لا من أوّل فتحة.
+ * الاشتراك.
  *
- * وعدّادُ التجربة لا يبدأ إلّا بضغطةٍ صريحة: من فتح التطبيق ليتفرّج ثم عاد
- * بعد شهرٍ ليجرّب لا ينبغي أن يجد تجربته انتهت وهو لم يكتب حرفًا. والعدل في
- * هذا يُكسب زبونًا لا يُخسر.
+ * ولا عدّادَ ولا تجربةٌ تنتهي: النماذج الستّة تُفتح وتُجرَّب مجانًا وبلا
+ * حساب وبلا حدّ. والدفعُ ثمنُ **تطبيقك أنت** منشورًا برابطك واسمك — لا ثمنُ
+ * إذنٍ بالنظر. ومن رأى ما يشتريه قبل أن يدفع، دفع مطمئنًّا ولم يطلب استرجاعًا.
  */
 export default function PlanScreen() {
   const insets = useSafeAreaInsets();
-  const { project, plan, startTrial, publish } = useProjectStore();
-  const trial = trialOf(plan);
+  const { project, publish } = useProjectStore();
   const link = `wajha.om/${project.slug || "اسم-مشروعك"}`;
 
   const subscribe = () => {
@@ -36,47 +35,19 @@ export default function PlanScreen() {
     >
       <Text style={styles.title}>الاشتراك</Text>
 
-      {/* ——— حالة التجربة ——— */}
+      {/* ——— ما تدفع من أجله ——— */}
       <LinearGradient
         colors={[colors.primaryLight, colors.primary]}
         start={{ x: 0.1, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.state}
       >
-        {plan.subscribed ? (
-          <>
-            <Ionicons name="shield-checkmark" size={26} color={colors.gold} />
-            <Text style={styles.stateTitle}>اشتراكك فعّال</Text>
-            <Text style={styles.stateNote}>واجهتك منشورة، وتعديلاتك تظهر في الحال.</Text>
-          </>
-        ) : trial.fresh ? (
-          <>
-            <Ionicons name="gift-outline" size={26} color={colors.gold} />
-            <Text style={styles.stateTitle}>{`${arabicDigits(TRIAL_LENGTH)} يومًا مجانًا`}</Text>
-            <Text style={styles.stateNote}>بلا بطاقة، وبلا التزام. ابدأ متى جهزت.</Text>
-            <Pressable
-              accessibilityRole="button"
-              onPress={startTrial}
-              style={({ pressed }) => [styles.stateButton, pressed && styles.pressed]}
-            >
-              <Text style={styles.stateButtonText}>ابدأ التجربة</Text>
-            </Pressable>
-          </>
-        ) : trial.active ? (
-          <>
-            <Ionicons name="hourglass-outline" size={26} color={colors.gold} />
-            <Text style={styles.stateTitle}>
-              {`باقٍ ${arabicDigits(trial.daysLeft)} ${trial.daysLeft === 1 ? "يوم" : trial.daysLeft === 2 ? "يومان" : "أيام"}`}
-            </Text>
-            <Text style={styles.stateNote}>تجربتك تعمل بكامل المزايا.</Text>
-          </>
-        ) : (
-          <>
-            <Ionicons name="lock-closed-outline" size={26} color={colors.gold} />
-            <Text style={styles.stateTitle}>انتهت التجربة</Text>
-            <Text style={styles.stateNote}>محتواك محفوظ كما تركته. اشترك ليعود الرابط للعمل.</Text>
-          </>
-        )}
+        <Ionicons name="eye-outline" size={26} color={colors.gold} />
+        <Text style={styles.stateTitle}>شاهد وجرّب — ثم ادفع</Text>
+        <Text style={styles.stateNote}>
+          النماذج الستّة مفتوحة لك مجانًا وبلا حساب: احجز فيها، واملأ السلّة،
+          وافتح الدروس. والدفع ثمنُ تطبيقك أنت منشورًا باسمك ورابطك.
+        </Text>
       </LinearGradient>
 
       {/* ——— السعر ——— */}
@@ -113,7 +84,8 @@ export default function PlanScreen() {
           <Text style={styles.subscribeText}>اشترك الآن</Text>
         </Pressable>
         <Text style={styles.payNote}>
-          الدفع اليوم بالتحويل أو عند المندوب. وبوابة الدفع الإلكتروني قيد الربط.
+          الدفع بالتحويل أو عند المندوب، وبوابة الدفع الإلكتروني قيد الربط.
+          ولا يُطلب منك شيء قبل أن ترى تطبيقك جاهزًا باسمك.
         </Text>
       </View>
 
