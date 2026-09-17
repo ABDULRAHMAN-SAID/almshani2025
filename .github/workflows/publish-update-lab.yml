@@ -1,0 +1,89 @@
+# نشر تحديثٍ إلى «نسخة التجربة» وحدها.
+#
+# قناةُ هذه النسخة lab، وقناةُ النسخة الرسمية production، ولا تقرأ إحداهما
+# فرع الأخرى. فما يُنشر هنا لا يصل إلى هاتفٍ فيه التطبيق الرسمي مهما كان.
+name: انشر تحديث التجربة
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "الفرع الذي يُنشر"
+        type: string
+        required: false
+        default: "lab"
+      message:
+        description: "ماذا تغيّر؟"
+        type: string
+        required: true
+        default: "تجربة"
+
+jobs:
+  update:
+    name: تحديث نسخة التجربة
+    runs-on: ubuntu-latest
+    steps:
+      - name: أنزل المشروع
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
+
+      - name: هيّئ Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: ثبّت المكتبات
+        run: npm ci
+
+      # نفس حارس النسخة الرسمية، بعلامة التجربة: التحديث الهوائي يستبدل
+      # الشفرة لا الملفّ المثبّت، فما مسّ الطبقة الأصلية يحتاج بناءً.
+      - name: تأكّد أن هذا تحديثٌ لا بناء
+        run: |
+          git fetch --tags --quiet origin || true
+          if ! git rev-parse --verify --quiet built-apk-lab >/dev/null; then
+            echo "::warning::لا توجد علامة built-apk-lab بعد — ابنِ نسخة التجربة أوّلًا."
+            exit 0
+          fi
+          changed=$(git diff --name-only built-apk-lab..HEAD -- app.json package.json)
+          if [ -n "$changed" ]; then
+            echo "::error::هذا التغيير يحتاج بناءً جديدًا لا تحديثًا — تغيّر: $changed. شغّل «ابنِ نسخة التجربة»."
+            exit 1
+          fi
+
+      - name: افحص الأنواع
+        run: npm run typecheck
+
+      - name: افحص المنطق الخالص
+        run: npm run test:units
+
+      - name: اربط القناة بالفرع
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          npx --yes eas-cli@latest channel:create lab --non-interactive || echo "القناة موجودة."
+          npx --yes eas-cli@latest channel:edit lab --branch lab --non-interactive
+
+      - name: انشر التحديث
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+          EXPO_PUBLIC_USE_MOCK_DATA: "false"
+        run: |
+          export EXPO_PUBLIC_BUILD_STAMP="تجربة $(TZ=Asia/Muscat date +'%Y-%m-%d %H:%M')"
+          npx --yes eas-cli@latest update \
+            --branch lab \
+            --message "${{ inputs.message }}" \
+            --non-interactive
+
+      - name: اكتب الخلاصة
+        if: success()
+        run: |
+          {
+            echo "### تحديث التجربة نُشر"
+            echo ""
+            echo "يصل إلى «أنشطتي · تجربة» وحدها. التطبيق الرسمي لم يُمسّ."
+          } >> $GITHUB_STEP_SUMMARY

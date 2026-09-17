@@ -41,6 +41,17 @@
         "EXPO_PUBLIC_USE_MOCK_DATA": "false"
       },
       "channel": "production"
+    },
+    "lab-apk": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_USE_MOCK_DATA": "false"
+      },
+      "channel": "lab",
+      "credentialsSource": "local"
     }
   },
   "submit": {

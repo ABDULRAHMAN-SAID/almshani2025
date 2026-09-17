@@ -1,0 +1,170 @@
+# بناء «نسخة التجربة» — تطبيقٌ ثانٍ يقف بجانب الأوّل على الهاتف نفسه.
+#
+# ولماذا ثانٍ؟ لأن الأوّل في أيدي الناس، وتجريبُ فكرةٍ عليه يعني أن يقع
+# الخطأ عندهم. فهذا معرّفُ حزمته مختلف — وبه يتجاوران بدل أن يحلّ أحدهما
+# محلّ الآخر — وقناتُه مختلفة، فتحديثاته لا تصل إلى الأوّل أبدًا.
+#
+# والفرقُ يُصنع لحظة البناء (scripts/variant.mjs) لا في المستودع: الفرعان
+# متطابقان حرفًا بحرف، فالدمج من التجربة إلى الإصدار لا يحمل معه اسم
+# التجربة ولا معرّف حزمتها.
+name: ابنِ نسخة التجربة
+
+permissions:
+  contents: write
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "الفرع الذي يُبنى"
+        type: string
+        required: false
+        default: "lab"
+
+jobs:
+  build:
+    name: ملف APK — تجربة
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: أنزل المشروع
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
+
+      - name: هيّئ Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: هيّئ جافا
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: تحقّق من الأسرار
+        run: |
+          missing=""
+          [ -z "${{ secrets.EXPO_TOKEN }}" ] && missing="$missing EXPO_TOKEN"
+          [ -z "${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}" ] && missing="$missing EXPO_PUBLIC_SUPABASE_URL"
+          [ -z "${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}" ] && missing="$missing EXPO_PUBLIC_SUPABASE_ANON_KEY"
+          if [ -n "$missing" ]; then
+            echo "::error::أسرار ناقصة:$missing"
+            exit 1
+          fi
+
+      - name: ثبّت المكتبات
+        run: npm ci
+
+      - name: اجعلها نسخة تجربة
+        run: node scripts/variant.mjs lab
+
+      - name: اكتب ملفّ الربط
+        run: |
+          {
+            echo "EXPO_PUBLIC_SUPABASE_URL=${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}"
+            echo "EXPO_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}"
+            echo "EXPO_PUBLIC_USE_MOCK_DATA=false"
+            echo "EXPO_PUBLIC_BUILD_STAMP=تجربة $(TZ=Asia/Muscat date +'%Y-%m-%d %H:%M')"
+          } > .env
+
+      - name: افحص الأنواع
+        run: npx tsc --noEmit
+
+      - name: افحص المنطق الخالص
+        run: npm run test:units
+
+      # مفتاح التوقيع: حزمةٌ جديدة لا مفتاح لها عند Expo، وتوليدُه هناك
+      # يحتاج جوابًا لا يُعطى في تشغيلٍ آلي. فيُولَّد هنا ويُحفظ سرًّا.
+      #
+      # وأندرويد لا يُثبّت ملفًّا فوق ملفٍّ بتوقيعٍ آخر: فما لم يُحفظ المفتاح
+      # في سرّ LAB_KEYSTORE، احتاج كل بناءٍ جديدٍ حذفَ نسخة التجربة قبله.
+      # والخطوة الأخيرة تقول كيف يُحفظ.
+      - name: هيّئ مفتاح التوقيع
+        id: keystore
+        env:
+          SAVED: ${{ secrets.LAB_KEYSTORE }}
+        run: |
+          if [ -n "$SAVED" ]; then
+            echo "$SAVED" | base64 -d > lab.jks
+            echo "fresh=no" >> "$GITHUB_OUTPUT"
+            echo "المفتاح من السرّ المحفوظ."
+          else
+            keytool -genkeypair -v -keystore lab.jks -alias lab \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass anshatati-lab -keypass anshatati-lab \
+              -dname "CN=Anshatati Lab, OU=RAFO, O=Salalah, C=OM"
+            base64 -w0 lab.jks > lab.jks.b64
+            echo "fresh=yes" >> "$GITHUB_OUTPUT"
+            echo "::warning::مفتاحٌ جديد. احفظه سرًّا باسم LAB_KEYSTORE وإلّا احتاج كل بناءٍ حذفَ التطبيق قبله."
+          fi
+          cat > credentials.json <<'JSON'
+          {
+            "android": {
+              "keystore": {
+                "keystorePath": "lab.jks",
+                "keystorePassword": "anshatati-lab",
+                "keyAlias": "lab",
+                "keyPassword": "anshatati-lab"
+              }
+            }
+          }
+          JSON
+
+      - name: ابنِ الملفّ
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          ANDROID_SDK_ROOT: ${{ env.ANDROID_HOME }}
+        run: |
+          npx --yes eas-cli@latest build \
+            --platform android \
+            --profile lab-apk \
+            --local \
+            --non-interactive \
+            --output "$GITHUB_WORKSPACE/anshatati-lab.apk"
+          ls -lh "$GITHUB_WORKSPACE/anshatati-lab.apk"
+
+      - name: احفظ المفتاح الجديد ليُنسخ إلى الأسرار
+        if: steps.keystore.outputs.fresh == 'yes'
+        uses: actions/upload-artifact@v4
+        with:
+          name: lab-keystore
+          path: lab.jks.b64
+          retention-days: 7
+
+      - name: حدّث رابط تحميل نسخة التجربة
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete apk-lab --yes --cleanup-tag 2>/dev/null || true
+          gh release create apk-lab anshatati-lab.apk \
+            --title "أنشطتي · تجربة" \
+            --notes "بناء تجربة $(TZ=Asia/Muscat date +'%Y-%m-%d %H:%M') — من الفرع ${{ inputs.ref }}. هذه نسخة تجربة، والنسخة الرسمية في إصدار apk."
+
+      - name: علّم النسخة المبنيّة
+        if: success()
+        run: |
+          git tag -f built-apk-lab "$(git rev-parse HEAD)"
+          git push -f origin built-apk-lab
+
+      - name: أين الملفّ
+        if: success()
+        run: |
+          {
+            echo "### نسخة التجربة جاهزة"
+            echo ""
+            echo "https://github.com/ABDULRAHMAN-SAID/almshani2025/releases/download/apk-lab/anshatati-lab.apk"
+            echo ""
+            echo "تُثبَّت بجانب التطبيق الرسمي ولا تحلّ محلّه."
+            if [ "${{ steps.keystore.outputs.fresh }}" = "yes" ]; then
+              echo ""
+              echo "**مهمّ — مرّة واحدة:** نزّل الملفّ \`lab-keystore\` من أسفل هذه الصفحة،"
+              echo "افتحه، وانسخ سطره، ثم Settings ← Secrets and variables ← Actions ←"
+              echo "New repository secret باسم \`LAB_KEYSTORE\`. وبعدها يُثبَّت كل بناءٍ"
+              echo "فوق سابقه بلا حذف."
+            fi
+          } >> $GITHUB_STEP_SUMMARY
