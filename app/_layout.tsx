@@ -6,16 +6,12 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { Stack, router } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
-import { DemoRibbon } from "@/components/DemoRibbon";
 import { RestartNotice } from "@/components/RestartNotice";
 import { UpdateBanner } from "@/components/UpdateBanner";
-import { MisconfiguredNotice } from "@/components/MisconfiguredNotice";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { ToastHost } from "@/components/ToastHost";
 import { colors, setColorScheme, takeRoute, type ColorScheme } from "@/constants";
 import { useSettingsStore } from "@/store/settingsStore";
-import { USE_MOCK_DATA } from "@/services/config";
-import { isSupabaseConfigured } from "@/services/supabase";
 
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
@@ -114,17 +110,6 @@ export default function RootLayout() {
     );
   }
 
-  // نسخة حقيقية خرجت بلا مفاتيح: نقف مرة واحدة برسالة صريحة بدل أن يفشل كل
-  // طلب على حدة برسالة شبكة تُقرأ خطأً على أنها ضعف إنترنت.
-  if (!USE_MOCK_DATA && !isSupabaseConfigured) {
-    return (
-      <SafeAreaProvider onLayout={onLayoutRootView}>
-        <StatusBar style="light" backgroundColor={colors.primary} />
-        <MisconfiguredNotice />
-      </SafeAreaProvider>
-    );
-  }
-
   // ‏key={scheme}: تبديل المظهر يعيد تركيب الشجرة كلّها، فتُقرأ اللوحة
   // الجديدة في كل شاشة. وإعادة الرسم وحدها لا تكفي: الشاشات المركّبة تحت
   // الإعدادات لا تُعاد إلا إن تغيّر ما تعتمد عليه — وهي لا تعتمد على شيء.
@@ -132,7 +117,6 @@ export default function RootLayout() {
     <SafeAreaProvider key={scheme} onLayout={onLayoutRootView}>
       <QueryClientProvider client={queryClient}>
         <StatusBar style="light" backgroundColor={scheme === "dark" ? colors.background : colors.primary} />
-        <DemoRibbon />
         <OfflineBanner />
         <UpdateBanner />
         <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }} />

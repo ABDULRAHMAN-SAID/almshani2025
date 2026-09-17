@@ -1,6 +1,9 @@
 /**
- * لوحة الألوان المركزية — طابع بحري عماني: أزرق عميق متدرّج، بلمسة فيروزية
- * مأخوذة من ماء بحر العرب، وذهب هادئ للتكريم فقط.
+ * لوحة الألوان المركزية — «واجهة»: حبرٌ أخضر داكن، ونحاسٌ هادئ، وورقٌ دافئ.
+ *
+ * ولماذا هذه؟ لأن الزبون صاحبُ مشروع يريد واجهةً تُشبه محلًّا أنيقًا لا
+ * لوحةَ تحكّمٍ تقنية. والأخضر الداكن والنحاس لونا الخليج القديم — الباب
+ * والصندوق والقفل — والورقُ الدافئ يُريح العين في شاشةٍ تُقرأ طويلًا.
  *
  * القاعدة: العمق يأتي من تدرّج الأزرق نفسه لا من إضافة ألوان جديدة.
  * أي تغيير هنا ينعكس على كامل التطبيق.
@@ -12,68 +15,68 @@
  * الملفّ وتتجمّد، ولذلك تُبنى بـ `themed()` — انظر theme.ts.
  */
 
-/** سلّم الأزرق البحري — من عمق الماء إلى سطحه. */
-export const navy = {
-  900: "#061729", // أعمق نقطة — خلفية شاشة البداية
-  800: "#0A2340", // الأساس الرسمي
-  700: "#123253", // أسطح مرفوعة فوق الأساس
-  600: "#1C4468", // حدود ولمسات فوق الكحلي
-  500: "#2C5C85", // نص ثانوي فوق الكحلي
-  300: "#7FA3C4", // أيقونات باهتة فوق الكحلي
-  100: "#DDE7F1", // خلفية لمسة زرقاء فاتحة
-  50: "#EEF3F8",
+/** سلّم الحبر الأخضر — من عمق الظلّ إلى سطحه. */
+export const ink = {
+  900: "#0A140F", // أعمق نقطة — خلفية شاشة البداية
+  800: "#12201B", // الأساس
+  700: "#1B2F26", // أسطح مرفوعة فوق الأساس
+  600: "#2A463A", // حدود ولمسات فوق الحبر
+  500: "#3D6152", // نص ثانوي فوق الحبر
+  300: "#8FAEA0", // أيقونات باهتة فوق الحبر
+  100: "#DCE7E1",
+  50: "#EDF3EF",
 } as const;
 
-/** الفيروزي البحري — لمسة الحياة في الواجهة، تُستعمل بقلّة. */
-export const marine = {
-  600: "#0F6E7B",
-  500: "#158A99",
-  300: "#6EBFC9",
-  100: "#DCEFF2",
+/** النحاس — لمسة الثمن والتميّز، تُستعمل بقلّة. */
+export const brass = {
+  600: "#9A7328",
+  500: "#C9963F",
+  300: "#E0BC7C",
+  100: "#F6EBD6",
 } as const;
 
 export type ColorScheme = "light" | "dark";
 
 const light = {
   // الهوية
-  primary: navy[800],
-  primaryDark: navy[900],
-  primaryLight: navy[700],
-  primaryMuted: navy[600],
-  onPrimaryMuted: navy[300],
+  primary: ink[800],
+  primaryDark: ink[900],
+  primaryLight: ink[700],
+  primaryMuted: ink[600],
+  onPrimaryMuted: ink[300],
 
-  accent: "#A11D2C", // الأحمر العماني — للتحذير والتأكيد الحاسم فقط
-  accentLight: "#C23B4B",
-  marine: marine[500], // الفيروزي البحري — للروابط والحالات النشطة
-  marineDeep: marine[600],
-  gold: "#B8912F", // للجوائز والمراكز فقط
+  accent: "#A8452A", // طينيّ محروق — للتحذير والتأكيد الحاسم فقط
+  accentLight: "#C4674B",
+  marine: brass[600], // النحاس — للروابط والحالات النشطة
+  marineDeep: brass[500],
+  gold: brass[500],
 
-  // الأسطح — رمادي مائل للأزرق، لا رمادي محايد
-  background: "#F2F5F9",
-  backgroundDeep: "#E7EDF4",
+  // الأسطح — ورقٌ دافئ، لا أبيضُ بارد
+  background: "#F6F3ED",
+  backgroundDeep: "#EDE8DF",
   surface: "#FFFFFF",
-  surfaceRaised: "#FBFCFE",
-  border: "#D8E1EC",
-  borderStrong: "#C2D0E0",
+  surfaceRaised: "#FCFAF6",
+  border: "#E2DCD0",
+  borderStrong: "#CFC6B6",
 
   // النص
-  textPrimary: "#0E1C2B",
-  textSecondary: "#3C5570",
-  textMuted: "#6B819A",
+  textPrimary: "#14201A",
+  textSecondary: "#44574D",
+  textMuted: "#7A877F",
   textOnPrimary: "#FFFFFF",
   textOnPrimaryMuted: "rgba(255,255,255,0.72)",
 
   // الحالات
-  success: "#137A56",
-  successSoft: "#E4F3ED",
-  warning: "#9A6B14",
-  warningSoft: "#FAF0DC",
-  danger: "#A32218",
-  dangerSoft: "#FBE9E7",
-  info: marine[500],
-  infoSoft: marine[100],
+  success: "#1F7A52",
+  successSoft: "#E3F2EA",
+  warning: "#8C6516",
+  warningSoft: "#F8EFDA",
+  danger: "#9E2C1D",
+  dangerSoft: "#F9E8E4",
+  info: brass[600],
+  infoSoft: brass[100],
 
-  overlay: "rgba(6, 23, 41, 0.52)",
+  overlay: "rgba(10, 20, 15, 0.55)",
 };
 
 export type Colors = { [K in keyof typeof light]: string };
@@ -87,41 +90,41 @@ export type Colors = { [K in keyof typeof light]: string };
  * ناصع — الناصع على الداكن يُبهر العين في الظلمة.
  */
 const dark: Colors = {
-  primary: "#3B74B8",
-  primaryDark: "#0A2340",
-  primaryLight: "#4F86C6",
-  primaryMuted: "#2A4E78",
-  onPrimaryMuted: navy[300],
+  primary: "#C9963F",
+  primaryDark: "#0A140F",
+  primaryLight: "#DCAF5C",
+  primaryMuted: "#6B5220",
+  onPrimaryMuted: ink[300],
 
-  accent: "#D4525F",
-  accentLight: "#E27A84",
-  marine: "#3FB1C0",
-  marineDeep: "#2C97A6",
-  gold: "#D3AE55",
+  accent: "#D46B4E",
+  accentLight: "#E2896F",
+  marine: "#E0BC7C",
+  marineDeep: "#C9963F",
+  gold: "#E0BC7C",
 
-  background: "#0A1424",
-  backgroundDeep: "#060F1C",
-  surface: "#132239",
-  surfaceRaised: "#182B45",
-  border: "#22395A",
-  borderStrong: "#2E4A6E",
+  background: "#0D1712",
+  backgroundDeep: "#080F0C",
+  surface: "#16241D",
+  surfaceRaised: "#1D2E25",
+  border: "#273B31",
+  borderStrong: "#35503F",
 
-  textPrimary: "#E8EFF7",
-  textSecondary: "#B7C7D9",
-  textMuted: "#8AA0B8",
-  textOnPrimary: "#FFFFFF",
-  textOnPrimaryMuted: "rgba(255,255,255,0.72)",
+  textPrimary: "#ECF2EE",
+  textSecondary: "#BCCCC2",
+  textMuted: "#8B9C92",
+  textOnPrimary: "#12201B",
+  textOnPrimaryMuted: "rgba(18,32,27,0.68)",
 
-  success: "#3FBF8A",
-  successSoft: "rgba(63,191,138,0.16)",
-  warning: "#D9A441",
-  warningSoft: "rgba(217,164,65,0.16)",
-  danger: "#E05A4F",
-  dangerSoft: "rgba(224,90,79,0.16)",
-  info: "#3FB1C0",
-  infoSoft: "rgba(63,177,192,0.16)",
+  success: "#4CC48D",
+  successSoft: "rgba(76,196,141,0.16)",
+  warning: "#DDAE52",
+  warningSoft: "rgba(221,174,82,0.16)",
+  danger: "#E0705C",
+  dangerSoft: "rgba(224,112,92,0.16)",
+  info: "#E0BC7C",
+  infoSoft: "rgba(224,188,124,0.16)",
 
-  overlay: "rgba(0, 0, 0, 0.62)",
+  overlay: "rgba(0, 0, 0, 0.66)",
 };
 
 export const palettes: Record<ColorScheme, Colors> = { light, dark };

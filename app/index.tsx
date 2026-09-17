@@ -1,85 +1,132 @@
 import { useEffect, useRef } from "react";
-import { Animated, Text, View } from "react-native";
+import { Animated, Easing, Pressable, Text, View } from "react-native";
 import { router } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
-import { JetFormation } from "@/components/JetFormation";
-import { Logo } from "@/components/Logo";
-import { PatternOverlay } from "@/components/PatternOverlay";
-import { colors, spacing, typography, themed } from "@/constants";
-import { useAuthStore } from "@/store/authStore";
+import { Ionicons } from "@expo/vector-icons";
+import { PhoneFrame } from "@/components/PhoneFrame";
+import { SitePreview } from "@/components/SitePreview";
+import { colors, radius, spacing, themed, typography } from "@/constants";
+import { PRICE_LABEL, PERIOD_LABEL } from "@/product/plan";
+import { arabicDigits } from "@/product/format";
+import { demoOf, TEMPLATES } from "@/product/templates";
+import { TRIAL_LENGTH, useProjectStore } from "@/store/projectStore";
 
 /**
- * أقلّ ما تبقاه شاشة البداية.
+ * أوّل شاشة: ما هذا، ولمن، وبكم.
  *
- * وكان ألفًا ومئة، وهي تكفي لشعارٍ يظهر. ثم صار فوقه تشكيلٌ يعبر في ألفٍ
- * وسبعمئة وخمسين، فلو بقيت المدّة على حالها لقُطع الطيران في منتصفه — وطيرانٌ
- * يُقطع أسوأ من لا طيران.
+ * وثلاثة هواتف مائلة في الصدر لا كلامٌ عن «حلولٍ رقمية»: صاحب المشروع يقرّر
+ * بعينه لا بأذنه، ورؤيةُ ثلاث واجهاتٍ جاهزة تقول ما لا يقوله سطرٌ تسويقي.
  */
-const MIN_SPLASH_MS = 2050;
-
-/**
- * شاشة البداية — شعار واسم التطبيق، وفوقهما تشكيلٌ من المقاتلات يعبر صعودًا.
- *
- * والتشكيل خلف الشعار لا أمامه: هو تحيّةٌ لا حجاب، والاسم يجب أن يُقرأ.
- */
-export default function SplashScreen() {
-  const opacity = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(12)).current;
-  const hasHydrated = useAuthStore((s) => s.hasHydrated);
-  const user = useAuthStore((s) => s.user);
+export default function Welcome() {
+  const started = useProjectStore((state) => state.started);
+  const hasHydrated = useProjectStore((state) => state.hasHydrated);
+  const rise = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.timing(opacity, { toValue: 1, duration: 500, useNativeDriver: true }),
-      Animated.timing(translateY, { toValue: 0, duration: 500, useNativeDriver: true }),
-    ]).start();
-  }, [opacity, translateY]);
+    Animated.timing(rise, {
+      toValue: 1,
+      duration: 900,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [rise]);
 
+  // من بدأ مشروعه لا يُعاد إلى صفحة البيع في كل فتحة.
   useEffect(() => {
-    const start = Date.now();
-    if (!hasHydrated) return;
-    const elapsed = Date.now() - start;
-    const remaining = Math.max(MIN_SPLASH_MS - elapsed, 0);
-    const timer = setTimeout(() => {
-      router.replace(user ? "/(tabs)" : "/(auth)/login");
-    }, remaining);
-    return () => clearTimeout(timer);
-  }, [hasHydrated, user]);
+    if (hasHydrated && started) router.replace("/(tabs)");
+  }, [hasHydrated, started]);
+
+  const lift = rise.interpolate({ inputRange: [0, 1], outputRange: [40, 0] });
+  const show = [0, 1, 2].map((index) =>
+    rise.interpolate({ inputRange: [index * 0.18, 0.5 + index * 0.18], outputRange: [0, 1], extrapolate: "clamp" })
+  );
+
+  const trio = [TEMPLATES[0], TEMPLATES[3], TEMPLATES[1]];
 
   return (
     <LinearGradient
       colors={[colors.primaryLight, colors.primary, colors.primaryDark]}
       start={{ x: 0.1, y: 0 }}
       end={{ x: 0.9, y: 1 }}
-      style={styles.container}
+      style={styles.screen}
     >
-      <PatternOverlay opacity={0.08} />
-      <JetFormation />
-      <Animated.View style={{ opacity, transform: [{ translateY }], alignItems: "center" }}>
-        <Logo size="lg" style={styles.logo} />
-        <Text style={styles.appName}>أنشطتي</Text>
-        <View style={styles.rule} />
-        <Text style={styles.subtitle}>قاعدة صلالة الجوية</Text>
+      <View style={styles.stage}>
+        {trio.map((template, index) => (
+          <Animated.View
+            key={template.id}
+            style={[
+              styles.phone,
+              {
+                opacity: show[index],
+                transform: [
+                  { translateY: lift },
+                  { translateX: (index - 1) * 96 },
+                  { rotate: `${(index - 1) * 9}deg` },
+                  { scale: index === 1 ? 1 : 0.88 },
+                ],
+                zIndex: index === 1 ? 3 : 1,
+              },
+            ]}
+            pointerEvents="none"
+          >
+            <PhoneFrame width={176} statusTint={template.skin.hero === "plain" ? "#14201A" : "#FFFFFF"}>
+              <SitePreview project={demoOf(template.id)} template={template} />
+            </PhoneFrame>
+          </Animated.View>
+        ))}
+      </View>
+
+      <Animated.View style={[styles.copy, { opacity: rise, transform: [{ translateY: lift }] }]}>
+        <Text style={styles.brand}>واجهة</Text>
+        <Text style={styles.headline}>موقعك وتطبيقك{"\n"}في مساءٍ واحد</Text>
+        <Text style={styles.sub}>
+          اختر قالبًا، اكتب اسمك وقائمتك، وانشر. بلا مصمّم، وبلا مبرمج، وبلا انتظار.
+        </Text>
+
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push("/(tabs)")}
+          style={({ pressed }) => [styles.cta, pressed && styles.pressed]}
+        >
+          <Text style={styles.ctaText}>جرّبه مجانًا</Text>
+          <Ionicons name="arrow-back" size={18} color={colors.primary} />
+        </Pressable>
+
+        <Text style={styles.terms}>
+          {`${arabicDigits(TRIAL_LENGTH)} يومًا مجانًا بلا بطاقة · بعدها ${PRICE_LABEL} ${PERIOD_LABEL}`}
+        </Text>
       </Animated.View>
     </LinearGradient>
   );
 }
 
 const styles = themed(() => ({
-  container: {
-    flex: 1,
-    backgroundColor: colors.primary,
+  screen: { flex: 1, justifyContent: "flex-end" },
+  stage: { flex: 1, alignItems: "center", justifyContent: "center", marginTop: spacing.xxl },
+  phone: { position: "absolute" },
+  copy: {
+    backgroundColor: colors.background,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.xl,
+    paddingBottom: spacing.xxl,
+    gap: spacing.sm,
+  },
+  brand: { fontFamily: "Tajawal_700Bold", fontSize: 15, color: colors.marine, letterSpacing: 1.5 },
+  headline: { ...typography.h1, fontSize: 25, lineHeight: 36 },
+  sub: { ...typography.bodyMuted, lineHeight: 23 },
+  cta: {
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-  },
-  logo: { backgroundColor: "transparent", marginBottom: spacing.lg },
-  appName: { ...typography.h1, color: colors.textOnPrimary, fontSize: 28 },
-  rule: {
-    width: 46,
-    height: 2,
-    borderRadius: 1,
+    gap: spacing.sm,
     backgroundColor: colors.gold,
-    marginVertical: spacing.sm,
+    borderRadius: radius.pill,
+    paddingVertical: spacing.lg,
+    marginTop: spacing.md,
   },
-  subtitle: { fontFamily: "Tajawal_400Regular", fontSize: 15, color: "rgba(255,255,255,0.75)" },
+  pressed: { opacity: 0.85 },
+  ctaText: { fontFamily: "Tajawal_700Bold", fontSize: 16, color: colors.primary },
+  terms: { ...typography.caption, textAlign: "center", marginTop: 2 },
 }));

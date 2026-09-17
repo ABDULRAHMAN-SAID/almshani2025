@@ -1,356 +1,299 @@
-import { useEffect, useState } from "react";
-import { ScrollView, Text, View } from "react-native";
-import { router } from "expo-router";
-import { ActivityCard } from "@/components/ActivityCard";
-import { AnnouncementCard } from "@/components/AnnouncementCard";
-import { AwarenessCard } from "@/components/AwarenessCard";
-import { AnnouncementSpotlight } from "@/components/AnnouncementSpotlight";
-import { CategoryCard } from "@/components/CategoryCard";
-import { EmptyState } from "@/components/EmptyState";
-import { EventHero } from "@/components/EventHero";
-import { HeaderBand } from "@/components/HeaderBand";
-import { ActivitySkeletonCard } from "@/components/LoadingSkeleton";
-import { Logo } from "@/components/Logo";
-import { PointsBadge } from "@/components/PointsBadge";
-import { NewsCard } from "@/components/NewsCard";
-import { SectionHeader } from "@/components/SectionHeader";
-import { WeatherChip } from "@/components/WeatherChip";
-import { WeeklyQuizTeaserCard } from "@/components/WeeklyQuizTeaserCard";
-import { HOME_GROUP_LABEL, HOME_GROUP_ORDER, HOME_SECTIONS } from "@/constants/categories";
-import { colors, radius, shadow, spacing, typography, themed } from "@/constants";
-import { useAuth } from "@/hooks/useAuth";
+import { useRef, useState } from "react";
 import {
-  useHeroActivity,
-  useLatestAnnouncements,
-  useThisWeekActivities,
-  useTodayAwareness,
-  useUpcomingActivities,
-  useLatestNews,
-} from "@/hooks/useHomeData";
-import { usePointsBalance } from "@/hooks/usePoints";
-import { useWeeklyQuiz } from "@/hooks/useWeeklyQuiz";
-import { getAnsweredState } from "@/services/quizService";
-import { formatArabicWeekday, omanFullDateLabel } from "@/utils/date";
-import { useFeatures } from "@/hooks/useFeatures";
+  Dimensions,
+  I18nManager,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  Pressable,
+  ScrollView,
+  Switch,
+  Text,
+  View,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { PhoneFrame } from "@/components/PhoneFrame";
+import { SitePreview } from "@/components/SitePreview";
+import { colors, radius, spacing, themed, typography } from "@/constants";
+import { demoOf, TEMPLATES } from "@/product/templates";
+import { TRADE } from "@/product/trades";
+import type { Project } from "@/product/types";
+import { useProjectStore } from "@/store/projectStore";
 
-export default function HomeScreen() {
-  const { user } = useAuth();
-  const hero = useHeroActivity();
-  const upcoming = useUpcomingActivities(hero.data?.id);
-  const announcements = useLatestAnnouncements();
-  const news = useLatestNews();
-  const awareness = useTodayAwareness();
-  const thisWeek = useThisWeekActivities();
-  const points = usePointsBalance();
-  const weeklyQuiz = useWeeklyQuiz();
-  const { discussionEnabled, messagesEnabled, quizEnabled, chatEnabled, weatherEnabled, hijriOffset } =
-    useFeatures();
+/**
+ * معرض القوالب — قلبُ المنتج.
+ *
+ * وهو هواتفُ تُسحب لا شبكةُ بطاقات: صاحب المشروع يقرّر بما سيراه زبونه في
+ * يده، والبطاقة المستطيلة تُري ألوانًا لا تطبيقًا. والسحبةُ الواحدة تُري
+ * قالبًا كاملًا، فيُقارن بينها كما يُقارن بين قميصين لا بين صورتين.
+ *
+ * والمفتاح فوقها «بمحتوى مشروعي»: أن يرى اسمه هو وقائمته هو في كل قالبٍ
+ * يمرّ عليه. وهذه اللحظة هي التي تبيع — لا الكلام عن «قوالب احترافية».
+ */
+export default function Gallery() {
+  const insets = useSafeAreaInsets();
+  const project = useProjectStore((state) => state.project);
+  const chooseTemplate = useProjectStore((state) => state.chooseTemplate);
 
-  // ساعة القاعدة، تُحدَّث كل دقيقة.
-  //
-  // ولا تُقرأ من ساعة الجهاز: من ضبط هاتفه على منطقة أخرى — أو سافر — تظل
-  // الشاشة تقول توقيت عُمان، وهو التوقيت الذي تُعقد به المحاضرات ويُفتح به
-  // التسجيل. وساعةٌ تقول غيره أسوأ من لا ساعة.
-  const [clock, setClock] = useState(() => omanFullDateLabel(new Date(), hijriOffset));
-  useEffect(() => {
-    setClock(omanFullDateLabel(new Date(), hijriOffset));
-    const id = setInterval(() => setClock(omanFullDateLabel(new Date(), hijriOffset)), 30_000);
-    return () => clearInterval(id);
-  }, [hijriOffset]);
+  const [index, setIndex] = useState(() =>
+    Math.max(0, TEMPLATES.findIndex((template) => template.id === project.templateId))
+  );
+  const named = project.name.trim().length > 0;
+  const [mine, setMine] = useState(named);
+  const scroller = useRef<ScrollView>(null);
 
-  const answeredCount = weeklyQuiz.data?.questions.filter((question) => getAnsweredState(question.id)).length ?? 0;
+  const width = Dimensions.get("window").width;
+  const phoneWidth = Math.min(268, width * 0.68);
 
-  // الوجهة تُقرأ من HOME_SECTIONS نفسها، لا من جدولٍ ثانٍ بجانبها.
-  //
-  // كان هنا جدول وجهات منفصل، فلمّا أُضيف قسم «الأخبار» إلى الشبكة ولم يُضف
-  // إلى الجدول صارت أيقونته تُرسم ولا تفتح شيئًا حين تُلمس — لا خطأ ولا
-  // شاشة، سكوت. ومصدرٌ واحد للوجهة يمنع أن يتكرّر هذا مع أي قسم يُضاف بعد.
-  const openSection = (route: string) => router.push(route as never);
+  /**
+   * التمرير الأفقيّ وواجهةٌ عربية.
+   *
+   * أندرويد يعكس ترتيب صفحات التمرير الأفقيّ في الواجهة العربية: الصفحة
+   * الأولى تقع في أقصى اليمين لا اليسار. فحسابُ الصفحة من الموضع مباشرةً
+   * يُعطي القالب السادس حين يُعرض الأوّل. وهاتان تحوّلان بين الاثنين في
+   * الاتّجاهين، فالقراءة والكتابة تمرّان بالتحويل نفسه ولا يختلفان.
+   */
+  const pageOffset = (page: number) =>
+    (I18nManager.isRTL ? TEMPLATES.length - 1 - page : page) * width;
+  const pageOf = (x: number) => {
+    const raw = Math.round(x / width);
+    return I18nManager.isRTL ? TEMPLATES.length - 1 - raw : raw;
+  };
 
-  // الأقسام التي تستطيع الإدارة إيقافها تختفي من الشبكة كليًا حين تُوقَف.
-  const sections = HOME_SECTIONS.filter((section) => {
-    if (section.key === "groups") return discussionEnabled;
-    if (section.key === "messages") return messagesEnabled;
-    if (section.key === "chats") return chatEnabled;
-    if (section.key === "weather") return weatherEnabled;
-    if (section.key === "quiz") return quizEnabled;
-    return true;
-  });
+  const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const next = pageOf(event.nativeEvent.contentOffset.x);
+    if (next !== index && next >= 0 && next < TEMPLATES.length) setIndex(next);
+  };
+
+  const goTo = (page: number) => {
+    const clamped = Math.min(TEMPLATES.length - 1, Math.max(0, page));
+    setIndex(clamped);
+    scroller.current?.scrollTo({ x: pageOffset(clamped), animated: true });
+  };
+
+  const current = TEMPLATES[index] ?? TEMPLATES[0];
+  const chosen = current.id === project.templateId;
+
+  /** محتوى المعاينة: مشروعه إن كتب اسمه واختار، وإلّا المشروع التجريبي. */
+  const contentFor = (templateId: string): Project => {
+    const demo = demoOf(templateId);
+    if (!mine || !named) return demo;
+    return {
+      ...project,
+      templateId,
+      // ما لم يكتبه بعد يُملأ من التجريبي — واجهةٌ نصفها فارغ لا تُري شيئًا.
+      tagline: project.tagline || demo.tagline,
+      about: project.about || demo.about,
+      offers: project.offers.length > 0 ? project.offers : demo.offers,
+      hours: project.hours.length > 0 ? project.hours : demo.hours,
+      address: project.address || demo.address,
+      phone: project.phone || demo.phone,
+    };
+  };
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-      <HeaderBand overlap={44}>
-        {/* سطر الساعة: التاريخ من جهة والطقس من الأخرى — كلاهما ممّا
-            يُنظر إليه أوّل ما يُفتح التطبيق. */}
-        <View style={styles.clockRow}>
-          <Text style={styles.clock}>{clock}</Text>
-          {weatherEnabled ? <WeatherChip /> : null}
-        </View>
-
-        <View style={styles.header}>
-          <Logo size="sm" />
-          <Text style={styles.brand}>أنشطتي</Text>
-          <View style={styles.spacer} />
-          <PointsBadge points={points.data ?? 0} onPress={() => router.push("/points-history")} />
-        </View>
-
-        <View style={styles.greeting}>
-          <Text style={styles.greetingTitle}>{user?.name ? `مرحبًا، ${user.name}` : "مرحبًا"}</Text>
-          <Text style={styles.greetingSubtitle}>اطّلع على أحدث الأنشطة والفعاليات</Text>
-        </View>
-      </HeaderBand>
-
-      {/*
-        الشبكة مقسّمة أشرطة بعناوينها.
-        ثلاثة عشر رمزًا في شبكة واحدة تُقرأ كوماً لا كقائمة: لا فرق في العين
-        بين «الرماية» و«تواصل معنا»، فيُبحث عن كل شيء من أوّله كل مرّة.
-      */}
-      <View style={styles.gridPanel}>
-        {HOME_GROUP_ORDER.map((group, index) => {
-          const items = sections.filter((section) => section.group === group);
-          if (items.length === 0) return null;
-          return (
-            <View key={group} style={index > 0 ? styles.groupSpaced : undefined}>
-              <Text style={styles.groupLabel}>{HOME_GROUP_LABEL[group]}</Text>
-              <View style={styles.grid}>
-                {items.map((section) => (
-                  <View key={section.key} style={styles.gridItem}>
-                    <CategoryCard
-                      label={section.label}
-                      icon={section.icon}
-                      tint={section.tint}
-                      variant="plain"
-                      onPress={() => openSection(section.route)}
-                    />
-                  </View>
-                ))}
-              </View>
-            </View>
-          );
-        })}
-      </View>
-
-      {/* الإعلان أوّل ما يُرى بعد الأقسام: هو خبر اليوم لا صنفٌ يُتصفَّح. */}
-      {announcements.data && announcements.data.length > 0 ? (
-        <View style={styles.spotlight}>
-          <AnnouncementSpotlight
-            announcement={announcements.data[0]}
-            onPress={() => router.push("/announcements")}
-          />
-        </View>
-      ) : null}
-
-      <View style={styles.section}>
-        <SectionHeader title="النشاط القادم" />
-        {hero.isLoading ? (
-          <ActivitySkeletonCard />
-        ) : hero.data ? (
-          <EventHero
-            activity={hero.data}
-            onViewDetails={() => router.push(`/activity/${hero.data!.id}`)}
-            onRegister={() => router.push(`/activity/${hero.data!.id}`)}
-          />
-        ) : (
-          <EmptyState
-            icon="calendar-outline"
-            title="لا توجد أنشطة قادمة حاليًا"
-            subtitle="سيتم إعلامك عند إضافة نشاط جديد"
-          />
-        )}
-      </View>
-
-      <View style={styles.section}>
-        <SectionHeader title="الأنشطة القادمة" actionLabel="التقويم" onPressAction={() => router.push("/calendar")} />
-        {upcoming.isLoading ? (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.hScroll}
-            contentContainerStyle={styles.hList}
-          >
-            {[1, 2].map((key) => (
-              <ActivitySkeletonCard key={key} />
-            ))}
-          </ScrollView>
-        ) : upcoming.data && upcoming.data.length > 0 ? (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.hScroll}
-            contentContainerStyle={styles.hList}
-          >
-            {upcoming.data.slice(0, 8).map((activity) => (
-              <ActivityCard
-                key={activity.id}
-                activity={activity}
-                onPress={() => router.push(`/activity/${activity.id}`)}
-              />
-            ))}
-          </ScrollView>
-        ) : (
-          <EmptyState title="لا توجد أنشطة قادمة حاليًا" subtitle="سيتم إعلامك عند إضافة نشاط جديد" />
-        )}
-      </View>
-
-      {weeklyQuiz.data ? (
-        <View style={styles.section}>
-          <WeeklyQuizTeaserCard
-            quiz={weeklyQuiz.data}
-            answeredCount={answeredCount}
-            onPress={() => router.push("/quiz")}
-          />
-        </View>
-      ) : null}
-
-      {thisWeek.data && thisWeek.data.length > 0 ? (
-        <View style={styles.section}>
-          <SectionHeader title="هذا الأسبوع" />
-          <View style={styles.weekCard}>
-            {thisWeek.data.map((activity) => (
-              <View key={activity.id} style={styles.weekRow}>
-                <Text style={styles.weekDay}>{formatArabicWeekday(activity.date)}</Text>
-                <Text style={styles.weekTitle} numberOfLines={1}>
-                  {activity.title}
-                </Text>
-              </View>
-            ))}
+    <View style={[styles.screen, { paddingTop: insets.top + spacing.sm }]}>
+      <View style={styles.head}>
+        <Text style={styles.title}>القوالب</Text>
+        <View style={styles.headRow}>
+          <Text style={styles.subtitle}>اسحب لتُقلّب — واختر ما يشبه مشروعك</Text>
+          <View style={styles.mineToggle}>
+            <Text style={styles.mineLabel}>بمحتواي</Text>
+            <Switch
+              value={mine && named}
+              onValueChange={(value) => {
+                // من لم يكتب اسم مشروعه بعدُ لا شيء يُعرض به — فيُؤخذ إلى
+                // المحرّر بدل أن يُقلب مفتاحٌ لا أثر له.
+                if (!named) {
+                  router.push("/(tabs)/project");
+                  return;
+                }
+                setMine(value);
+              }}
+              trackColor={{ true: colors.marine, false: colors.border }}
+              thumbColor={colors.surface}
+            />
           </View>
         </View>
-      ) : null}
-
-      {/*
-        قسم الأخبار يظهر دائمًا، ولو لم يُنشر خبر بعد.
-        كان يختفي حين تخلو القاعدة من خبر، فبدا لمن يبحث عنه أنه غير موجود
-        في التطبيق أصلًا — وهو موجود وينتظر أول خبر. وسطرٌ يقول ذلك أصدق من
-        فراغ يُفسَّر عطلًا.
-      */}
-      <View style={styles.section}>
-        <SectionHeader
-          title="أهم الأخبار"
-          actionLabel="عرض الكل"
-          onPressAction={() => router.push("/news")}
-        />
-        {news.data && news.data.length > 0 ? (
-          // صفّ يُسحب جانبًا كبقيّة أقسام الصفحة، لا عمود.
-          // عمودًا كان الخبران الأولان يملآن الشاشة، فلا يصل أحدٌ إلى ما
-          // تحتهما إلا بسحبٍ طويل — والصفحة الرئيسية نظرةٌ لا قراءة.
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.hScroll}
-            contentContainerStyle={styles.hList}
-          >
-            {news.data.map((item) => (
-              <NewsCard key={item.id} item={item} compact />
-            ))}
-          </ScrollView>
-        ) : (
-          <View style={styles.newsPlaceholder}>
-            <Text style={styles.newsPlaceholderText}>
-              {news.isLoading
-                ? "جارٍ تحميل الأخبار…"
-                : news.error
-                  ? "تعذّر تحميل الأخبار — تحقّق من الاتصال ثم أعد فتح الصفحة."
-                  : "لا أخبار منشورة بعد. تنشرها الإدارة من: الإدارة ← المحتوى ← الأخبار."}
-            </Text>
-          </View>
-        )}
       </View>
 
-      {announcements.data && announcements.data.length > 1 ? (
-        <View style={styles.section}>
-          <SectionHeader
-            title="إعلانات أخرى"
-            actionLabel="عرض الكل"
-            onPressAction={() => router.push("/announcements")}
-          />
-          <View style={{ gap: spacing.sm }}>
-            {announcements.data.slice(1).map((announcement) => (
-              <AnnouncementCard
-                key={announcement.id}
-                announcement={announcement}
-                onPress={() => router.push("/announcements")}
-              />
-            ))}
+      <ScrollView
+        ref={scroller}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        onScroll={onScroll}
+        scrollEventThrottle={32}
+        contentOffset={{ x: pageOffset(index), y: 0 }}
+      >
+        {TEMPLATES.map((template) => (
+          <View key={template.id} style={[styles.page, { width }]}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`معاينة قالب ${template.name}`}
+              onPress={() => router.push(`/preview/${template.id}`)}
+            >
+              <PhoneFrame
+                width={phoneWidth}
+                statusTint={template.skin.hero === "plain" ? template.skin.text : "#FFFFFF"}
+              >
+                <SitePreview project={contentFor(template.id)} template={template} />
+              </PhoneFrame>
+            </Pressable>
           </View>
-        </View>
-      ) : null}
+        ))}
+      </ScrollView>
 
-      {awareness.data ? (
-        <View style={styles.section}>
-          <AwarenessCard article={awareness.data} onPress={() => router.push("/(tabs)/awareness")} />
+      <View style={styles.pager}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="القالب السابق"
+          onPress={() => goTo(index - 1)}
+          hitSlop={10}
+          disabled={index === 0}
+          style={[styles.arrow, index === 0 && styles.arrowOff]}
+        >
+          <Ionicons name="chevron-forward" size={18} color={colors.textPrimary} />
+        </Pressable>
+
+        <View style={styles.dots}>
+          {TEMPLATES.map((template, dot) => (
+            <Pressable
+              key={template.id}
+              accessibilityRole="button"
+              accessibilityLabel={`قالب ${template.name}`}
+              onPress={() => goTo(dot)}
+              hitSlop={8}
+              style={[styles.dot, dot === index && styles.dotOn]}
+            />
+          ))}
         </View>
-      ) : null}
-    </ScrollView>
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="القالب التالي"
+          onPress={() => goTo(index + 1)}
+          hitSlop={10}
+          disabled={index === TEMPLATES.length - 1}
+          style={[styles.arrow, index === TEMPLATES.length - 1 && styles.arrowOff]}
+        >
+          <Ionicons name="chevron-back" size={18} color={colors.textPrimary} />
+        </Pressable>
+      </View>
+
+      <View style={styles.card}>
+        <View style={styles.cardHead}>
+          <View style={[styles.tradeTag, { backgroundColor: `${current.skin.brand}18` }]}>
+            <Ionicons
+              name={TRADE[current.trade].icon as keyof typeof Ionicons.glyphMap}
+              size={13}
+              color={current.skin.brand}
+            />
+            <Text style={[styles.tradeText, { color: current.skin.brand }]}>{TRADE[current.trade].label}</Text>
+          </View>
+          <Text style={styles.name}>{current.name}</Text>
+        </View>
+        <Text style={styles.pitch}>{current.pitch}</Text>
+
+        <View style={styles.buttons}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push(`/preview/${current.id}`)}
+            style={({ pressed }) => [styles.ghost, pressed && styles.pressed]}
+          >
+            <Ionicons name="expand-outline" size={17} color={colors.textPrimary} />
+            <Text style={styles.ghostText}>افتحه بالكامل</Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => {
+              chooseTemplate(current.id);
+              router.push("/(tabs)/project");
+            }}
+            style={({ pressed }) => [styles.pick, chosen && styles.picked, pressed && styles.pressed]}
+          >
+            <Ionicons
+              name={chosen ? "checkmark-circle" : "color-wand-outline"}
+              size={17}
+              color={colors.textOnPrimary}
+            />
+            <Text style={styles.pickText}>{chosen ? "قالبي — عدّله" : "اختر هذا"}</Text>
+          </Pressable>
+        </View>
+      </View>
+    </View>
   );
 }
 
 const styles = themed(() => ({
   screen: { flex: 1, backgroundColor: colors.background },
-  content: { paddingBottom: spacing.xxl },
-  header: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
-  spacer: { flex: 1 },
-  brand: { ...typography.h2, color: colors.textOnPrimary },
-  greeting: { gap: 2 },
-  greetingTitle: { ...typography.h1, color: colors.textOnPrimary },
-  greetingSubtitle: { ...typography.bodyMuted, color: "rgba(255,255,255,0.72)" },
-  // لوح واحد يضمّ الأقسام، ويتداخل مع أسفل الشريط الكحلي فيعطي إحساسًا بالعمق
-  gridPanel: {
-    marginTop: -44,
-    marginHorizontal: spacing.lg,
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg + 4,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingVertical: spacing.xs,
-    paddingHorizontal: 0,
-    ...shadow.card,
+  head: { paddingHorizontal: spacing.lg, marginBottom: spacing.sm, gap: 2 },
+  headRow: { flexDirection: "row", alignItems: "center", gap: spacing.md },
+  title: { ...typography.h1, fontSize: 22 },
+  subtitle: { ...typography.caption },
+  mineToggle: { flexDirection: "row", alignItems: "center", gap: 6, marginStart: "auto" },
+  mineLabel: { ...typography.caption, fontSize: 11 },
+
+  page: { alignItems: "center", justifyContent: "center", paddingVertical: spacing.sm },
+
+  pager: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.lg, paddingVertical: spacing.md },
+  arrow: {
+    width: 32, height: 32, borderRadius: 16,
+    alignItems: "center", justifyContent: "center",
+    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
   },
-  grid: { flexDirection: "row", flexWrap: "wrap" },
-  /*
-    أربعة في الصف لا ثلاثة.
-    عرض الخليّة هو ما يباعد الأيقونات جانبًا: أيقونة عرضها ٤٦ في عمودٍ عرضه
-    ١١٧ يبقى حولها سبعون نقطة فراغ، فتُقرأ الشبكة متناثرة. وبأربعة أعمدة
-    يصير الفراغ بينها النصف، ويبقى للاسم سطران يسعان أطول الأسماء.
-  */
-  gridItem: { width: "25%" },
-  // ‏textAlign "left" اتجاهٌ مطلق لا نسبيّ، فيبقى يسارًا في واجهة تُقرأ يمينًا.
-  clockRow: {
+  arrowOff: { opacity: 0.35 },
+  dots: { flexDirection: "row", alignItems: "center", gap: 6 },
+  dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.borderStrong },
+  dotOn: { width: 18, backgroundColor: colors.marine },
+
+  card: {
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: 26,
+    borderTopRightRadius: 26,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.xl,
+    gap: spacing.sm,
+  },
+  cardHead: { flexDirection: "row", alignItems: "center", gap: spacing.md },
+  name: { ...typography.h2, fontSize: 19 },
+  tradeTag: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.sm,
-    marginBottom: -spacing.sm,
+    gap: 5,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 5,
+    borderRadius: radius.pill,
   },
-  clock: {
-    ...typography.caption,
-    fontSize: 11,
-    color: "rgba(255,255,255,0.72)",
-    textAlign: "left",
-    flex: 1,
-  },
-  groupLabel: {
-    ...typography.caption,
-    color: colors.textMuted,
-    marginBottom: 2,
-    marginHorizontal: spacing.sm,
-  },
-  groupSpaced: { marginTop: 6 },
-  section: { marginTop: spacing.xl, paddingHorizontal: spacing.lg },
-  spotlight: { marginTop: spacing.lg, paddingHorizontal: spacing.lg },
-  newsPlaceholder: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
+  tradeText: { fontFamily: "Tajawal_500Medium", fontSize: 11.5 },
+  pitch: { ...typography.bodyMuted, lineHeight: 21 },
+
+  buttons: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.sm },
+  ghost: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: colors.border,
-    paddingVertical: spacing.lg,
-    paddingHorizontal: spacing.md,
   },
-  newsPlaceholderText: { ...typography.caption, color: colors.textMuted, textAlign: "center" },
-  // القائمة الأفقية تمتد إلى حافة الشاشة بدل أن تتوقف عند هامش القسم
-  hScroll: { marginHorizontal: -spacing.lg },
-  hList: { gap: spacing.md, paddingHorizontal: spacing.lg },
-  weekCard: { backgroundColor: colors.surface, borderRadius: 16, padding: spacing.lg, gap: spacing.md },
-  weekRow: { flexDirection: "row", alignItems: "center", gap: spacing.md },
-  weekDay: { ...typography.caption, width: 64 },
-  weekTitle: { ...typography.body, flex: 1, fontFamily: "Tajawal_500Medium" },
+  ghostText: { fontFamily: "Tajawal_500Medium", fontSize: 13.5, color: colors.textPrimary },
+  pick: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: spacing.md,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primary,
+  },
+  picked: { backgroundColor: colors.success },
+  pickText: { fontFamily: "Tajawal_700Bold", fontSize: 14, color: colors.textOnPrimary },
+  pressed: { opacity: 0.85 },
 }));
