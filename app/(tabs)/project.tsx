@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { PhoneFrame } from "@/components/PhoneFrame";
 import { DemoApp } from "@/components/DemoApp";
 import { colors, radius, spacing, themed, typography } from "@/constants";
-import { TEMPLATE_BY_ID, TEMPLATES, demoOf } from "@/product/templates";
+import { demoOf, statusTintOf, TEMPLATE_BY_ID, TEMPLATES } from "@/product/templates";
 import { KINDS, KIND } from "@/product/kinds";
 import type { Offer } from "@/product/types";
 import { useProjectStore } from "@/store/projectStore";
@@ -57,7 +57,7 @@ export default function Editor() {
       <View style={styles.previewWrap}>
         <PhoneFrame
           width={150}
-          statusTint={template.skin.hero === "plain" ? template.skin.text : "#FFFFFF"}
+          statusTint={statusTintOf(template)}
         >
           <DemoApp project={shown} template={template} />
         </PhoneFrame>

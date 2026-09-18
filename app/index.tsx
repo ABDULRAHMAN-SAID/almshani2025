@@ -24,7 +24,7 @@ import {
   type Tier,
 } from "@/product/plan";
 import { arabicDigits } from "@/product/format";
-import { demoOf, TEMPLATES } from "@/product/templates";
+import { demoOf, statusTintOf, TEMPLATES } from "@/product/templates";
 import { useProjectStore } from "@/store/projectStore";
 
 /**
@@ -168,7 +168,7 @@ export default function Landing() {
                 ]}
                 pointerEvents="none"
               >
-                <PhoneFrame width={168} statusTint={template.skin.hero === "plain" ? template.skin.text : "#FFFFFF"}>
+                <PhoneFrame width={168} statusTint={statusTintOf(template)}>
                   <DemoApp project={demoOf(template.id)} template={template} />
                 </PhoneFrame>
               </Animated.View>
@@ -199,7 +199,7 @@ export default function Landing() {
         </View>
 
         {/* ——— الأنواع الستّة ——— */}
-        <Section title="ستّة أنواع — أيّها مشروعك؟" note="اضغط أيًّا منها لتفتحه وتجرّبه بنفسك.">
+        <Section title="ستّة أنواع — أيّها مشروعك؟" note="ولكلٍّ تصميمُه وشاشاتُه لا لونُه فقط: صدرٌ يختلف، وترتيبٌ يختلف، وشريطُ تبويبٍ يختلف. اضغط أيًّا منها لتفتحه وتجرّبه بنفسك.">
           <View style={styles.kinds}>
             {TEMPLATES.map((template) => {
               const meta = KIND[template.kind];

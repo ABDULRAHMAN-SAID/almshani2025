@@ -94,48 +94,23 @@ export function DemoApp({ project, template, interactive = false }: DemoAppProps
 
   return (
     <View style={[styles.app, { backgroundColor: skin.paper }]}>
-      {/* ——— الصدر ——— */}
-      {skin.hero === "plain" ? (
-        <View style={[styles.headPlain, { backgroundColor: skin.card, borderBottomColor: `${skin.muted}22` }]}>
-          <View style={[styles.mark, { backgroundColor: brand, borderRadius: skin.radius }]}>
-            <Text style={styles.markText}>{monogram(project.name)}</Text>
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.headName, { color: skin.text }]}>{project.name}</Text>
-            <Text style={[styles.headTag, { color: skin.muted }]}>{project.tagline}</Text>
-          </View>
-        </View>
-      ) : (
-        <LinearGradient
-          colors={[brand, skin.brandDeep]}
-          start={{ x: 0.1, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.head}
-        >
-          <View style={styles.headArt} pointerEvents="none">
-            <View style={[styles.arc, { width: 190, height: 190, top: -80, start: -50 }]} />
-            <View style={[styles.arc, { width: 120, height: 120, top: 10, start: 270 }]} />
-          </View>
-          <View style={[styles.mark, styles.markOnDark, { borderRadius: skin.radius }]}>
-            <Text style={styles.markText}>{monogram(project.name)}</Text>
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.headNameOnDark}>{project.name}</Text>
-            <Text style={styles.headTagOnDark}>{project.tagline}</Text>
-          </View>
-        </LinearGradient>
-      )}
+      <Header skin={skin} brand={brand} project={project} />
 
       {/* ——— الجسم ——— */}
       <ScrollView
-        style={styles.body}
-        contentContainerStyle={styles.bodyPad}
+        style={[
+          styles.body,
+          // اللافتةُ العريضة تعلوها صفحةٌ مستديرة الطرفين — وهي ما يجعل
+          // المطعم مطعمًا لا نسخةً ملوّنة من العيادة.
+          skin.header === "band" ? { marginTop: -20, borderTopStartRadius: 24, borderTopEndRadius: 24, backgroundColor: skin.paper } : null,
+        ]}
+        contentContainerStyle={[styles.bodyPad, skin.nav === "pill" ? styles.bodyPadFloating : null]}
         showsVerticalScrollIndicator={false}
         scrollEnabled={interactive}
       >
         {project.kind === "restaurant" || project.kind === "store" ? (
           tab === 0 ? (
-            <Catalogue {...P} grid={project.kind === "store"} cart={cart} add={add} label={meta.offerLabel} />
+            <Catalogue {...P} cart={cart} add={add} label={meta.offerLabel} />
           ) : tab === 1 ? (
             <Cart {...P} lines={lines} cart={cart} add={add} total={total} order={order} />
           ) : (
@@ -178,36 +153,14 @@ export function DemoApp({ project, template, interactive = false }: DemoAppProps
         ) : null}
       </ScrollView>
 
-      {/* ——— شريط التبويب ——— */}
-      <View style={[styles.tabs, { backgroundColor: skin.card, borderTopColor: `${skin.muted}22` }]}>
-        {meta.tabs.map((entry, index) => {
-          const on = index === tab;
-          const badge = entry.key === "cart" && count > 0 ? count : 0;
-          return (
-            <Pressable
-              key={entry.key}
-              accessibilityRole="button"
-              accessibilityState={{ selected: on }}
-              onPress={() => interactive && setTab(index)}
-              style={styles.tab}
-            >
-              <View>
-                <Ionicons
-                  name={entry.icon as keyof typeof Ionicons.glyphMap}
-                  size={20}
-                  color={on ? brand : skin.muted}
-                />
-                {badge > 0 ? (
-                  <View style={[styles.badge, { backgroundColor: brand }]}>
-                    <Text style={styles.badgeText}>{arabicDigits(badge)}</Text>
-                  </View>
-                ) : null}
-              </View>
-              <Text style={[styles.tabLabel, { color: on ? brand : skin.muted }]}>{entry.label}</Text>
-            </Pressable>
-          );
-        })}
-      </View>
+      <Nav
+        skin={skin}
+        brand={brand}
+        tabs={meta.tabs}
+        tab={tab}
+        setTab={(next) => interactive && setTab(next)}
+        count={count}
+      />
     </View>
   );
 }
@@ -221,33 +174,71 @@ interface Common {
   interactive: boolean;
 }
 
-/** قائمةُ مطعمٍ أو رفوفُ متجر — والفرق شبكةٌ أو قائمة. */
+/**
+ * ما يُباع — بثلاث بِنًى لا بلونٍ واحد.
+ *
+ * `menu` قائمةُ مطعم: لكل صنفٍ بطاقتُه ومربّعُه، فالعين تلتقط الصنف كما
+ * تلتقطه في القائمة الورقية. و`grid` رفوفُ متجر: مربّعان في السطر وصورةٌ
+ * فوق الاسم. و`rows` أسطرٌ هادئةٌ في بطاقةٍ واحدة، لمن يبيع خدمةً لا سلعة.
+ */
 function Catalogue({
-  skin, brand, project, interactive, grid, cart, add, label,
+  skin, brand, project, interactive, cart, add, label,
 }: Common & {
-  grid: boolean;
   cart: Record<string, number>;
   add: (id: string, by: number) => void;
   label: string;
 }) {
   const groups = groupBy(project.offers, label);
+  const shape = skin.list;
+  let seen = 0;
+
   return (
     <>
       {Object.entries(groups).map(([category, items]) => (
         <View key={category} style={styles.block}>
           <Title text={category} skin={skin} brand={brand} />
-          {grid ? (
+
+          {shape === "grid" ? (
             <View style={styles.grid}>
+              {items.map((offer) => {
+                const first = seen++ === 0;
+                return (
+                  <View key={offer.id} style={[styles.tile, { backgroundColor: skin.card, borderRadius: skin.radius }]}>
+                    <View style={[styles.tileArt, { backgroundColor: `${brand}12`, borderRadius: skin.radius - 4 }]}>
+                      <Ionicons name="cube-outline" size={24} color={`${brand}99`} />
+                      {first ? (
+                        <View style={[styles.tileTag, { backgroundColor: brand }]}>
+                          <Text style={styles.tileTagText}>الأكثر طلبًا</Text>
+                        </View>
+                      ) : null}
+                    </View>
+                    <Text style={[styles.tileName, { color: skin.text }]} numberOfLines={1}>{offer.name}</Text>
+                    {offer.note ? (
+                      <Text style={[styles.tileNote, { color: skin.muted }]} numberOfLines={1}>{offer.note}</Text>
+                    ) : null}
+                    <View style={styles.tileFoot}>
+                      <Text style={[styles.price, { color: brand }]}>{omr(offer.price)}</Text>
+                      <Stepper qty={cart[offer.id] ?? 0} onAdd={(by) => add(offer.id, by)} brand={brand} enabled={interactive} />
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          ) : shape === "menu" ? (
+            <View style={{ gap: 9 }}>
               {items.map((offer) => (
-                <View key={offer.id} style={[styles.tile, { backgroundColor: skin.card, borderRadius: skin.radius }]}>
-                  <View style={[styles.tileArt, { backgroundColor: `${brand}12`, borderRadius: skin.radius - 4 }]}>
-                    <Ionicons name="cube-outline" size={24} color={`${brand}99`} />
+                <View key={offer.id} style={[styles.dish, { backgroundColor: skin.card, borderRadius: skin.radius }]}>
+                  <View style={[styles.dishArt, { backgroundColor: `${brand}12`, borderRadius: skin.radius - 5 }]}>
+                    <Ionicons name="restaurant-outline" size={21} color={`${brand}AA`} />
                   </View>
-                  <Text style={[styles.tileName, { color: skin.text }]} numberOfLines={1}>{offer.name}</Text>
-                  <View style={styles.tileFoot}>
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <Text style={[styles.rowName, { color: skin.text }]}>{offer.name}</Text>
+                    <Text style={[styles.rowNote, { color: skin.muted }]} numberOfLines={1}>
+                      {offer.note ?? category}
+                    </Text>
                     <Text style={[styles.price, { color: brand }]}>{omr(offer.price)}</Text>
-                    <Stepper qty={cart[offer.id] ?? 0} onAdd={(by) => add(offer.id, by)} brand={brand} enabled={interactive} />
                   </View>
+                  <Stepper qty={cart[offer.id] ?? 0} onAdd={(by) => add(offer.id, by)} brand={brand} enabled={interactive} />
                 </View>
               ))}
             </View>
@@ -321,7 +312,7 @@ function Cart({
 }
 
 /** خدماتُ الصالون بمدّتها — المدّة تُغيّر القرار كما يُغيّره السعر. */
-function Services({ skin, brand, project, label }: Common & { label: string }) {
+function Services({ skin, brand, project, interactive, label }: Common & { label: string }) {
   return (
     <View style={styles.block}>
       <Title text={label} skin={skin} brand={brand} />
@@ -341,6 +332,7 @@ function Services({ skin, brand, project, label }: Common & { label: string }) {
           </Fragment>
         ))}
       </View>
+      <MiniInfo skin={skin} brand={brand} project={project} interactive={interactive} />
     </View>
   );
 }
@@ -475,10 +467,66 @@ function MyBookings({ skin, brand, project }: Common) {
   );
 }
 
-/** فريقٌ أو أطبّاء — والفرق سطرُ «أقرب موعد». */
+/**
+ * فريقٌ أو أطبّاء.
+ *
+ * والعيادةُ تعرضهم بطاقاتٍ منفصلة لا أسطرًا في بطاقةٍ واحدة: المريض يختار
+ * الطبيب أوّلًا ثم الموعد، فالاسمُ عنده عنوانٌ لا سطرٌ في جدول. والصالونُ
+ * يعرضهم أسطرًا، لأن الخدمةَ عنده هي المقصودة والفنّيّةُ تبعٌ لها.
+ */
 function Team({
   skin, brand, project, interactive, pick, setPick, doctors,
 }: Common & { pick: number; setPick: (value: number) => void; doctors?: boolean }) {
+  if (skin.list === "cards") {
+    return (
+      <View style={styles.block}>
+        <Title text={doctors ? "الأطباء" : "الفريق"} skin={skin} brand={brand} />
+        {project.people.map((person, index) => {
+          const on = index === pick;
+          return (
+            <Pressable
+              key={person.id}
+              accessibilityRole="button"
+              onPress={() => interactive && setPick(index)}
+              style={[
+                styles.docCard,
+                {
+                  backgroundColor: skin.card,
+                  borderRadius: skin.radius,
+                  borderColor: on ? brand : `${skin.muted}1F`,
+                },
+              ]}
+            >
+              <View style={[styles.docAvatar, { backgroundColor: `${brand}14` }]}>
+                <Text style={[styles.docAvatarText, { color: brand }]}>
+                  {person.name.replace("د. ", "")[0]}
+                </Text>
+              </View>
+              <View style={{ flex: 1, gap: 4 }}>
+                <Text style={[styles.rowName, { color: skin.text }]}>{person.name}</Text>
+                <View style={[styles.docRole, { backgroundColor: `${brand}12` }]}>
+                  <Text style={[styles.docRoleText, { color: brand }]}>{person.role}</Text>
+                </View>
+                {person.next ? (
+                  <View style={styles.docNext}>
+                    <Ionicons name="time-outline" size={12} color={skin.muted} />
+                    <Text style={[styles.rowNote, { color: skin.muted }]}>{`أقرب موعد: ${person.next}`}</Text>
+                  </View>
+                ) : null}
+              </View>
+              <View style={[styles.docBook, { backgroundColor: on ? brand : `${brand}12`, borderRadius: skin.radius - 4 }]}>
+                <Text style={[styles.docBookText, { color: on ? "#FFF" : brand }]}>
+                  {on ? "مُختار" : "احجز"}
+                </Text>
+              </View>
+            </Pressable>
+          );
+        })}
+        <MiniInfo skin={skin} brand={brand} project={project} interactive={interactive} />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.block}>
       <Title text={doctors ? "الأطباء" : "الفريق"} skin={skin} brand={brand} />
@@ -512,23 +560,34 @@ function Team({
   );
 }
 
-/** الدورات — والسعرُ ظاهرٌ وعددُ الدروس، فلا يُشترى مجهول. */
+/** الدورات — لكلٍّ غلافُها وسعرُها وعددُ دروسها، فلا يُشترى مجهول. */
 function Courses({ skin, brand, project }: Common) {
   return (
     <View style={styles.block}>
       <Title text="الدورات" skin={skin} brand={brand} />
-      {project.courses.map((course) => (
-        <View key={course.id} style={[styles.card, styles.courseCard, { backgroundColor: skin.card, borderRadius: skin.radius }]}>
-          <View style={[styles.courseArt, { backgroundColor: `${brand}14`, borderRadius: skin.radius - 4 }]}>
-            <Ionicons name="play" size={20} color={brand} />
+      {project.courses.map((course, index) => (
+        <View key={course.id} style={[styles.courseWrap, { backgroundColor: skin.card, borderRadius: skin.radius }]}>
+          <LinearGradient
+            colors={index % 2 === 0 ? [brand, skin.brandDeep] : [skin.brandDeep, brand]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.courseCover}
+          >
+            <Ionicons name="play-circle" size={26} color="rgba(255,255,255,0.9)" />
+            <Text style={styles.courseLessons}>{`${arabicDigits(course.lessons)} درسًا`}</Text>
+          </LinearGradient>
+          <View style={styles.courseBody}>
+            <Text style={[styles.rowName, { color: skin.text }]} numberOfLines={1}>{course.name}</Text>
+            <Text style={[styles.rowNote, { color: skin.muted }]}>{course.teacher}</Text>
+            <View style={styles.courseFoot}>
+              <Text style={[styles.price, { color: brand }]}>{omr(course.price)}</Text>
+              <View style={[styles.courseGo, { backgroundColor: `${brand}12`, borderRadius: skin.radius - 6 }]}>
+                <Text style={[styles.courseGoText, { color: brand }]}>
+                  {course.done > 0 ? "تابع" : "ابدأ"}
+                </Text>
+              </View>
+            </View>
           </View>
-          <View style={{ flex: 1, gap: 2 }}>
-            <Text style={[styles.rowName, { color: skin.text }]}>{course.name}</Text>
-            <Text style={[styles.rowNote, { color: skin.muted }]}>
-              {`${course.teacher} · ${arabicDigits(course.lessons)} درسًا`}
-            </Text>
-          </View>
-          <Text style={[styles.price, { color: brand }]}>{omr(course.price)}</Text>
         </View>
       ))}
     </View>
@@ -628,6 +687,250 @@ function About({ skin, brand, project, interactive }: Common) {
   );
 }
 
+/* ========================= الصدر والتبويب ========================= */
+
+/**
+ * صدرُ التطبيق — ستّة أشكال.
+ *
+ * وهو أوّل ما تقع عليه العين، وعليه وحده يُحكم أنّ هذين تطبيقان أم واحدٌ
+ * صُبغ مرّتين. فالمطعمُ لافتةٌ تعلوها صفحة، والمتجرُ شريطُ بحث، والعيادةُ
+ * بياضٌ رسميّ تحته شريطُ حقائق، والمنصّةُ ليلٌ فيه تحيّةٌ وما تركتَه، والصالونُ
+ * قوس، والمواعيدُ غلافٌ يتوسّطه الاسم.
+ */
+function Header({ skin, brand, project }: { skin: Template["skin"]; brand: string; project: Project }) {
+  const mark = monogram(project.name);
+
+  if (skin.header === "shop") {
+    return (
+      <View style={[styles.shopHead, { backgroundColor: skin.card }]}>
+        <View style={styles.shopTop}>
+          <View style={[styles.shopMark, { backgroundColor: `${brand}14`, borderRadius: skin.radius - 4 }]}>
+            <Text style={[styles.shopMarkText, { color: brand }]}>{mark}</Text>
+          </View>
+          <View style={{ flex: 1, alignItems: "center" }}>
+            <Text style={[styles.shopName, { color: skin.text }]} numberOfLines={1}>{project.name}</Text>
+            <Text style={[styles.shopTag, { color: skin.muted }]} numberOfLines={1}>{project.tagline}</Text>
+          </View>
+          <Ionicons name="heart-outline" size={20} color={skin.muted} />
+        </View>
+        <View style={[styles.search, { backgroundColor: skin.paper, borderColor: `${skin.muted}2A`, borderRadius: skin.radius - 2 }]}>
+          <Ionicons name="search" size={15} color={skin.muted} />
+          <Text style={[styles.searchText, { color: skin.muted }]}>ابحث في المتجر…</Text>
+        </View>
+        {skin.strap ? (
+          <View style={[styles.ribbon, { backgroundColor: `${brand}12` }]}>
+            <Ionicons name="bicycle-outline" size={14} color={brand} />
+            <Text style={[styles.ribbonText, { color: brand }]}>{skin.strap}</Text>
+          </View>
+        ) : null}
+      </View>
+    );
+  }
+
+  if (skin.header === "split") {
+    return (
+      <View>
+        <View style={[styles.headPlain, { backgroundColor: skin.card }]}>
+          <View style={[styles.mark, { backgroundColor: brand, borderRadius: skin.radius }]}>
+            <Text style={styles.markText}>{mark}</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.headName, { color: skin.text }]}>{project.name}</Text>
+            <Text style={[styles.headTag, { color: skin.muted }]}>{project.tagline}</Text>
+          </View>
+          <View style={[styles.callDot, { backgroundColor: `${brand}14` }]}>
+            <Ionicons name="call" size={16} color={brand} />
+          </View>
+        </View>
+        <View style={[styles.factStrip, { backgroundColor: brand }]}>
+          {(skin.facts ?? []).map((fact, index) => (
+            <Fragment key={fact}>
+              {index > 0 ? <View style={styles.factDot} /> : null}
+              <Text style={styles.factText}>{fact}</Text>
+            </Fragment>
+          ))}
+        </View>
+      </View>
+    );
+  }
+
+  if (skin.header === "dark") {
+    const course = project.courses.find((entry) => entry.done > 0 && entry.done < entry.lessons);
+    const ratio = course && course.lessons > 0 ? course.done / course.lessons : 0;
+    return (
+      <View style={[styles.darkHead, { backgroundColor: skin.brandDeep }]}>
+        <View style={styles.darkTop}>
+          <View style={{ flex: 1 }}>
+            {skin.strap ? <Text style={styles.darkStrap}>{skin.strap}</Text> : null}
+            <Text style={styles.headNameOnDark}>{project.name}</Text>
+          </View>
+          <View style={[styles.mark, styles.markOnDark, { borderRadius: 99 }]}>
+            <Text style={styles.markText}>{mark}</Text>
+          </View>
+        </View>
+        {course ? (
+          <View style={styles.resume}>
+            <View style={styles.resumeTop}>
+              <Ionicons name="play-circle" size={18} color="#FFF" />
+              <Text style={styles.resumeName} numberOfLines={1}>{`أكمل: ${course.name}`}</Text>
+            </View>
+            <View style={styles.resumeTrack}>
+              <View style={[styles.resumeFill, { width: `${Math.round(ratio * 100)}%`, backgroundColor: "#FFFFFF" }]} />
+            </View>
+            <Text style={styles.resumeNote}>
+              {`${arabicDigits(course.done)} من ${arabicDigits(course.lessons)} درسًا`}
+            </Text>
+          </View>
+        ) : null}
+      </View>
+    );
+  }
+
+  if (skin.header === "arch") {
+    return (
+      <LinearGradient
+        colors={[brand, skin.brandDeep]}
+        start={{ x: 0.1, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.archHead}
+      >
+        <View style={[styles.archMark, { borderColor: "rgba(255,255,255,0.55)" }]}>
+          <Text style={styles.archMarkText}>{mark}</Text>
+        </View>
+        <Text style={styles.archName}>{project.name}</Text>
+        <Text style={styles.archTag}>{project.tagline}</Text>
+        {skin.strap ? <Text style={styles.archStrap}>{skin.strap}</Text> : null}
+      </LinearGradient>
+    );
+  }
+
+  if (skin.header === "band") {
+    return (
+      <LinearGradient
+        colors={[brand, skin.brandDeep]}
+        start={{ x: 0.05, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.bandHead}
+      >
+        <View style={styles.headArt} pointerEvents="none">
+          <View style={[styles.arc, { width: 210, height: 210, top: -90, start: -60 }]} />
+          <View style={[styles.arc, { width: 130, height: 130, top: 4, start: 280 }]} />
+        </View>
+        <View style={styles.bandRow}>
+          <View style={[styles.mark, styles.markOnDark, { borderRadius: skin.radius }]}>
+            <Text style={styles.markText}>{mark}</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.bandName}>{project.name}</Text>
+            <Text style={styles.headTagOnDark}>{project.tagline}</Text>
+          </View>
+        </View>
+        {skin.strap ? (
+          <View style={styles.bandStrap}>
+            <Ionicons name="time-outline" size={14} color="#FFF" />
+            <Text style={styles.bandStrapText}>{skin.strap}</Text>
+          </View>
+        ) : null}
+      </LinearGradient>
+    );
+  }
+
+  // cover
+  return (
+    <LinearGradient
+      colors={[brand, skin.brandDeep]}
+      start={{ x: 0.1, y: 0 }}
+      end={{ x: 0.9, y: 1 }}
+      style={styles.coverHead}
+    >
+      <View style={styles.headArt} pointerEvents="none">
+        <View style={[styles.arc, { width: 240, height: 240, top: -120, start: -70 }]} />
+        <View style={[styles.arc, { width: 150, height: 150, top: 40, start: 290 }]} />
+      </View>
+      <View style={[styles.coverMark, { borderRadius: skin.radius + 8 }]}>
+        <Text style={styles.coverMarkText}>{mark}</Text>
+      </View>
+      <Text style={styles.coverName}>{project.name}</Text>
+      <Text style={styles.headTagOnDark}>{project.tagline}</Text>
+      {skin.facts && skin.facts.length > 0 ? (
+        <View style={styles.chips}>
+          {skin.facts.map((fact) => (
+            <View key={fact} style={styles.chip}>
+              <Text style={styles.chipText}>{fact}</Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
+    </LinearGradient>
+  );
+}
+
+/**
+ * شريطُ التبويب — ثلاثة أشكال.
+ *
+ * والقرصُ العائم يقول «تطبيقٌ حديث»، والشريطُ المسطّح يقول «رسميّ»،
+ * والمستديرُ الأعلى يقول «هادئ». وهذه لغةٌ يقرؤها الزبون بلا أن يسمّيها.
+ */
+function Nav({
+  skin, brand, tabs, tab, setTab, count,
+}: {
+  skin: Template["skin"];
+  brand: string;
+  tabs: { key: string; label: string; icon: string }[];
+  tab: number;
+  setTab: (next: number) => void;
+  count: number;
+}) {
+  const items = tabs.map((entry, index) => {
+    const on = index === tab;
+    const badge = entry.key === "cart" && count > 0 ? count : 0;
+    return (
+      <Pressable
+        key={entry.key}
+        accessibilityRole="button"
+        accessibilityState={{ selected: on }}
+        onPress={() => setTab(index)}
+        style={styles.tab}
+      >
+        <View
+          style={[
+            styles.tabIcon,
+            skin.nav === "soft" && on ? { backgroundColor: `${brand}16`, borderRadius: 999 } : null,
+          ]}
+        >
+          <Ionicons
+            name={entry.icon as keyof typeof Ionicons.glyphMap}
+            size={20}
+            color={on ? brand : skin.muted}
+          />
+          {badge > 0 ? (
+            <View style={[styles.badge, { backgroundColor: brand }]}>
+              <Text style={styles.badgeText}>{arabicDigits(badge)}</Text>
+            </View>
+          ) : null}
+        </View>
+        <Text style={[styles.tabLabel, { color: on ? brand : skin.muted }]}>{entry.label}</Text>
+      </Pressable>
+    );
+  });
+
+  if (skin.nav === "pill") {
+    return (
+      <View style={[styles.navPill, { backgroundColor: skin.card }]} pointerEvents="box-none">
+        {items}
+      </View>
+    );
+  }
+
+  if (skin.nav === "soft") {
+    return <View style={[styles.navSoft, { backgroundColor: skin.card }]}>{items}</View>;
+  }
+
+  return (
+    <View style={[styles.tabs, { backgroundColor: skin.card, borderTopColor: `${skin.muted}22` }]}>{items}</View>
+  );
+}
+
 /* ========================= لبنات مشتركة ========================= */
 
 function Title({ text, skin, brand }: { text: string; skin: Template["skin"]; brand: string }) {
@@ -635,6 +938,34 @@ function Title({ text, skin, brand }: { text: string; skin: Template["skin"]; br
     <View style={styles.titleRow}>
       <View style={[styles.tick, { backgroundColor: brand }]} />
       <Text style={[styles.title, { color: skin.text }]}>{text}</Text>
+    </View>
+  );
+}
+
+/**
+ * سطرا العنوان والوقت.
+ *
+ * ويُوضعان أسفل الشاشة التي تنتهي قبل أن تمتلئ — والفراغُ في أسفل الشاشة
+ * يُقرأ «ناقص»، وهذان سطران يملآنه بما يُسأل عنه فعلًا: أين أنتم، ومتى.
+ */
+function MiniInfo({ skin, brand, project }: Common) {
+  const hours = project.hours[0];
+  return (
+    <View style={[styles.card, { backgroundColor: skin.card, borderRadius: skin.radius }]}>
+      <View style={styles.miniInfo}>
+        <Ionicons name="location-outline" size={16} color={brand} />
+        <Text style={[styles.rowName, { color: skin.text, flex: 1 }]}>{project.address}</Text>
+      </View>
+      {hours ? (
+        <>
+          <Divider skin={skin} />
+          <View style={styles.miniInfo}>
+            <Ionicons name="time-outline" size={16} color={brand} />
+            <Text style={[styles.rowName, { color: skin.text, flex: 1 }]}>{hours.days}</Text>
+            <Text style={[styles.rowNote, { color: skin.muted }]}>{hours.hours}</Text>
+          </View>
+        </>
+      ) : null}
     </View>
   );
 }
@@ -698,10 +1029,81 @@ function groupBy(offers: Offer[], fallback: string): Record<string, Offer[]> {
 const styles = StyleSheet.create({
   app: { flex: 1 },
 
-  head: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 18, paddingTop: 52, paddingBottom: 18, overflow: "hidden" },
   headArt: { ...StyleSheet.absoluteFillObject },
   arc: { position: "absolute", borderRadius: 999, backgroundColor: "rgba(255,255,255,0.08)" },
-  headPlain: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 18, paddingTop: 52, paddingBottom: 16, borderBottomWidth: StyleSheet.hairlineWidth },
+  headPlain: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 18, paddingTop: 52, paddingBottom: 16 },
+
+  /* — غلاف: الاسم في الوسط وتحته شارات — */
+  coverHead: { paddingHorizontal: 18, paddingTop: 54, paddingBottom: 20, alignItems: "center", gap: 5, overflow: "hidden" },
+  coverMark: {
+    width: 56, height: 56, alignItems: "center", justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.18)", borderWidth: 1, borderColor: "rgba(255,255,255,0.3)",
+  },
+  coverMarkText: { fontFamily: "Tajawal_700Bold", fontSize: 21, color: "#FFFFFF" },
+  coverName: { fontFamily: "Tajawal_700Bold", fontSize: 21, color: "#FFFFFF", marginTop: 4 },
+  chips: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 6, marginTop: 10 },
+  chip: { backgroundColor: "rgba(255,255,255,0.16)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
+  chipText: { fontFamily: "Tajawal_500Medium", fontSize: 10.5, color: "#FFFFFF" },
+
+  /* — لافتة: تعلوها صفحةٌ مستديرة الطرفين — */
+  bandHead: { paddingHorizontal: 18, paddingTop: 50, paddingBottom: 34, gap: 12, overflow: "hidden" },
+  bandRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+  bandName: { fontFamily: "Tajawal_700Bold", fontSize: 21, color: "#FFFFFF" },
+  bandStrap: {
+    flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start",
+    backgroundColor: "rgba(0,0,0,0.22)", borderRadius: 999, paddingHorizontal: 11, paddingVertical: 5,
+  },
+  bandStrapText: { fontFamily: "Tajawal_500Medium", fontSize: 11, color: "#FFFFFF" },
+
+  /* — متجر: بحثٌ وشريطُ شحن — */
+  shopHead: { paddingHorizontal: 16, paddingTop: 50, paddingBottom: 0, gap: 10 },
+  shopTop: { flexDirection: "row", alignItems: "center", gap: 10 },
+  shopMark: { width: 36, height: 36, alignItems: "center", justifyContent: "center" },
+  shopMarkText: { fontFamily: "Tajawal_700Bold", fontSize: 14 },
+  shopName: { fontFamily: "Tajawal_700Bold", fontSize: 16.5 },
+  shopTag: { fontFamily: "Tajawal_400Regular", fontSize: 10.5 },
+  search: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1 },
+  searchText: { fontFamily: "Tajawal_400Regular", fontSize: 12.5 },
+  ribbon: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
+    marginHorizontal: -16, paddingVertical: 7,
+  },
+  ribbonText: { fontFamily: "Tajawal_500Medium", fontSize: 11 },
+
+  /* — عيادة: بياضٌ رسميّ وتحته شريطُ حقائق — */
+  callDot: { width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center" },
+  factStrip: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+    paddingVertical: 8, paddingHorizontal: 12,
+  },
+  factText: { fontFamily: "Tajawal_500Medium", fontSize: 10.5, color: "#FFFFFF" },
+  factDot: { width: 3, height: 3, borderRadius: 2, backgroundColor: "rgba(255,255,255,0.55)" },
+
+  /* — منصّة: ليلٌ فيه تحيّةٌ وما تركتَه — */
+  darkHead: { paddingHorizontal: 18, paddingTop: 50, paddingBottom: 18, gap: 14 },
+  darkTop: { flexDirection: "row", alignItems: "center", gap: 12 },
+  darkStrap: { fontFamily: "Tajawal_400Regular", fontSize: 11.5, color: "rgba(255,255,255,0.62)", marginBottom: 2 },
+  resume: { backgroundColor: "rgba(255,255,255,0.10)", borderRadius: 16, padding: 12, gap: 8 },
+  resumeTop: { flexDirection: "row", alignItems: "center", gap: 7 },
+  resumeName: { fontFamily: "Tajawal_500Medium", fontSize: 13, color: "#FFFFFF", flex: 1 },
+  resumeTrack: { height: 5, borderRadius: 3, backgroundColor: "rgba(255,255,255,0.18)", overflow: "hidden" },
+  resumeFill: { height: 5, borderRadius: 3 },
+  miniInfo: { flexDirection: "row", alignItems: "center", gap: 9, padding: 12 },
+  resumeNote: { fontFamily: "Tajawal_400Regular", fontSize: 10.5, color: "rgba(255,255,255,0.7)" },
+
+  /* — صالون: قوسٌ مستديرُ الطرفين — */
+  archHead: {
+    paddingHorizontal: 18, paddingTop: 52, paddingBottom: 26, alignItems: "center", gap: 4,
+    borderBottomStartRadius: 34, borderBottomEndRadius: 34,
+  },
+  archMark: {
+    width: 50, height: 50, borderRadius: 25, borderWidth: 1.5,
+    alignItems: "center", justifyContent: "center", marginBottom: 4,
+  },
+  archMarkText: { fontFamily: "Tajawal_700Bold", fontSize: 18, color: "#FFFFFF" },
+  archName: { fontFamily: "Tajawal_700Bold", fontSize: 20, color: "#FFFFFF", letterSpacing: 1.2 },
+  archTag: { fontFamily: "Tajawal_400Regular", fontSize: 11.5, color: "rgba(255,255,255,0.82)" },
+  archStrap: { fontFamily: "Tajawal_400Regular", fontSize: 10.5, color: "rgba(255,255,255,0.62)", letterSpacing: 1.6, marginTop: 6 },
   mark: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
   markOnDark: { backgroundColor: "rgba(255,255,255,0.18)" },
   markText: { fontFamily: "Tajawal_700Bold", fontSize: 17, color: "#FFFFFF" },
@@ -712,6 +1114,7 @@ const styles = StyleSheet.create({
 
   body: { flex: 1 },
   bodyPad: { padding: 16, paddingBottom: 28, gap: 18 },
+  bodyPadFloating: { paddingBottom: 96 },
   block: { gap: 9 },
 
   titleRow: { flexDirection: "row", alignItems: "center", gap: 7 },
@@ -729,8 +1132,13 @@ const styles = StyleSheet.create({
 
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
   tile: { width: (390 - 32 - 10) / 2, padding: 10, gap: 6 },
-  tileArt: { height: 74, alignItems: "center", justifyContent: "center" },
+  tileArt: { height: 74, alignItems: "center", justifyContent: "center", overflow: "hidden" },
+  tileTag: { position: "absolute", top: 6, start: 6, borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2 },
+  tileTagText: { fontFamily: "Tajawal_500Medium", fontSize: 8.5, color: "#FFFFFF" },
   tileName: { fontFamily: "Tajawal_500Medium", fontSize: 13 },
+  tileNote: { fontFamily: "Tajawal_400Regular", fontSize: 10.5 },
+  dish: { flexDirection: "row", alignItems: "center", gap: 11, padding: 10 },
+  dishArt: { width: 54, height: 54, alignItems: "center", justifyContent: "center" },
   tileFoot: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
 
   plus: { width: 30, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center" },
@@ -762,8 +1170,25 @@ const styles = StyleSheet.create({
   state: { paddingHorizontal: 9, paddingVertical: 4, borderRadius: 999 },
   stateText: { fontFamily: "Tajawal_500Medium", fontSize: 11 },
 
-  courseCard: { flexDirection: "row", alignItems: "center", gap: 11, paddingVertical: 12, paddingHorizontal: 12 },
-  courseArt: { width: 46, height: 46, alignItems: "center", justifyContent: "center" },
+  docCard: {
+    flexDirection: "row", alignItems: "center", gap: 11,
+    padding: 12, borderWidth: 1.5,
+  },
+  docAvatar: { width: 46, height: 46, borderRadius: 23, alignItems: "center", justifyContent: "center" },
+  docAvatarText: { fontFamily: "Tajawal_700Bold", fontSize: 19 },
+  docRole: { alignSelf: "flex-start", borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
+  docRoleText: { fontFamily: "Tajawal_500Medium", fontSize: 10.5 },
+  docNext: { flexDirection: "row", alignItems: "center", gap: 4 },
+  docBook: { paddingHorizontal: 12, paddingVertical: 7 },
+  docBookText: { fontFamily: "Tajawal_700Bold", fontSize: 12 },
+
+  courseWrap: { overflow: "hidden" },
+  courseCover: { height: 70, alignItems: "center", justifyContent: "center", gap: 3 },
+  courseLessons: { fontFamily: "Tajawal_500Medium", fontSize: 10.5, color: "rgba(255,255,255,0.85)" },
+  courseBody: { padding: 12, gap: 3 },
+  courseFoot: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 4 },
+  courseGo: { paddingHorizontal: 12, paddingVertical: 6 },
+  courseGoText: { fontFamily: "Tajawal_700Bold", fontSize: 12 },
   courseHead: { flexDirection: "row", alignItems: "center", gap: 8 },
   track: { height: 6, borderRadius: 3, overflow: "hidden" },
   fill: { height: 6, borderRadius: 3 },
@@ -778,7 +1203,18 @@ const styles = StyleSheet.create({
   emptyText: { fontFamily: "Tajawal_400Regular", fontSize: 13.5 },
 
   tabs: { flexDirection: "row", paddingTop: 8, paddingBottom: 22, borderTopWidth: StyleSheet.hairlineWidth },
+  navPill: {
+    position: "absolute", bottom: 20, start: 16, end: 16,
+    flexDirection: "row", borderRadius: 999, paddingVertical: 11,
+    shadowColor: "#0A140F", shadowOpacity: 0.16, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 10,
+  },
+  navSoft: {
+    flexDirection: "row", paddingTop: 12, paddingBottom: 22,
+    borderTopStartRadius: 24, borderTopEndRadius: 24,
+    shadowColor: "#0A140F", shadowOpacity: 0.08, shadowRadius: 14, shadowOffset: { width: 0, height: -4 }, elevation: 8,
+  },
   tab: { flex: 1, alignItems: "center", gap: 3 },
+  tabIcon: { paddingHorizontal: 14, paddingVertical: 3 },
   tabLabel: { fontFamily: "Tajawal_500Medium", fontSize: 10.5 },
   badge: {
     position: "absolute", top: -5, start: -8, minWidth: 15, height: 15, borderRadius: 8,

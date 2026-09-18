@@ -1,42 +1,84 @@
 import type { Course, Offer, Person, Project, Template } from "./types";
 
-/** ستّة تطبيقاتٍ لا ستّة ألوان: لكلٍّ شاشاتُه وسلوكه. */
+/**
+ * ستّة تطبيقاتٍ لا ستّة ألوان.
+ *
+ * ولكلٍّ منها شاشاتُه وسلوكُه **وهيئتُه**: صدرٌ يختلف شكلًا لا لونًا، وشريطُ
+ * تبويبٍ يختلف موضعًا، وعرضٌ لما يُباع يختلف بنيةً — سطرًا أو مربّعًا أو
+ * بطاقةً. فمن قلّب بينها رأى ستّةَ تطبيقات، لا واحدًا صُبغ ستّ مرّات.
+ */
 export const TEMPLATES: Template[] = [
   {
     id: "mawaid", name: "مواعيد", kind: "booking",
     pitch: "لمن يعمل بالموعد — يختار الزبون الخدمة واليوم والساعة ويؤكّد.",
-    skin: { brand: "#186B77", brandDeep: "#0E464F", paper: "#F3FAFB", card: "#FFFFFF", text: "#112326", muted: "#5F7B7F", radius: 16, hero: "gradient" },
+    skin: {
+      brand: "#186B77", brandDeep: "#0E464F", paper: "#F3FAFB", card: "#FFFFFF",
+      text: "#112326", muted: "#5F7B7F", radius: 16,
+      header: "cover", nav: "pill", list: "rows",
+      facts: ["مفتوح اليوم", "ردٌّ خلال دقائق", "بالموعد"],
+    },
   },
   {
     id: "nakha", name: "نكهة", kind: "restaurant",
     pitch: "للمطاعم والمقاهي — قائمةٌ وسلّةٌ وطلبٌ يصل واتسابك.",
-    skin: { brand: "#8C3B1E", brandDeep: "#5C2412", paper: "#FBF6F0", card: "#FFFFFF", text: "#241512", muted: "#7A655C", radius: 18, hero: "gradient" },
+    skin: {
+      brand: "#8C3B1E", brandDeep: "#5C2412", paper: "#FBF6F0", card: "#FFFFFF",
+      text: "#241512", muted: "#7A655C", radius: 18,
+      header: "band", nav: "bar", list: "menu",
+      strap: "التوصيل خلال ٤٠ دقيقة داخل صلالة",
+    },
   },
   {
     id: "rufuf", name: "رفوف", kind: "store",
     pitch: "متجرٌ إلكتروني — منتجاتٌ وسلّةٌ وحسابُ التوصيل.",
-    skin: { brand: "#1F5C42", brandDeep: "#123828", paper: "#F5F8F5", card: "#FFFFFF", text: "#15211B", muted: "#66786E", radius: 16, hero: "gradient" },
+    skin: {
+      brand: "#1F5C42", brandDeep: "#123828", paper: "#F5F8F5", card: "#FFFFFF",
+      text: "#15211B", muted: "#66786E", radius: 16,
+      header: "shop", nav: "bar", list: "grid",
+      strap: "شحنٌ مجّاني للطلبات فوق ٢٠ ر.ع.",
+    },
   },
   {
     id: "shifa", name: "شفاء", kind: "clinic",
     pitch: "للعيادات — أطبّاءٌ بتخصّصاتهم، وحجزٌ بأقرب موعد.",
-    skin: { brand: "#245C9E", brandDeep: "#153B69", paper: "#F5F8FC", card: "#FFFFFF", text: "#122130", muted: "#61758A", radius: 14, hero: "plain" },
+    skin: {
+      brand: "#245C9E", brandDeep: "#153B69", paper: "#F5F8FC", card: "#FFFFFF",
+      text: "#122130", muted: "#61758A", radius: 14,
+      header: "split", nav: "bar", list: "cards",
+      facts: ["يقبل التأمين", "بموعدٍ وبدونه", "٨ ص – ٩ م"],
+    },
   },
   {
     id: "minassa", name: "منصّة", kind: "academy",
     pitch: "منصّةٌ تعليمية — دوراتٌ ودروسٌ وتقدّمٌ يُحفظ.",
-    skin: { brand: "#6C4E8F", brandDeep: "#432F5C", paper: "#FAF7FB", card: "#FFFFFF", text: "#241C2B", muted: "#79707F", radius: 20, hero: "gradient" },
+    skin: {
+      brand: "#6C4E8F", brandDeep: "#432F5C", paper: "#FAF7FB", card: "#FFFFFF",
+      text: "#241C2B", muted: "#79707F", radius: 20,
+      header: "dark", nav: "pill", list: "cards",
+      strap: "أهلًا بك 👋",
+    },
   },
   {
     id: "maraya", name: "مرايا", kind: "salon",
     pitch: "للصالونات — خدماتٌ بمدّتها، وفريقٌ يُختار منه، وحجز.",
-    skin: { brand: "#A8456B", brandDeep: "#6E2844", paper: "#FDF6F9", card: "#FFFFFF", text: "#2B1720", muted: "#856874", radius: 22, hero: "gradient" },
+    skin: {
+      brand: "#A8456B", brandDeep: "#6E2844", paper: "#FDF6F9", card: "#FFFFFF",
+      text: "#2B1720", muted: "#856874", radius: 22,
+      header: "arch", nav: "soft", list: "rows",
+      strap: "احجزي موعدكِ في دقيقة",
+    },
   },
 ];
 
 export const TEMPLATE_BY_ID: Record<string, Template> = Object.fromEntries(
   TEMPLATES.map((template) => [template.id, template])
 );
+
+/** أصدرُ داكنٌ أم فاتح — وعليه يُلوَّن شريطُ حالة الهاتف فوقه. */
+const DARK_HEADERS = new Set(["cover", "band", "dark", "arch"]);
+export function statusTintOf(template: Template): string {
+  return DARK_HEADERS.has(template.skin.header) ? "#FFFFFF" : template.skin.text;
+}
 
 const offers = (rows: [string, number, string?, string?, number?][]): Offer[] =>
   rows.map(([name, price, note, category, minutes], i) => ({ id: `o${i}`, name, price, note, category, minutes }));

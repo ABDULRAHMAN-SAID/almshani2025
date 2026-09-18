@@ -17,7 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { PhoneFrame } from "@/components/PhoneFrame";
 import { DemoApp } from "@/components/DemoApp";
 import { colors, radius, spacing, themed, typography } from "@/constants";
-import { demoOf, TEMPLATES } from "@/product/templates";
+import { demoOf, statusTintOf, TEMPLATES } from "@/product/templates";
 import { KIND } from "@/product/kinds";
 import type { Project } from "@/product/types";
 import { useProjectStore } from "@/store/projectStore";
@@ -153,7 +153,7 @@ export default function Gallery() {
                 والسهمين تحته، فلا يضيع بتضارب السحب الأفقيّ والرأسي. */}
             <PhoneFrame
               width={phoneWidth}
-              statusTint={template.skin.hero === "plain" ? template.skin.text : "#FFFFFF"}
+              statusTint={statusTintOf(template)}
             >
               <DemoApp project={contentFor(template.id)} template={template} interactive />
             </PhoneFrame>
