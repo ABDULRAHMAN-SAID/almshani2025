@@ -8,6 +8,7 @@ export * from "./AwarenessCard";
 export * from "./BottomSheet";
 export * from "./CalendarMonth";
 export * from "./CategoryCard";
+export * from "./ChatVoice";
 export * from "./EmptyState";
 export * from "./EventHero";
 export * from "./FilterChips";

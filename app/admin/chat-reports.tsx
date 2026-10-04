@@ -1,5 +1,6 @@
 import { ScrollView, Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
+import { ChatVoice } from "@/components/ChatVoice";
 import { EmptyState } from "@/components/EmptyState";
 import { QueryState } from "@/components/QueryState";
 import { ScreenHeader } from "@/components/ScreenHeader";
@@ -27,15 +28,19 @@ export default function AdminChatReportsScreen() {
       >
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <Text style={styles.hint}>
-            كل بلاغ رسالةٌ واحدة رفعها صاحبها. والمحادثات الخاصة لا تُقرأ من الإدارة ولا من
-            الخادم — هذه وحدها ما يصل.
+            كل بلاغ رسالةٌ واحدة رفعها صاحبها، نصًّا كانت أو تسجيلًا صوتيًا. والمحادثات
+            الخاصة لا تُقرأ ولا تُسمع من الإدارة — هذه وحدها ما يصل.
           </Text>
           {(reports.data ?? []).length === 0 ? (
             <EmptyState icon="shield-checkmark-outline" title="لا بلاغات" />
           ) : (
             (reports.data ?? []).map((report) => (
               <View key={report.id} style={styles.card}>
-                <Text style={styles.body}>{report.body || "(رسالة بلا نصّ)"}</Text>
+                {report.audioUrl ? (
+                  <ChatVoice url={report.audioUrl} />
+                ) : (
+                  <Text style={styles.body}>{report.body || "(رسالة بلا نصّ)"}</Text>
+                )}
                 <Text style={styles.meta}>
                   {report.reason || "بلا سبب"} · {formatArabicDate(report.createdAt.slice(0, 10))}
                 </Text>

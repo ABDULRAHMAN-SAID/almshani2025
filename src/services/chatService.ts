@@ -1,5 +1,6 @@
 import { USE_MOCK_DATA } from "./config";
 import { supabase } from "./supabase";
+import { deleteMedia, uploadMedia, type PickedMedia } from "./uploadService";
 
 /**
  * الأصدقاء والمحادثات الخاصة.
@@ -38,6 +39,8 @@ export interface ChatMessage {
   senderName?: string;
   body: string;
   image?: string;
+  /** رسالة صوتية: رابط التسجيل (يُوقَّع عند التشغيل) ومدّته. */
+  audio?: { url: string; durationMs?: number };
   createdAt: string;
 }
 
@@ -249,6 +252,9 @@ export async function fetchMessages(conversationId: string): Promise<ChatMessage
     senderName: (row.users as { full_name?: string } | null)?.full_name,
     body: String(row.body ?? ""),
     image: (row.image as string) ?? undefined,
+    audio: row.audio_url
+      ? { url: String(row.audio_url), durationMs: (row.audio_ms as number | null) ?? undefined }
+      : undefined,
     createdAt: String(row.created_at ?? ""),
   }));
 }
@@ -278,10 +284,61 @@ export async function sendMessage(
   if (error) throw error;
 }
 
+/**
+ * رسالة صوتية: يُرفع التسجيل إلى مجلّد المحادثة في الحاوية المغلقة ثم يُكتب
+ * سطرها.
+ *
+ * والترتيب هذا لا العكس: لو كُتب السطر أوّلًا ثم فشل الرفع لبقيت في
+ * المحادثة رسالةٌ صوتية لا صوت فيها، يراها الطرف الآخر ولا يملك صاحبها إلا
+ * حذفها. أمّا ملفٌّ رُفع ولم يُكتب سطره فلا يراه أحد.
+ */
+export async function sendVoiceMessage(conversationId: string, media: PickedMedia): Promise<void> {
+  if (USE_MOCK_DATA) {
+    const list = mock.messages[conversationId] ?? [];
+    list.push({
+      id: `m-${Date.now()}`, conversationId, senderId: "me", body: "",
+      audio: { url: media.uri, durationMs: media.durationMs },
+      createdAt: new Date().toISOString(),
+    });
+    mock.messages[conversationId] = list;
+    return;
+  }
+  const { data: me } = await supabase.auth.getUser();
+  const sender = me.user?.id;
+  if (!sender) throw new Error("سجّل الدخول أولًا");
+
+  const attachment = await uploadMedia(media, `chat/${conversationId}`);
+  const { error } = await supabase.from("chat_messages").insert({
+    conversation_id: conversationId,
+    sender_id: sender,
+    body: "",
+    audio_url: attachment.url,
+    audio_ms: media.durationMs ? Math.round(media.durationMs) : null,
+  });
+  if (error) {
+    // الملفّ رُفع ولا رسالة تشير إليه: لا نتركه يتيمًا في الخادم.
+    void deleteMedia(attachment).catch(() => undefined);
+    throw error;
+  }
+}
+
 export async function deleteMessage(id: string): Promise<void> {
   if (USE_MOCK_DATA) return;
+  // رابط التسجيل قبل الحذف: بعده لا سطر نسأله. ولا يُحذف الملفّ إلا بعد
+  // نجاح حذف السطر، وإن كان موضوع بلاغٍ رفضه الخادم فبقي دليلًا للإدارة.
+  const { data: row } = await supabase
+    .from("chat_messages")
+    .select("audio_url")
+    .eq("id", id)
+    .maybeSingle();
   const { error } = await supabase.from("chat_messages").delete().eq("id", id);
   if (error) throw error;
+  const audioUrl = (row as { audio_url?: string | null } | null)?.audio_url;
+  if (audioUrl) {
+    void deleteMedia({ id, kind: "audio", url: audioUrl, name: "", mimeType: "audio/m4a" }).catch(
+      () => undefined
+    );
+  }
 }
 
 export async function reportMessage(messageId: string, reason: string): Promise<void> {
@@ -329,6 +386,8 @@ export interface ChatReport {
   createdAt: string;
   reporterName?: string;
   reportedName?: string;
+  /** تسجيل الرسالة المُبلَّغ عنها إن كانت صوتية. */
+  audioUrl?: string;
 }
 
 /**
@@ -350,5 +409,6 @@ export async function fetchChatReports(): Promise<ChatReport[]> {
     body: String(row.body ?? ""),
     reason: String(row.reason ?? ""),
     createdAt: String(row.created_at ?? ""),
+    audioUrl: (row.audio_url as string | null) ?? undefined,
   }));
 }

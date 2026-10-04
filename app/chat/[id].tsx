@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -12,10 +13,12 @@ import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, router } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { BottomSheet } from "@/components/BottomSheet";
+import { ChatVoice } from "@/components/ChatVoice";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { SecondaryButton } from "@/components/SecondaryButton";
 import { colors, radius, spacing, typography, themed } from "@/constants";
+import { useAudioRecorder } from "@/hooks/useAudioRecorder";
 import { useAuth } from "@/hooks/useAuth";
 import {
   deleteMessage,
@@ -24,8 +27,10 @@ import {
   markConversationRead,
   reportMessage,
   sendMessage,
+  sendVoiceMessage,
 } from "@/services/chatService";
 import type { ChatMessage } from "@/services/chatService";
+import { type PickedMedia, formatDuration } from "@/services/uploadService";
 import { showToast } from "@/store/toastStore";
 import { toArabicMessage } from "@/utils/errors";
 
@@ -47,6 +52,10 @@ function clock(iso: string): string {
  *
  * ولا تعديل لرسالة بعد إرسالها، وحذفُها لكاتبها وحده: رسالةٌ تُقرأ ثم تُبدَّل
  * تُنكر على قارئها ما قرأ.
+ *
+ * والتسجيل الصوتي بضغطةٍ تبدأه وضغطةٍ ترسله، لا بإمساكٍ مستمرّ: الإمساك يُتعب
+ * الإبهام في تسجيلٍ طويل، ويسقط التسجيل إن انزلق الإصبع إلى الشاشة التي
+ * تتمرّر. والمايك يحلّ محلّ زرّ الإرسال ما دام الحقل فارغًا، كما اعتاد الناس.
  */
 export default function ChatScreen() {
   const params = useLocalSearchParams<{ id?: string; title?: string }>();
@@ -82,6 +91,32 @@ export default function ChatScreen() {
     },
     onError: (e) => showToast(toArabicMessage(e, "تعذّر الإرسال"), "error"),
   });
+
+  const voice = useMutation({
+    mutationFn: (media: PickedMedia) => sendVoiceMessage(conversationId, media),
+    onSuccess: () => {
+      void messages.refetch();
+      void client.invalidateQueries({ queryKey: ["conversations"] });
+    },
+    onError: (e) => showToast(toArabicMessage(e, "تعذّر إرسال التسجيل"), "error"),
+  });
+
+  const recorder = useAudioRecorder({ onRecorded: (media) => voice.mutate(media) });
+
+  const startRecording = async () => {
+    try {
+      await recorder.start();
+    } catch (e) {
+      showToast(toArabicMessage(e, "تعذّر بدء التسجيل"), "error");
+    }
+  };
+
+  const finishRecording = async () => {
+    // الهوك يتجاهل ما دون ٧٠٠ مللي ثانية بصمت؛ والمستخدم يستحقّ أن يعرف.
+    const tooShort = recorder.elapsedMs < 700;
+    await recorder.stop();
+    if (tooShort) showToast("التسجيل قصير جدًا — سجّل أطول قليلًا", "error");
+  };
 
   const remove = useMutation({
     mutationFn: (id: string) => deleteMessage(id),
@@ -151,7 +186,16 @@ export default function ChatScreen() {
                   {!mine && message.senderName ? (
                     <Text style={styles.sender}>{message.senderName}</Text>
                   ) : null}
-                  <Text style={[styles.body, mine && styles.bodyMine]}>{message.body}</Text>
+                  {message.audio ? (
+                    <ChatVoice
+                      url={message.audio.url}
+                      durationMs={message.audio.durationMs}
+                      mine={mine}
+                    />
+                  ) : null}
+                  {message.body ? (
+                    <Text style={[styles.body, mine && styles.bodyMine]}>{message.body}</Text>
+                  ) : null}
                   <Text style={[styles.time, mine && styles.timeMine]}>
                     {clock(message.createdAt)}
                   </Text>
@@ -162,39 +206,80 @@ export default function ChatScreen() {
         )}
       </ScrollView>
 
-      <View style={styles.composer}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="خيارات المحادثة"
-          onPress={() => setAskLeave(true)}
-          style={styles.composerIcon}
-        >
-          <Ionicons name="ellipsis-horizontal" size={20} color={colors.textMuted} />
-        </Pressable>
-        <TextInput
-          value={draft}
-          onChangeText={setDraft}
-          placeholder="اكتب رسالة"
-          placeholderTextColor={colors.textMuted}
-          style={styles.input}
-          textAlign="right"
-          multiline
-        />
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="إرسال"
-          disabled={draft.trim().length === 0 || send.isPending}
-          onPress={() => send.mutate(draft)}
-          style={[styles.sendButton, draft.trim().length === 0 && styles.sendDisabled]}
-        >
-          <Ionicons name="send" size={18} color={colors.textOnPrimary} />
-        </Pressable>
-      </View>
+      {recorder.isRecording ? (
+        <View style={styles.composer}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="إلغاء التسجيل"
+            onPress={() => void recorder.cancel()}
+            style={styles.composerIcon}
+          >
+            <Ionicons name="trash-outline" size={22} color={colors.danger} />
+          </Pressable>
+          <View style={styles.recording}>
+            <View style={styles.pulse} />
+            <Text style={styles.recordingText}>جارٍ التسجيل — {formatDuration(recorder.elapsedMs)}</Text>
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="إرسال التسجيل"
+            onPress={() => void finishRecording()}
+            style={styles.sendButton}
+          >
+            <Ionicons name="send" size={18} color={colors.textOnPrimary} />
+          </Pressable>
+        </View>
+      ) : (
+        <View style={styles.composer}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="خيارات المحادثة"
+            onPress={() => setAskLeave(true)}
+            style={styles.composerIcon}
+          >
+            <Ionicons name="ellipsis-horizontal" size={20} color={colors.textMuted} />
+          </Pressable>
+          <TextInput
+            value={draft}
+            onChangeText={setDraft}
+            placeholder="اكتب رسالة"
+            placeholderTextColor={colors.textMuted}
+            style={styles.input}
+            textAlign="right"
+            multiline
+          />
+          {draft.trim().length === 0 ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="تسجيل رسالة صوتية"
+              disabled={voice.isPending}
+              onPress={() => void startRecording()}
+              style={styles.sendButton}
+            >
+              {voice.isPending ? (
+                <ActivityIndicator size="small" color={colors.textOnPrimary} />
+              ) : (
+                <Ionicons name="mic" size={20} color={colors.textOnPrimary} />
+              )}
+            </Pressable>
+          ) : (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="إرسال"
+              disabled={send.isPending}
+              onPress={() => send.mutate(draft)}
+              style={styles.sendButton}
+            >
+              <Ionicons name="send" size={18} color={colors.textOnPrimary} />
+            </Pressable>
+          )}
+        </View>
+      )}
 
       <BottomSheet visible={Boolean(picked)} onClose={() => setPicked(null)}>
         <Text style={styles.sheetTitle}>الرسالة</Text>
         <Text style={styles.sheetBody} numberOfLines={3}>
-          {picked?.body}
+          {picked?.body || (picked?.audio ? "رسالة صوتية" : "")}
         </Text>
         {picked?.senderId === user?.id ? (
           <PrimaryButton
@@ -291,7 +376,20 @@ const styles = themed(() => ({
     alignItems: "center",
     justifyContent: "center",
   },
-  sendDisabled: { opacity: 0.4 },
+  recording: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    minHeight: 42,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.lg,
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  pulse: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.danger },
+  recordingText: { ...typography.body, fontSize: 14, color: colors.textPrimary },
   sheetTitle: { ...typography.h2, textAlign: "center" },
   sheetBody: { ...typography.bodyMuted, textAlign: "center", marginTop: spacing.sm, lineHeight: 22 },
 }));

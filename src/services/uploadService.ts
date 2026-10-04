@@ -38,11 +38,16 @@ export const MEDIA_BUCKET = "app-media";
 export const PRIVATE_BUCKET = "app-private";
 
 /** المجلّدات التي لا يراها إلا صاحبها ومن أُذن له. */
-const PRIVATE_FOLDERS = new Set(["messages", "posts"]);
+const PRIVATE_FOLDERS = new Set(["messages", "posts", "chat"]);
 
-/** الحاوية التي يذهب إليها مجلّدٌ ما. */
+/**
+ * الحاوية التي يذهب إليها مجلّدٌ ما.
+ *
+ * والعبرة بأول جزءٍ من المسار: تسجيلات المحادثات في `chat/<رقم المحادثة>`،
+ * ومجلّدٌ فرعيٌّ لا يُخرجها من الحاوية المغلقة.
+ */
 export function bucketForFolder(folder: string): string {
-  return PRIVATE_FOLDERS.has(folder) ? PRIVATE_BUCKET : MEDIA_BUCKET;
+  return PRIVATE_FOLDERS.has(folder.split("/")[0]) ? PRIVATE_BUCKET : MEDIA_BUCKET;
 }
 
 export type { MediaAttachment, MediaKind };

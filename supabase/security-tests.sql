@@ -503,6 +503,82 @@ begin
   n := pg_temp.attempt_read(b, 'select count(*) from public.chat_reports');
   perform pg_temp.log_result('المحادثات', 'B يقرأ بلاغات المحادثات', 'ممنوع', n, n <= 0);
 
+  -- ===================== الرسائل الصوتية =====================
+  -- التسجيل ملفٌّ في الحاوية المغلقة، لا سطرٌ في جدول: فسياسات الجدول وحدها لا
+  -- تحميه. يحميه مجلّد المحادثة في مساره، وسياساتُ storage.objects عليه.
+  insert into storage.objects (bucket_id, name, owner)
+  values ('app-private', 'chat/' || v_conv::text || '/a-voice.m4a', a)
+  on conflict do nothing;
+
+  n := pg_temp.attempt_read(a,
+    'select count(*) from storage.objects where bucket_id = ''app-private'' and name = '
+      || quote_literal('chat/' || v_conv::text || '/a-voice.m4a'));
+  perform pg_temp.log_result('ضوابط موجبة', 'A يسمع تسجيل محادثته', 'مسموح', n, n = 1);
+
+  n := pg_temp.attempt_read(b,
+    'select count(*) from storage.objects where bucket_id = ''app-private'' and name like '
+      || quote_literal('chat/%'));
+  perform pg_temp.log_result('الرسائل الصوتية', 'B يسرد تسجيلات محادثاتٍ ليس فيها', 'ممنوع', n, n <= 0);
+
+  n := pg_temp.attempt_write(a,
+    'insert into storage.objects (bucket_id, name, owner) values (''app-private'', '
+      || quote_literal('chat/' || v_conv::text || '/a-second.m4a') || ', ' || quote_literal(a) || '::uuid)');
+  perform pg_temp.log_result('ضوابط موجبة', 'A يرفع تسجيلًا إلى محادثته', 'مسموح', n, n = 1);
+
+  n := pg_temp.attempt_write(b,
+    'insert into storage.objects (bucket_id, name, owner) values (''app-private'', '
+      || quote_literal('chat/' || v_conv::text || '/b-intruder.m4a') || ', ' || quote_literal(b) || '::uuid)');
+  perform pg_temp.log_result('الرسائل الصوتية', 'B يرفع تسجيلًا إلى محادثةٍ ليس فيها', 'ممنوع', n, n <= 0);
+
+  -- مجلّد ليس رقم محادثة: لا يجوز أن ينهار التحويل إلى uuid فيُفتح الباب بالخطأ.
+  n := pg_temp.attempt_write(a,
+    'insert into storage.objects (bucket_id, name, owner) values (''app-private'', ''chat/not-a-uuid/x.m4a'', '
+      || quote_literal(a) || '::uuid)');
+  perform pg_temp.log_result('الرسائل الصوتية', 'رفعٌ إلى chat/ بمجلّدٍ ليس رقم محادثة', 'ممنوع', n, n <= 0);
+
+  n := pg_temp.attempt_write(a,
+    'insert into storage.objects (bucket_id, name, owner) values (''app-private'', ''chat/x.m4a'', '
+      || quote_literal(a) || '::uuid)');
+  perform pg_temp.log_result('الرسائل الصوتية', 'رفعٌ إلى chat/ بلا مجلّد محادثة', 'ممنوع', n, n <= 0);
+
+  -- الرسالة تشير إلى مجلّد محادثتها فقط. وعضوٌ يشير إلى ملفّ محادثةٍ أخرى
+  -- ممنوع، وإلا عُرض على الإدارة من بلاغٍ ما لم يكن في المحادثة المُبلَّغ منها.
+  n := pg_temp.attempt_write(a,
+    'insert into public.chat_messages (conversation_id, sender_id, body, audio_url, audio_ms) values ('
+      || quote_literal(v_conv) || '::uuid, ' || quote_literal(a) || '::uuid, '''', '
+      || quote_literal('https://x.test/storage/v1/object/public/app-private/chat/' || gen_random_uuid()::text || '/other.m4a')
+      || ', 5000)');
+  perform pg_temp.log_result('الرسائل الصوتية', 'رسالةٌ تشير إلى تسجيل محادثةٍ أخرى', 'ممنوع', n, n <= 0);
+
+  n := pg_temp.attempt_write(a,
+    'insert into public.chat_messages (conversation_id, sender_id, body, audio_url, audio_ms) values ('
+      || quote_literal(v_conv) || '::uuid, ' || quote_literal(a) || '::uuid, '''', '
+      || quote_literal('https://x.test/storage/v1/object/public/app-private/chat/' || v_conv::text || '/a-voice.m4a')
+      || ', 5000)');
+  perform pg_temp.log_result('ضوابط موجبة', 'A يرسل رسالةً صوتية في محادثته', 'مسموح', n, n = 1);
+
+  n := pg_temp.attempt_write(a,
+    'insert into public.chat_messages (conversation_id, sender_id, body, audio_url, audio_ms) values ('
+      || quote_literal(v_conv) || '::uuid, ' || quote_literal(a) || '::uuid, '''', '
+      || quote_literal('https://x.test/storage/v1/object/public/app-private/chat/' || v_conv::text || '/a-voice.m4a')
+      || ', 99999999)');
+  perform pg_temp.log_result('الرسائل الصوتية', 'مدّةٌ خياليّة في رسالة صوتية', 'ممنوع', n, n <= 0);
+
+  -- الدليل: صاحب التسجيل يحذفه ما لم يُبلَّغ عنه، فإن بُلِّغ عنه لم يعد يملك ذلك.
+  n := pg_temp.attempt_write(a,
+    'delete from storage.objects where bucket_id = ''app-private'' and name = '
+      || quote_literal('chat/' || v_conv::text || '/a-voice.m4a'));
+  perform pg_temp.log_result('ضوابط موجبة', 'صاحب تسجيلٍ لم يُبلَّغ عنه يحذفه', 'مسموح', n, n = 1);
+
+  insert into public.chat_reports (reporter_id, reported_user_id, body, reason, audio_url)
+  values (b, a, '', 'اختبار',
+    'https://x.test/storage/v1/object/public/app-private/chat/' || v_conv::text || '/a-voice.m4a');
+
+  n := pg_temp.attempt_write(a,
+    'delete from storage.objects where bucket_id = ''app-private'' and name = '
+      || quote_literal('chat/' || v_conv::text || '/a-voice.m4a'));
+  perform pg_temp.log_result('الرسائل الصوتية', 'صاحب تسجيلٍ مُبلَّغٍ عنه يحذفه (يمحو الدليل)', 'ممنوع', n, n <= 0);
+
   -- الصداقة: طلبٌ باسم غيره. ولو جاز لَصار «صديقًا» بلا موافقة أحد.
   n := pg_temp.attempt_write(b,
     'insert into public.friendships (requester_id, addressee_id, status) values ('
@@ -583,6 +659,8 @@ begin
   n := pg_temp.visitor_read('select count(*) from public.app_settings');
   perform pg_temp.log_result('ضوابط موجبة', 'الزائر يقرأ مفاتيح التشغيل', 'مسموح', n, n >= 1);
 
+  delete from public.chat_reports where audio_url like '%/chat/' || v_conv::text || '/%';
+  delete from storage.objects where bucket_id = 'app-private' and name like 'chat/' || v_conv::text || '/%';
   delete from public.chat_messages where conversation_id = v_conv;
   delete from public.conversation_members where conversation_id = v_conv;
   delete from public.conversations where id = v_conv;
