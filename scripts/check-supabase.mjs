@@ -156,6 +156,9 @@ const FIELDS = [
   ["club_menus", "images", "صور القوائم الثلاث"],
   ["activity_checkin_codes", "expires_at", "وقت انتهاء رمز الحضور"],
   ["clubs", "title", "اسم النادي"],
+  ["chat_messages", "audio_url", "رابط الرسالة الصوتية (chat-voice.sql)"],
+  ["chat_messages", "audio_ms", "مدّة الرسالة الصوتية (chat-voice.sql)"],
+  ["chat_reports", "audio_url", "تسجيل البلاغ الصوتي (chat-voice.sql)"],
 ];
 
 /** قيم نوعٍ مُعدَّد: القيمة الغائبة يردّها الخادم بالرمز 22P02. */
