@@ -171,7 +171,7 @@ function ZERO() {
   return "00000000-0000-0000-0000-000000000000";
 }
 
-const BUCKETS = ["activity-images", "app-media"];
+const BUCKETS = ["activity-images", "app-media", "app-private"];
 
 /**
  * أكبر مرفق يسمح به التطبيق — الفيديو. لو كان سقف الحاوية دونه، قُبل المقطع
